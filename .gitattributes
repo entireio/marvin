@@ -32,9 +32,16 @@
 # ---------------------------------------------------------------------------
 # GitHub Pages serves files straight out of the repository and does NOT resolve
 # Git LFS pointers. An LFS-tracked image or video reaches the browser as a
-# ~130-byte text file, so the page silently breaks. Everything the site loads
-# must be stored as an ordinary Git object, whatever its extension.
-docs/** -filter -diff -merge
+# ~130-byte text file, so the page silently breaks. These undo the media rules
+# above for the published site only.
+#
+# Scope this to the patterns that actually match an LFS rule. A blanket
+# `docs/** -filter -diff -merge` also unsets `diff`, which makes Git treat the
+# site's HTML, CSS and JS as binary and stop showing their changes.
+docs/**/*.png  -filter -diff -merge -text
+docs/**/*.jpg  -filter -diff -merge -text
+docs/**/*.mp4  -filter -diff -merge -text
+docs/**/*.pdf  -filter -diff -merge -text
 
 # ---------------------------------------------------------------------------
 # Line endings

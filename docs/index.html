@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Marvin — An open source tracked robot</title>
-<meta name="description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is published: firmware, electronics, mechanics.">
+<meta name="description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is open source: firmware, electronics, mechanics.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <meta property="og:title" content="Marvin — An open source tracked robot">
-<meta property="og:description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is published: firmware, electronics, mechanics.">
+<meta property="og:description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is open source: firmware, electronics, mechanics.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,11 +48,11 @@
       </div>
       <h1 id="mv-hero" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(84px,20vw,300px);line-height:.82;letter-spacing:.01em;margin:0">MARVIN</h1>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,4vw,56px);margin-top:clamp(24px,4vw,44px);align-items:end">
-        <p style="margin:0;font-size:clamp(19px,2.1vw,25px);line-height:1.42;max-width:34ch">A small tracked robot with an expressive two&#8209;axis head. Roughly the size of a coffee cup. Every file needed to build one is published.</p>
+        <p style="margin:0;font-size:clamp(19px,2.1vw,25px);line-height:1.42;max-width:34ch">A small tracked robot with an expressive two&#8209;axis head. Roughly the size of a coffee cup. Every file needed to build one is open source.</p>
         <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;align-self:end">
           <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Stage</dt><dd style="margin:0">Early prototype</dd>
           <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Subsystems</dt><dd style="margin:0">4 of 9 working</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts</dt><dd style="margin:0">9 printed, 01–09</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts</dt><dd style="margin:0">8 printed, 01–08</dd>
           <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Licence</dt><dd style="margin:0">MIT · CERN&#8209;OHL&#8209;S&#8209;2.0</dd>
         </dl>
       </div>
@@ -116,13 +116,13 @@
         <div>
           <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 02</p>
           <h2 id="mv-s02" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Anatomy</h2>
-          <p style="margin:0 0 clamp(20px,3vw,40px);max-width:68ch">Nine printed parts, numbered in assembly order: chassis, then drivetrain, then head. Scroll to bring them together.</p>
+          <p style="margin:0 0 clamp(20px,3vw,40px);max-width:68ch">Eight printed parts, numbered in assembly order: chassis, then drivetrain, then head. Scroll to bring them together.</p>
         </div>
       </div>
       <div data-ref="anatomyRef" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,3vw,48px);align-items:start">
         <figure class="blueprint" style="margin:0;padding:clamp(10px,2vw,20px);position:relative">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <svg viewBox="40 0 640 660" role="img" aria-label="Exploded axonometric drawing of Marvin: nine printed parts separated along their assembly axes, each with a numbered callout." style="display:block;width:100%;height:auto;color:var(--color-text)">
+          <svg viewBox="40 0 640 660" role="img" aria-label="Exploded axonometric drawing of Marvin: eight printed parts separated along their assembly axes, each with a numbered callout." style="display:block;width:100%;height:auto;color:var(--color-text)">
             <defs>
               <g id="mv-chassis"><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -34 M0 -34 L103.9 -94 M0 -34 L-72.7 -76" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
               <g id="mv-head"><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -58 M0 -58 L129.9 -133 M0 -58 L-34.6 -78" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 -60 L120 -125 M8 -60 L8 -22 M120 -125 L120 -87 M8 -22 L120 -87" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/></g>
@@ -131,18 +131,11 @@
               <g id="mv-cover"><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -30 M0 -30 L102.2 -89 M0 -30 L-29.4 -47" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
               <g id="mv-collar"><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -20 M0 -20 L26 -35 M0 -20 L-26 -35" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
               <g id="mv-wheel"><g transform="translate(-8.7,-5)"><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/></g><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/><circle r="3.6" fill="none" stroke="currentColor" stroke-width="1"/></g>
-              <g id="mv-track"><path d="M0 0 L92 -53 L104 -60 L110 -72 L104 -82 L92 -87 L0 -34 L-12 -27 L-18 -15 L-12 -5 Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="7 4"/></g>
             </defs>
 
             <g transform="translate(257,436)"><g data-dx="-70" data-dy="-40" style="transform:translate(-70px,-40px)">
               <use href="#mv-cover"/>
               <g data-callout style="color:var(--color-accent-700)"><path d="M-29 -40 L-112 -68" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="-29" cy="-40" r="2.2" fill="currentColor"/><text x="-142" y="-62" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">03</text></g>
-            </g></g>
-
-            <g transform="translate(359,495)"><g data-dx="-70" data-dy="160" style="transform:translate(-70px,160px)">
-              <g transform="translate(-92,-65)"><use href="#mv-track"/></g>
-              <use href="#mv-track"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M104 -66 L246 -96" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="104" cy="-66" r="2.2" fill="currentColor"/><text x="254" y="-90" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">05</text></g>
             </g></g>
 
             <g transform="translate(359,495)"><g data-dx="-70" data-dy="100" style="transform:translate(-70px,100px)">
@@ -165,22 +158,22 @@
 
             <g transform="translate(341,412)"><g data-dx="0" data-dy="-88" style="transform:translate(0px,-88px)">
               <use href="#mv-plate" transform="scale(.55)"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M40 -30 L216 -56" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="40" cy="-30" r="2.2" fill="currentColor"/><text x="224" y="-50" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">09</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M40 -30 L216 -56" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="40" cy="-30" r="2.2" fill="currentColor"/><text x="224" y="-50" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">08</text></g>
             </g></g>
 
             <g transform="translate(345,403)"><g data-dx="0" data-dy="-139" style="transform:translate(0px,-139px)">
               <use href="#mv-collar"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M26 -18 L196 -58" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="26" cy="-18" r="2.2" fill="currentColor"/><text x="204" y="-52" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">08</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M26 -18 L196 -58" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="26" cy="-18" r="2.2" fill="currentColor"/><text x="204" y="-52" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">07</text></g>
             </g></g>
 
             <g transform="translate(315,397)"><g data-dx="0" data-dy="-201" style="transform:translate(0px,-201px)">
               <use href="#mv-head" transform="scale(.62)"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -52 L200 -80" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-52" r="2.2" fill="currentColor"/><text x="208" y="-74" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">06</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -52 L200 -80" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-52" r="2.2" fill="currentColor"/><text x="208" y="-74" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">05</text></g>
             </g></g>
 
             <g transform="translate(315,361)"><g data-dx="0" data-dy="-278" style="transform:translate(0px,-278px)">
               <use href="#mv-headcap" transform="scale(.62)"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -16 L178 -44" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-16" r="2.2" fill="currentColor"/><text x="186" y="-38" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">07</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -16 L178 -44" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-16" r="2.2" fill="currentColor"/><text x="186" y="-38" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">06</text></g>
             </g></g>
 
             <g opacity=".55"><path d="M95 642 L630 642" stroke="currentColor" stroke-width="1" fill="none"/></g>
@@ -198,16 +191,14 @@
               <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">01</td><td>Body / chassis</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
               <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">02</td><td>Track cover, left</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
               <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">03</td><td>Track cover, right</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">04</td><td>Wheel</td><td>4<sup style="color:var(--muted)">†</sup></td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">05</td><td>Track link</td><td>many<sup style="color:var(--muted)">†</sup></td><td style="color:var(--muted)">TPU</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">09</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">04</td><td>Wheel</td><td>4</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">05</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
             </tbody>
           </table>
-          <p style="margin:12px 0 0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">† Quantities not yet confirmed.</p>
-          <p style="margin:16px 0 0;max-width:60ch">The track links are the one part that genuinely needs flexible filament. Printed rigid, you get a robot that cannot corner.</p>
+          <p style="margin:16px 0 0;max-width:60ch">Every part prints in PLA, and the whole set nests on a single plate. No second material, no tool changes.</p>
           <p style="margin:14px 0 0"><a href="build.html">Print settings and materials, in 02 — Build</a></p>
         </div>
       </div>
@@ -306,7 +297,7 @@
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <span class="card-kicker" style="font-family:var(--font-mono)">Stage 01</span>
               <span class="card-title" style="font-size:22px">Print</span>
-              <span class="card-body" style="opacity:1;color:var(--muted)">Nine parts. PLA for structure, TPU for the track links. 0.2 mm layers, three walls, supports on the body and head cover.</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">Eight parts, all in PLA. 0.2 mm layers, three walls, supports on the body and head cover.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Go to 02 — Build</span>
             </a>
             <a class="card blueprint" href="build.html#electronics" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
