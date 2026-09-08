@@ -112,15 +112,17 @@
           </div>
 
           <div style="margin-top:clamp(24px,4vw,44px)">
-            <figure class="blueprint" style="margin:0 auto;max-width:760px;position:relative;padding:clamp(8px,1.2vw,12px)">
+            <figure class="blueprint" style="margin:0 auto;max-width:800px;position:relative;padding:clamp(8px,1.2vw,12px)">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <!-- No .duotone here, unlike the video figures. Duotone is the design
-               system's treatment for photography; it forces one accent hue at a
-               single saturation and only varies lightness, which flattens the
-               surface shading this plate depends on. A parts plate is a technical
-               drawing, so it follows Fig. 02's convention instead: neutral. -->
-          <div style="position:relative;aspect-ratio:1037/1040;overflow:hidden;background:#fff">
-            <img src="assets/img/marvin-print-plate.png" width="1037" height="1040" loading="lazy" decoding="async" alt="Every printed part laid out on one build plate, seen from above: the head base and head cover along the top, the two track covers at the left, the body panel at the centre, the neck mount at the right, and the four wheels and the neck along the bottom." style="width:100%;height:100%;object-fit:cover;display:block">
+          <!-- No .duotone, unlike the video figures: duotone is the design
+               system's treatment for photography, and it forces one accent hue
+               at a single saturation, flattening the surface shading a parts
+               plate depends on. This is a technical figure, so it follows
+               Fig. 02's neutral convention. Colours are the source render's,
+               untouched; only the surround was cut to alpha so the build plate
+               floats on the page — hence no background fill on the box below. -->
+          <div style="position:relative;aspect-ratio:1283/1209">
+            <img src="assets/img/marvin-print-plate.webp" width="1283" height="1209" loading="lazy" decoding="async" alt="Every printed part nested on a single build plate, seen from above: the head cover, body panel, neck and neck mount across the top, the head base and the two track covers below them, and the four wheels down the right-hand edge." style="width:100%;height:100%;object-fit:contain;display:block">
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
             <span><span style="color:var(--color-accent-700)">Fig. 06</span> — The whole robot on one plate. Eleven objects: four wheels, and one each of the other seven parts.</span>

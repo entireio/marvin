@@ -40,6 +40,7 @@
 # site's HTML, CSS and JS as binary and stop showing their changes.
 docs/**/*.png  -filter -diff -merge -text
 docs/**/*.jpg  -filter -diff -merge -text
+docs/**/*.webp -filter -diff -merge -text
 docs/**/*.mp4  -filter -diff -merge -text
 docs/**/*.pdf  -filter -diff -merge -text
 
