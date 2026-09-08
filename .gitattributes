@@ -1,0 +1,46 @@
+# ---------------------------------------------------------------------------
+# Git LFS — large binary design assets
+# ---------------------------------------------------------------------------
+# CAD and mesh files are binary and get re-exported often. Storing them in LFS
+# keeps them out of the packfile history, so a clone stays fast even after
+# dozens of design revisions.
+#
+# Contributors need Git LFS installed *before* cloning:
+#     git lfs install
+# If you cloned first, run `git lfs pull` to fetch the real files.
+
+# Meshes
+*.stl   filter=lfs diff=lfs merge=lfs -text
+*.3mf   filter=lfs diff=lfs merge=lfs -text
+*.obj   filter=lfs diff=lfs merge=lfs -text
+
+# CAD sources and interchange formats
+*.3dm   filter=lfs diff=lfs merge=lfs -text
+*.step  filter=lfs diff=lfs merge=lfs -text
+*.stp   filter=lfs diff=lfs merge=lfs -text
+*.f3d   filter=lfs diff=lfs merge=lfs -text
+*.iges  filter=lfs diff=lfs merge=lfs -text
+
+# Media and datasheets
+*.pdf   filter=lfs diff=lfs merge=lfs -text
+*.png   filter=lfs diff=lfs merge=lfs -text
+*.jpg   filter=lfs diff=lfs merge=lfs -text
+*.mp4   filter=lfs diff=lfs merge=lfs -text
+
+# ---------------------------------------------------------------------------
+# Line endings
+# ---------------------------------------------------------------------------
+* text=auto eol=lf
+*.sh    text eol=lf
+*.bat   text eol=crlf
+
+# KiCad files are text and should diff as text
+*.kicad_sch  text
+*.kicad_pcb  text
+*.kicad_pro  text
+
+# ---------------------------------------------------------------------------
+# GitHub language statistics
+# ---------------------------------------------------------------------------
+mechanical/*   linguist-documentation
+docs/*         linguist-documentation

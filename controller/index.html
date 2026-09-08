@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marvin — Bluetooth Terminal</title>
+    <meta name="description" content="Web Bluetooth terminal for controlling the Marvin robot via BLE">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-brand">
+                <div class="logo">M</div>
+                <div>
+                    <h1>Marvin</h1>
+                    <p class="subtitle">Bluetooth Terminal</p>
+                </div>
+            </div>
+            <div class="header-controls">
+                <div class="status-badge" id="statusBadge">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Disconnected</span>
+                </div>
+                <button class="btn btn-primary" id="scanBtn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M6.5 6.5l11 11M6.5 17.5l11-11M2 12h4M18 12h4M12 2v4M12 18v4"/>
+                    </svg>
+                    Scan
+                </button>
+                <button class="btn btn-danger" id="disconnectBtn" disabled>
+                    Disconnect
+                </button>
+            </div>
+        </header>
+
+        <!-- Terminal -->
+        <main class="terminal-container">
+            <div class="terminal-header">
+                <div class="terminal-dots">
+                    <span class="dot dot-red"></span>
+                    <span class="dot dot-yellow"></span>
+                    <span class="dot dot-green"></span>
+                </div>
+                <span class="terminal-title" id="terminalTitle">marvin — not connected</span>
+                <button class="btn-icon" id="clearBtn" title="Clear terminal">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="terminal-output" id="terminalOutput">
+                <div class="line system-line">Welcome to Marvin Bluetooth Terminal</div>
+                <div class="line system-line">Click <strong>Scan</strong> to find and connect to your Marvin robot.</div>
+                <div class="line system-line">───────────────────────────────────────</div>
+                <div class="line system-line">Commands:</div>
+                <div class="line system-line">  R&lt;angle&gt;  Set Rotation (0-180) e.g., R90</div>
+                <div class="line system-line">  T&lt;angle&gt;  Set Tilt (0-180) e.g., T45</div>
+                <div class="line system-line">  M&lt;speed&gt;  Both motors (-255..255) e.g., M128</div>
+                <div class="line system-line">  A&lt;speed&gt;  Motor A only (-255..255)</div>
+                <div class="line system-line">  B&lt;speed&gt;  Motor B only (-255..255)</div>
+                <div class="line system-line">  S         Stop all motors</div>
+                <div class="line system-line">  D         Toggle demo mode</div>
+                <div class="line system-line">───────────────────────────────────────</div>
+            </div>
+            <form class="terminal-input" id="inputForm">
+                <span class="prompt">Marvin&gt;</span>
+                <input type="text" id="commandInput" placeholder="Type a command..." autocomplete="off" spellcheck="false" disabled>
+                <button type="submit" class="btn btn-send" id="sendBtn" disabled>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+        </main>
+
+        <!-- Quick commands -->
+        <footer class="quick-commands">
+            <span class="quick-label">Quick:</span>
+            <button class="btn btn-quick" data-cmd="S">Stop</button>
+            <button class="btn btn-quick" data-cmd="D">Demo</button>
+            <button class="btn btn-quick" data-cmd="R90">Centre</button>
+            <button class="btn btn-quick" data-cmd="M128">Forward</button>
+            <button class="btn btn-quick" data-cmd="M-128">Reverse</button>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
