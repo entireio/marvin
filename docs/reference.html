@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference — Marvin</title>
+<meta name="description" content="Command protocol, Bluetooth service, pin map, printed parts and licensing.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Reference — Marvin">
+<meta property="og:description" content="Command protocol, Bluetooth service, pin map, printed parts and licensing.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Same URL the design system's @import uses, so this is one request, not two.
+     Requesting it here starts the download immediately instead of waiting for
+     industry.css to parse first. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/css/industry.css">
+<link rel="stylesheet" href="assets/css/site.css">
+<script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="assets/js/site.js" defer></script>
+</head>
+<body>
+<div style="min-height:100vh;background:var(--color-bg)">
+  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
+    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
+      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
+      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
+        <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
+        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
+        <a href="drive.html" style="text-decoration:none;color:var(--muted)">03 Drive</a>
+        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">04 Contribute</a>
+        <a href="reference.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">05 Reference</a>
+      </nav>
+      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+    </div>
+  </header>
+
+  <main style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+
+    <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
+        <div>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 05 · Issued</p>
+          <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Reference</h1>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">The dense material, set as reference rather than narrative. Nothing here is explained twice; the explanations are in chapters 02 and 03.</p>
+        </div>
+      </div>
+    </section>
+
+    <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
+      <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,26px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
+        <li><a href="#protocol" style="text-decoration:none;color:var(--color-text)">01 Protocol</a></li>
+        <li><a href="#ble" style="text-decoration:none;color:var(--color-text)">02 Bluetooth</a></li>
+        <li><a href="#pinmap" style="text-decoration:none;color:var(--color-text)">03 Pin map</a></li>
+        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">04 Parts</a></li>
+        <li><a href="#settings" style="text-decoration:none;color:var(--color-text)">05 Print settings</a></li>
+        <li><a href="#licence" style="text-decoration:none;color:var(--color-text)">06 Licensing</a></li>
+        <li><a href="#tokens" style="text-decoration:none;color:var(--color-text)">07 Tokens</a></li>
+      </ol>
+    </nav>
+
+    <section id="protocol" aria-labelledby="mv-proto" style="padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">01</div>
+        <div>
+          <h2 id="mv-proto" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Command protocol</h2>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Line-based text, identical over USB serial and Bluetooth. Case-insensitive, one command per line, values clamped rather than rejected.</p>
+          <div style="overflow-x:auto;max-width:84ch">
+            <table class="table">
+              <thead><tr><th scope="col">Command</th><th scope="col">Range</th><th scope="col">Meaning</th></tr></thead>
+              <tbody>
+                <tr><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">R&lt;angle&gt;</td><td style="font-family:var(--font-mono);font-size:12.5px">0–180</td><td style="color:var(--muted)">Head rotation (pan), centre 90 — e.g. R90</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">T&lt;angle&gt;</td><td style="font-family:var(--font-mono);font-size:12.5px">30–85</td><td style="color:var(--muted)">Head tilt, centre 57 — e.g. T45</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">M&lt;speed&gt;</td><td style="font-family:var(--font-mono);font-size:12.5px">−255–255</td><td style="color:var(--muted)">Both motors — e.g. M128</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">A&lt;speed&gt;</td><td style="font-family:var(--font-mono);font-size:12.5px">−255–255</td><td style="color:var(--muted)">Motor A only (one track)</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">B&lt;speed&gt;</td><td style="font-family:var(--font-mono);font-size:12.5px">−255–255</td><td style="color:var(--muted)">Motor B only (the other track)</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">S</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--muted)">—</td><td style="color:var(--muted)">Stop</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">D</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--muted)">—</td><td style="color:var(--muted)">Toggle demo mode</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="margin:14px 0 0;max-width:64ch;font-size:14.5px;color:var(--muted)">Any movement command cancels demo mode automatically. Tilt is limited to 30°–85° to protect the neck from its mechanical stops; pan is the full 0°–180°.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ble" aria-labelledby="mv-bles" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">02</div>
+        <div>
+          <h2 id="mv-bles" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Bluetooth service</h2>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">The Nordic UART Service — the de-facto standard for serial over Bluetooth. Any generic BLE terminal can drive the robot, not only the project's own app. Advertised name: <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">Marvin</span>. One client at a time.</p>
+          <div style="overflow-x:auto;max-width:84ch">
+            <table class="table">
+              <thead><tr><th scope="col">UUID</th><th scope="col">Role</th></tr></thead>
+              <tbody>
+                <tr><td style="font-family:var(--font-mono);font-size:12px">6E400001-B5A3-F393-E0A9-E50E24DCCA9E</td><td>Service</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:12px">6E400002-B5A3-F393-E0A9-E50E24DCCA9E</td><td>RX — client writes commands</td></tr>
+                <tr><td style="font-family:var(--font-mono);font-size:12px">6E400003-B5A3-F393-E0A9-E50E24DCCA9E</td><td>TX — robot returns responses</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pinmap" aria-labelledby="mv-pin" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">03</div>
+        <div>
+          <h2 id="mv-pin" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Pin map</h2>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Board: ESP32-C3 SuperMini. All of these live in <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">config.h</span>; nothing is hard-coded in a driver.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
+            <div style="overflow-x:auto">
+              <table class="table">
+                <thead><tr><th scope="col">Function</th><th scope="col">GPIO</th></tr></thead>
+                <tbody>
+                  <tr><td>Servo — tilt</td><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">1</td></tr>
+                  <tr><td>Servo — pan</td><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">4</td></tr>
+                  <tr><td>Motor A — IN1 / IN2</td><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">5 / 6</td></tr>
+                  <tr><td>Motor B — IN3 / IN4</td><td style="font-family:var(--font-mono);font-size:13px;color:var(--color-accent-700)">20 / 10</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Two notes</p>
+              <p style="margin:0 0 10px;font-size:14.5px">Motor B's inputs are wired inverted (20 / 10 rather than 10 / 20) so that a positive speed on both channels drives forward without the firmware correcting per side.</p>
+              <p style="margin:0;font-size:14.5px">All four motor pins are driven <span style="font-family:var(--font-mono);font-size:13px">LOW</span> at the very start of startup, before anything else, because ESP32 pins float during boot and a floating H-bridge input makes the tracks lurch.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="parts" aria-labelledby="mv-parts" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">04</div>
+        <div>
+          <h2 id="mv-parts" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Parts list</h2>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Nine printed parts, numbered in assembly order. These numbers are used by every drawing and table on this site.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
+            <div style="overflow-x:auto">
+              <table class="table">
+                <thead><tr><th scope="col" style="width:3.4em">#</th><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Material</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">01</td><td>Body / chassis</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">02</td><td>Track cover, left</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">03</td><td>Track cover, right</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">04</td><td>Wheel</td><td>4<sup style="color:var(--muted)">†</sup></td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">05</td><td>Track link</td><td>many<sup style="color:var(--muted)">†</sup></td><td style="color:var(--muted)">TPU</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">09</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                </tbody>
+              </table>
+              <p style="margin:12px 0 0;font-family:var(--font-mono);font-size:11px;color:var(--muted)">† Not yet confirmed.</p>
+            </div>
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">To be issued</p>
+              <h3 style="margin:0 0 8px;font-size:20px">Non-printed hardware</h3>
+              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">Screws, bearings, motor part numbers, battery and charging parts. None of it specified yet — and no assembly step can name a fastener until it is.</p>
+              <a class="btn btn-secondary" href="contribute.html#mechanics" style="text-decoration:none">How to help</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings" aria-labelledby="mv-set" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">05</div>
+        <div>
+          <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px">
+            <h2 id="mv-set" style="font-size:clamp(24px,3.2vw,36px);margin:0;letter-spacing:-.015em">Print settings</h2>
+            <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">Not validated</span>
+          </div>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Starting points. Nobody has yet printed the full set twice on two different machines.</p>
+          <div style="overflow-x:auto;max-width:74ch">
+            <table class="table">
+              <tbody>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Material</th><td>PLA for structure · TPU for track links</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Layer height</th><td style="font-family:var(--font-mono);font-size:13px">0.2 mm</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Walls</th><td style="font-family:var(--font-mono);font-size:13px">3</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Infill</th><td>20% structural · 40% neck and head mount</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Supports</th><td>Required on the body (01) and head cover (07)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="licence" aria-labelledby="mv-lic" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">06</div>
+        <div>
+          <h2 id="mv-lic" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Licensing</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
+            <div style="overflow-x:auto">
+              <table class="table">
+                <thead><tr><th scope="col">Covers</th><th scope="col">Licence</th></tr></thead>
+                <tbody>
+                  <tr><td>Software — firmware, controller app, website</td><td style="font-family:var(--font-mono);font-size:12.5px">MIT</td></tr>
+                  <tr><td>Hardware — mechanical design, electronics</td><td style="font-family:var(--font-mono);font-size:12.5px">CERN-OHL-S-2.0</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div style="max-width:56ch">
+              <p style="margin:0 0 10px">CERN-OHL-S is strongly reciprocal: build and distribute a modified Marvin and you share your design changes too. The code is permissive; the object is copyleft.</p>
+              <p style="margin:0;color:var(--muted);font-size:14.5px">This is the conventional open-hardware split, and it is deliberate. It is also why the CAD master, not just the meshes, lives in the repository.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tokens" aria-labelledby="mv-tok" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">07</div>
+        <div>
+          <h2 id="mv-tok" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Tokens</h2>
+          <p style="margin:0 0 20px;max-width:64ch;color:var(--muted)">For anyone extending this site or the controller app. Ink on paper, one accent, two type families and a mono for data.</p>
+
+          <div style="overflow-x:auto;margin-bottom:clamp(20px,3vw,32px)">
+            <table class="table">
+              <thead><tr><th scope="col">Role</th><th scope="col">Light</th><th scope="col">Dark</th><th scope="col">Used for</th></tr></thead>
+              <tbody>
+                <tr><td>Ground</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#f2f2f3;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#F2F2F3</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#17181a;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#17181A</span></span></td><td style="color:var(--muted)">Page</td></tr>
+                <tr><td>Ink</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#1d1f20;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#1D1F20</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#efece6;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#EFECE6</span></span></td><td style="color:var(--muted)">Body copy, numerals, drawings</td></tr>
+                <tr><td>Accent</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#5980a6;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#5980A6</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#94bce3;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#94BCE3</span></span></td><td style="color:var(--muted)">Part callouts, figure numbers, links</td></tr>
+                <tr><td>Accent, text-safe</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#416180;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#416180</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#bad4ea;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#BAD4EA</span></span></td><td style="color:var(--muted)">Accent at paragraph size</td></tr>
+                <tr><td>Rule</td><td colspan="2" style="font-family:var(--font-mono);font-size:12.5px;color:var(--muted)">ink at 14% (hairline) · 34% (section rule)</td><td style="color:var(--muted)">Tables, frames, dividers</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
+            <div>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Type</p>
+              <dl style="margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(14px,2vw,24px);font-size:14.5px">
+                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Display</dt>
+                <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)">Barlow Condensed 600 — numerals, headings, wordmark</dd>
+                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Text</dt>
+                <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)">Barlow 400/700 — 16px, 1.62 leading, 64–68 character measure</dd>
+                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Data</dt>
+                <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)">IBM Plex Mono 400 — pin maps, commands, part numbers, captions</dd>
+                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0">Sizes</dt>
+                <dd style="margin:0;padding:9px 0">Six steps: 10.5 · 14.5 · 16 · 19–22 · 28–44 · 56–140</dd>
+              </dl>
+            </div>
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Proposal — one palette for the app too</p>
+              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The controller app currently runs a neon-terminal scheme (<span style="font-family:var(--font-mono);font-size:12.5px">#0D0F1A</span> ground, <span style="font-family:var(--font-mono);font-size:12.5px">#00E5A0</span> green). It could take this site's dark variant unchanged and lose nothing: a warm near-black ground, warm off-white ink, the steel accent for live state, and one warm red kept strictly for faults.</p>
+              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
+                <div><div aria-hidden="true" style="height:38px;background:#17181a;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Ground</p></div>
+                <div><div aria-hidden="true" style="height:38px;background:#efece6;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Ink</p></div>
+                <div><div aria-hidden="true" style="height:38px;background:#94bce3;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Live</p></div>
+                <div><div aria-hidden="true" style="height:38px;background:#c96a4f;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Fault</p></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
+    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+      <span>Marvin — open source robot toy</span>
+      <span>Sheet 05 of 05</span>
+      <span>Rev. A</span>
+      <span>MIT · CERN-OHL-S-2.0</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

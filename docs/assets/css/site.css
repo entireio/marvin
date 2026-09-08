@@ -1,0 +1,43 @@
+/* Page styles, lifted verbatim from the Claude Design artboards. */
+:root{
+      --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,monospace;
+      --muted:color-mix(in srgb,var(--color-text) 68%,transparent);
+      --rule:var(--color-divider);
+      --rule-ink:color-mix(in srgb,var(--color-text) 34%,transparent);
+      --link:var(--color-accent-700);
+    }
+    @media (prefers-color-scheme: dark){
+      :root:not([data-theme="light"]){
+        --color-neutral-100:#2b2d30; --color-neutral-800:#cfccc7;
+        --color-bg:#17181a; --color-surface:#1e1f21; --color-text:#efece6;
+        --color-accent:#94bce3; --color-accent-100:#243646; --color-accent-700:#bad4ea; --color-accent-800:#d6e6f4;
+        --color-divider:color-mix(in srgb,#efece6 20%,transparent);
+        --link:#bad4ea;
+      }
+    }
+    :root[data-theme="dark"]{
+      --color-neutral-100:#2b2d30; --color-neutral-800:#cfccc7;
+      --color-bg:#17181a; --color-surface:#1e1f21; --color-text:#efece6;
+      --color-accent:#94bce3; --color-accent-100:#243646; --color-accent-700:#bad4ea; --color-accent-800:#d6e6f4;
+      --color-divider:color-mix(in srgb,#efece6 20%,transparent);
+      --link:#bad4ea;
+    }
+    html{background:var(--color-bg)}
+    body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:16px;line-height:1.62;text-wrap:pretty;-webkit-font-smoothing:antialiased}
+    a{color:var(--link);text-underline-offset:3px;text-decoration-thickness:1px}
+    a:hover{color:var(--color-text)}
+    ::selection{background:color-mix(in srgb,var(--color-accent) 26%,transparent)}
+    .table th{color:color-mix(in srgb,var(--color-text) 74%,transparent)}
+    @keyframes mv-draw{from{stroke-dashoffset:var(--len,600)}to{stroke-dashoffset:0}}
+    @keyframes mv-pan{0%,6%{transform:rotate(-90deg)}34%,42%{transform:rotate(62deg)}52%,58%{transform:rotate(-8deg)}62%,70%{transform:rotate(16deg)}94%,100%{transform:rotate(-90deg)}}
+    @keyframes mv-tilt{0%,10%{transform:rotate(0deg)}30%,38%{transform:rotate(-26deg)}55%,62%{transform:rotate(20deg)}80%,100%{transform:rotate(0deg)}}
+    [data-draw]{stroke-dasharray:var(--len,600);animation:mv-draw 1.5s ease-out .15s both}
+    [data-pan]{animation:mv-pan 9s ease-in-out infinite}
+    [data-tilt]{animation:mv-tilt 9s ease-in-out infinite}
+    @media (prefers-reduced-motion: reduce){
+      [data-draw]{animation:none;stroke-dashoffset:0}
+      [data-pan],[data-tilt]{animation:none}
+    }
+
+/* Skip link — replaces the artboards' onFocus/onBlur handlers with CSS. */
+.skip-link:focus{left:8px!important;top:8px!important;z-index:100}

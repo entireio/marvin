@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marvin — An open source tracked robot</title>
+<meta name="description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is published: firmware, electronics, mechanics.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Marvin — An open source tracked robot">
+<meta property="og:description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is published: firmware, electronics, mechanics.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Same URL the design system's @import uses, so this is one request, not two.
+     Requesting it here starts the download immediately instead of waiting for
+     industry.css to parse first. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/css/industry.css">
+<link rel="stylesheet" href="assets/css/site.css">
+<script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="assets/js/site.js" defer></script>
+</head>
+<body>
+<div style="min-height:100vh;background:var(--color-bg)">
+  <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
+
+  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
+    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
+      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
+      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
+        <a href="index.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">01 Marvin</a>
+        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
+        <a href="drive.html" style="text-decoration:none;color:var(--muted)">03 Drive</a>
+        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">04 Contribute</a>
+        <a href="reference.html" style="text-decoration:none;color:var(--muted)">05 Reference</a>
+      </nav>
+      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+    </div>
+  </header>
+
+  <main id="content" style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+
+    <section aria-labelledby="mv-hero" style="padding:clamp(40px,7vw,104px) 0 clamp(32px,5vw,64px)">
+      <div style="display:flex;justify-content:space-between;gap:16px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:clamp(24px,5vw,56px)">
+        <span>Open source robot toy</span><span>Rev. A — 2026</span>
+      </div>
+      <h1 id="mv-hero" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(84px,20vw,300px);line-height:.82;letter-spacing:.01em;margin:0">MARVIN</h1>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,4vw,56px);margin-top:clamp(24px,4vw,44px);align-items:end">
+        <p style="margin:0;font-size:clamp(19px,2.1vw,25px);line-height:1.42;max-width:34ch">A small tracked robot with an expressive two&#8209;axis head. Roughly the size of a coffee cup. Every file needed to build one is published.</p>
+        <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;align-self:end">
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Stage</dt><dd style="margin:0">Early prototype</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Subsystems</dt><dd style="margin:0">4 of 9 working</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts</dt><dd style="margin:0">9 printed, 01–09</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Licence</dt><dd style="margin:0">MIT · CERN&#8209;OHL&#8209;S&#8209;2.0</dd>
+        </dl>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(24px,4vw,40px)">
+        <a class="btn btn-primary" href="build.html" style="text-decoration:none">Build one</a>
+        <a class="btn btn-secondary" href="reference.html" style="text-decoration:none">Reference</a>
+        <a class="btn btn-ghost" href="https://github.com/spedemon/marvin" style="text-decoration:none">Repository</a>
+      </div>
+      <div style="margin-top:clamp(28px,5vw,60px)">
+        <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
+            <video data-ref="videoRef" src="assets/video/marvin_moving_10sec.mp4" poster="assets/img/marvin-hero-poster-10s.png" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+          </div>
+          <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
+            <span><span style="color:var(--color-accent-700)">Fig. 01</span> — Marvin under drive. A forward run, a pivot on one track, and a look around.</span>
+            <button type="button" data-action="togglePlay" style="cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px">Pause</button>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="mv-s01" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
+        <div>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 01</p>
+          <h2 id="mv-s01" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">What it is</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
+            <div style="max-width:68ch">
+              <p>Marvin drives on two rubber tracks and looks around with a head that pans and tilts on two servos. That is the whole of its body language, and it turns out to be enough.</p>
+              <p>It is published as open source hardware: firmware, electronics, mechanical design, and the app you drive it with. The purpose is reproducibility. Anyone with a 3D printer and a soldering iron should be able to build one.</p>
+              <p style="margin-bottom:0">It is also an early prototype. The drivetrain, the head and the Bluetooth link work today. The sensing, the circuit board and the eyes do not exist yet. The schedule opposite is the honest version, and it doubles as a list of things worth doing.</p>
+            </div>
+            <div>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 01 — Subsystem status</p>
+              <table class="table">
+                <caption style="text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-bottom:8px">Four of nine subsystems are working.</caption>
+                <thead><tr><th scope="col">Subsystem</th><th scope="col">State</th><th scope="col">Detail</th></tr></thead>
+                <tbody>
+                  <tr><td>Drivetrain — two DC motors, tank tracks</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">DRV8833 dual H-bridge, PWM speed control</td></tr>
+                  <tr><td>Head — 2-axis pan and tilt</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">Two SG90-class servos, smoothed motion</td></tr>
+                  <tr><td>Connectivity — Bluetooth Low Energy</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">Nordic UART Service, browser-controllable</td></tr>
+                  <tr><td>Demo mode — autonomous exploration</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">Hand-choreographed movement sequence</td></tr>
+                  <tr><td>Odometry — wheel encoders</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Closed-loop speed and distance</td></tr>
+                  <tr><td>Distance sensing — time-of-flight</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Obstacle avoidance</td></tr>
+                  <tr><td>Social sensing — infrared</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Marvin-to-Marvin detection</td></tr>
+                  <tr><td>Expression — two displays as eyes</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">—</td></tr>
+                  <tr><td>Custom PCB</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Replaces the breakout-board wiring</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="mv-s02" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
+        <div>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 02</p>
+          <h2 id="mv-s02" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Anatomy</h2>
+          <p style="margin:0 0 clamp(20px,3vw,40px);max-width:68ch">Nine printed parts, numbered in assembly order: chassis, then drivetrain, then head. Scroll to bring them together.</p>
+        </div>
+      </div>
+      <div data-ref="anatomyRef" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,3vw,48px);align-items:start">
+        <figure class="blueprint" style="margin:0;padding:clamp(10px,2vw,20px);position:relative">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <svg viewBox="40 0 640 660" role="img" aria-label="Exploded axonometric drawing of Marvin: nine printed parts separated along their assembly axes, each with a numbered callout." style="display:block;width:100%;height:auto;color:var(--color-text)">
+            <defs>
+              <g id="mv-chassis"><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -34 M0 -34 L103.9 -94 M0 -34 L-72.7 -76" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
+              <g id="mv-head"><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -58 M0 -58 L129.9 -133 M0 -58 L-34.6 -78" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 -60 L120 -125 M8 -60 L8 -22 M120 -125 L120 -87 M8 -22 L120 -87" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/></g>
+              <g id="mv-headcap"><path d="M0 0 L129.9 -75 L129.9 -89 L95.3 -109 L-34.6 -34 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -14 M0 -14 L129.9 -89 M0 -14 L-34.6 -34" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
+              <g id="mv-plate"><path d="M0 0 L65.8 -38 L65.8 -47 L13.9 -77 L-52 -39 L-52 -30 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -9 M0 -9 L65.8 -47 M0 -9 L-52 -39" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
+              <g id="mv-cover"><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -30 M0 -30 L102.2 -89 M0 -30 L-29.4 -47" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
+              <g id="mv-collar"><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -20 M0 -20 L26 -35 M0 -20 L-26 -35" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
+              <g id="mv-wheel"><g transform="translate(-8.7,-5)"><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/></g><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/><circle r="3.6" fill="none" stroke="currentColor" stroke-width="1"/></g>
+              <g id="mv-track"><path d="M0 0 L92 -53 L104 -60 L110 -72 L104 -82 L92 -87 L0 -34 L-12 -27 L-18 -15 L-12 -5 Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="7 4"/></g>
+            </defs>
+
+            <g transform="translate(257,436)"><g data-dx="-70" data-dy="-40" style="transform:translate(-70px,-40px)">
+              <use href="#mv-cover"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M-29 -40 L-112 -68" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="-29" cy="-40" r="2.2" fill="currentColor"/><text x="-142" y="-62" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">03</text></g>
+            </g></g>
+
+            <g transform="translate(359,495)"><g data-dx="-70" data-dy="160" style="transform:translate(-70px,160px)">
+              <g transform="translate(-92,-65)"><use href="#mv-track"/></g>
+              <use href="#mv-track"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M104 -66 L246 -96" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="104" cy="-66" r="2.2" fill="currentColor"/><text x="254" y="-90" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">05</text></g>
+            </g></g>
+
+            <g transform="translate(359,495)"><g data-dx="-70" data-dy="100" style="transform:translate(-70px,100px)">
+              <g transform="translate(-80,-71)"><use href="#mv-wheel"/></g>
+              <g transform="translate(-17,-108)"><use href="#mv-wheel"/></g>
+              <g transform="translate(22,-12)"><use href="#mv-wheel"/></g>
+              <g transform="translate(85,-49)"><use href="#mv-wheel"/></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M84 -60 L232 -84" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="84" cy="-60" r="2.2" fill="currentColor"/><text x="240" y="-78" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">04</text></g>
+            </g></g>
+
+            <g transform="translate(330,478)"><g data-dx="0" data-dy="0" style="transform:translate(0px,0px)">
+              <use href="#mv-chassis"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M104 -70 L250 -104" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="104" cy="-70" r="2.2" fill="currentColor"/><text x="258" y="-98" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">01</text></g>
+            </g></g>
+
+            <g transform="translate(359,495)"><g data-dx="78" data-dy="44" style="transform:translate(78px,44px)">
+              <use href="#mv-cover"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M100 -74 L212 -98" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="100" cy="-74" r="2.2" fill="currentColor"/><text x="220" y="-92" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">02</text></g>
+            </g></g>
+
+            <g transform="translate(341,412)"><g data-dx="0" data-dy="-88" style="transform:translate(0px,-88px)">
+              <use href="#mv-plate" transform="scale(.55)"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M40 -30 L216 -56" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="40" cy="-30" r="2.2" fill="currentColor"/><text x="224" y="-50" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">09</text></g>
+            </g></g>
+
+            <g transform="translate(345,403)"><g data-dx="0" data-dy="-139" style="transform:translate(0px,-139px)">
+              <use href="#mv-collar"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M26 -18 L196 -58" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="26" cy="-18" r="2.2" fill="currentColor"/><text x="204" y="-52" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">08</text></g>
+            </g></g>
+
+            <g transform="translate(315,397)"><g data-dx="0" data-dy="-201" style="transform:translate(0px,-201px)">
+              <use href="#mv-head" transform="scale(.62)"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -52 L200 -80" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-52" r="2.2" fill="currentColor"/><text x="208" y="-74" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">06</text></g>
+            </g></g>
+
+            <g transform="translate(315,361)"><g data-dx="0" data-dy="-278" style="transform:translate(0px,-278px)">
+              <use href="#mv-headcap" transform="scale(.62)"/>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -16 L178 -44" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-16" r="2.2" fill="currentColor"/><text x="186" y="-38" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">07</text></g>
+            </g></g>
+
+            <g opacity=".55"><path d="M95 642 L630 642" stroke="currentColor" stroke-width="1" fill="none"/></g>
+          </svg>
+          <figcaption style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
+            <span><span style="color:var(--color-accent-700)">Fig. 02</span> — Exploded axonometric. Geometry schematic, pending CAD export.</span>
+            <span data-ref="readoutRef" style="letter-spacing:.12em;text-transform:uppercase">Exploded</span>
+          </figcaption>
+        </figure>
+        <div>
+          <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 02 — Printed parts</p>
+          <table class="table">
+            <thead><tr><th scope="col" style="width:3.5em">#</th><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Material</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">01</td><td>Body / chassis</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">02</td><td>Track cover, left</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">03</td><td>Track cover, right</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">04</td><td>Wheel</td><td>4<sup style="color:var(--muted)">†</sup></td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">05</td><td>Track link</td><td>many<sup style="color:var(--muted)">†</sup></td><td style="color:var(--muted)">TPU</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">09</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+            </tbody>
+          </table>
+          <p style="margin:12px 0 0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">† Quantities not yet confirmed.</p>
+          <p style="margin:16px 0 0;max-width:60ch">The track links are the one part that genuinely needs flexible filament. Printed rigid, you get a robot that cannot corner.</p>
+          <p style="margin:14px 0 0"><a href="build.html">Print settings and materials, in 02 — Build</a></p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="mv-s03" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
+        <div>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 03</p>
+          <h2 id="mv-s03" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">It is curious</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,48px)">
+            <div style="max-width:68ch">
+              <p>The personality is not a claim made in marketing copy. It is a hand-written table of movements in the firmware, and the comments in that file are the truest statement of the project's character that exists.</p>
+              <blockquote style="margin:20px 0;padding-left:clamp(14px,2vw,22px);border-left:1px solid var(--color-accent);max-width:60ch">
+                <p style="margin:0 0 8px;font-size:17.5px;line-height:1.5">The patterns are meant to feel organic: the head often moves before the body turns; pauses with head sweeps simulate curiosity; asymmetric durations avoid a metronomic feel.</p>
+                <cite style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-style:normal">firmware/demo.cpp</cite>
+              </blockquote>
+              <p>The head servos hold a target angle and walk the current angle toward it in small steps on a timer. That interpolation is about ten lines of code, and it is the entire reason the movement reads as organic rather than mechanical.</p>
+              <p style="margin-bottom:0">One aside, and then we will let it go: the name nods to the perpetually depressed robot from <i>The Hitchhiker's Guide to the Galaxy</i>. The resemblance ends at the name. This one is curious, which is more interesting and is what the firmware actually does.</p>
+            </div>
+            <div>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Fig. 03 — A double-take, as choreographed</p>
+              <div class="blueprint" style="position:relative;padding:clamp(12px,2vw,18px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <div style="display:grid;gap:0">
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:0 0 7px;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 40, CENTER - 15, 800 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">glance right-up</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 50, CENTER - 20, 700 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">tilt up (surprised?)</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 35, CENTER,      500 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--muted)">—</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER - 10, CENTER,      300 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">snap back</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0 0"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 35, CENTER - 15, 600 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">look again</span></div>
+                </div>
+              </div>
+              <p style="margin:12px 0 0;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--muted)">Someone sat down and choreographed a robot doing a double-take, in a C++ struct array.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,48px);margin-top:clamp(28px,4vw,56px)">
+        <figure class="blueprint" style="margin:0;position:relative;padding:clamp(14px,2vw,22px)">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <svg viewBox="0 0 460 300" role="img" aria-label="Diagram of the head movement envelope. Pan sweeps the full 0 to 180 degrees, centred at 90. Tilt is limited to 30 to 85 degrees, centred at 57." style="display:block;width:100%;height:auto;color:var(--color-text)">
+            <g transform="translate(120,220)">
+              <text x="0" y="52" text-anchor="middle" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase">Pan 0–180°</text>
+              <path data-draw="" style="--len:330" d="M-95 0 A95 95 0 0 1 95 0" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".75"/>
+              <path d="M-118 0 L118 0" stroke="currentColor" stroke-width="1" opacity=".3"/>
+              <path d="M-95 0 L-104 0 M95 0 L104 0 M0 -95 L0 -106" stroke="currentColor" stroke-width="1" opacity=".6"/>
+              <text x="-112" y="14" text-anchor="middle" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px">0</text>
+              <text x="112" y="14" text-anchor="middle" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px">180</text>
+              <text x="0" y="-114" text-anchor="middle" fill="var(--color-accent-700)" style="font-family:var(--font-mono);font-size:10px">90</text>
+              <g data-pan="" style="transform-origin:0px 0px">
+                <path d="M0 0 L0 -88" stroke="var(--color-accent)" stroke-width="1.6" fill="none"/>
+                <circle cx="0" cy="-88" r="4" fill="var(--color-accent)"/>
+              </g>
+              <circle r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            </g>
+            <g transform="translate(330,220)">
+              <text x="0" y="52" text-anchor="middle" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase">Tilt 30–85°</text>
+              <path d="M0 0 L110 0" stroke="currentColor" stroke-width="1" opacity=".3"/>
+              <path data-draw="" style="--len:130" d="M82.3 -47.5 A95 95 0 0 0 8.3 -94.6" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".75"/>
+              <path d="M0 0 L86.6 -50 M0 0 L8.7 -99.6" stroke="currentColor" stroke-width="1" opacity=".45"/>
+              <text x="100" y="-52" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px">30</text>
+              <text x="16" y="-104" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px">85</text>
+              <text x="72" y="-88" fill="var(--color-accent-700)" style="font-family:var(--font-mono);font-size:10px">57</text>
+              <g data-tilt="" style="transform-origin:0px 0px">
+                <path d="M0 0 L47.9 -73.8" stroke="var(--color-accent)" stroke-width="1.6" fill="none"/>
+                <circle cx="47.9" cy="-73.8" r="4" fill="var(--color-accent)"/>
+              </g>
+              <circle r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+            </g>
+          </svg>
+          <figcaption style="margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)"><span style="color:var(--color-accent-700)">Fig. 04</span> — Head envelope. Tilt is deliberately clamped to 30–85° to protect the neck from its mechanical stops. Ask for T200 and you get 85°, not an error.</figcaption>
+        </figure>
+        <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px);align-self:start">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
+            <video data-ref="demoRef" src="assets/video/marvin_moving_6sec.mp4" poster="assets/img/marvin-demo-poster.png" muted loop playsinline autoplay preload="none" aria-label="Marvin in demo mode: scanning with its head, then choosing a direction and moving off." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+          </div>
+          <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
+            <span><span style="color:var(--color-accent-700)">Fig. 05</span> — Demo mode. Nobody is driving; the head leads and the body follows.</span>
+            <button type="button" data-action="toggleDemo" style="cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px">Pause</button>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section aria-labelledby="mv-s04" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
+        <div>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 04</p>
+          <h2 id="mv-s04" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Build one</h2>
+          <p style="margin:0 0 clamp(20px,3vw,36px);max-width:60ch">Three stages. A printer, a soldering iron, an evening or two, and a repository.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:clamp(14px,2.5vw,28px)">
+            <a class="card blueprint" href="build.html" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <span class="card-kicker" style="font-family:var(--font-mono)">Stage 01</span>
+              <span class="card-title" style="font-size:22px">Print</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">Nine parts. PLA for structure, TPU for the track links. 0.2 mm layers, three walls, supports on the body and head cover.</span>
+              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Go to 02 — Build</span>
+            </a>
+            <a class="card blueprint" href="build.html#electronics" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <span class="card-kicker" style="font-family:var(--font-mono)">Stage 02</span>
+              <span class="card-title" style="font-size:22px">Wire</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">An ESP32-C3 SuperMini, a DRV8833 breakout, two gearmotors and two SG90-class servos. Six signal wires in total.</span>
+              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Wiring table</span>
+            </a>
+            <a class="card blueprint" href="build.html#flash" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <span class="card-kicker" style="font-family:var(--font-mono)">Stage 03</span>
+              <span class="card-title" style="font-size:22px">Flash</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">One script, then a serial monitor at 115200 baud and a <code style="font-family:var(--font-mono);font-size:12.5px">Marvin&gt;</code> prompt. Bluetooth starts advertising by itself.</span>
+              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Firmware</span>
+            </a>
+          </div>
+          <p style="margin:clamp(18px,3vw,28px) 0 0;font-family:var(--font-mono);font-size:11.5px;color:var(--muted)">Assembly instructions are not written yet. <a href="build.html#assemble">See what that section needs</a>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="mv-s05" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
+        <div>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 05</p>
+          <h2 id="mv-s05" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">Open, in the ordinary sense of the word</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
+            <div style="max-width:68ch">
+              <p>Not source-available. Properly licensed, with the conventional open-hardware split: permissive for the code, strongly reciprocal for the hardware.</p>
+              <table class="table" style="margin-top:16px">
+                <thead><tr><th scope="col">Covers</th><th scope="col">Licence</th></tr></thead>
+                <tbody>
+                  <tr><td>Software — firmware, controller app, this website</td><td style="font-family:var(--font-mono);font-size:12.5px">MIT</td></tr>
+                  <tr><td>Hardware — mechanical design, electronics</td><td style="font-family:var(--font-mono);font-size:12.5px">CERN-OHL-S-2.0</td></tr>
+                </tbody>
+              </table>
+              <p style="margin-top:16px">CERN-OHL-S is reciprocal: build and distribute a modified Marvin and you share your design changes too.</p>
+            </div>
+            <div>
+              <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Four ways in</p>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:clamp(12px,2vw,20px)">
+                <a href="contribute.html#firmware" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Firmware</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Embedded C++, PlatformIO, one class per peripheral.</span></a>
+                <a href="contribute.html#software" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Software</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">The controller app and this site. No build step, deliberately.</span></a>
+                <a href="contribute.html#mechanics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Mechanics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">CAD is the master. Meshes are derived, never edited.</span></a>
+                <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">The board that does not exist yet. The largest open invitation.</span></a>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(18px,3vw,28px)">
+                <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">github.com/spedemon/marvin</a>
+                <a class="btn btn-ghost" href="contribute.html" style="text-decoration:none">04 — Contribute</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
+    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+      <span>Marvin — open source robot toy</span>
+      <span>Sheet 01 of 05</span>
+      <span>Rev. A</span>
+      <span>MIT · CERN-OHL-S-2.0</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

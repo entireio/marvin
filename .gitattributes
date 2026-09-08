@@ -28,6 +28,15 @@
 *.mp4   filter=lfs diff=lfs merge=lfs -text
 
 # ---------------------------------------------------------------------------
+# The published website is the exception to all of the above
+# ---------------------------------------------------------------------------
+# GitHub Pages serves files straight out of the repository and does NOT resolve
+# Git LFS pointers. An LFS-tracked image or video reaches the browser as a
+# ~130-byte text file, so the page silently breaks. Everything the site loads
+# must be stored as an ordinary Git object, whatever its extension.
+docs/** -filter -diff -merge
+
+# ---------------------------------------------------------------------------
 # Line endings
 # ---------------------------------------------------------------------------
 * text=auto eol=lf
