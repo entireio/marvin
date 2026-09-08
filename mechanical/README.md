@@ -13,27 +13,29 @@ mechanical/
 
 ## Parts
 
-| # | Part | File | Qty |
-| --- | --- | --- | --- |
-| 01 | Body / chassis | `01_body.stl` † | 1 |
-| 02 | Track cover, left | `02_track_cover_left.stl` | 1 |
-| 03 | Track cover, right | `03_track_cover_right.stl` | 1 |
-| 04 | Wheel | `04_wheel.stl` | 4 |
-| 06 | Head base | `06_head_base.stl` | 1 |
-| 07 | Head cover | `07_head_cover.stl` | 1 |
-| 07 | Track link | `07_track.stl` | many |
-| 08 | Neck | `08_neck.stl` | 1 |
-| 09 | Neck mount | `09_neck_mount.stl` | 1 |
+Parts are numbered in assembly order: chassis, then drivetrain, then head.
+
+| # | Part | File | Qty | Material |
+| --- | --- | --- | --- | --- |
+| 01 | Body / chassis | `01_body.stl` † | 1 | PLA |
+| 02 | Track cover, left | `02_track_cover_left.stl` | 1 | PLA |
+| 03 | Track cover, right | `03_track_cover_right.stl` | 1 | PLA |
+| 04 | Wheel | `04_wheel.stl` | 4 | PLA |
+| 05 | Track link | `05_track.stl` | many | TPU |
+| 06 | Head base | `06_head_base.stl` | 1 | PLA |
+| 07 | Head cover | `07_head_cover.stl` | 1 | PLA |
+| 08 | Neck | `08_neck.stl` | 1 | PLA |
+| 09 | Neck mount | `09_neck_mount.stl` | 1 | PLA |
 
 † Distributed separately — see [Large files](#large-files) below.
 
-Two parts share the prefix `07`, and `05` is unused. Worth renumbering into a
-clean sequence before the first release, since the numbers are the only thing
-tying a mesh to its place in the assembly.
+The numeric prefix is the only thing tying a mesh to its place in the assembly,
+so keep the sequence contiguous and unique. If you add a part, renumber rather
+than reusing or skipping a number, and update this table in the same commit.
 
-Wheel and track quantities are not yet confirmed against the assembly, and there
-is no printed-parts BOM with fasteners, bearings, and motor specifications yet.
-Both are open items.
+Wheel and track-link quantities are not yet confirmed against the assembly, and
+there is no printed-parts BOM with fasteners, bearings, and motor
+specifications yet. Both are open items.
 
 ---
 
