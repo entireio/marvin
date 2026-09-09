@@ -34,6 +34,20 @@ docs/.cache/
 docs/dist/
 
 # ---------------------------------------------------------------------------
+# Server — Cloud Run deployment
+# ---------------------------------------------------------------------------
+# Local deployment settings. It holds a project id and GitHub logins rather
+# than secrets — those live in Secret Manager — but it is per-person, not
+# per-project, so it stays out of the repository.
+deploy_google_cloud.env
+
+# Go build output. `go build` with no -o writes a binary named for the package
+# directory; the coverage file comes from `go test -coverprofile`.
+server/server
+server/marvin-site
+coverage.out
+
+# ---------------------------------------------------------------------------
 # Electronics — KiCad transient files
 # ---------------------------------------------------------------------------
 # Keep the .kicad_sch / .kicad_pcb / .kicad_pro sources; drop everything the

@@ -1,0 +1,19 @@
+# What `gcloud run deploy --source .` uploads to Cloud Build.
+#
+# This file matters more than it looks: mechanical/ alone is 3.2 GB of CAD and
+# STLs. Without it every deploy would upload the lot, and gcloud's fallback —
+# inferring the upload set from .gitignore — would still ship ~120 MB of
+# firmware and printable parts that the container has no use for.
+#
+# Exclude every top-level entry...
+/*
+
+# ...then add back only what the build reads. Re-including whole directories
+# rather than globs inside them is deliberate: gitignore semantics cannot
+# re-include a file whose parent directory is excluded.
+!/Dockerfile
+!/.dockerignore
+!/server
+!/docs
+
+.DS_Store

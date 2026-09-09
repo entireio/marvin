@@ -51,6 +51,7 @@ marvin/
 ├── electronics/    Schematics, PCB layout, BOM, power and battery design
 ├── mechanical/     CAD source and printable STLs for the chassis
 ├── docs/           Source for the project website (GitHub Pages)
+├── server/         Serves the website behind a GitHub sign-in (Cloud Run)
 └── README.md       You are here
 ```
 
@@ -63,10 +64,12 @@ Start there before changing anything inside it.
 | [`controller/`](controller/README.md) | Running the app, browser support | Any static file server |
 | [`electronics/`](electronics/README.md) | Board plan, power budget, BOM format | KiCad (planned) |
 | [`mechanical/`](mechanical/README.md) | Part list, print settings, large-file policy | Rhino 3D, any slicer |
-| [`docs/`](docs/README.md) | Website plan and deployment | To be decided |
+| [`docs/`](docs/README.md) | Website plan and deployment | Any static file server |
+| [`server/`](server/README.md) | Private hosting, GitHub sign-in, config | Go, Cloud Run |
 
 > **Note on naming:** `controller/` is the app you *drive the robot with*.
-> `docs/` is the *project website*. They are separate things.
+> `docs/` is the *project website*. They are separate things. `server/` only
+> exists to keep the website private while the project still is.
 
 ---
 

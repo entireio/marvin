@@ -111,13 +111,31 @@ so rather than pretending otherwise.
 
 ## Deployment
 
-Publish with GitHub Pages from the `docs/` folder of the default branch:
-**Settings → Pages → Source: Deploy from a branch → `main` / `/docs`**.
+There are two ways to publish this folder, for the two stages the project is
+passing through.
 
-Note that a GitHub Pages site is **publicly reachable by anyone with the URL**,
-even when the repository itself is private. Restricting who can view a Pages
-site requires GitHub Enterprise Cloud. Until the project is ready to be public,
-review the site locally with the command above.
+### While the site is still private — Cloud Run
+
+A GitHub Pages site is **publicly reachable by anyone with the URL**, even when
+the repository itself is private, and restricting who can view one requires
+GitHub Enterprise Cloud. So until the project is ready to be public, the site is
+served instead by [`server/`](../server/README.md) — the same files, behind a
+GitHub sign-in, on Google Cloud Run:
+
+```bash
+./deploy_google_cloud.sh --help
+```
+
+Only the GitHub accounts you name can read it. See
+[`server/README.md`](../server/README.md) for the settings and how the sign-in
+works.
+
+### Once the site is public — GitHub Pages
+
+**Settings → Pages → Source: Deploy from a branch → `main` / `/docs`**. Nothing
+in this folder needs to change to move between the two: the relative-path rule
+below is what lets the same files work at a project subpath (`/marvin/`) on
+Pages and at the domain root on Cloud Run.
 
 ---
 
