@@ -22,30 +22,52 @@
 <script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="assets/js/site.js" defer></script>
 </head>
-<body>
+<body class="documentation-page">
 <div style="min-height:100vh;background:var(--color-bg)">
-  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
-    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
-      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
-      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
-        <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
-        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="electronics.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">03 Electronics</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
+  <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html">MARVIN</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="build.html" aria-current="page">Documentation</a>
+        <a href="contribute.html">Get involved</a>
       </nav>
-      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
     </div>
   </header>
 
-  <main style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+  <main id="content" class="docs-layout">
+    <aside class="docs-sidebar" aria-label="Documentation navigation">
+      <a class="docs-sidebar__title" href="build.html">Documentation</a>
+      <p class="docs-sidebar__group">Build Marvin</p>
+      <ul>
+        <li><a href="build.html">Build</a></li>
+        <li>
+          <a href="electronics.html" aria-current="page">Electronics</a>
+          <ul class="docs-sidebar__subnav">
+            <li><a href="#choice">Choose a path</a></li>
+            <li><a href="#soldered">Hand-soldered</a></li>
+            <li><a href="#architecture">PCB architecture</a></li>
+            <li><a href="#main-board">Main board</a></li>
+            <li><a href="#base-board">Base board</a></li>
+            <li><a href="#harness">Interconnect</a></li>
+            <li><a href="#manufacturing">Manufacturing</a></li>
+          </ul>
+        </li>
+        <li><a href="drive.html">Drive</a></li>
+        <li><a href="reference.html">Reference</a></li>
+      </ul>
+      <p class="docs-sidebar__group">Project</p>
+      <ul><li><a href="contribute.html">Get involved</a></li></ul>
+    </aside>
+    <div class="docs-content">
 
     <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
         <div>
-          <p class="kicker">Chapter 03 · One path issued, one specified</p>
+          <p class="kicker">Documentation · Electronics</p>
           <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Electronics</h1>
           <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">There are two ways to give Marvin something to think with. One you can solder this weekend from four modules and a reel of wire. The other is two purpose-designed boards that nobody has drawn yet — what follows for those is a specification, not a product.</p>
         </div>
@@ -54,13 +76,13 @@
 
     <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
       <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,26px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#choice" style="text-decoration:none;color:var(--color-text)">01 The two paths</a></li>
-        <li><a href="#soldered" style="text-decoration:none;color:var(--color-text)">02 Hand&#8209;soldered</a></li>
-        <li><a href="#architecture" style="text-decoration:none;color:var(--color-text)">03 PCB architecture</a></li>
-        <li><a href="#main-board" style="text-decoration:none;color:var(--color-text)">04 Main board</a></li>
-        <li><a href="#base-board" style="text-decoration:none;color:var(--color-text)">05 Base board</a></li>
-        <li><a href="#harness" style="text-decoration:none;color:var(--color-text)">06 Interconnect</a></li>
-        <li><a href="#manufacturing" style="text-decoration:none;color:var(--color-text)">07 Manufacturing</a></li>
+        <li><a href="#choice" style="text-decoration:none;color:var(--color-text)">The two paths</a></li>
+        <li><a href="#soldered" style="text-decoration:none;color:var(--color-text)">Hand&#8209;soldered</a></li>
+        <li><a href="#architecture" style="text-decoration:none;color:var(--color-text)">PCB architecture</a></li>
+        <li><a href="#main-board" style="text-decoration:none;color:var(--color-text)">Main board</a></li>
+        <li><a href="#base-board" style="text-decoration:none;color:var(--color-text)">Base board</a></li>
+        <li><a href="#harness" style="text-decoration:none;color:var(--color-text)">Interconnect</a></li>
+        <li><a href="#manufacturing" style="text-decoration:none;color:var(--color-text)">Manufacturing</a></li>
       </ol>
     </nav>
 
@@ -69,7 +91,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
         <div>
-          <p class="kicker">Section 01</p>
+          <p class="kicker">Start here</p>
           <h2 id="mv-choice" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">The two paths</h2>
           <p style="margin:0 0 clamp(24px,3.5vw,40px);max-width:64ch">They share the chassis, the motors, the servos and the firmware. They differ in what sits between the battery and the motors — and in whether you can order it today.</p>
 
@@ -121,7 +143,7 @@
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
         <div>
           <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px">
-            <p class="kicker" style="margin:0">Path A · Section 02</p>
+            <p class="kicker" style="margin:0">Path A · Working today</p>
             <span class="tag tag-outline mono" style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">As built</span>
           </div>
           <h2 id="mv-sold" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Hand-soldered</h2>
@@ -129,7 +151,7 @@
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.1 — Modules</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Modules</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col">Module</th><th scope="col">Does</th></tr></thead>
@@ -141,7 +163,7 @@
                   </tbody>
                 </table>
               </div>
-              <p class="kicker kicker-a" style="margin:clamp(18px,2.5vw,26px) 0 8px">Table 03.2 — Wiring</p>
+              <p class="kicker kicker-a" style="margin:clamp(18px,2.5vw,26px) 0 8px">Wiring</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col">From</th><th scope="col">To</th></tr></thead>
@@ -187,12 +209,12 @@
           <div style="margin-top:clamp(24px,4vw,44px)">
             <figure class="blueprint" style="margin:0 auto;max-width:940px;position:relative;padding:clamp(8px,1.2vw,12px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <!-- Technical figure, so no .duotone — the same rule as Fig. 02 and
-                   Fig. 06, and here the reason is literal: the wire colours are
+              <!-- Technical figure, so no .duotone — the same rule as the exploded
+                   view and print plate, and here the reason is literal: the wire colours are
                    the information. Duotone forces one accent hue and varies only
                    lightness, which would collapse the red rail, the black ground
                    and the four blue signal lines into one another.
-                   Unlike Fig. 06 the surround is NOT cut to alpha. That figure is
+                   Unlike the print plate, the surround is NOT cut to alpha. That figure is
                    a render whose labels live in the caption; this one is a drawing
                    whose labels are black type inside the image, so it has to keep
                    a light ground in both schemes or lose them. The white plate and
@@ -210,7 +232,7 @@
                 </div>
               </div>
               <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
-                <span><span style="color:var(--color-accent-700)">Fig. 07</span> &mdash; Path A, drawn flat. The power chain across the top, the six signal lines below.</span>
+                <span><span style="color:var(--color-accent-700)">Hand-soldered wiring</span> &mdash; Path A, drawn flat. The power chain across the top, the six signal lines below.</span>
                 <span>Schematic &#183; as built</span>
               </figcaption>
             </figure>
@@ -223,7 +245,7 @@
     <section aria-labelledby="mv-partb" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,72px) 0 0">
       <div class="blueprint hatch" style="position:relative;padding:clamp(18px,3vw,32px)">
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <p class="kicker kicker-a">Path B · Sections 03 to 07</p>
+        <p class="kicker kicker-a">Path B · Specification</p>
         <h2 id="mv-partb" style="font-size:clamp(26px,3.6vw,42px);margin:0 0 12px;letter-spacing:-.015em">Everything below is a specification</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(16px,3vw,40px);align-items:start">
           <p style="margin:0;max-width:60ch">No schematic has been drawn, no board has been laid out, and no prototype has been fabricated. Part numbers, addresses and pin allocations below are the design intent — the thing a schematic would be reviewed against, not a record of something that works.</p>
@@ -245,7 +267,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
         <div>
-          <p class="kicker">Path B · Section 03</p>
+          <p class="kicker">Path B · Architecture</p>
           <h2 id="mv-arch" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Two boards, six wires</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The chassis decides the architecture. The head has room for a module, a battery and two displays; the base has the motors and a view of the floor; and between them is a joint that rotates, which is the last place you want a loom of analogue sensor lines.</p>
 
@@ -256,7 +278,7 @@
               <p style="margin-bottom:0">The consequence worth noticing: the base board is not a dumb motor shield. It keeps the tracks turning at the right rate and stops the robot driving off a table even while the ESP32 is busy with something else.</p>
             </div>
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.4 — Division of labour</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Division of labour</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col">Board</th><th scope="col">Where</th><th scope="col">Owns</th></tr></thead>
@@ -376,7 +398,7 @@
               <text x="46" y="576" fill="currentColor" opacity=".5" style="font-family:var(--font-mono);font-size:9.5px">THE BASE MCU POLLS THE FLOOR AND MAKES ITS OWN PWM — THE ESP32 IS NOT IN THAT LOOP</text>
             </svg>
             <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
-              <span><span style="color:var(--color-accent-700)">Fig. 08</span> — The specified architecture. Six conductors cross the neck; everything else stays on its own board.</span>
+              <span><span style="color:var(--color-accent-700)">Specified architecture</span> — Six conductors cross the neck; everything else stays on its own board.</span>
               <span>Block diagram &#183; specification</span>
             </figcaption>
           </figure>
@@ -389,13 +411,13 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
         <div>
-          <p class="kicker">Path B · Section 04</p>
+          <p class="kicker">Path B · Head electronics</p>
           <h2 id="mv-main" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Main board — head</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">High-level logic, the radio, all of the power management, both displays and the forward-looking sensors.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.5 — Core and system logic</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Core and system logic</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -406,7 +428,7 @@
                 </dl>
               </div>
 
-              <p class="kicker kicker-a" style="margin:clamp(20px,3vw,28px) 0 8px">Spec 03.6 — Power</p>
+              <p class="kicker kicker-a" style="margin:clamp(20px,3vw,28px) 0 8px">Power</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -419,7 +441,7 @@
             </div>
 
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.7 — Peripherals and interfaces</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Peripherals and interfaces</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -435,7 +457,7 @@
           </div>
 
           <div style="margin-top:clamp(24px,3.5vw,40px)">
-            <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.8 — ESP32-S3 pin allocation</p>
+            <p class="kicker kicker-a" style="margin:0 0 8px">ESP32-S3 pin allocation</p>
             <div style="overflow-x:auto;max-width:84ch">
               <table class="table">
                 <thead><tr><th scope="col">Function</th><th scope="col">Signal</th><th scope="col">GPIO</th></tr></thead>
@@ -462,13 +484,13 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
         <div>
-          <p class="kicker">Path B · Section 05</p>
+          <p class="kicker">Path B · Base electronics</p>
           <h2 id="mv-base" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Peripheral board — base</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Motor driving, floor sensing and base actuation, run by a microcontroller that costs less than the connector it plugs into.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.9 — Co-processor</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Co-processor</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -478,7 +500,7 @@
                 </dl>
               </div>
 
-              <p class="kicker kicker-a" style="margin:clamp(20px,3vw,28px) 0 8px">Spec 03.10 — Motors and actuation</p>
+              <p class="kicker kicker-a" style="margin:clamp(20px,3vw,28px) 0 8px">Motors and actuation</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -492,7 +514,7 @@
             </div>
 
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.11 — Floor and cliff sensing</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Floor and cliff sensing</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -518,13 +540,13 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">06</div>
         <div>
-          <p class="kicker">Path B · Section 06</p>
+          <p class="kicker">Path B · Interconnect</p>
           <h2 id="mv-harness" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Board to board</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">One harness bridges the two boards. Six conductors, chosen so that no analogue sensor array and no individual motor PWM line ever has to cross a joint that rotates.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.12 — Harness pinout</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Harness pinout</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col" style="width:2.6em">#</th><th scope="col">Signal</th><th scope="col">Limits</th><th scope="col">Carries</th></tr></thead>
@@ -540,7 +562,7 @@
               </div>
             </div>
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.13 — Connector and cable</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Connector and cable</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -561,7 +583,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">07</div>
         <div>
-          <p class="kicker">Path B · Section 07</p>
+          <p class="kicker">Path B · Production</p>
           <h2 id="mv-mfg" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Manufacturing</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The specification was costed against a turnkey assembler's catalogue, which is why the part choices look conservative. They are: every one of them is a stock part somebody else already places by the reel.</p>
 
@@ -605,12 +627,12 @@
         </div>
       </div>
     </section>
+    </div>
   </main>
 
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-      <span>Marvin — open source robot toy</span>
-      <span>Sheet 03 of 06</span>
+    <div class="page-footer__inner">
+      <span>Marvin — open source exploring robot</span>
       <span>Rev. A · Path B specified</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

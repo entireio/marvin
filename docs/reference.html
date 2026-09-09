@@ -22,46 +22,68 @@
 <script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="assets/js/site.js" defer></script>
 </head>
-<body>
+<body class="documentation-page">
 <div style="min-height:100vh;background:var(--color-bg)">
-  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
-    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
-      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
-      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
-        <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
-        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
-        <a href="reference.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">06 Reference</a>
+  <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html">MARVIN</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="build.html" aria-current="page">Documentation</a>
+        <a href="contribute.html">Get involved</a>
       </nav>
-      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
     </div>
   </header>
 
-  <main style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+  <main id="content" class="docs-layout">
+    <aside class="docs-sidebar" aria-label="Documentation navigation">
+      <a class="docs-sidebar__title" href="build.html">Documentation</a>
+      <p class="docs-sidebar__group">Build Marvin</p>
+      <ul>
+        <li><a href="build.html">Build</a></li>
+        <li><a href="electronics.html">Electronics</a></li>
+        <li><a href="drive.html">Drive</a></li>
+        <li>
+          <a href="reference.html" aria-current="page">Reference</a>
+          <ul class="docs-sidebar__subnav">
+            <li><a href="#protocol">Command protocol</a></li>
+            <li><a href="#ble">Bluetooth service</a></li>
+            <li><a href="#pinmap">Pin map</a></li>
+            <li><a href="#parts">Printed parts</a></li>
+            <li><a href="#settings">Print settings</a></li>
+            <li><a href="#files">Files and formats</a></li>
+            <li><a href="#licence">Licensing</a></li>
+          </ul>
+        </li>
+      </ul>
+      <p class="docs-sidebar__group">Project</p>
+      <ul><li><a href="contribute.html">Get involved</a></li></ul>
+    </aside>
+    <div class="docs-content">
 
     <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">06</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 06 · Issued</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Documentation · Reference</p>
           <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Reference</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">The dense material, set as reference rather than narrative. Nothing here is explained twice; the explanations are in chapters 02 to 04.</p>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">The dense material, set as reference rather than narrative. Nothing here is explained twice; the explanations are in Build, Electronics and Drive.</p>
         </div>
       </div>
     </section>
 
     <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
       <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,26px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#protocol" style="text-decoration:none;color:var(--color-text)">01 Protocol</a></li>
-        <li><a href="#ble" style="text-decoration:none;color:var(--color-text)">02 Bluetooth</a></li>
-        <li><a href="#pinmap" style="text-decoration:none;color:var(--color-text)">03 Pin map</a></li>
-        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">04 Printed parts</a></li>
-        <li><a href="#settings" style="text-decoration:none;color:var(--color-text)">05 Print settings</a></li>
-        <li><a href="#files" style="text-decoration:none;color:var(--color-text)">06 Files</a></li>
-        <li><a href="#licence" style="text-decoration:none;color:var(--color-text)">07 Licensing</a></li>
-        <li><a href="#tokens" style="text-decoration:none;color:var(--color-text)">08 Tokens</a></li>
+        <li><a href="#protocol" style="text-decoration:none;color:var(--color-text)">Protocol</a></li>
+        <li><a href="#ble" style="text-decoration:none;color:var(--color-text)">Bluetooth</a></li>
+        <li><a href="#pinmap" style="text-decoration:none;color:var(--color-text)">Pin map</a></li>
+        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">Printed parts</a></li>
+        <li><a href="#settings" style="text-decoration:none;color:var(--color-text)">Print settings</a></li>
+        <li><a href="#files" style="text-decoration:none;color:var(--color-text)">Files</a></li>
+        <li><a href="#licence" style="text-decoration:none;color:var(--color-text)">Licensing</a></li>
+        <li><a href="#tokens" style="text-decoration:none;color:var(--color-text)">Tokens</a></li>
       </ol>
     </nav>
 
@@ -115,7 +137,7 @@
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">03</div>
         <div>
           <h2 id="mv-pin" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Pin map</h2>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">The hand-soldered build, on an ESP32-C3 SuperMini — this is what the firmware ships with. All of it lives in <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">config.h</span>; nothing is hard-coded in a driver. The ESP32-S3 allocation for the Marvin PCBs is <a href="electronics.html#main-board">in chapter 03</a>.</p>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">The hand-soldered build, on an ESP32-C3 SuperMini — this is what the firmware ships with. All of it lives in <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">config.h</span>; nothing is hard-coded in a driver. The ESP32-S3 allocation for the Marvin PCBs is <a href="electronics.html#main-board">in Electronics</a>.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
             <div style="overflow-x:auto">
               <table class="table">
@@ -144,7 +166,7 @@
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">04</div>
         <div>
           <h2 id="mv-parts" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Printed parts</h2>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Nine meshes, numbered in print order — the eight PLA parts first, the one TPU part last. These numbers are used by every drawing and table on this site. Bought parts are listed in <a href="build.html#parts">02 — Build</a>.</p>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Nine meshes, numbered in print order — the eight PLA parts first, the one TPU part last. These numbers identify the physical parts throughout the documentation. Bought parts are listed in <a href="build.html#parts">Build</a>.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
             <div style="overflow-x:auto">
               <table class="table">
@@ -316,12 +338,12 @@
         </div>
       </div>
     </section>
+    </div>
   </main>
 
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-      <span>Marvin — open source robot toy</span>
-      <span>Sheet 06 of 06</span>
+    <div class="page-footer__inner">
+      <span>Marvin — open source exploring robot</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

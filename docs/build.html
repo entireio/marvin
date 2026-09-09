@@ -22,44 +22,64 @@
 <script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="assets/js/site.js" defer></script>
 </head>
-<body>
+<body class="documentation-page">
 <div style="min-height:100vh;background:var(--color-bg)">
-  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
-    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
-      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
-      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
-        <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
-        <a href="build.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">02 Build</a>
-        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
+  <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html">MARVIN</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="build.html" aria-current="page">Documentation</a>
+        <a href="contribute.html">Get involved</a>
       </nav>
-      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
     </div>
   </header>
 
-  <main style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+  <main id="content" class="docs-layout">
+    <aside class="docs-sidebar" aria-label="Documentation navigation">
+      <a class="docs-sidebar__title" href="build.html">Documentation</a>
+      <p class="docs-sidebar__group">Build Marvin</p>
+      <ul>
+        <li>
+          <a href="build.html" aria-current="page">Build</a>
+          <ul class="docs-sidebar__subnav">
+            <li><a href="#parts">Parts and tools</a></li>
+            <li><a href="#print">Print</a></li>
+            <li><a href="#assemble">Assemble</a></li>
+            <li><a href="#flash">Flash</a></li>
+            <li><a href="#drive">First drive</a></li>
+          </ul>
+        </li>
+        <li><a href="electronics.html">Electronics</a></li>
+        <li><a href="drive.html">Drive</a></li>
+        <li><a href="reference.html">Reference</a></li>
+      </ul>
+      <p class="docs-sidebar__group">Project</p>
+      <ul><li><a href="contribute.html">Get involved</a></li></ul>
+    </aside>
+    <div class="docs-content">
 
     <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
         <div>
-          <p class="kicker">Chapter 02 · Issued</p>
+          <p class="kicker">Documentation · Build</p>
           <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Build</h1>
           <p style="margin:0 0 18px;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Six items to buy, nine parts to print, fifteen steps to assemble. One evening, if the printer has been running while you were at work.</p>
-          <p style="margin:0;max-width:64ch;color:var(--muted)">The one decision to make first is the electronics: solder four modules together yourself, or build the two Marvin PCBs — which are specified but not yet designed. It changes what you buy and five of the assembly steps. <a href="electronics.html#choice">The choice is set out in chapter 03</a>.</p>
+          <p style="margin:0;max-width:64ch;color:var(--muted)">The one decision to make first is the electronics: solder four modules together yourself, or build the two Marvin PCBs — which are specified but not yet designed. It changes what you buy and five of the assembly steps. <a href="electronics.html#choice">The choice is set out in Electronics</a>.</p>
         </div>
       </div>
     </section>
 
     <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
       <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,30px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">01 Parts and tools</a></li>
-        <li><a href="#print" style="text-decoration:none;color:var(--color-text)">02 Print</a></li>
-        <li><a href="#assemble" style="text-decoration:none;color:var(--color-text)">03 Assemble</a></li>
-        <li><a href="#flash" style="text-decoration:none;color:var(--color-text)">04 Flash</a></li>
-        <li><a href="#drive" style="text-decoration:none;color:var(--color-text)">05 First drive</a></li>
+        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">Parts and tools</a></li>
+        <li><a href="#print" style="text-decoration:none;color:var(--color-text)">Print</a></li>
+        <li><a href="#assemble" style="text-decoration:none;color:var(--color-text)">Assemble</a></li>
+        <li><a href="#flash" style="text-decoration:none;color:var(--color-text)">Flash</a></li>
+        <li><a href="#drive" style="text-decoration:none;color:var(--color-text)">First drive</a></li>
       </ol>
     </nav>
 
@@ -68,13 +88,13 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
         <div>
-          <p class="kicker">Stage 01</p>
+          <p class="kicker">Before you begin</p>
           <h2 id="mv-bom" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Parts and tools</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Everything except the printed parts and the front glass comes from Amazon or AliExpress. Nothing is exotic and nothing is a kit.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Table 02.1 — Every build</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Every build</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col" style="width:3em">Qty</th><th scope="col">Part</th><th scope="col">Specification</th></tr></thead>
@@ -92,7 +112,7 @@
             </div>
 
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Table 02.2 — Hand-soldered build only</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Hand-soldered build only</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col" style="width:3em">Qty</th><th scope="col">Part</th><th scope="col">Specification</th></tr></thead>
@@ -107,7 +127,7 @@
               <div class="blueprint hatch" style="position:relative;margin-top:clamp(16px,2.4vw,24px);padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <p class="kicker kicker-a" style="margin:0 0 8px">PCB build only</p>
-                <p style="margin:0;font-size:14.5px;color:var(--muted)">Two boards — one for the head, one for the base. They have not been designed yet. <a href="electronics.html#architecture">The specification is in chapter 03</a>.</p>
+                <p style="margin:0;font-size:14.5px;color:var(--muted)">Two boards — one for the head, one for the base. They have not been designed yet. <a href="electronics.html#architecture">The specification is in Electronics</a>.</p>
               </div>
             </div>
           </div>
@@ -142,13 +162,13 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
         <div>
-          <p class="kicker">Stage 02</p>
+          <p class="kicker">Make the parts</p>
           <h2 id="mv-print" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Print</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Eight parts in PLA, all on one plate, plus the track links in a flexible filament. The repository carries sliced projects, so on a Bambu machine there is nothing to arrange.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Table 02.3 — Parts to print</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Parts to print</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col" style="width:3.4em">#</th><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Material</th><th scope="col">Supports</th></tr></thead>
@@ -170,7 +190,7 @@
             </div>
 
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 02.4 — Print settings</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Print settings</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
@@ -210,7 +230,7 @@
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <p class="kicker kicker-a" style="margin:0 0 8px">The face</p>
               <p style="margin:0 0 10px;font-size:14.5px">Print the face plate in black PLA. It is the only part that wants a second colour, and it is the part everybody looks at.</p>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">The finished version is laser-cut, screen-printed glass, and it is the one part of Marvin that needs a contract manufacturer — <a href="electronics.html#manufacturing">see chapter 03</a>.</p>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">The finished version is laser-cut, screen-printed glass, and it is the one part of Marvin that needs a contract manufacturer — <a href="electronics.html#manufacturing">see Electronics</a>.</p>
             </div>
           </div>
 
@@ -221,14 +241,14 @@
                    system's treatment for photography, and it forces one accent hue
                    at a single saturation, flattening the surface shading a parts
                    plate depends on. This is a technical figure, so it follows
-                   Fig. 02's neutral convention. Colours are the source render's,
+                   the exploded view's neutral convention. Colours are the source render's,
                    untouched; only the surround was cut to alpha so the build plate
                    floats on the page — hence no background fill on the box below. -->
               <div style="position:relative;aspect-ratio:1283/1209">
                 <img src="assets/img/marvin-print-plate.webp" width="1283" height="1209" loading="lazy" decoding="async" alt="Every printed part nested on a single build plate, seen from above: the head cover, body panel, neck and neck mount across the top, the head base and the two track covers below them, and the four wheels down the right-hand edge." style="width:100%;height:100%;object-fit:contain;display:block">
               </div>
               <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-                <span><span style="color:var(--color-accent-700)">Fig. 06</span> — The PLA set on one plate. Eleven objects: four wheels, and one each of the other seven parts.</span>
+                <span><span style="color:var(--color-accent-700)">Print plate</span> — The PLA set on one plate. Eleven objects: four wheels, and one each of the other seven parts.</span>
                 <span>Plate view &#183; all PLA</span>
               </figcaption>
             </figure>
@@ -242,7 +262,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
         <div>
-          <p class="kicker">Stage 03</p>
+          <p class="kicker">Put it together</p>
           <h2 id="mv-asm" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Assemble</h2>
           <p style="margin:0 0 clamp(20px,3vw,30px);max-width:64ch">Bottom up: bearings, motors, wheels, then the neck, then the head. The two electronics paths share every mechanical step and differ in five — pick one and the sequence renumbers itself.</p>
 
@@ -369,7 +389,7 @@
                 <span class="n" aria-hidden="true"></span>
                 <div>
                   <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px"><h3 style="margin:0">Solder the electronics</h3><span class="tag tag-outline mono" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase">Hand-soldered</span></div>
-                  <p style="margin-top:6px">Four modules and six signal lines. The wiring diagram, the pin assignments and the three things that catch people out are in <a href="electronics.html#soldered">chapter 03</a>.</p>
+                  <p style="margin-top:6px">Four modules and six signal lines. The wiring diagram, the pin assignments and the three things that catch people out are in <a href="electronics.html#soldered">Electronics</a>.</p>
                 </div>
               </li>
               <li data-when="pcb">
@@ -413,7 +433,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
         <div>
-          <p class="kicker">Stage 04</p>
+          <p class="kicker">Install the firmware</p>
           <h2 id="mv-flash" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Flash</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:60ch">
@@ -450,7 +470,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
         <div>
-          <p class="kicker">Stage 05</p>
+          <p class="kicker">Use Marvin</p>
           <h2 id="mv-first" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">First drive</h2>
           <p style="margin:0 0 22px;max-width:64ch">Serve the controller app, open it in Chrome or Edge, and pick Marvin from the device picker. One thing trips up nearly everyone:</p>
           <div class="blueprint" style="position:relative;padding:clamp(16px,2.4vw,24px);max-width:70ch;margin-bottom:24px">
@@ -459,16 +479,16 @@
             <p style="margin:0 0 12px;font-size:clamp(17px,1.8vw,20px);line-height:1.45">Web Bluetooth only works in a secure context. Open the file with <span class="mono" style="font-size:.9em">file://</span> and the Bluetooth API is simply undefined — the Scan button does nothing at all.</p>
             <code class="mono" style="font-size:13.5px;display:block;white-space:pre;overflow-x:auto;padding-top:8px;border-top:1px solid var(--rule)"><span style="color:var(--muted)">$</span> cd controller &amp;&amp; ./serve.sh   <span style="color:var(--muted)"># then http://localhost:3000</span></code>
           </div>
-          <p style="margin:0"><a href="drive.html">Continue to 04 — Drive: the command language, the app, and what it does when left alone</a></p>
+          <p style="margin:0"><a href="drive.html">Continue to Drive: the command language, the app, and what it does when left alone</a></p>
         </div>
       </div>
     </section>
+    </div>
   </main>
 
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-      <span>Marvin — open source robot toy</span>
-      <span>Sheet 02 of 06</span>
+    <div class="page-footer__inner">
+      <span>Marvin — open source exploring robot</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

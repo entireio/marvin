@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contribute — Marvin</title>
+<title>Get involved — Marvin</title>
 <meta name="description" content="Four ways to contribute to Marvin: firmware, software, mechanics and electronics.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
-<meta property="og:title" content="Contribute — Marvin">
+<meta property="og:title" content="Get involved — Marvin">
 <meta property="og:description" content="Four ways to contribute to Marvin: firmware, software, mechanics and electronics.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -22,31 +22,29 @@
 <script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="assets/js/site.js" defer></script>
 </head>
-<body>
+<body class="contribute-page">
 <div style="min-height:100vh;background:var(--color-bg)">
-  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
-    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
-      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
-      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
-        <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
-        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
-        <a href="contribute.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">05 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
+  <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html">MARVIN</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="build.html">Documentation</a>
+        <a href="contribute.html" aria-current="page">Get involved</a>
       </nav>
-      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
     </div>
   </header>
 
-  <main style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+  <main id="content" style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
 
     <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 05 · Issued</p>
-          <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Contribute</h1>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Open source project</p>
+          <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Get involved</h1>
           <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Four routes in, because they attract different people. Below each one: the state of it, the conventions that matter, and the specific thing that needs doing next.</p>
         </div>
       </div>
@@ -54,10 +52,10 @@
 
     <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
       <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,30px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#firmware" style="text-decoration:none;color:var(--color-text)">01 Firmware</a></li>
-        <li><a href="#software" style="text-decoration:none;color:var(--color-text)">02 Software</a></li>
-        <li><a href="#mechanics" style="text-decoration:none;color:var(--color-text)">03 Mechanics</a></li>
-        <li><a href="#electronics" style="text-decoration:none;color:var(--color-text)">04 Electronics</a></li>
+        <li><a href="#firmware" style="text-decoration:none;color:var(--color-text)">Firmware</a></li>
+        <li><a href="#software" style="text-decoration:none;color:var(--color-text)">Software</a></li>
+        <li><a href="#mechanics" style="text-decoration:none;color:var(--color-text)">Mechanics</a></li>
+        <li><a href="#electronics" style="text-decoration:none;color:var(--color-text)">Electronics</a></li>
         <li><a href="#conventions" style="text-decoration:none;color:var(--muted)">Conventions</a></li>
         <li><a href="#open" style="text-decoration:none;color:var(--muted)">Open problems</a></li>
       </ol>
@@ -84,7 +82,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Route 01 · Embedded C++</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Embedded C++</p>
           <h2 id="mv-fw" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Firmware</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
@@ -93,7 +91,7 @@
               <p style="margin-bottom:0"><strong style="font-weight:700">Adding a command touches four places:</strong> the parser, the on-device help text, the controller app's cheat sheet, and the protocol documentation. Miss one and someone spends an evening confused.</p>
             </div>
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 04.1 — Firmware source</p>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Firmware source</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col">File</th><th scope="col">Responsibility</th></tr></thead>
@@ -118,7 +116,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Route 02 · Web</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Web</p>
           <h2 id="mv-sw" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Software</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
@@ -144,7 +142,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Route 03 · CAD and printing</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">CAD and printing</p>
           <h2 id="mv-mech" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Mechanics</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
@@ -168,11 +166,11 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Route 04 · PCB design</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">PCB design</p>
           <h2 id="mv-el" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Electronics</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>This is the largest open invitation in the project, and it is now a well-posed one. Two boards have been specified down to part numbers, I²C addresses and a six-wire harness — and neither has been drawn. <a href="electronics.html#architecture">The specification is chapter 03</a>.</p>
+              <p>This is the largest open invitation in the project, and it is now a well-posed one. Two boards have been specified down to part numbers, I²C addresses and a six-wire harness — and neither has been drawn. <a href="electronics.html#architecture">The specification is in Electronics</a>.</p>
               <p style="margin-bottom:0">What exists besides that is hand-soldered wiring that works, a pin map, and a known brownout problem: servos and motors drawing together sag the rail enough to reset the microcontroller, which shows up as a Bluetooth disconnect mid-drive. Giving the logic rail its own regulator is half of what the main board is for.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
@@ -227,15 +225,14 @@
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(20px,3vw,32px)">
         <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Open the repository</a>
-        <a class="btn btn-secondary" href="reference.html" style="text-decoration:none">06 — Reference</a>
+        <a class="btn btn-secondary" href="reference.html" style="text-decoration:none">Reference</a>
       </div>
     </section>
   </main>
 
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-      <span>Marvin — open source robot toy</span>
-      <span>Sheet 05 of 06</span>
+    <div class="page-footer__inner">
+      <span>Marvin — open source exploring robot</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

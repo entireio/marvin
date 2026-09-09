@@ -1,17 +1,19 @@
 # Marvin — Project website
 
-The public Marvin website. Six pages of plain HTML, CSS and JavaScript, with
-no build step and no framework — the same constraint the controller app is
-built under, so it can be served from anywhere.
+The public Marvin website. It has three visitor-facing destinations: a
+long-scroll overview, a documentation area, and a page for people who want to
+get involved. The site is plain HTML, CSS and JavaScript, with no build step and
+no framework — the same constraint the controller app is built under, so it
+can be served from anywhere.
 
 ```
 docs/
-├── index.html            01 Marvin      — long-scroll home
-├── build.html            02 Build       — parts, print, assemble, flash
-├── electronics.html      03 Electronics — the two paths: soldered, and the PCB spec
-├── drive.html            04 Drive       — the command language, controller app
-├── contribute.html       05 Contribute  — firmware, software, mechanics, electronics
-├── reference.html        06 Reference   — protocol, pin map, parts, files, licensing
+├── index.html            Overview — the long-scroll introduction
+├── build.html            Documentation / Build — parts, print, assemble, flash
+├── electronics.html      Documentation / Electronics — soldered path and PCB spec
+├── drive.html            Documentation / Drive — command language and controller app
+├── reference.html        Documentation / Reference — protocol, pins, files, licensing
+├── contribute.html       Get involved — firmware, software, mechanics, electronics
 ├── assets/
 │   ├── css/industry.css  Design-system tokens and components (verbatim from the design)
 │   ├── css/site.css      Page styles, shared furniture, the path switch
@@ -74,6 +76,9 @@ hand-edits.
 - **Take colours, fonts and spacing from the design-system variables**
   (`var(--color-*)`, `var(--font-*)`, `var(--space-*)`) rather than hard-coding
   values. `assets/css/industry.css` is the source of truth for the look.
+- **Numbers must carry information.** Keep printed-part identifiers, assembly
+  order, pin values and protocol values. Do not number site sections, pages,
+  figures or tables; the navigation hierarchy already explains where they are.
 - **Motion must degrade.** Every animation has a static fallback and the site
   is complete under `prefers-reduced-motion: reduce`. The exploded view holds
   at its exploded state, which is the more legible of the two anyway.
@@ -105,19 +110,18 @@ unfinished page rather than an honest one, so they were removed rather than
 left standing. Two went: the per-step assembly drawings on Build, and a video
 of a full demo cycle on Drive.
 
-Numbering is **contiguous, 01 to 09, in reading order across the site**. If you
-add a figure in the middle, renumber the ones after it and check the
-cross-references — several captions and code comments cite a figure by number,
-so `grep -rn 'Fig\. '` is the check. The assembly drawings are still wanted and
-are recorded on the Contribute page's open-problems table, which is where a gap
-belongs. The demo video is not planned.
+Figures use descriptive names rather than a second, site-wide numbering system.
+The assembly drawings are still wanted and are recorded on the Get involved
+page's open-problems table, which is where a gap belongs. The demo video is not
+planned.
 
-Fig. 07 is filled: `assets/img/marvin-wiring.webp`, the wiring as it was
+`assets/img/marvin-wiring.webp` shows the wiring as it was
 actually built — LiPo, USB-C charger, step-up converter, motor driver, two
 gearmotors and two servos, with the six named GPIOs traced from the board to
 where they land. Colours are load-bearing here, which is the sharpest case yet
 for the no-duotone rule: the accent would flatten the red rail, the black
-ground and the four blue signal lines into one hue. Unlike Fig. 06 the white
+ground and the four blue signal lines into one hue. Unlike the print-plate
+render, the white
 surround is kept rather than cut to alpha, because this figure's labels are
 black type inside the image and would vanish on a dark page; the box therefore
 carries an explicit white plate with an inset, so it reads as a sheet laid on
@@ -132,13 +136,13 @@ same treatment the wide tables already get. Nothing scrolls above roughly
 
 Three labels in the source render disagree with the rest of the project and
 should be corrected at the source rather than patched in HTML: the driver is
-lettered **DRV8811** where Table 02.3 and the firmware say **DRV8833** (a
+lettered **DRV8811** where the parts table and the firmware say **DRV8833** (a
 DRV8811 is a single stepper driver, not a dual H-bridge with IN1–IN4); two pin
 labels read `GPI2O` and `GPI1O` for GPIO 20 and GPIO 10; and the board drawn is
 a **DevKitM-1** where the table specifies an **ESP32-C3 SuperMini**. The GPIO
 assignments themselves match the table exactly.
 
-Fig. 09 is filled: `assets/img/marvin-controller.webp`, the controller
+`assets/img/marvin-controller.webp` shows the controller
 connected to a real robot — the cheat sheet it prints on connect, then `D` and
 `S` with the replies the firmware sent back. It keeps the app's own dark chrome
 in both schemes, untreated: a screenshot of a terminal has to look like the
@@ -146,13 +150,13 @@ terminal the reader will meet. WebP at q88, 1588 × 1178: 48 KB against 147 KB
 as PNG. Note that the app is a terminal, not a pad-and-slider console — the
 slot had been written the other way round.
 
-Fig. 08 is drawn rather than photographed: the two-board block diagram on the
+The two-board block diagram on the Electronics page is drawn rather than photographed:
 Electronics page is inline SVG in the page ground's ink, with the accent
 reserved for the six conductors that cross the neck joint. It is the one figure
 whose subject does not exist, so it had to be a diagram of the specification
 rather than a picture of a thing.
 
-Fig. 06 is filled: `assets/img/marvin-print-plate.webp`, all eight PLA parts on
+`assets/img/marvin-print-plate.webp` shows all eight PLA parts on
 one plate. Colours are the source render's, untouched. It is rotated 90° so it sits
 landscape rather than portrait, and the light surround around the build plate
 is cut to alpha so the plate floats on the page — which is why its box carries
@@ -168,8 +172,8 @@ Two conventions, and it matters which one a figure gets:
   `.duotone`, which lays the accent over the frame with
   `mix-blend-mode: color`. This is the design system's treatment for
   photography.
-- **Technical figures stay neutral.** The exploded axonometric (Fig. 02) is
-  ink on the page ground, and the print plate (Fig. 06) keeps the colours of
+- **Technical figures stay neutral.** The exploded axonometric is ink on the
+  page ground, and the print plate keeps the colours of
   the render it came from. Duotone forces a single accent hue at one saturation
   and varies only lightness, which flattens exactly the surface shading a parts
   drawing needs to be readable. Do not add `.duotone` to these.
@@ -181,7 +185,8 @@ marks, so they read as one family regardless of treatment.
 
 The site's central distinction is that Marvin's electronics can be **soldered
 from four modules today**, or built on **two PCBs that are specified and not
-yet designed**. Chapter 03 is that distinction; chapter 02 applies it.
+yet designed**. The Electronics page explains that distinction; the Build page
+applies it.
 
 The assembly sequence exists once, in `build.html`, and is filtered rather
 than written twice: the two paths share every mechanical step and differ in

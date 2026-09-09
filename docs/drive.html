@@ -22,30 +22,49 @@
 <script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="assets/js/site.js" defer></script>
 </head>
-<body>
+<body class="documentation-page">
 <div style="min-height:100vh;background:var(--color-bg)">
-  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
-    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
-      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
-      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
-        <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
-        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
-        <a href="drive.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">04 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
+  <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html">MARVIN</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html">Overview</a>
+        <a href="build.html" aria-current="page">Documentation</a>
+        <a href="contribute.html">Get involved</a>
       </nav>
-      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
     </div>
   </header>
 
-  <main style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+  <main id="content" class="docs-layout">
+    <aside class="docs-sidebar" aria-label="Documentation navigation">
+      <a class="docs-sidebar__title" href="build.html">Documentation</a>
+      <p class="docs-sidebar__group">Build Marvin</p>
+      <ul>
+        <li><a href="build.html">Build</a></li>
+        <li><a href="electronics.html">Electronics</a></li>
+        <li>
+          <a href="drive.html" aria-current="page">Drive</a>
+          <ul class="docs-sidebar__subnav">
+            <li><a href="#connect">Connect</a></li>
+            <li><a href="#commands">Command language</a></li>
+            <li><a href="#demo">Demo mode</a></li>
+            <li><a href="#trouble">Troubleshooting</a></li>
+          </ul>
+        </li>
+        <li><a href="reference.html">Reference</a></li>
+      </ul>
+      <p class="docs-sidebar__group">Project</p>
+      <ul><li><a href="contribute.html">Get involved</a></li></ul>
+    </aside>
+    <div class="docs-content">
 
     <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 04 · Issued</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Documentation · Drive</p>
           <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Drive</h1>
           <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Seven commands, each a letter and a number, over a browser or any Bluetooth terminal. Leave it alone and it explores by itself.</p>
         </div>
@@ -54,10 +73,10 @@
 
     <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
       <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,30px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#connect" style="text-decoration:none;color:var(--color-text)">01 Connect</a></li>
-        <li><a href="#commands" style="text-decoration:none;color:var(--color-text)">02 Commands</a></li>
-        <li><a href="#demo" style="text-decoration:none;color:var(--color-text)">03 Demo mode</a></li>
-        <li><a href="#trouble" style="text-decoration:none;color:var(--color-text)">04 Troubleshooting</a></li>
+        <li><a href="#connect" style="text-decoration:none;color:var(--color-text)">Connect</a></li>
+        <li><a href="#commands" style="text-decoration:none;color:var(--color-text)">Commands</a></li>
+        <li><a href="#demo" style="text-decoration:none;color:var(--color-text)">Demo mode</a></li>
+        <li><a href="#trouble" style="text-decoration:none;color:var(--color-text)">Troubleshooting</a></li>
       </ol>
     </nav>
 
@@ -65,13 +84,13 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 01</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Setup</p>
           <h2 id="mv-connect" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Connect</h2>
           <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch">The controller is a web page with no build step and no framework, so it can be served from anywhere. It talks to Marvin over Web Bluetooth, which has two hard requirements.</p>
 
           <div class="blueprint" style="position:relative;padding:clamp(16px,2.4vw,26px);max-width:74ch;margin-bottom:clamp(20px,3vw,32px)">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Requirement 01 — a secure context</p>
+            <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Requirement — a secure context</p>
             <p style="margin:0 0 14px;font-size:clamp(17px,1.8vw,21px);line-height:1.45">It must be served, not opened. Web Bluetooth exists only over <span style="font-family:var(--font-mono);font-size:.88em">https://</span> or <span style="font-family:var(--font-mono);font-size:.88em">localhost</span>. Double-click the file and the API is undefined — the Scan button does nothing, silently.</p>
             <code style="font-family:var(--font-mono);font-size:13.5px;display:block;white-space:pre;overflow-x:auto;padding-top:12px;border-top:1px solid var(--rule)"><span style="color:var(--muted)">$</span> cd controller &amp;&amp; ./serve.sh
 <span style="color:var(--muted)">→ http://localhost:3000  ·  Scan  ·  choose “Marvin”</span></code>
@@ -79,7 +98,7 @@
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Requirement 02 — Table 03.1, browser support</p>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Requirement — browser support</p>
               <table class="table">
                 <thead><tr><th scope="col">Browser</th><th scope="col">Web Bluetooth</th></tr></thead>
                 <tbody>
@@ -101,11 +120,11 @@
   <div style="position:relative;aspect-ratio:1588/1178">
     <img src="assets/img/marvin-controller.webp" width="1588" height="1178" loading="lazy" decoding="async" alt="The controller web page connected to Marvin: a header reading Marvin, Bluetooth Terminal with a green Marvin status pill beside Scan and Disconnect buttons, and below it a dark terminal titled marvin — Marvin listing the seven commands, then the session log — scanning, connected, D returning Demo mode ON, S returning All motors stopped — above a Marvin&gt; command prompt." style="width:100%;height:100%;object-fit:contain;display:block">
   </div>
-  <!-- Fig. 06's caption sits on an 800px figure and stays on one line. This
-       one shares a two-column grid with Table 03.1, so it wraps: a tight row
+  <!-- The print-plate caption sits on an 800px figure and stays on one line.
+       This one shares a two-column grid with the browser-support table, so it wraps: a tight row
        gap keeps the wrapped meta reading as part of the same caption. -->
   <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
-    <span><span style="color:var(--color-accent-700)">Fig. 09</span> &mdash; Connected. The cheat sheet is printed on connect; every command and its reply is echoed below it.</span>
+    <span><span style="color:var(--color-accent-700)">Controller connected</span> &mdash; The cheat sheet is printed on connect; every command and its reply is echoed below it.</span>
     <span>Controller &#183; connected</span>
   </figcaption>
 </figure>
@@ -118,7 +137,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 02</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Controls</p>
           <h2 id="mv-cmd" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">The command language</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">One line-based text protocol, identical over USB serial and Bluetooth. Case-insensitive, one command per line. The shaded band on each scale is the range the firmware will accept.</p>
 
@@ -250,7 +269,7 @@
             </div>
             <div>
               <h3 style="margin:0 0 6px;font-size:19px">Any BLE terminal will do</h3>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">Bluetooth uses the Nordic UART Service, so a generic terminal app drives the robot as well as the project's own. <a href="reference.html#ble">UUIDs in 06 — Reference</a>.</p>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">Bluetooth uses the Nordic UART Service, so a generic terminal app drives the robot as well as the project's own. <a href="reference.html#ble">The UUIDs are in Reference</a>.</p>
             </div>
           </div>
         </div>
@@ -261,7 +280,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 03</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Autonomous behaviour</p>
           <h2 id="mv-demo" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">What it does when left alone</h2>
           <div style="max-width:64ch">
             <p>Send <span style="font-family:var(--font-mono);font-size:14px">D</span> and Marvin runs a hand-choreographed sequence: arcs, pivots, straight runs, and pauses where the head sweeps as though scanning. The head usually moves before the body turns, which is what makes it read as intent rather than mechanism.</p>
@@ -275,7 +294,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 04</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">If something goes wrong</p>
           <h2 id="mv-trouble" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Troubleshooting</h2>
           <p style="margin:0 0 20px;max-width:64ch">Five symptoms account for almost every report so far.</p>
           <div style="overflow-x:auto;max-width:88ch">
@@ -290,16 +309,16 @@
               </tbody>
             </table>
           </div>
-          <p style="margin:20px 0 0"><a href="reference.html">Continue to 06 — Reference: protocol, Bluetooth service, pin map, parts and licensing</a></p>
+          <p style="margin:20px 0 0"><a href="reference.html">Continue to Reference: protocol, Bluetooth service, pin map, parts and licensing</a></p>
         </div>
       </div>
     </section>
+    </div>
   </main>
 
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-      <span>Marvin — open source robot toy</span>
-      <span>Sheet 04 of 06</span>
+    <div class="page-footer__inner">
+      <span>Marvin — open source exploring robot</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

@@ -22,22 +22,19 @@
 <script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <script src="assets/js/site.js" defer></script>
 </head>
-<body>
+<body class="home-page">
 <div style="min-height:100vh;background:var(--color-bg)">
   <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
 
-  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
-    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
-      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
-      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
-        <a href="index.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">01 Marvin</a>
-        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
+  <header class="site-header">
+    <div class="site-header__inner">
+      <a class="site-brand" href="index.html">MARVIN</a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="index.html" aria-current="page">Overview</a>
+        <a href="build.html">Documentation</a>
+        <a href="contribute.html">Get involved</a>
       </nav>
-      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
     </div>
   </header>
 
@@ -60,8 +57,8 @@
         </dl>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(24px,4vw,40px)">
-        <a class="btn btn-primary" href="build.html" style="text-decoration:none">Build one</a>
-        <a class="btn btn-secondary" href="reference.html" style="text-decoration:none">Reference</a>
+        <a class="btn btn-primary" href="build.html" style="text-decoration:none">Read the documentation</a>
+        <a class="btn btn-secondary" href="contribute.html" style="text-decoration:none">Get involved</a>
         <a class="btn btn-ghost" href="https://github.com/spedemon/marvin" style="text-decoration:none">Repository</a>
       </div>
       <div style="margin-top:clamp(28px,5vw,60px)">
@@ -79,7 +76,7 @@
             <video data-ref="videoRef" src="assets/video/marvin_moving_20sec_pingpong.mp4" poster="assets/img/marvin-hero-poster-10s.png" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block"></video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Fig. 01</span> — Marvin under drive. A forward run, a pivot on one track, and a look around.</span>
+            <span><span style="color:var(--color-accent-700)">Marvin under drive</span> — A forward run, a pivot on one track, and a look around.</span>
             <button type="button" data-action="togglePlay" style="cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px">Pause</button>
           </figcaption>
         </figure>
@@ -90,7 +87,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 01</p>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Meet Marvin</p>
           <h2 id="mv-s01" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">What it is</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
             <div style="max-width:68ch">
@@ -100,7 +97,7 @@
               <p style="margin-bottom:0">That is the fork every builder meets. <a href="electronics.html#choice">Solder it yourself and it works this weekend</a>; build the boards and it gains eyes, distance, an IMU and the sense not to drive off a table. The schedule opposite is the honest version, and it doubles as a list of things worth doing.</p>
             </div>
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 01 — Subsystem status</p>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Subsystem status</p>
               <table class="table">
                 <caption style="text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-bottom:8px">Five subsystems work. Four more are specified but not built.</caption>
                 <thead><tr><th scope="col">Subsystem</th><th scope="col">State</th><th scope="col">Detail</th></tr></thead>
@@ -127,7 +124,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 02</p>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">How it is made</p>
           <h2 id="mv-s02" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Anatomy</h2>
           <p style="margin:0 0 clamp(20px,3vw,40px);max-width:68ch">Nine printed parts, numbered in assembly order: chassis, then drivetrain, then head. Scroll to bring them together.</p>
         </div>
@@ -192,12 +189,12 @@
             <g opacity=".55"><path d="M95 642 L630 642" stroke="currentColor" stroke-width="1" fill="none"/></g>
           </svg>
           <figcaption style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Fig. 02</span> — Exploded axonometric, the eight PLA parts. Geometry schematic, pending CAD export.</span>
+            <span><span style="color:var(--color-accent-700)">Exploded axonometric</span> — The eight PLA parts. Geometry schematic, pending CAD export.</span>
             <span data-ref="readoutRef" style="letter-spacing:.12em;text-transform:uppercase">Exploded</span>
           </figcaption>
         </figure>
         <div>
-          <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 02 — Printed parts</p>
+          <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Printed parts</p>
           <table class="table">
             <thead><tr><th scope="col" style="width:3.5em">#</th><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Material</th></tr></thead>
             <tbody>
@@ -213,7 +210,7 @@
             </tbody>
           </table>
           <p style="margin:16px 0 0;max-width:60ch">Eight of the nine print in PLA, and that whole set nests on one plate. Only the track links want a flexible filament, which is the one place the material changes.</p>
-          <p style="margin:14px 0 0"><a href="build.html#print">Print settings, sliced projects and materials, in 02 — Build</a></p>
+          <p style="margin:14px 0 0"><a href="build.html#print">Print settings, sliced projects and materials, in the build documentation</a></p>
         </div>
       </div>
     </section>
@@ -222,7 +219,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 03</p>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Behaviour</p>
           <h2 id="mv-s03" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">It is curious</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,48px)">
             <div style="max-width:68ch">
@@ -235,7 +232,7 @@
               <p style="margin-bottom:0">One aside, and then we will let it go: the name nods to the perpetually depressed robot from <i>The Hitchhiker's Guide to the Galaxy</i>. The resemblance ends at the name. This one is curious, which is more interesting and is what the firmware actually does.</p>
             </div>
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Fig. 03 — A double-take, as choreographed</p>
+              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">A double-take, as choreographed</p>
               <div class="blueprint" style="position:relative;padding:clamp(12px,2vw,18px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <div style="display:grid;gap:0">
@@ -284,16 +281,16 @@
               <circle r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/>
             </g>
           </svg>
-          <figcaption style="margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)"><span style="color:var(--color-accent-700)">Fig. 04</span> — Head envelope. Tilt is deliberately clamped to 30–85° to protect the neck from its mechanical stops. Ask for T200 and you get 85°, not an error.</figcaption>
+          <figcaption style="margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)"><span style="color:var(--color-accent-700)">Head envelope</span> — Tilt is deliberately clamped to 30–85° to protect the neck from its mechanical stops. Ask for T200 and you get 85°, not an error.</figcaption>
         </figure>
         <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px);align-self:start">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
           <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
-            <!-- Ping-pong loop, as in Fig. 01. -->
+            <!-- Ping-pong loop, matching the hero clip. -->
             <video data-ref="demoRef" src="assets/video/marvin_moving_12sec_pingpong.mp4" poster="assets/img/marvin-demo-poster.png" muted loop playsinline autoplay preload="none" aria-label="Marvin in demo mode: scanning with its head, then choosing a direction and moving off." style="width:100%;height:100%;object-fit:cover;display:block"></video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Fig. 05</span> — Demo mode. Nobody is driving; the head leads and the body follows.</span>
+            <span><span style="color:var(--color-accent-700)">Demo mode</span> — Nobody is driving; the head leads and the body follows.</span>
             <button type="button" data-action="toggleDemo" style="cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px">Pause</button>
           </figcaption>
         </figure>
@@ -304,7 +301,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 04</p>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Start building</p>
           <h2 id="mv-s04" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Build one</h2>
           <p style="margin:0 0 clamp(20px,3vw,34px);max-width:62ch">Nine parts to print, six to buy, and one decision to make before any of it: how you want the electronics.</p>
 
@@ -330,21 +327,21 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:clamp(14px,2.5vw,28px)">
             <a class="card blueprint" href="build.html#print" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span class="card-kicker" style="font-family:var(--font-mono)">Stage 01</span>
+              <span class="card-kicker" style="font-family:var(--font-mono)">First</span>
               <span class="card-title" style="font-size:22px">Print</span>
               <span class="card-body" style="opacity:1;color:var(--muted)">Eight parts in PLA on one plate, plus the track links in TPU. Sliced projects included for two Bambu machines.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Settings and files</span>
             </a>
             <a class="card blueprint" href="build.html#assemble" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span class="card-kicker" style="font-family:var(--font-mono)">Stage 02</span>
+              <span class="card-kicker" style="font-family:var(--font-mono)">Next</span>
               <span class="card-title" style="font-size:22px">Assemble</span>
               <span class="card-body" style="opacity:1;color:var(--muted)">Bushings, motors, wheels, neck, head. Fifteen steps soldered, seventeen with the boards; the sequence switches between them.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">The step sequence</span>
             </a>
             <a class="card blueprint" href="build.html#flash" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span class="card-kicker" style="font-family:var(--font-mono)">Stage 03</span>
+              <span class="card-kicker" style="font-family:var(--font-mono)">Then</span>
               <span class="card-title" style="font-size:22px">Flash</span>
               <span class="card-body" style="opacity:1;color:var(--muted)">One script, then a serial monitor at 115200 baud and a <code class="mono" style="font-size:12.5px">Marvin&gt;</code> prompt. Bluetooth starts advertising by itself.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Firmware</span>
@@ -359,7 +356,7 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 05</p>
+          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Open source</p>
           <h2 id="mv-s05" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">Open, in the ordinary sense of the word</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
             <div style="max-width:68ch">
@@ -383,7 +380,7 @@
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(18px,3vw,28px)">
                 <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">github.com/spedemon/marvin</a>
-                <a class="btn btn-ghost" href="contribute.html" style="text-decoration:none">05 — Contribute</a>
+                <a class="btn btn-ghost" href="contribute.html" style="text-decoration:none">How to get involved</a>
               </div>
             </div>
           </div>
@@ -393,9 +390,8 @@
   </main>
 
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-      <span>Marvin — open source robot toy</span>
-      <span>Sheet 01 of 06</span>
+    <div class="page-footer__inner">
+      <span>Marvin — open source exploring robot</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

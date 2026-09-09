@@ -10,6 +10,13 @@ here. Where something does not exist yet, it is marked explicitly rather than
 invented; please design around those gaps rather than filling them with
 plausible-sounding fiction.
 
+> **Information-architecture update:** the original numbered-publication
+> direction below is retained as design history. The implemented site now has
+> three visitor-facing destinations — Overview, Documentation and Get involved.
+> Page, section, figure and table numbering has been removed. Printed-part IDs,
+> assembly order and engineering values remain numbered because those numbers
+> carry technical meaning. See `README.md` for the current structure.
+
 ---
 
 # 1. What Marvin is
