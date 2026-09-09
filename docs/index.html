@@ -32,9 +32,10 @@
       <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
         <a href="index.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">01 Marvin</a>
         <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">03 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">04 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">05 Reference</a>
+        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
+        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
+        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
+        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
       </nav>
       <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
     </div>
@@ -51,9 +52,10 @@
         <p style="margin:0;font-size:clamp(19px,2.1vw,25px);line-height:1.42;max-width:34ch">A small tracked robot with an expressive two&#8209;axis head. Roughly the size of a coffee cup. Every file needed to build one is open source.</p>
         <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;align-self:end">
           <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Stage</dt><dd style="margin:0">Early prototype</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Subsystems</dt><dd style="margin:0">4 of 9 working</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts printed</dt><dd style="margin:0">8 &mdash; PLA FDM or PA SLS</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts sourced</dt><dd style="margin:0">5 &mdash; off the shelf</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Subsystems</dt><dd style="margin:0">5 of 10 working</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Electronics</dt><dd style="margin:0">Two paths &mdash; soldered, or PCBs</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts printed</dt><dd style="margin:0">9 &mdash; PLA FDM, or PA12 SLS</dd>
+          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts sourced</dt><dd style="margin:0">6, plus 4 to solder</dd>
           <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Licence</dt><dd style="margin:0">MIT · CERN&#8209;OHL&#8209;S&#8209;2.0</dd>
         </dl>
       </div>
@@ -86,23 +88,25 @@
             <div style="max-width:68ch">
               <p>Marvin drives on two rubber tracks and looks around with a head that pans and tilts on two servos. That is the whole of its body language, and it turns out to be enough.</p>
               <p>It is published as open source hardware: firmware, electronics, mechanical design, and the app you drive it with. The purpose is reproducibility. Anyone with a 3D printer and a soldering iron should be able to build one.</p>
-              <p style="margin-bottom:0">It is also an early prototype. The drivetrain, the head and the Bluetooth link work today. The sensing, the circuit board and the eyes do not exist yet. The schedule opposite is the honest version, and it doubles as a list of things worth doing.</p>
+              <p>It is also an early prototype. The drivetrain, the head and the Bluetooth link work today, driven by four breakout modules soldered together by hand. The sensing and the eyes do not exist yet: they belong to a pair of circuit boards that have been specified and not drawn.</p>
+              <p style="margin-bottom:0">That is the fork every builder meets. <a href="electronics.html#choice">Solder it yourself and it works this weekend</a>; build the boards and it gains eyes, distance, an IMU and the sense not to drive off a table. The schedule opposite is the honest version, and it doubles as a list of things worth doing.</p>
             </div>
             <div>
               <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 01 — Subsystem status</p>
               <table class="table">
-                <caption style="text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-bottom:8px">Four of nine subsystems are working.</caption>
+                <caption style="text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-bottom:8px">Five subsystems work. Four more are specified but not built.</caption>
                 <thead><tr><th scope="col">Subsystem</th><th scope="col">State</th><th scope="col">Detail</th></tr></thead>
                 <tbody>
                   <tr><td>Drivetrain — two DC motors, tank tracks</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">DRV8833 dual H-bridge, PWM speed control</td></tr>
                   <tr><td>Head — 2-axis pan and tilt</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">Two SG90-class servos, smoothed motion</td></tr>
                   <tr><td>Connectivity — Bluetooth Low Energy</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">Nordic UART Service, browser-controllable</td></tr>
                   <tr><td>Demo mode — autonomous exploration</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">Hand-choreographed movement sequence</td></tr>
+                  <tr><td>Electronics — hand-soldered</td><td><span class="tag tag-outline">Working</span></td><td style="color:var(--muted)">Four modules, six signal wires</td></tr>
+                  <tr><td>Electronics — the Marvin PCBs</td><td><span class="tag tag-accent">Specified</span></td><td style="color:var(--muted)">Two boards, six wires between them. Not drawn</td></tr>
+                  <tr><td>Expression — two displays as eyes</td><td><span class="tag tag-accent">Specified</span></td><td style="color:var(--muted)">Shared SPI on the main board</td></tr>
+                  <tr><td>Distance and motion — time-of-flight, IMU</td><td><span class="tag tag-accent">Specified</span></td><td style="color:var(--muted)">Both on the head board's I²C bus</td></tr>
+                  <tr><td>Cliff and robot-to-robot sensing</td><td><span class="tag tag-accent">Specified</span></td><td style="color:var(--muted)">Four floor sensors; a 940 nm IR pair</td></tr>
                   <tr><td>Odometry — wheel encoders</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Closed-loop speed and distance</td></tr>
-                  <tr><td>Distance sensing — time-of-flight</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Obstacle avoidance</td></tr>
-                  <tr><td>Social sensing — infrared</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Marvin-to-Marvin detection</td></tr>
-                  <tr><td>Expression — two displays as eyes</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">—</td></tr>
-                  <tr><td>Custom PCB</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Replaces the breakout-board wiring</td></tr>
                 </tbody>
               </table>
             </div>
@@ -117,7 +121,7 @@
         <div>
           <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 02</p>
           <h2 id="mv-s02" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Anatomy</h2>
-          <p style="margin:0 0 clamp(20px,3vw,40px);max-width:68ch">Eight printed parts, numbered in assembly order: chassis, then drivetrain, then head. Scroll to bring them together.</p>
+          <p style="margin:0 0 clamp(20px,3vw,40px);max-width:68ch">Nine printed parts, numbered in assembly order: chassis, then drivetrain, then head. Scroll to bring them together.</p>
         </div>
       </div>
       <div data-ref="anatomyRef" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,3vw,48px);align-items:start">
@@ -180,7 +184,7 @@
             <g opacity=".55"><path d="M95 642 L630 642" stroke="currentColor" stroke-width="1" fill="none"/></g>
           </svg>
           <figcaption style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Fig. 02</span> — Exploded axonometric. Geometry schematic, pending CAD export.</span>
+            <span><span style="color:var(--color-accent-700)">Fig. 02</span> — Exploded axonometric, the eight PLA parts. Geometry schematic, pending CAD export.</span>
             <span data-ref="readoutRef" style="letter-spacing:.12em;text-transform:uppercase">Exploded</span>
           </figcaption>
         </figure>
@@ -197,10 +201,11 @@
               <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
               <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
               <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">09</td><td>Track link</td><td style="color:var(--muted)">many</td><td style="color:var(--muted)">TPU</td></tr>
             </tbody>
           </table>
-          <p style="margin:16px 0 0;max-width:60ch">Every part prints in PLA, and the whole set nests on a single plate. No second material, no tool changes.</p>
-          <p style="margin:14px 0 0"><a href="build.html">Print settings and materials, in 02 — Build</a></p>
+          <p style="margin:16px 0 0;max-width:60ch">Eight of the nine print in PLA, and that whole set nests on one plate. Only the track links want a flexible filament, which is the one place the material changes.</p>
+          <p style="margin:14px 0 0"><a href="build.html#print">Print settings, sliced projects and materials, in 02 — Build</a></p>
         </div>
       </div>
     </section>
@@ -292,31 +297,51 @@
         <div>
           <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Section 04</p>
           <h2 id="mv-s04" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Build one</h2>
-          <p style="margin:0 0 clamp(20px,3vw,36px);max-width:60ch">Three stages. A printer, a soldering iron, an evening or two, and a repository.</p>
+          <p style="margin:0 0 clamp(20px,3vw,34px);max-width:62ch">Nine parts to print, six to buy, and one decision to make before any of it: how you want the electronics.</p>
+
+          <p class="kicker kicker-a" style="margin:0 0 12px">The decision</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:clamp(14px,2.5vw,28px);margin-bottom:clamp(24px,3.5vw,40px)">
+            <a class="card blueprint" href="electronics.html#soldered" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <span class="card-kicker" style="font-family:var(--font-mono)">Path A · Works today</span>
+              <span class="card-title" style="font-size:22px">Solder it yourself</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">An ESP32-C3 SuperMini, a DRV8833, a charger and a step-up converter, joined with wire. Drive, head and Bluetooth, this weekend.</span>
+              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Wiring diagram</span>
+            </a>
+            <a class="card blueprint hatch" href="electronics.html#architecture" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <span class="card-kicker" style="font-family:var(--font-mono)">Path B · Specification only</span>
+              <span class="card-title" style="font-size:22px">The Marvin PCBs</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">Two boards, one in the head and one in the base. They add the eyes and the senses — and they have not been designed yet.</span>
+              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Read the specification</span>
+            </a>
+          </div>
+
+          <p class="kicker kicker-a" style="margin:0 0 12px">Then, either way</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:clamp(14px,2.5vw,28px)">
-            <a class="card blueprint" href="build.html" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
+            <a class="card blueprint" href="build.html#print" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <span class="card-kicker" style="font-family:var(--font-mono)">Stage 01</span>
               <span class="card-title" style="font-size:22px">Print</span>
-              <span class="card-body" style="opacity:1;color:var(--muted)">Eight parts, all in PLA. 0.08 mm layers, three walls, tree supports on the body and neck.</span>
-              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Go to 02 — Build</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">Eight parts in PLA on one plate, plus the track links in TPU. Sliced projects included for two Bambu machines.</span>
+              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Settings and files</span>
             </a>
-            <a class="card blueprint" href="build.html#electronics" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
+            <a class="card blueprint" href="build.html#assemble" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <span class="card-kicker" style="font-family:var(--font-mono)">Stage 02</span>
-              <span class="card-title" style="font-size:22px">Wire</span>
-              <span class="card-body" style="opacity:1;color:var(--muted)">An ESP32-C3 SuperMini, a DRV8833 breakout, two gearmotors and two SG90-class servos. Six signal wires in total.</span>
-              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Wiring table</span>
+              <span class="card-title" style="font-size:22px">Assemble</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">Bushings, motors, wheels, neck, head. Fifteen steps soldered, seventeen with the boards; the sequence switches between them.</span>
+              <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">The step sequence</span>
             </a>
             <a class="card blueprint" href="build.html#flash" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <span class="card-kicker" style="font-family:var(--font-mono)">Stage 03</span>
               <span class="card-title" style="font-size:22px">Flash</span>
-              <span class="card-body" style="opacity:1;color:var(--muted)">One script, then a serial monitor at 115200 baud and a <code style="font-family:var(--font-mono);font-size:12.5px">Marvin&gt;</code> prompt. Bluetooth starts advertising by itself.</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">One script, then a serial monitor at 115200 baud and a <code class="mono" style="font-size:12.5px">Marvin&gt;</code> prompt. Bluetooth starts advertising by itself.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Firmware</span>
             </a>
           </div>
-          <p style="margin:clamp(18px,3vw,28px) 0 0;font-family:var(--font-mono);font-size:11.5px;color:var(--muted)">Assembly instructions are not written yet. <a href="build.html#assemble">See what that section needs</a>.</p>
+          <p class="mono" style="margin:clamp(18px,3vw,28px) 0 0;font-size:11.5px;color:var(--muted)">The steps are written; the step drawings are not. <a href="contribute.html#mechanics">That is the next useful thing anyone could do</a>.</p>
         </div>
       </div>
     </section>
@@ -345,11 +370,11 @@
                 <a href="contribute.html#firmware" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Firmware</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Embedded C++, PlatformIO, one class per peripheral.</span></a>
                 <a href="contribute.html#software" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Software</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">The controller app and this site. No build step, deliberately.</span></a>
                 <a href="contribute.html#mechanics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Mechanics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">CAD is the master. Meshes are derived, never edited.</span></a>
-                <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">The board that does not exist yet. The largest open invitation.</span></a>
+                <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Two boards, fully specified and entirely undrawn. The largest open invitation.</span></a>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(18px,3vw,28px)">
                 <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">github.com/spedemon/marvin</a>
-                <a class="btn btn-ghost" href="contribute.html" style="text-decoration:none">04 — Contribute</a>
+                <a class="btn btn-ghost" href="contribute.html" style="text-decoration:none">05 — Contribute</a>
               </div>
             </div>
           </div>
@@ -361,7 +386,7 @@
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
     <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
       <span>Marvin — open source robot toy</span>
-      <span>Sheet 01 of 05</span>
+      <span>Sheet 01 of 06</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

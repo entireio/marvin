@@ -30,9 +30,10 @@
       <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
         <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
         <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">03 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">04 Contribute</a>
-        <a href="reference.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">05 Reference</a>
+        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
+        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
+        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
+        <a href="reference.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">06 Reference</a>
       </nav>
       <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
     </div>
@@ -42,11 +43,11 @@
 
     <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">06</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 05 · Issued</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 06 · Issued</p>
           <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Reference</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">The dense material, set as reference rather than narrative. Nothing here is explained twice; the explanations are in chapters 02 and 03.</p>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">The dense material, set as reference rather than narrative. Nothing here is explained twice; the explanations are in chapters 02 to 04.</p>
         </div>
       </div>
     </section>
@@ -56,10 +57,11 @@
         <li><a href="#protocol" style="text-decoration:none;color:var(--color-text)">01 Protocol</a></li>
         <li><a href="#ble" style="text-decoration:none;color:var(--color-text)">02 Bluetooth</a></li>
         <li><a href="#pinmap" style="text-decoration:none;color:var(--color-text)">03 Pin map</a></li>
-        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">04 Parts</a></li>
+        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">04 Printed parts</a></li>
         <li><a href="#settings" style="text-decoration:none;color:var(--color-text)">05 Print settings</a></li>
-        <li><a href="#licence" style="text-decoration:none;color:var(--color-text)">06 Licensing</a></li>
-        <li><a href="#tokens" style="text-decoration:none;color:var(--color-text)">07 Tokens</a></li>
+        <li><a href="#files" style="text-decoration:none;color:var(--color-text)">06 Files</a></li>
+        <li><a href="#licence" style="text-decoration:none;color:var(--color-text)">07 Licensing</a></li>
+        <li><a href="#tokens" style="text-decoration:none;color:var(--color-text)">08 Tokens</a></li>
       </ol>
     </nav>
 
@@ -113,7 +115,7 @@
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">03</div>
         <div>
           <h2 id="mv-pin" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Pin map</h2>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Board: ESP32-C3 SuperMini. All of these live in <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">config.h</span>; nothing is hard-coded in a driver.</p>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">The hand-soldered build, on an ESP32-C3 SuperMini — this is what the firmware ships with. All of it lives in <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">config.h</span>; nothing is hard-coded in a driver. The ESP32-S3 allocation for the Marvin PCBs is <a href="electronics.html#main-board">in chapter 03</a>.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
             <div style="overflow-x:auto">
               <table class="table">
@@ -141,8 +143,8 @@
       <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">04</div>
         <div>
-          <h2 id="mv-parts" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Parts list</h2>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Eight printed parts, numbered in assembly order. These numbers are used by every drawing and table on this site.</p>
+          <h2 id="mv-parts" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Printed parts</h2>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Nine meshes, numbered in print order — the eight PLA parts first, the one TPU part last. These numbers are used by every drawing and table on this site. Bought parts are listed in <a href="build.html#parts">02 — Build</a>.</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
             <div style="overflow-x:auto">
               <table class="table">
@@ -156,16 +158,24 @@
                   <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
                   <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
                   <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+                  <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">09</td><td>Track link</td><td style="color:var(--muted)">many</td><td style="color:var(--muted)">TPU</td></tr>
                 </tbody>
               </table>
               
             </div>
-            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">To be issued</p>
-              <h3 style="margin:0 0 8px;font-size:20px">Non-printed hardware</h3>
-              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">Screws, bearings, motor part numbers, battery and charging parts. None of it specified yet — and no assembly step can name a fastener until it is.</p>
-              <a class="btn btn-secondary" href="contribute.html#mechanics" style="text-decoration:none">How to help</a>
+            <div>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <p class="kicker kicker-a" style="margin:0 0 8px">Numbering</p>
+                <p style="margin:0 0 10px;font-size:14.5px">The numeric prefix is the only thing tying a mesh to its place in the assembly. Add a part and it takes the next number; nothing is renumbered, and nothing is reused.</p>
+                <p style="margin:0;font-size:14.5px;color:var(--muted)">Screws and horns come from the bag taped to each servo, so there is no separate fastener list.</p>
+              </div>
+              <div class="blueprint hatch" style="position:relative;margin-top:clamp(16px,2.4vw,24px);padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <p class="kicker kicker-a" style="margin:0 0 8px">Not settled</p>
+                <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The face plate has no mesh yet, and the track-link count has never been checked against a built robot. Both are open.</p>
+                <a class="btn btn-secondary" href="contribute.html#mechanics" style="text-decoration:none">How to help</a>
+              </div>
             </div>
           </div>
         </div>
@@ -180,15 +190,17 @@
             <h2 id="mv-set" style="font-size:clamp(24px,3.2vw,36px);margin:0;letter-spacing:-.015em">Print settings</h2>
             <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">Not validated</span>
           </div>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Starting points. Nobody has yet printed the full set twice on two different machines.</p>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">As set in the sliced projects under <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/3d_print/</span>. Starting points, not measured optima — nobody has yet printed the full set twice on two different machines.</p>
           <div style="overflow-x:auto;max-width:74ch">
             <table class="table">
               <tbody>
-                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Material</th><td>PLA throughout</td></tr>
-                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Layer height</th><td style="font-family:var(--font-mono);font-size:13px">0.08 mm</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Material</th><td>PLA for 01–08 · TPU for the track links (09)</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Nozzle</th><td style="font-family:var(--font-mono);font-size:13px">0.4 mm</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Layer height</th><td style="font-family:var(--font-mono);font-size:13px">0.20 mm</td></tr>
                 <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Walls</th><td style="font-family:var(--font-mono);font-size:13px">3</td></tr>
-                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Infill</th><td>20% structural · 40% neck and head mount</td></tr>
-                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Supports</th><td>Tree on the body (01) and neck (07) · normal on the wheels (04)</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Infill</th><td><span class="mono" style="font-size:13px">15 %</span> grid</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Supports</th><td>Tree on the body (01) and neck (07) · normal on the wheels (04), head base (05) and head cover (06) · none on 02, 03, 08</td></tr>
+                <tr><th scope="row" style="text-align:left;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding:var(--space-2);font-weight:400">Brim</th><td>Automatic</td></tr>
               </tbody>
             </table>
           </div>
@@ -196,9 +208,44 @@
       </div>
     </section>
 
-    <section id="licence" aria-labelledby="mv-lic" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+    <section id="files" aria-labelledby="mv-files" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
       <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">06</div>
+        <div>
+          <h2 id="mv-files" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Files and formats</h2>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Everything under <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/</span>. The CAD is the master and the meshes are derived from it, so a corrected STL is a dead end — the next export overwrites it.</p>
+          <div style="overflow-x:auto;margin-bottom:clamp(18px,2.5vw,26px)">
+            <table class="table">
+              <thead><tr><th scope="col">Path</th><th scope="col">Format</th><th scope="col">For</th></tr></thead>
+              <tbody>
+                <tr><td class="mono" style="font-size:12.5px">stl/01_body.stl … 09_track.stl</td><td style="color:var(--muted)">Binary STL</td><td style="color:var(--muted)">Printing, in any slicer</td></tr>
+                <tr><td class="mono" style="font-size:12.5px">3d_print/marvin_BambuLab_A1_Mini.3mf</td><td style="color:var(--muted)">3MF project</td><td style="color:var(--muted)">Sliced plate for the Bambu A1 mini</td></tr>
+                <tr><td class="mono" style="font-size:12.5px">3d_print/marvin_BambuLab_x1C.3mf</td><td style="color:var(--muted)">3MF project</td><td style="color:var(--muted)">Sliced plate for the Bambu X1 Carbon</td></tr>
+                <tr><td class="mono" style="font-size:12.5px">3d_print/marvin_generic_printer.3mf</td><td style="color:var(--muted)">3MF project</td><td style="color:var(--muted)">The same plate for any other slicer — re-slice with your own profile</td></tr>
+                <tr><td class="mono" style="font-size:12.5px">step/marvin_robot.step</td><td style="color:var(--muted)">STEP AP242, tessellated</td><td style="color:var(--muted)">Editing outside Rhino. Verified in OpenCASCADE and FreeCAD</td></tr>
+                <tr><td class="mono" style="font-size:12.5px">src/marvin_design_v3_hq.3dm</td><td style="color:var(--muted)">Rhino</td><td style="color:var(--muted)">The master. Whole robot, including motors, boards and displays</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Two things that will waste your afternoon</p>
+              <p style="margin:0 0 10px;font-size:14.5px">All of the geometry is tracked through Git LFS. Run <span class="mono" style="font-size:13px">git lfs install</span> before cloning, or every file arrives as a short text pointer.</p>
+              <p style="margin:0;font-size:14.5px">Rhino 8 does not read tessellated STEP. Rhino users should take the <span class="mono" style="font-size:13px">.3dm</span>, which is the same geometry.</p>
+            </div>
+            <div style="max-width:56ch">
+              <p style="margin:0 0 10px">The two whole-robot models carry the assembly rather than a single printable part: chassis, head, tracks, motors, boards and displays, all in place.</p>
+              <p style="margin:0;color:var(--muted);font-size:14.5px">They are the reason a board designer can check that a layout fits before anyone fabricates one. Full notes on how they were reduced from the 930 MB working model are in <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/README.md</span>.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="licence" aria-labelledby="mv-lic" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
+      <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">07</div>
         <div>
           <h2 id="mv-lic" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Licensing</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
@@ -222,7 +269,7 @@
 
     <section id="tokens" aria-labelledby="mv-tok" style="border-top:1px solid var(--rule-ink);padding:clamp(34px,4.5vw,68px) 0">
       <div style="display:grid;grid-template-columns:clamp(56px,7vw,110px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">07</div>
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(38px,5.5vw,84px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--muted)">08</div>
         <div>
           <h2 id="mv-tok" style="font-size:clamp(24px,3.2vw,36px);margin:0 0 10px;letter-spacing:-.015em">Tokens</h2>
           <p style="margin:0 0 20px;max-width:64ch;color:var(--muted)">For anyone extending this site or the controller app. Ink on paper, one accent, two type families and a mono for data.</p>
@@ -274,7 +321,7 @@
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
     <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
       <span>Marvin — open source robot toy</span>
-      <span>Sheet 05 of 05</span>
+      <span>Sheet 06 of 06</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>

@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Electronics — Marvin</title>
+<meta name="description" content="Two paths: solder four modules together by hand, or build the two Marvin PCBs. The soldered path works today; the boards are a specification.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="Electronics — Marvin">
+<meta property="og:description" content="Two paths: solder four modules together by hand, or build the two Marvin PCBs. The soldered path works today; the boards are a specification.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Same URL the design system's @import uses, so this is one request, not two.
+     Requesting it here starts the download immediately instead of waiting for
+     industry.css to parse first. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="assets/css/industry.css">
+<link rel="stylesheet" href="assets/css/site.css">
+<script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script src="assets/js/site.js" defer></script>
+</head>
+<body>
+<div style="min-height:100vh;background:var(--color-bg)">
+  <header style="position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--color-bg) 90%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)">
+    <div style="max-width:1240px;margin:0 auto;padding:11px clamp(16px,4vw,56px);display:flex;align-items:center;gap:clamp(12px,3vw,32px)">
+      <a href="index.html" style="font-family:var(--font-heading);font-weight:600;font-size:20px;letter-spacing:.16em;text-decoration:none;color:var(--color-text)">MARVIN</a>
+      <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
+        <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
+        <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
+        <a href="electronics.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">03 Electronics</a>
+        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
+        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
+        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
+      </nav>
+      <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
+    </div>
+  </header>
+
+  <main style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+
+    <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
+        <div>
+          <p class="kicker">Chapter 03 · One path issued, one specified</p>
+          <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Electronics</h1>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">There are two ways to give Marvin something to think with. One you can solder this weekend from four modules and a reel of wire. The other is two purpose-designed boards that nobody has drawn yet — what follows for those is a specification, not a product.</p>
+        </div>
+      </div>
+    </section>
+
+    <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
+      <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,26px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
+        <li><a href="#choice" style="text-decoration:none;color:var(--color-text)">01 The two paths</a></li>
+        <li><a href="#soldered" style="text-decoration:none;color:var(--color-text)">02 Hand&#8209;soldered</a></li>
+        <li><a href="#architecture" style="text-decoration:none;color:var(--color-text)">03 PCB architecture</a></li>
+        <li><a href="#main-board" style="text-decoration:none;color:var(--color-text)">04 Main board</a></li>
+        <li><a href="#base-board" style="text-decoration:none;color:var(--color-text)">05 Base board</a></li>
+        <li><a href="#harness" style="text-decoration:none;color:var(--color-text)">06 Interconnect</a></li>
+        <li><a href="#manufacturing" style="text-decoration:none;color:var(--color-text)">07 Manufacturing</a></li>
+      </ol>
+    </nav>
+
+    <!-- ═══ 01 The two paths ═══ -->
+    <section id="choice" aria-labelledby="mv-choice" style="padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
+        <div>
+          <p class="kicker">Section 01</p>
+          <h2 id="mv-choice" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">The two paths</h2>
+          <p style="margin:0 0 clamp(24px,3.5vw,40px);max-width:64ch">They share the chassis, the motors, the servos and the firmware. They differ in what sits between the battery and the motors — and in whether you can order it today.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(16px,2.5vw,32px);align-items:start">
+
+            <div class="blueprint" style="position:relative;padding:clamp(16px,2.4vw,26px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px">
+                <p class="kicker kicker-a" style="margin:0">Path A</p>
+                <span class="tag tag-outline mono" style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">Works today</span>
+              </div>
+              <h3 style="margin:0 0 10px;font-size:clamp(24px,3vw,32px);letter-spacing:-.015em">Solder it yourself</h3>
+              <p style="margin:0 0 14px;font-size:15.5px">Four breakout modules, joined by hand-soldered wire, tucked into the chassis. This is what the prototype in the videos is. It drives, it looks around, and it answers over Bluetooth.</p>
+              <dl class="spec">
+                <dt>Parts</dt><dd>ESP32-C3 SuperMini · DRV8833 · lithium charger · 5&nbsp;V step-up</dd>
+                <dt>You need</dt><dd>A soldering iron, an hour, and some patience with 26&nbsp;AWG</dd>
+                <dt>Gets you</dt><dd>Drive, head pan and tilt, Bluetooth, demo mode</dd>
+                <dt>Not this</dt><dd>Eyes, distance, cliff detection, IMU, robot-to-robot IR</dd>
+              </dl>
+              <p style="margin:16px 0 0"><a href="#soldered">Wiring, module list and the three things that catch people out ↓</a></p>
+            </div>
+
+            <div class="blueprint hatch" style="position:relative;padding:clamp(16px,2.4vw,26px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px">
+                <p class="kicker kicker-a" style="margin:0">Path B</p>
+                <span class="tag tag-neutral mono" style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">Specification only</span>
+              </div>
+              <h3 style="margin:0 0 10px;font-size:clamp(24px,3vw,32px);letter-spacing:-.015em">The Marvin PCBs</h3>
+              <p style="margin:0 0 14px;font-size:15.5px">Two boards shaped to the chassis: one in the head, one in the base, joined by a six-wire harness through the neck. <strong style="font-weight:700">They do not exist.</strong> There is no schematic, no layout and no Gerber file — only the specification set out below.</p>
+              <dl class="spec">
+                <dt>Parts</dt><dd>ESP32-S3-WROOM-1 main board · CH32V003 base board</dd>
+                <dt>You need</dt><dd>Someone to design them. That could be you.</dd>
+                <dt>Gets you</dt><dd>Everything on Path A, plus eyes, time-of-flight, IMU, IR and cliff sensing</dd>
+                <dt>Not this</dt><dd>A build you can start this weekend</dd>
+              </dl>
+              <p style="margin:16px 0 0"><a href="#architecture">Read the specification ↓</a> · <a href="contribute.html#electronics">take it on</a></p>
+            </div>
+          </div>
+
+          <p style="margin:clamp(20px,3vw,30px) 0 0;max-width:70ch;font-size:14.5px;color:var(--muted)">The firmware does not care which one you build. Every pin lives in <span class="mono" style="font-size:13px;color:var(--color-text)">config.h</span>, so moving from the C3 on Path A to the S3 on Path B is a configuration change rather than a rewrite. The <a href="build.html#assemble">assembly sequence</a> is written for both, and switches between them.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 02 Hand-soldered ═══ -->
+    <section id="soldered" aria-labelledby="mv-sold" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
+        <div>
+          <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px">
+            <p class="kicker" style="margin:0">Path A · Section 02</p>
+            <span class="tag tag-outline mono" style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">As built</span>
+          </div>
+          <h2 id="mv-sold" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Hand-soldered</h2>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Six signal wires, one motor driver, one microcontroller, and a power chain of two more modules. Everything here is a breakout board bought off a marketplace; none of it was chosen against a current budget.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.1 — Modules</p>
+              <div style="overflow-x:auto">
+                <table class="table">
+                  <thead><tr><th scope="col">Module</th><th scope="col">Does</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono" style="font-size:12.5px">ESP32-C3 SuperMini</td><td style="color:var(--muted)">The microcontroller. Any ESP32 with BLE will do.</td></tr>
+                    <tr><td class="mono" style="font-size:12.5px">DRV8833 breakout</td><td style="color:var(--muted)">Dual H-bridge, one channel per track</td></tr>
+                    <tr><td class="mono" style="font-size:12.5px">Lithium charger board</td><td style="color:var(--muted)">USB-C in, 4.2&nbsp;V charge for the cell</td></tr>
+                    <tr><td class="mono" style="font-size:12.5px">Step-up converter</td><td style="color:var(--muted)">Cell voltage up to 5&nbsp;V, ≥&#8201;1.5&nbsp;A, for logic and servos</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="kicker kicker-a" style="margin:clamp(18px,2.5vw,26px) 0 8px">Table 03.2 — Wiring</p>
+              <div style="overflow-x:auto">
+                <table class="table">
+                  <thead><tr><th scope="col">From</th><th scope="col">To</th></tr></thead>
+                  <tbody>
+                    <tr><td>Motor driver</td><td class="mono" style="font-size:12.5px">IN1→5 · IN2→6 · IN3→20 · IN4→10</td></tr>
+                    <tr><td>Drive motors</td><td style="color:var(--muted)">DRV8833 outputs A and B</td></tr>
+                    <tr><td>Head pan servo</td><td class="mono" style="font-size:12.5px">GPIO 4</td></tr>
+                    <tr><td>Head tilt servo</td><td class="mono" style="font-size:12.5px">GPIO 1</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="mono" style="margin:12px 0 0;font-size:11px;line-height:1.6;color:var(--muted)">A and B are not yet formally assigned to left and right. <a href="reference.html#pinmap">Full pin map</a>.</p>
+            </div>
+
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Notes 03.3 — Things that catch people out</p>
+              <ol style="margin:0;padding:0;list-style:none;border-bottom:1px solid var(--rule)">
+                <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
+                  <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;color:var(--color-accent-700);font-variant-numeric:tabular-nums">01</span>
+                  <div>
+                    <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">Motor B is wired inverted, on purpose</p>
+                    <p style="margin:0;font-size:14.5px;color:var(--muted)">IN3 and IN4 are swapped so that a positive speed on both channels drives forward, without the firmware correcting per side. Wire it the obvious way and one track runs backwards.</p>
+                  </div>
+                </li>
+                <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
+                  <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;color:var(--color-accent-700);font-variant-numeric:tabular-nums">02</span>
+                  <div>
+                    <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">All four motor pins are driven <span class="mono" style="font-weight:500;font-size:15.5px">LOW</span> at startup</p>
+                    <p style="margin:0;font-size:14.5px;color:var(--muted)">Before anything else, because ESP32 pins float during boot and a floating H-bridge input makes the tracks lurch.</p>
+                  </div>
+                </li>
+                <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
+                  <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;color:var(--color-accent-700);font-variant-numeric:tabular-nums">03</span>
+                  <div>
+                    <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">A weak battery browns the board out</p>
+                    <p style="margin:0;font-size:14.5px;color:var(--muted)">If Marvin connects over Bluetooth and then drops the moment the motors draw current, the supply is sagging. It is almost never the firmware. This is the single largest reason Path B exists.</p>
+                  </div>
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <div style="margin-top:clamp(24px,4vw,44px)">
+            <figure class="blueprint" style="margin:0 auto;max-width:940px;position:relative;padding:clamp(8px,1.2vw,12px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <!-- Technical figure, so no .duotone — the same rule as Fig. 02 and
+                   Fig. 06, and here the reason is literal: the wire colours are
+                   the information. Duotone forces one accent hue and varies only
+                   lightness, which would collapse the red rail, the black ground
+                   and the four blue signal lines into one another.
+                   Unlike Fig. 06 the surround is NOT cut to alpha. That figure is
+                   a render whose labels live in the caption; this one is a drawing
+                   whose labels are black type inside the image, so it has to keep
+                   a light ground in both schemes or lose them. The white plate and
+                   its inset are explicit for that reason — it reads as a sheet
+                   laid on the page rather than a blown-out background. -->
+              <!-- The plate scrolls sideways rather than shrinking. Fitted to a
+                   phone this figure is ~235px wide, which is legible as a shape
+                   and useless as a diagram — the pin labels are the content. The
+                   600px floor keeps them readable and lets the reader pan, which
+                   is the same overflow-x treatment the wide tables on this page
+                   already get. Above ~640px of column nothing scrolls. -->
+              <div style="overflow-x:auto;background:#fff;padding:clamp(6px,1.2vw,12px)">
+                <div style="position:relative;aspect-ratio:1380/750;min-width:600px">
+                  <img src="assets/img/marvin-wiring.webp" width="1380" height="750" loading="lazy" decoding="async" alt="The as-built wiring, drawn flat. A 1S 3.7 V LiPo feeds a USB-C TP4056 charger; the charger's output goes two ways — into an MT3608 step-up converter that supplies the 5 V rail for the ESP32-C3 and the servos, and straight to the motor driver's VM pin. Four blue lines run from the ESP32-C3 to the dual H-bridge driver: GPIO 5 to IN1, GPIO 6 to IN2, GPIO 20 to IN3, GPIO 10 to IN4. OUT1 and OUT2 drive one N20 gearmotor, OUT3 and OUT4 the other. GPIO 4 and GPIO 1 leave the board on their own lines to the signal pins of the two SG90 servos, which take power from the same 5 V rail. One ground is shared by every board." style="width:100%;height:100%;object-fit:contain;display:block">
+                </div>
+              </div>
+              <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
+                <span><span style="color:var(--color-accent-700)">Fig. 08</span> &mdash; Path A, drawn flat. The power chain across the top, the six signal lines below.</span>
+                <span>Schematic &#183; as built</span>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ Part B divider ═══ -->
+    <section aria-labelledby="mv-partb" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,72px) 0 0">
+      <div class="blueprint hatch" style="position:relative;padding:clamp(18px,3vw,32px)">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <p class="kicker kicker-a">Path B · Sections 03 to 07</p>
+        <h2 id="mv-partb" style="font-size:clamp(26px,3.6vw,42px);margin:0 0 12px;letter-spacing:-.015em">Everything below is a specification</h2>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(16px,3vw,40px);align-items:start">
+          <p style="margin:0;max-width:60ch">No schematic has been drawn, no board has been laid out, and no prototype has been fabricated. Part numbers, addresses and pin allocations below are the design intent — the thing a schematic would be reviewed against, not a record of something that works.</p>
+          <div>
+            <dl class="spec">
+              <dt>Status</dt><dd>Specification, Rev.&nbsp;A · nothing fabricated</dd>
+              <dt>Boards</dt><dd>2 — main (head) and peripheral (base)</dd>
+              <dt>Wires across the joint</dt><dd>6</dd>
+              <dt>Owner</dt><dd>Unclaimed</dd>
+            </dl>
+            <p style="margin:16px 0 0"><a class="btn btn-primary" href="contribute.html#electronics" style="text-decoration:none">Design these boards</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 03 Architecture ═══ -->
+    <section id="architecture" aria-labelledby="mv-arch" style="padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
+        <div>
+          <p class="kicker">Path B · Section 03</p>
+          <h2 id="mv-arch" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Two boards, six wires</h2>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The chassis decides the architecture. The head has room for a module, a battery and two displays; the base has the motors and a view of the floor; and between them is a joint that rotates, which is the last place you want a loom of analogue sensor lines.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
+            <div style="max-width:64ch">
+              <p>So the split is by function, not by convenience. The main board in the head runs Wi-Fi and Bluetooth, owns power, and drives the displays and the forward-looking sensors. The base board takes a cheap RISC-V microcontroller and gives it one job: generate motor PWM, watch the floor, and shout if the floor disappears.</p>
+              <p>They talk over I²C, main as master and base as slave, which reduces the joint to six conductors: two for power, one ground, two for the bus and one interrupt. Cliff detection cannot afford to wait for a poll, so it gets that dedicated line.</p>
+              <p style="margin-bottom:0">The consequence worth noticing: the base board is not a dumb motor shield. It keeps the tracks turning at the right rate and stops the robot driving off a table even while the ESP32 is busy with something else.</p>
+            </div>
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.4 — Division of labour</p>
+              <div style="overflow-x:auto">
+                <table class="table">
+                  <thead><tr><th scope="col">Board</th><th scope="col">Where</th><th scope="col">Owns</th></tr></thead>
+                  <tbody>
+                    <tr><td>Main</td><td style="color:var(--muted)">Head</td><td style="color:var(--muted)">Radio, power, charging, displays, TOF, IMU, IR, head servo</td></tr>
+                    <tr><td>Peripheral</td><td style="color:var(--muted)">Base</td><td style="color:var(--muted)">Track motors, base servo, four floor sensors</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin:14px 0 0;font-size:14.5px;color:var(--muted)">One I²C master, one slave at <span class="mono" style="font-size:13px;color:var(--color-text)">0x30</span>, and a hardware interrupt that bypasses the bus entirely.</p>
+            </div>
+          </div>
+
+          <figure class="blueprint" style="margin:clamp(24px,4vw,44px) auto 0;max-width:940px;position:relative;padding:clamp(12px,2vw,22px)">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <!-- Block diagram, not a schematic: it answers "what is on which
+                 board, and what crosses the joint". Drawn inline so it takes the
+                 page's ink colour in both schemes; the accent is reserved for the
+                 six conductors, which are the point of the drawing. -->
+            <svg viewBox="0 0 880 620" role="img" aria-label="Block diagram of the two-board architecture. A main board in the head carries the ESP32-S3-WROOM-1 module as I2C master, a USB-C port with ESD protection, a battery charger feeding a 3.3 volt buck converter and a 5 to 6 volt boost converter, two ST7789 displays on a shared SPI bus, a VL53L1X time-of-flight sensor, an LSM6DS3TR-C inertial measurement unit, an infrared transmitter and receiver, and the head servo. A six-wire harness crosses the neck joint carrying V_BOOST, ground, 3.3 volts, I2C data, I2C clock and a base interrupt line. A peripheral board in the base carries the CH32V003 as I2C slave at address 0x30, a DRV8833 dual H-bridge driving two N20 gear motors, the base servo, and four infrared floor sensors." style="display:block;width:100%;height:auto;color:var(--color-text)">
+              <defs>
+                <marker id="mv-ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 Z" fill="currentColor"/></marker>
+              </defs>
+
+              <!-- main board -->
+              <rect x="30" y="26" width="600" height="212" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <text x="46" y="50" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:19px;letter-spacing:.02em">MAIN BOARD</text>
+              <text x="182" y="50" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em">HEAD · I²C MASTER</text>
+
+              <rect x="46" y="66" width="180" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="56" y="86" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">ESP32-S3-WROOM-1</text>
+              <text x="56" y="102" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">8 MB FLASH · 2 MB PSRAM</text>
+
+              <rect x="240" y="66" width="132" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="250" y="86" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">USB-C</text>
+              <text x="250" y="102" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">CDC/JTAG · ESD</text>
+
+              <rect x="386" y="66" width="228" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="396" y="86" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">CHARGER → BUCK 3V3 → BOOST 5–6 V</text>
+              <text x="396" y="102" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">1S LiPo · JST-PH · BOOST_EN</text>
+
+              <rect x="46" y="128" width="180" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="56" y="148" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">2 × ST7789 · EYES</text>
+              <text x="56" y="164" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">SHARED SPI · FPC ZIF</text>
+
+              <rect x="240" y="128" width="132" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="250" y="148" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">VL53L1X · TOF</text>
+              <text x="250" y="164" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">0x29 · 4 m</text>
+
+              <rect x="386" y="128" width="110" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="396" y="148" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">LSM6DS3</text>
+              <text x="396" y="164" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">IMU · 0x6A</text>
+
+              <rect x="504" y="128" width="110" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="514" y="148" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">IR TX/RX</text>
+              <text x="514" y="164" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">940 nm · 38 kHz</text>
+
+              <rect x="46" y="190" width="180" height="32" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3"/>
+              <text x="56" y="211" fill="currentColor" opacity=".7" style="font-family:var(--font-mono);font-size:10.5px">HEAD SERVO — PWM1</text>
+
+              <!-- joint -->
+              <g opacity=".55">
+                <path d="M660 26 L660 238" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/>
+                <path d="M660 382 L660 594" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/>
+                <text x="672" y="132" fill="currentColor" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em">HEAD</text>
+                <text x="672" y="492" fill="currentColor" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em">BASE</text>
+              </g>
+
+              <!-- harness -->
+              <g style="color:var(--color-accent)">
+                <rect x="52" y="252" width="248" height="116" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/>
+                <g stroke="currentColor" stroke-width="1.5" fill="none">
+                  <path d="M76 252 L76 368"/><path d="M116 252 L116 368"/><path d="M156 252 L156 368"/>
+                  <path d="M196 252 L196 368"/><path d="M236 252 L236 368"/><path d="M276 252 L276 368"/>
+                </g>
+                <g fill="currentColor" style="font-family:var(--font-mono);font-size:9px">
+                  <text x="72" y="246">1</text><text x="112" y="246">2</text><text x="152" y="246">3</text>
+                  <text x="192" y="246">4</text><text x="232" y="246">5</text><text x="272" y="246">6</text>
+                </g>
+              </g>
+              <text x="322" y="270" fill="currentColor" opacity=".7" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em">6-WIRE HARNESS · JST-SH 1.0 mm</text>
+              <g fill="currentColor" opacity=".8" style="font-family:var(--font-mono);font-size:11px">
+                <text x="322" y="292">1 V_BOOST 5–6 V · max 2 A</text>
+                <text x="322" y="310">2 GND</text>
+                <text x="322" y="328">3 3V3 · max 200 mA</text>
+                <text x="322" y="346">4 I2C_SDA</text>
+                <text x="322" y="364">5 I2C_SCL</text>
+                <text x="322" y="382">6 BASE_INT · active low</text>
+              </g>
+              <text x="56" y="392" fill="currentColor" opacity=".5" style="font-family:var(--font-mono);font-size:9.5px">FLEXIBLE SILICONE RIBBON — THE JOINT ROTATES</text>
+
+              <!-- base board -->
+              <rect x="30" y="410" width="600" height="184" fill="none" stroke="currentColor" stroke-width="1.4"/>
+              <text x="46" y="434" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:19px;letter-spacing:.02em">PERIPHERAL BOARD</text>
+              <text x="253" y="434" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.14em">BASE · I²C SLAVE 0x30</text>
+
+              <rect x="46" y="450" width="180" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="56" y="470" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">CH32V003F4P6</text>
+              <text x="56" y="486" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">RISC-V · 48 MHz</text>
+
+              <rect x="240" y="450" width="150" height="46" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="250" y="470" fill="currentColor" style="font-family:var(--font-mono);font-size:11px">DRV8833</text>
+              <text x="250" y="486" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:9.5px">DUAL H-BRIDGE · 1.5 A</text>
+
+              <rect x="404" y="450" width="210" height="46" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3"/>
+              <text x="414" y="470" fill="currentColor" opacity=".7" style="font-family:var(--font-mono);font-size:10.5px">2 × N20 GEAR MOTOR</text>
+              <text x="414" y="486" fill="currentColor" opacity=".5" style="font-family:var(--font-mono);font-size:9.5px">JST-ZH 1.5 mm</text>
+
+              <rect x="46" y="512" width="180" height="32" fill="none" stroke="currentColor" stroke-width="1.1" stroke-dasharray="3 3"/>
+              <text x="56" y="533" fill="currentColor" opacity=".7" style="font-family:var(--font-mono);font-size:10.5px">BASE SERVO — PWM2</text>
+
+              <rect x="240" y="512" width="374" height="32" fill="none" stroke="currentColor" stroke-width="1.1"/>
+              <text x="250" y="533" fill="currentColor" style="font-family:var(--font-mono);font-size:10.5px">4 × IR FLOOR SENSOR — ONE PER CORNER → 4 ADC → BASE_INT</text>
+
+              <path d="M226 473 L240 473" stroke="currentColor" stroke-width="1.1" marker-end="url(#mv-ar)"/>
+              <path d="M390 473 L404 473" stroke="currentColor" stroke-width="1.1" marker-end="url(#mv-ar)"/>
+              <text x="46" y="576" fill="currentColor" opacity=".5" style="font-family:var(--font-mono);font-size:9.5px">THE BASE MCU POLLS THE FLOOR AND MAKES ITS OWN PWM — THE ESP32 IS NOT IN THAT LOOP</text>
+            </svg>
+            <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
+              <span><span style="color:var(--color-accent-700)">Fig. 09</span> — The specified architecture. Six conductors cross the neck; everything else stays on its own board.</span>
+              <span>Block diagram &#183; specification</span>
+            </figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 04 Main board ═══ -->
+    <section id="main-board" aria-labelledby="mv-main" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
+        <div>
+          <p class="kicker">Path B · Section 04</p>
+          <h2 id="mv-main" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Main board — head</h2>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">High-level logic, the radio, all of the power management, both displays and the forward-looking sensors.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.5 — Core and system logic</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>MCU module</dt><dd><span class="mono">ESP32-S3-WROOM-1-N8R2</span> — dual-core LX7, 8&nbsp;MB flash, 2&nbsp;MB PSRAM, PCB antenna</dd>
+                  <dt>USB</dt><dd>16-pin USB Type-C with 5.1&nbsp;kΩ CC pull-downs — power in, and native USB CDC/JTAG for programming and debug</dd>
+                  <dt>Protection</dt><dd><span class="mono">USBLC6-2SC6</span> ESD array on D+/D−</dd>
+                  <dt>Switches</dt><dd>Tactile <span class="mono">RESET</span> and <span class="mono">BOOT</span> (IO0)</dd>
+                </dl>
+              </div>
+
+              <p class="kicker kicker-a" style="margin:clamp(20px,3vw,28px) 0 8px">Spec 03.6 — Power</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>Charger</dt><dd><span class="mono">ETA6002</span> or <span class="mono">TP4056</span> linear charger, 500&nbsp;mA–1&nbsp;A, from USB-C V<sub>BUS</sub> into a 2-pin JST-PH 2.0&nbsp;mm battery header</dd>
+                  <dt>3.3 V rail</dt><dd><span class="mono">SY8089AAC</span> 2&nbsp;A buck, 3.0–4.2&nbsp;V in. Feeds the ESP32-S3, both ST7789s, the TOF, the IMU and the base board's logic</dd>
+                  <dt>Boost rail</dt><dd><span class="mono">MT3608</span> step-up, 5.0–6.0&nbsp;V, dedicated to the head servo and the base board's motors and servo. A <span class="mono">Boost_EN</span> line cuts it during sleep</dd>
+                  <dt>Telemetry</dt><dd>100&nbsp;kΩ / 100&nbsp;kΩ divider from the battery positive terminal to an ADC pin</dd>
+                </dl>
+              </div>
+            </div>
+
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.7 — Peripherals and interfaces</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>Distance</dt><dd><span class="mono">VL53L1X</span> time-of-flight, I²C <span class="mono">0x29</span>, on the forward board edge — objects to 4&nbsp;m</dd>
+                  <dt>Motion</dt><dd><span class="mono">LSM6DS3TR-C</span> 6-axis gyro and accelerometer, I²C <span class="mono">0x6A</span></dd>
+                  <dt>Infrared</dt><dd>940&nbsp;nm high-power LED driven by an <span class="mono">AO3400</span> N-channel MOSFET (<span class="mono">IR_TX</span>), with an <span class="mono">IRM-3638T</span> 38&nbsp;kHz demodulating receiver (<span class="mono">IR_RX</span>) — so two Marvins can notice each other</dd>
+                  <dt>Displays</dt><dd>2 × 0.5&nbsp;mm-pitch FPC ZIF connectors, 8- or 10-pin, for naked 1.14″ ST7789 panels. Shared SPI bus, one chip-select each</dd>
+                  <dt>Head servo</dt><dd>3-pin 2.54&nbsp;mm or JST-XH surface-mount header — <span class="mono">V_BOOST</span>, <span class="mono">GND</span>, <span class="mono">SERVO_PWM1</span></dd>
+                </dl>
+              </div>
+              <p style="margin:14px 0 0;font-size:14.5px;color:var(--muted)">The two panels are the eyes. They are the reason the head is the board that carries the processor, rather than the base.</p>
+            </div>
+          </div>
+
+          <div style="margin-top:clamp(24px,3.5vw,40px)">
+            <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.8 — ESP32-S3 pin allocation</p>
+            <div style="overflow-x:auto;max-width:84ch">
+              <table class="table">
+                <thead><tr><th scope="col">Function</th><th scope="col">Signal</th><th scope="col">GPIO</th></tr></thead>
+                <tbody>
+                  <tr><td>Display SPI, shared</td><td class="mono" style="font-size:12.5px">SCLK, MOSI, DC, RST</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">12, 11, 13, 14</td></tr>
+                  <tr><td>Display control</td><td class="mono" style="font-size:12.5px">CS1, CS2, BL_PWM</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">10, 9, 46</td></tr>
+                  <tr><td>I²C — base, TOF, IMU</td><td class="mono" style="font-size:12.5px">SDA, SCL</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">1, 2</td></tr>
+                  <tr><td>Base interconnect</td><td class="mono" style="font-size:12.5px">BASE_INT</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">3</td></tr>
+                  <tr><td>IR transceiver</td><td class="mono" style="font-size:12.5px">IR_TX (PWM), IR_RX</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">4, 5</td></tr>
+                  <tr><td>Head servo</td><td class="mono" style="font-size:12.5px">SERVO_PWM1</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">6</td></tr>
+                  <tr><td>Power control and sensing</td><td class="mono" style="font-size:12.5px">Boost_EN, Battery_ADC</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">7, 8</td></tr>
+                  <tr><td>Native USB</td><td class="mono" style="font-size:12.5px">USB_D−, USB_D+</td><td class="mono" style="font-size:13px;color:var(--color-accent-700)">19, 20</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p style="margin:14px 0 0;max-width:64ch;font-size:14.5px;color:var(--muted)">This allocation is for the S3 on Path B, and no firmware profile matches it yet — what ships today is the C3 map of Path A, in the <a href="reference.html#pinmap">current pin map</a>. Pins live in <span class="mono" style="font-size:13px;color:var(--color-text)">config.h</span> rather than in the drivers, which is what makes adding a second profile a configuration change instead of a rewrite.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 05 Base board ═══ -->
+    <section id="base-board" aria-labelledby="mv-base" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
+        <div>
+          <p class="kicker">Path B · Section 05</p>
+          <h2 id="mv-base" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Peripheral board — base</h2>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Motor driving, floor sensing and base actuation, run by a microcontroller that costs less than the connector it plugs into.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.9 — Co-processor</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>Sub-MCU</dt><dd><span class="mono">WCH CH32V003F4P6</span>, TSSOP-20, RISC-V core at 48&nbsp;MHz</dd>
+                  <dt>Role</dt><dd>I²C slave at <span class="mono">0x30</span>. Polls the floor sensors continuously, generates the high-frequency PWM for the DC motors and the base servo, and asserts an interrupt to the ESP32 the moment it sees a drop</dd>
+                  <dt>Programming</dt><dd>1-pin <span class="mono">SWIO</span> header for factory flashing</dd>
+                </dl>
+              </div>
+
+              <p class="kicker kicker-a" style="margin:clamp(20px,3vw,28px) 0 8px">Spec 03.10 — Motors and actuation</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>Driver</dt><dd><span class="mono">TI DRV8833</span> or equivalent <span class="mono">AT8833</span> dual H-bridge, 1.5&nbsp;A RMS per channel</dd>
+                  <dt>V<sub>MOT</sub></dt><dd>The <span class="mono">V_BOOST</span> 5.0–6.0&nbsp;V rail from the main board</dd>
+                  <dt>V<sub>CC</sub></dt><dd>The 3.3&nbsp;V rail</dd>
+                  <dt>Wheel motors</dt><dd>2 × 2-pin JST-ZH 1.5&nbsp;mm, or solder pads, for the N20 gear motors. Four PWM channels from the CH32V003 — <span class="mono">AIN1/AIN2</span> and <span class="mono">BIN1/BIN2</span> — give forward, reverse and brake</dd>
+                  <dt>Base servo</dt><dd>3-pin 2.54&nbsp;mm header — <span class="mono">V_BOOST</span>, <span class="mono">GND</span>, <span class="mono">SERVO_PWM2</span>, timed by the CH32V003</dd>
+                </dl>
+              </div>
+            </div>
+
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.11 — Floor and cliff sensing</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>Sensors</dt><dd>4 × <span class="mono">Everlight ITR8307/TR8</span> or <span class="mono">Vishay TCRT5000</span> reflective optical sensors, one at each corner of the base</dd>
+                  <dt>Emitters</dt><dd>Driven from the 3.3&nbsp;V rail through current-limiting resistors, switchable by a single N-FET so an idle robot stops paying for them</dd>
+                  <dt>Receivers</dt><dd>Phototransistor outputs into four dedicated ADC channels on the CH32V003</dd>
+                  <dt>Trigger</dt><dd>An internal threshold raises <span class="mono">BASE_INT</span> when a corner sees a void — the edge of a table</dd>
+                </dl>
+              </div>
+              <div class="blueprint" style="position:relative;margin-top:clamp(18px,2.5vw,26px);padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <p class="kicker kicker-a" style="margin:0 0 8px">Why a second microcontroller</p>
+                <p style="margin:0;font-size:14.5px">Because a table edge does not wait for the radio stack. Cliff detection is a hard real-time job with a very short deadline, and giving it its own processor and its own interrupt line means the answer does not depend on what the ESP32 happens to be doing.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 06 Interconnect ═══ -->
+    <section id="harness" aria-labelledby="mv-harness" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">06</div>
+        <div>
+          <p class="kicker">Path B · Section 06</p>
+          <h2 id="mv-harness" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Board to board</h2>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">One harness bridges the two boards. Six conductors, chosen so that no analogue sensor array and no individual motor PWM line ever has to cross a joint that rotates.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Table 03.12 — Harness pinout</p>
+              <div style="overflow-x:auto">
+                <table class="table">
+                  <thead><tr><th scope="col" style="width:2.6em">#</th><th scope="col">Signal</th><th scope="col">Limits</th><th scope="col">Carries</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">1</td><td class="mono" style="font-size:12.5px">V_BOOST</td><td class="mono" style="font-size:12px;color:var(--muted)">5.0–6.0 V · 2 A</td><td style="color:var(--muted)">Power for the N20s and the base servo</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">2</td><td class="mono" style="font-size:12.5px">GND</td><td class="mono" style="font-size:12px;color:var(--muted)">0 V</td><td style="color:var(--muted)">Common return</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">3</td><td class="mono" style="font-size:12.5px">3V3</td><td class="mono" style="font-size:12px;color:var(--muted)">3.3 V · 200 mA</td><td style="color:var(--muted)">Logic for the CH32V003 and the IR floor sensors</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">4</td><td class="mono" style="font-size:12.5px">I2C_SDA</td><td class="mono" style="font-size:12px;color:var(--muted)">3.3 V logic</td><td style="color:var(--muted)">Data — pulled up on the main board</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">5</td><td class="mono" style="font-size:12.5px">I2C_SCL</td><td class="mono" style="font-size:12px;color:var(--muted)">3.3 V logic</td><td style="color:var(--muted)">Clock — pulled up on the main board</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">6</td><td class="mono" style="font-size:12.5px">BASE_INT</td><td class="mono" style="font-size:12px;color:var(--muted)">3.3 V · active low</td><td style="color:var(--muted)">Cliff interrupt, base to ESP32</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 03.13 — Connector and cable</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>Connector</dt><dd>6-pin JST-SH 1.0&nbsp;mm, or JST-GH 1.25&nbsp;mm, right-angle surface-mount — the same part at both ends</dd>
+                  <dt>Cable</dt><dd>6-core highly flexible silicone ribbon. The head articulates, and ordinary stranded ribbon work-hardens and fails at the joint</dd>
+                  <dt>Route</dt><dd>Up through the neck opening, before the neck is bolted down — see <a href="build.html#assemble">the PCB assembly sequence</a></dd>
+                </dl>
+              </div>
+              <p style="margin:16px 0 0;max-width:56ch;font-size:14.5px;color:var(--muted)">This is the pre-crimped cable in the bill of materials. It is the one part of Path B you can buy today, because the crimping is the part nobody wants to do by hand.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 07 Manufacturing ═══ -->
+    <section id="manufacturing" aria-labelledby="mv-mfg" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">07</div>
+        <div>
+          <p class="kicker">Path B · Section 07</p>
+          <h2 id="mv-mfg" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Manufacturing</h2>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The specification was costed against a turnkey assembler's catalogue, which is why the part choices look conservative. They are: every one of them is a stock part somebody else already places by the reel.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <dl class="spec">
+                <dt>Stackup</dt><dd>Both boards 2-layer or 4-layer FR4, 1.6&nbsp;mm, 1&nbsp;oz copper</dd>
+                <dt>Parts</dt><dd>Every component — the ESP32 module, CH32V003, MT3608, SY8089, motor driver, connectors — from an assembler's basic and extended libraries</dd>
+                <dt>Assembly</dt><dd>100&nbsp;% turnkey SMT. Headers and ZIF connectors are specified as surface-mount so there is no hand through-hole work in a 100–1000 unit run</dd>
+                <dt>Supplier</dt><dd>Costed against JLCPCB; nothing here depends on it. Any assembler with an equivalent stock library will do</dd>
+              </dl>
+            </div>
+            <div>
+              <p style="margin:0 0 12px;max-width:60ch">There is one part of Marvin that no 3D printer and no assembler will make for you, and it is not a board.</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <p class="kicker kicker-a" style="margin:0 0 8px">The face</p>
+                <p style="margin:0 0 10px;font-size:14.5px">The front glass is the only part that needs a contract manufacturer: laser-cut, screen-printed, ideally in a toughened glass. Plenty of shops on Alibaba quote both operations together in small runs.</p>
+                <p style="margin:0;font-size:14.5px;color:var(--muted)">Until you order one, print the face plate in black PLA. It is the same outline and it hides the same electronics — <a href="build.html#print">see the print section</a>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="blueprint hatch" style="position:relative;margin-top:clamp(24px,3.5vw,40px);padding:clamp(16px,2.4vw,26px)">
+            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+            <p class="kicker kicker-a">What Path B still needs</p>
+            <h3 style="margin:0 0 12px;font-size:clamp(20px,2.4vw,26px)">In order, and none of it started</h3>
+            <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.75;max-width:64ch">
+              <li>A schematic for each board, drawn against this specification</li>
+              <li>A measured current budget — the numbers above are chosen, not verified</li>
+              <li>A layout for each board that fits inside part 01 and part 05</li>
+              <li>Firmware for the CH32V003, and an I²C register map the ESP32 can talk to</li>
+              <li>One fabricated set, and an honest account of what was wrong with it</li>
+            </ol>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <a class="btn btn-primary" href="contribute.html#electronics" style="text-decoration:none">Take a piece of this</a>
+              <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Open the repository</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
+    <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+      <span>Marvin — open source robot toy</span>
+      <span>Sheet 03 of 06</span>
+      <span>Rev. A · Path B specified</span>
+      <span>MIT · CERN-OHL-S-2.0</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

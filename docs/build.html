@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Build — Marvin</title>
-<meta name="description" content="Print the parts, wire the electronics, assemble the chassis and flash the firmware.">
+<meta name="description" content="What to buy, what to print, and seventeen steps to put it together — for a hand-soldered build or for the Marvin PCBs.">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
 <meta property="og:title" content="Build — Marvin">
-<meta property="og:description" content="Print the parts, wire the electronics, assemble the chassis and flash the firmware.">
+<meta property="og:description" content="What to buy, what to print, and seventeen steps to put it together — for a hand-soldered build or for the Marvin PCBs.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -30,9 +30,10 @@
       <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
         <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
         <a href="build.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">02 Build</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">03 Drive</a>
-        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">04 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">05 Reference</a>
+        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
+        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
+        <a href="contribute.html" style="text-decoration:none;color:var(--muted)">05 Contribute</a>
+        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
       </nav>
       <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
     </div>
@@ -44,34 +45,110 @@
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 02 · Partially issued</p>
+          <p class="kicker">Chapter 02 · Issued</p>
           <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Build</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Print the eight parts, wire six signals, assemble, flash, drive. Two of those five stages are documented properly. The others say so.</p>
+          <p style="margin:0 0 18px;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Six items to buy, nine parts to print, fifteen steps to assemble. One evening, if the printer has been running while you were at work.</p>
+          <p style="margin:0;max-width:64ch;color:var(--muted)">The one decision to make first is the electronics: solder four modules together yourself, or build the two Marvin PCBs — which are specified but not yet designed. It changes what you buy and five of the assembly steps. <a href="electronics.html#choice">The choice is set out in chapter 03</a>.</p>
         </div>
       </div>
     </section>
 
     <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
       <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,30px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#print" style="text-decoration:none;color:var(--color-text)">01 Print</a></li>
-        <li><a href="#electronics" style="text-decoration:none;color:var(--color-text)">02 Electronics</a></li>
-        <li><a href="#assemble" style="text-decoration:none;color:var(--muted)">03 Assemble <span style="color:var(--color-accent-700)">·&#8201;to be issued</span></a></li>
+        <li><a href="#parts" style="text-decoration:none;color:var(--color-text)">01 Parts and tools</a></li>
+        <li><a href="#print" style="text-decoration:none;color:var(--color-text)">02 Print</a></li>
+        <li><a href="#assemble" style="text-decoration:none;color:var(--color-text)">03 Assemble</a></li>
         <li><a href="#flash" style="text-decoration:none;color:var(--color-text)">04 Flash</a></li>
         <li><a href="#drive" style="text-decoration:none;color:var(--color-text)">05 First drive</a></li>
       </ol>
     </nav>
 
-    <section id="print" aria-labelledby="mv-print" style="padding:clamp(36px,5vw,80px) 0">
+    <!-- ═══ 01 Parts and tools ═══ -->
+    <section id="parts" aria-labelledby="mv-bom" style="padding:clamp(36px,5vw,80px) 0">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Stage 01</p>
+          <p class="kicker">Stage 01</p>
+          <h2 id="mv-bom" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Parts and tools</h2>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Everything except the printed parts and the front glass comes from Amazon or AliExpress. Nothing is exotic and nothing is a kit.</p>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Table 02.1 — Every build</p>
+              <div style="overflow-x:auto">
+                <table class="table">
+                  <thead><tr><th scope="col" style="width:3em">Qty</th><th scope="col">Part</th><th scope="col">Specification</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">2</td><td>Mini servo</td><td style="color:var(--muted)">SG90, 180°, plastic gears</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">2</td><td>N20 gear motor</td><td style="color:var(--muted)">3–6 V, 52–104 rpm, with leads</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">4</td><td>Brass sleeve bearing</td><td style="color:var(--muted)">8 mm bore × 10 mm OD × 12 mm long</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">2</td><td>Display</td><td style="color:var(--muted)">Naked 1.14″ ST7789 panel, 0.5 mm-pitch FPC tail</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">1</td><td>Pre-crimped cable</td><td style="color:var(--muted)">6-core flexible silicone ribbon, 6-pin JST-SH 1.0 mm</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">1</td><td>LiPo battery</td><td style="color:var(--muted)">1000 mAh, 20 × 10 × 50 mm, JST-PH 2.0 mm</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin:12px 0 0;max-width:56ch;font-size:14.5px;color:var(--muted)">The displays and the pre-crimped cable belong to the PCB build — the displays plug into the main board's FPC connectors, and the cable is the harness across the neck. The hand-soldered sequence below does not install either.</p>
+            </div>
+
+            <div>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Table 02.2 — Hand-soldered build only</p>
+              <div style="overflow-x:auto">
+                <table class="table">
+                  <thead><tr><th scope="col" style="width:3em">Qty</th><th scope="col">Part</th><th scope="col">Specification</th></tr></thead>
+                  <tbody>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">1</td><td>ESP32-C3 SuperMini</td><td style="color:var(--muted)">Or any other ESP32 with BLE</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">1</td><td>DRV8833 module</td><td style="color:var(--muted)">Dual H-bridge motor driver board</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">1</td><td>Lithium charger module</td><td style="color:var(--muted)">USB-C, 4.2 V — the ultra-mini boards are the right size</td></tr>
+                    <tr><td class="mono" style="color:var(--color-accent-700)">1</td><td>Step-up converter</td><td style="color:var(--muted)">DC-DC to 5 V, ≥ 1.5 A</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="blueprint hatch" style="position:relative;margin-top:clamp(16px,2.4vw,24px);padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <p class="kicker kicker-a" style="margin:0 0 8px">PCB build only</p>
+                <p style="margin:0;font-size:14.5px;color:var(--muted)">Two boards — one for the head, one for the base. There is nothing to add to a basket: they have not been designed. <a href="electronics.html#architecture">The specification is in chapter 03</a>.</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);margin-top:clamp(24px,3.5vw,40px);align-items:start">
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Tools — every build</p>
+              <dl class="spec">
+                <dt>Screwdriver</dt><dd>A mini driver that fits the screws shipped with the servos. It also has to reach down the neck opening</dd>
+                <dt>Pliers</dt><dd>Mini electronics pliers, for trimming the servo horn</dd>
+              </dl>
+            </div>
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Tools — hand-soldered build only</p>
+              <dl class="spec">
+                <dt>Iron</dt><dd>Any temperature-controlled soldering iron with a fine tip</dd>
+                <dt>Solder</dt><dd>Thin leaded or lead-free wire, whichever you are used to</dd>
+                <dt>Wire</dt><dd>Stranded hook-up wire, around 26 AWG. You will use less than a metre</dd>
+              </dl>
+            </div>
+          </div>
+
+          <p style="margin:clamp(18px,2.5vw,26px) 0 0;max-width:70ch;font-size:14.5px;color:var(--muted)">Screws and horns come in the bag taped to every SG90 servo — the sequence below uses the double-sided horn, the single-sided horn, and four of the small screws. No separate fastener kit is needed.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ 02 Print ═══ -->
+    <section id="print" aria-labelledby="mv-print" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
+      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
+        <div>
+          <p class="kicker">Stage 02</p>
           <h2 id="mv-print" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Print</h2>
-          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Eight parts, all in PLA, and the whole set nests on a single plate.</p>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Eight parts in PLA, all on one plate, plus the track links in a flexible filament. The repository carries sliced projects, so on a Bambu machine there is nothing to arrange.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 02.1 — Parts to print</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Table 02.3 — Parts to print</p>
               <div style="overflow-x:auto">
                 <table class="table">
                   <thead><tr><th scope="col" style="width:3.4em">#</th><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Material</th><th scope="col">Supports</th></tr></thead>
@@ -80,264 +157,303 @@
                     <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">02</td><td>Track cover, left</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">No</td></tr>
                     <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">03</td><td>Track cover, right</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">No</td></tr>
                     <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">04</td><td>Wheel</td><td>4</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">Normal</td></tr>
-                    <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">05</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">No</td></tr>
-                    <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">No</td></tr>
+                    <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">05</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">Normal</td></tr>
+                    <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">Normal</td></tr>
                     <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">Tree</td></tr>
                     <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td><td style="color:var(--muted)">No</td></tr>
+                    <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">09</td><td>Track link</td><td style="color:var(--muted)">many</td><td style="color:var(--muted)">TPU</td><td style="color:var(--muted)">—</td></tr>
                   </tbody>
                 </table>
               </div>
-              
+              <p style="margin:12px 0 0;max-width:56ch;font-size:14.5px;color:var(--muted)">The support column is taken from the sliced projects, where it is set per object. Part 09 is the only one that genuinely needs a flexible filament, and it is not on the shared plate — its quantity is not yet confirmed against the assembly.</p>
+              <p style="margin:12px 0 0;max-width:56ch;font-size:14.5px;color:var(--muted)">The face plate is not yet exported as a mesh. It is the last gap in the printed set.</p>
             </div>
 
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Spec 02.2 — Print settings</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Spec 02.4 — Print settings</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <dl style="margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(14px,2vw,24px);font-size:14.5px">
-                  <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Material</dt>
-                  <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)">PLA throughout</dd>
-                  <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Layer height</dt>
-                  <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule);font-family:var(--font-mono)">0.08 mm</dd>
-                  <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Walls</dt>
-                  <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule);font-family:var(--font-mono)">3</dd>
-                  <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Infill</dt>
-                  <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)"><span style="font-family:var(--font-mono)">20%</span> structural · <span style="font-family:var(--font-mono)">40%</span> neck and head mount</dd>
-                  <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0">Supports</dt>
-                  <dd style="margin:0;padding:9px 0">Tree on the body (01) and neck (07) · normal on the wheels (04)</dd>
+                <dl class="spec">
+                  <dt>Material</dt><dd>PLA — TPU for the track links</dd>
+                  <dt>Nozzle</dt><dd class="mono">0.4 mm</dd>
+                  <dt>Layer height</dt><dd class="mono">0.20 mm</dd>
+                  <dt>Walls</dt><dd class="mono">3</dd>
+                  <dt>Infill</dt><dd><span class="mono">15 %</span> grid</dd>
+                  <dt>Supports</dt><dd>Per part, as in the table opposite. Tree on the body and neck; normal on the wheels, head base and head cover</dd>
+                  <dt>Brim</dt><dd>Automatic</dd>
                 </dl>
               </div>
-              <p style="margin:14px 0 0;max-width:52ch;font-size:14.5px;color:var(--muted)">These figures are starting points, not validated settings. Nobody has yet printed the full set twice on two different machines. If you do, <a href="contribute.html#mechanics">report what worked</a>.</p>
+              <p style="margin:14px 0 0;max-width:52ch;font-size:14.5px;color:var(--muted)">These are the settings in the sliced projects, not measured optima — nobody has yet printed the full set twice on two different machines. If you do, <a href="contribute.html#mechanics">report what worked</a>.</p>
+
+              <p class="kicker kicker-a" style="margin:clamp(20px,3vw,28px) 0 8px">Files 02.5 — What to download</p>
+              <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+                <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+                <dl class="spec">
+                  <dt>Bambu A1 mini</dt><dd class="mono" style="font-size:13px">3d_print/marvin_BambuLab_A1_Mini.3mf</dd>
+                  <dt>Bambu X1C</dt><dd class="mono" style="font-size:13px">3d_print/marvin_BambuLab_x1C.3mf</dd>
+                  <dt>Any slicer</dt><dd class="mono" style="font-size:13px">3d_print/marvin_generic_printer.3mf</dd>
+                  <dt>Meshes</dt><dd class="mono" style="font-size:13px">stl/01_body.stl … 09_track.stl</dd>
+                </dl>
+              </div>
+              <p style="margin:14px 0 0;max-width:52ch;font-size:14.5px;color:var(--muted)">All of it is under <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/</span> and tracked through Git LFS — run <span class="mono" style="font-size:13px;color:var(--color-text)">git lfs install</span> before cloning, or you will get pointer files instead of geometry. <a href="reference.html#files">Every file and its format</a>.</p>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(16px,2.5vw,32px);margin-top:clamp(24px,3.5vw,40px);align-items:start">
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p class="kicker kicker-a" style="margin:0 0 8px">FDM or SLS</p>
+              <p style="margin:0 0 10px;font-size:14.5px">Print it in PLA on the machine you own — that is what the parts are dimensioned for, and what the sliced projects are set up for.</p>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">If you want the object rather than the prototype, have the set printed in white PA12 by an SLS service. Same geometry, no layer lines, no supports to pick out of the neck.</p>
+            </div>
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p class="kicker kicker-a" style="margin:0 0 8px">The face</p>
+              <p style="margin:0 0 10px;font-size:14.5px">Print the face plate in black PLA. It is the only part that wants a second colour, and it is the part everybody looks at.</p>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">The finished version is laser-cut, screen-printed glass, and it is the one part of Marvin that needs a contract manufacturer — <a href="electronics.html#manufacturing">see chapter 03</a>.</p>
             </div>
           </div>
 
           <div style="margin-top:clamp(24px,4vw,44px)">
             <figure class="blueprint" style="margin:0 auto;max-width:800px;position:relative;padding:clamp(8px,1.2vw,12px)">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <!-- No .duotone, unlike the video figures: duotone is the design
-               system's treatment for photography, and it forces one accent hue
-               at a single saturation, flattening the surface shading a parts
-               plate depends on. This is a technical figure, so it follows
-               Fig. 02's neutral convention. Colours are the source render's,
-               untouched; only the surround was cut to alpha so the build plate
-               floats on the page — hence no background fill on the box below. -->
-          <div style="position:relative;aspect-ratio:1283/1209">
-            <img src="assets/img/marvin-print-plate.webp" width="1283" height="1209" loading="lazy" decoding="async" alt="Every printed part nested on a single build plate, seen from above: the head cover, body panel, neck and neck mount across the top, the head base and the two track covers below them, and the four wheels down the right-hand edge." style="width:100%;height:100%;object-fit:contain;display:block">
-          </div>
-          <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Fig. 06</span> — The whole robot on one plate. Eleven objects: four wheels, and one each of the other seven parts.</span>
-            <span>Plate view &#183; all PLA</span>
-          </figcaption>
-        </figure>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="electronics" aria-labelledby="mv-elec" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
-        <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Stage 02</p>
-          <h2 id="mv-elec" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Electronics</h2>
-          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Six signal wires, one motor driver, one microcontroller. There is no schematic and no board yet — this is breadboard wiring, honestly labelled.</p>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
-            <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Table 02.3 — Wiring</p>
-              <div style="overflow-x:auto">
-                <table class="table">
-                  <thead><tr><th scope="col">Component</th><th scope="col">Part</th><th scope="col">Connection</th></tr></thead>
-                  <tbody>
-                    <tr><td>Microcontroller</td><td style="font-family:var(--font-mono);font-size:12.5px">ESP32-C3 SuperMini</td><td style="color:var(--muted)">—</td></tr>
-                    <tr><td>Motor driver</td><td style="font-family:var(--font-mono);font-size:12.5px">DRV8833 breakout</td><td style="font-family:var(--font-mono);font-size:12.5px">IN1→5 · IN2→6 · IN3→20 · IN4→10</td></tr>
-                    <tr><td>Drive motors</td><td style="font-family:var(--font-mono);font-size:12.5px">2 × brushed DC gearmotor</td><td style="color:var(--muted)">DRV8833 outputs A and B</td></tr>
-                    <tr><td>Head pan servo</td><td style="font-family:var(--font-mono);font-size:12.5px">SG90-class</td><td style="font-family:var(--font-mono);font-size:12.5px">GPIO 4</td></tr>
-                    <tr><td>Head tilt servo</td><td style="font-family:var(--font-mono);font-size:12.5px">SG90-class</td><td style="font-family:var(--font-mono);font-size:12.5px">GPIO 1</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p style="margin:12px 0 0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">A and B are not yet formally assigned to left and right. <a href="reference.html#pinmap">Full pin map</a>.</p>
-            </div>
-
-            <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Notes 02.4 — Wiring</p>
-              <ol style="margin:0;padding:0;list-style:none;border-bottom:1px solid var(--rule)">
-                <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
-                  <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;color:var(--color-accent-700);font-variant-numeric:tabular-nums">01</span>
-                  <div>
-                    <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">Motor B is wired inverted, on purpose</p>
-                    <p style="margin:0;font-size:14.5px;color:var(--muted)">IN3 and IN4 are swapped so that a positive speed on both channels drives forward, without the firmware correcting per side. Wire it the obvious way and one track runs backwards.</p>
-                  </div>
-                </li>
-                <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
-                  <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;color:var(--color-accent-700);font-variant-numeric:tabular-nums">02</span>
-                  <div>
-                    <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">All four motor pins are driven <span style="font-family:var(--font-mono);font-weight:500;font-size:15.5px">LOW</span> at startup</p>
-                    <p style="margin:0;font-size:14.5px;color:var(--muted)">Before anything else, because ESP32 pins float during boot and a floating H-bridge input makes the tracks lurch.</p>
-                  </div>
-                </li>
-                <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
-                  <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;color:var(--color-accent-700);font-variant-numeric:tabular-nums">03</span>
-                  <div>
-                    <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">A weak battery browns the board out</p>
-                    <p style="margin:0;font-size:14.5px;color:var(--muted)">If Marvin connects over Bluetooth and then drops the moment the motors draw current, the supply is sagging. It is almost never the firmware.</p>
-                  </div>
-                </li>
-              </ol>
-            </div>
-          </div>
-
-          <div style="margin-top:clamp(24px,4vw,44px)">
-            <figure class="blueprint" style="margin:0 auto;max-width:940px;position:relative;padding:clamp(8px,1.2vw,12px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <!-- Technical figure, so no .duotone — the same rule as Fig. 02 and
-                   Fig. 06, and here the reason is literal: the wire colours are
-                   the information. Duotone forces one accent hue and varies only
-                   lightness, which would collapse the red rail, the black ground
-                   and the four blue signal lines into one another.
-                   Unlike Fig. 06 the surround is NOT cut to alpha. That figure is
-                   a render whose labels live in the caption; this one is a drawing
-                   whose labels are black type inside the image, so it has to keep
-                   a light ground in both schemes or lose them. The white plate and
-                   its inset are explicit for that reason — it reads as a sheet
-                   laid on the page rather than a blown-out background. -->
-              <!-- The plate scrolls sideways rather than shrinking. Fitted to a
-                   phone this figure is ~235px wide, which is legible as a shape
-                   and useless as a diagram — the pin labels are the content. The
-                   600px floor keeps them readable and lets the reader pan, which
-                   is the same overflow-x treatment the wide tables on this page
-                   already get. Above ~640px of column nothing scrolls. -->
-              <div style="overflow-x:auto;background:#fff;padding:clamp(6px,1.2vw,12px)">
-                <div style="position:relative;aspect-ratio:1380/750;min-width:600px">
-                  <img src="assets/img/marvin-wiring.webp" width="1380" height="750" loading="lazy" decoding="async" alt="The as-built wiring, drawn flat. A 1S 3.7 V LiPo feeds a USB-C TP4056 charger; the charger's output goes two ways — into an MT3608 step-up converter that supplies the 5 V rail for the ESP32-C3 and the servos, and straight to the motor driver's VM pin. Four blue lines run from the ESP32-C3 to the dual H-bridge driver: GPIO 5 to IN1, GPIO 6 to IN2, GPIO 20 to IN3, GPIO 10 to IN4. OUT1 and OUT2 drive one N20 gearmotor, OUT3 and OUT4 the other. GPIO 4 and GPIO 1 leave the board on their own lines to the signal pins of the two SG90 servos, which take power from the same 5 V rail. One ground is shared by every board." style="width:100%;height:100%;object-fit:contain;display:block">
-                </div>
+              <!-- No .duotone, unlike the video figures: duotone is the design
+                   system's treatment for photography, and it forces one accent hue
+                   at a single saturation, flattening the surface shading a parts
+                   plate depends on. This is a technical figure, so it follows
+                   Fig. 02's neutral convention. Colours are the source render's,
+                   untouched; only the surround was cut to alpha so the build plate
+                   floats on the page — hence no background fill on the box below. -->
+              <div style="position:relative;aspect-ratio:1283/1209">
+                <img src="assets/img/marvin-print-plate.webp" width="1283" height="1209" loading="lazy" decoding="async" alt="Every printed part nested on a single build plate, seen from above: the head cover, body panel, neck and neck mount across the top, the head base and the two track covers below them, and the four wheels down the right-hand edge." style="width:100%;height:100%;object-fit:contain;display:block">
               </div>
-              <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
-                <span><span style="color:var(--color-accent-700)">Fig. 07</span> &mdash; Every connection, drawn flat. The power chain across the top, the six signal lines below.</span>
-                <span>Schematic &#183; as built</span>
+              <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
+                <span><span style="color:var(--color-accent-700)">Fig. 06</span> — The PLA set on one plate. Eleven objects: four wheels, and one each of the other seven parts.</span>
+                <span>Plate view &#183; all PLA</span>
               </figcaption>
             </figure>
-
-            <div class="blueprint" style="position:relative;margin-top:clamp(16px,2.5vw,28px);padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">To be issued</p>
-              <h3 style="margin:0 0 10px;font-size:22px">Bill of materials, power and charging</h3>
-              <p style="margin:0 0 12px;max-width:64ch;font-size:14.5px;color:var(--muted)">Fig. 07 draws the power chain that was actually wired — a 1S LiPo, a TP4056 charger, an MT3608 step-up. None of it was chosen against a current budget, and none of it is a specification.</p>
-              <ul style="margin:0 0 14px;padding-left:18px;font-size:14.5px;line-height:1.7">
-                <li>Fasteners and hardware BOM &mdash; screws, bearings, motor part numbers</li>
-                <li>Battery selection, protection and a charging circuit specified rather than inherited</li>
-                <li>Schematic, then a PCB to replace the breakouts</li>
-              </ul>
-              <a class="btn btn-primary" href="contribute.html#electronics" style="text-decoration:none">Take this on</a>
-            </div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- ═══ 03 Assemble ═══ -->
     <section id="assemble" aria-labelledby="mv-asm" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
         <div>
-          <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px">
-            <p style="margin:0;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Stage 03</p>
-            <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">To be issued</span>
-          </div>
+          <p class="kicker">Stage 03</p>
           <h2 id="mv-asm" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Assemble</h2>
-          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">This is the largest gap in the project, and it sits in the middle of its most important page. Rather than pretend otherwise, here is the format the steps will take, and exactly what each one needs.</p>
+          <p style="margin:0 0 clamp(20px,3vw,30px);max-width:64ch">Bottom up: bearings, motors, wheels, then the neck, then the head. The two electronics paths share every mechanical step and differ in five — pick one and the sequence renumbers itself.</p>
 
-          <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,22px);margin-bottom:clamp(20px,3vw,32px)">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:clamp(16px,2.5vw,28px);align-items:start">
-              <div>
-                <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Step format — worked example</p>
-                <div style="display:flex;align-items:baseline;gap:12px">
-                  <span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:44px;line-height:.9;font-variant-numeric:tabular-nums">01</span>
-                  <h3 style="margin:0;font-size:22px;line-height:1.1">Press the four wheels onto the motor shafts</h3>
-                </div>
-                <p style="margin:12px 0 0;font-size:14.5px;color:var(--muted)">One drawing, one sentence, and the part numbers involved. No paragraphs. A builder should be able to work from the drawing alone and use the sentence only to check.</p>
-                <dl style="margin:14px 0 0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;font-family:var(--font-mono);font-size:11.5px">
-                  <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts</dt><dd style="margin:0">04 × 4</dd>
-                  <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Tools</dt><dd style="margin:0">None</dd>
-                  <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Time</dt><dd style="margin:0">2 min</dd>
-                </dl>
-              </div>
-              <div style="aspect-ratio:1/1;display:grid"><figure class="blueprint" style="margin:0;position:relative;width:100%;height:100%;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;padding:12px;background-image:repeating-linear-gradient(0deg,var(--rule) 0 1px,transparent 1px 100%),repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 100%);background-size:28px 28px;background-position:center">
-  <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-  <div aria-hidden="true" style="position:absolute;left:10px;right:10px;top:50%;height:1px;background:var(--rule)"></div>
-  <div aria-hidden="true" style="position:absolute;top:10px;bottom:10px;left:50%;width:1px;background:var(--rule)"></div>
-  <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border:1px solid var(--rule);border-radius:50%"></div>
-  <div style="position:relative;display:flex;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase">
-    <span style="color:var(--color-accent-700)">Fig. 08</span>
-    <span style="color:var(--muted)">Line drawing · step</span>
-  </div>
-  <figcaption style="position:relative;max-width:40ch;margin:0 auto;text-align:center;padding:14px 6px;font-size:inherit;color:inherit">
-    <span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px;line-height:1.16;letter-spacing:-.01em">Step 01 drawing</span>
-    <span style="display:block;margin-top:7px;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--muted)">Wordless IKEA-convention drawing: two hands, one wheel (04), one motor shaft, a straight arrow showing the press direction. Same axonometric angle as Fig. 02. Part number 04 called out once.</span>
-  </figcaption>
-  <div style="position:relative;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-    <span>1:1 — vector, inline SVG</span>
-    <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.12em">To be drawn</span>
-  </div>
-</figure></div>
+          <div class="paths">
+            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);margin-bottom:clamp(22px,3vw,34px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <fieldset class="pathsw">
+                <legend>Electronics path</legend>
+                <input type="radio" name="mv-path" id="mv-path-solder" checked>
+                <label for="mv-path-solder">Hand-soldered <span class="n">15 steps</span></label>
+                <input type="radio" name="mv-path" id="mv-path-pcb">
+                <label for="mv-path-pcb">Marvin PCBs <span class="n">17 steps</span></label>
+              </fieldset>
+              <p data-when="solder" style="margin:14px 0 0;max-width:64ch;font-size:14.5px;color:var(--muted)">Four modules, soldered together with wire and tucked into the chassis. This is the build in the videos. <a href="electronics.html#soldered">Wiring diagram</a>.</p>
+              <p data-when="pcb" style="margin:14px 0 0;max-width:64ch;font-size:14.5px;color:var(--muted)">Two boards, a harness through the neck, and the displays behind the face. Nobody has built this yet, because the boards do not exist. <a href="electronics.html#architecture">Specification</a>.</p>
             </div>
+
+            <ol class="steps">
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Print and clean the parts</h3>
+                  <p>Take the supports out and deburr every seat and bore before anything is pressed into them. A support witness mark inside a bearing seat is the reason a bushing will not go home in the next step.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Press the four bushings into the base</h3>
+                  <p>Push each brass bushing all the way in until it reaches the end of its seat. One left standing proud will bind its shaft, and you will not find out until the tracks are on.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Fit the two gear motors</h3>
+                  <p>Enter at an angle, shaft first, then swing the body of the motor down into its pocket.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Fit the two idler wheels</h3>
+                  <p>The two that are not driven, on the bushings you pressed in.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Fit the two driven wheels</h3>
+                  <p>Line the flat of the D-shaped motor output shaft up with the D-shaped bore in the wheel before you press. Forced round, the flat rounds off, and the wheel then turns on a shaft that is still turning underneath it.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Seat the pan servo</h3>
+                  <p>The head-rotation servo drops into its seat in the body.</p>
+                </div>
+              </li>
+              <li data-when="pcb">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px"><h3 style="margin:0">Connect the motors, the servo and the harness to the base board</h3><span class="tag tag-outline mono" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase">PCB build</span></div>
+                  <p style="margin-top:6px">Both DC motor leads, the pan servo lead and the pre-crimped cable go into their connectors on the board — while you can still see all three.</p>
+                </div>
+              </li>
+              <li data-when="pcb">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px"><h3 style="margin:0">Install the base board and its cover</h3><span class="tag tag-outline mono" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase">PCB build</span></div>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Prepare the neck</h3>
+                  <p>Take the double-sided horn from the servo's own bag and shorten each wing to 5 mm with the pliers. Trimmed, it fits the opening in the bottom of the neck — fit it the way round that will let the horn, once it is in the neck, slide onto the servo shaft. Two of the servo's screws hold it there.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Drop the neck screw in from the top</h3>
+                  <p>A mini screw into the central opening of the neck, from above. It sits there loose for the next two steps, so keep the neck upright.</p>
+                </div>
+              </li>
+              <li data-when="solder">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px"><h3 style="margin:0">Route the motor and servo wires up through the neck</h3><span class="tag tag-outline mono" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase">Hand-soldered</span></div>
+                  <p style="margin-top:6px">Both DC motor leads and the pan servo lead, fed in from underneath. Watch that the screw does not fall out while you do it.</p>
+                </div>
+              </li>
+              <li data-when="pcb">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px"><h3 style="margin:0">Route the harness up through the neck</h3><span class="tag tag-outline mono" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase">PCB build</span></div>
+                  <p style="margin-top:6px">The pre-crimped six-core cable, fed in from underneath. Watch that the screw does not fall out while you do it.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Set the neck on the body and tighten it down</h3>
+                  <p>Position the neck on the body with the face turned forward. Put the screwdriver down through the opening in the top and tighten until the neck is held and still free to rotate. That screw is what clamps the neck onto the pan servo's shaft, which is why the face has to be pointing the right way before it goes tight.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Seat the tilt servo in the head base</h3>
+                  <p>Into its seat, held with one of the screws from the servo's bag.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Fit the single-sided horn to the tilt servo</h3>
+                  <p>Secured with its own screw, and positioned so that it interlocks with the matching feature in the neck. That coupling is the whole of the head tilt.</p>
+                </div>
+              </li>
+              <li data-when="solder">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px"><h3 style="margin:0">Solder the electronics</h3><span class="tag tag-outline mono" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase">Hand-soldered</span></div>
+                  <p style="margin-top:6px">Four modules and six signal lines. The wiring diagram, the pin assignments and the three things that catch people out are in <a href="electronics.html#soldered">chapter 03</a>.</p>
+                </div>
+              </li>
+              <li data-when="pcb">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px"><h3 style="margin:0">Install the main board, the displays and the battery</h3><span class="tag tag-outline mono" style="font-size:9px;letter-spacing:.12em;text-transform:uppercase">PCB build</span></div>
+                  <p style="margin-top:6px">All three go into the head, and the pre-crimped cable you routed up the neck plugs into the main board.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Install the face</h3>
+                  <p>The face plate, printed in black PLA — or the screen-printed glass, if you have had one made.</p>
+                </div>
+              </li>
+              <li data-when="both">
+                <span class="n" aria-hidden="true"></span>
+                <div>
+                  <h3>Install the head cover</h3>
+                  <p>Which is the point at which it stops being a mechanism and starts looking back at you.</p>
+                </div>
+              </li>
+            </ol>
           </div>
 
-          <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,22px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
-            <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">What this section needs</p>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:clamp(14px,2vw,26px)">
-              <div>
-                <h3 style="margin:0 0 8px;font-size:19px">A step sequence</h3>
-                <p style="margin:0;font-size:14.5px;color:var(--muted)">Somewhere between twelve and twenty steps, in build order: drivetrain, chassis closure, neck, head, then electronics. Written by whoever assembles the next one, while assembling it.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(16px,2.5vw,32px);margin-top:clamp(24px,3.5vw,40px);align-items:start">
+            <figure class="blueprint" style="margin:0;position:relative;min-height:190px;display:flex;flex-direction:column;justify-content:space-between;padding:14px;background-image:repeating-linear-gradient(0deg,var(--rule) 0 1px,transparent 1px 100%),repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 100%);background-size:28px 28px;background-position:center">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div style="position:relative;display:flex;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase">
+                <span style="color:var(--color-accent-700)">Fig. 07</span>
+                <span style="color:var(--muted)">Line drawings · one per step</span>
               </div>
-              <div>
-                <h3 style="margin:0 0 8px;font-size:19px">One drawing per step</h3>
-                <p style="margin:0;font-size:14.5px;color:var(--muted)">Wordless, single fixed axonometric angle, arrows for motion, part numbers for identity. Exported from the same CAD master as Fig. 02.</p>
+              <figcaption style="position:relative;max-width:44ch;margin:0 auto;text-align:center;padding:14px 6px;font-size:inherit;color:inherit">
+                <span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px;line-height:1.16;letter-spacing:-.01em">The step drawings</span>
+                <span style="display:block;margin-top:7px;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--muted)">Wordless, IKEA convention: the parts involved, an arrow for the motion, the part number called out once. One fixed axonometric angle, the same as Fig. 02, exported from the CAD master.</span>
+              </figcaption>
+              <div style="position:relative;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
+                <span>1:1 — vector, inline SVG</span>
+                <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.12em">To be drawn</span>
               </div>
-              <div>
-                <h3 style="margin:0 0 8px;font-size:19px">A hardware list</h3>
-                <p style="margin:0;font-size:14.5px;color:var(--muted)">Screw sizes and counts, bearings, motor dimensions. Without it, no step can honestly say &ldquo;fix with two M3 × 8&rdquo;.</p>
-              </div>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:18px">
-              <a class="btn btn-primary" href="contribute.html#mechanics" style="text-decoration:none">Write a step</a>
-              <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Open an issue</a>
+            </figure>
+            <div class="blueprint hatch" style="position:relative;padding:clamp(14px,2vw,20px)">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <p class="kicker kicker-a" style="margin:0 0 8px">What this section still needs</p>
+              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The words are written; the pictures are not. Seventeen drawings would make this sequence work without them, which is the standard to aim at. The other gap is time and torque: how long each step actually takes, and which screws want how much of it.</p>
+              <p style="margin:0 0 14px;font-size:14.5px;color:var(--muted)">If you build one, photograph each stage as you go. Photographs are a perfectly good first version of a drawing.</p>
+              <a class="btn btn-primary" href="contribute.html#mechanics" style="text-decoration:none">Send a set</a>
             </div>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- ═══ 04 Flash ═══ -->
     <section id="flash" aria-labelledby="mv-flash" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Stage 04</p>
+          <p class="kicker">Stage 04</p>
           <h2 id="mv-flash" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Flash</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:60ch">
               <p style="margin:0 0 14px">Requires PlatformIO. Connect the board over USB and run the flash script from the repository root.</p>
               <div class="blueprint" style="position:relative;padding:14px 16px;margin-bottom:14px">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <code style="font-family:var(--font-mono);font-size:13.5px;display:block;white-space:pre;overflow-x:auto"><span style="color:var(--muted)">$</span> cd firmware &amp;&amp; ./flash.sh</code>
+                <code class="mono" style="font-size:13.5px;display:block;white-space:pre;overflow-x:auto"><span style="color:var(--muted)">$</span> cd firmware &amp;&amp; ./flash.sh</code>
               </div>
-              <p style="margin:0 0 14px">Then open a serial monitor at <span style="font-family:var(--font-mono);font-size:14px">115200</span> baud. You get a prompt:</p>
+              <p style="margin:0 0 14px">Then open a serial monitor at <span class="mono" style="font-size:14px">115200</span> baud. You get a prompt:</p>
               <div class="blueprint" style="position:relative;padding:14px 16px">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <code style="font-family:var(--font-mono);font-size:13.5px;display:block;white-space:pre;overflow-x:auto">Marvin&gt; <span style="color:var(--color-accent-700)">R120</span></code>
+                <code class="mono" style="font-size:13.5px;display:block;white-space:pre;overflow-x:auto">Marvin&gt; <span style="color:var(--color-accent-700)">R120</span></code>
               </div>
-              <p style="margin:14px 0 0">Type a command and the head moves. Bluetooth advertising starts automatically under the name <span style="font-family:var(--font-mono);font-size:14px">Marvin</span>; you do not need to enable anything.</p>
+              <p style="margin:14px 0 0">Type a command and the head moves. Bluetooth advertising starts automatically under the name <span class="mono" style="font-size:14px">Marvin</span>; you do not need to enable anything.</p>
+              <p style="margin:14px 0 0;color:var(--muted);font-size:14.5px">The firmware ships configured for the ESP32-C3 of the hand-soldered build. Every pin lives in <span class="mono" style="font-size:13px;color:var(--color-text)">config.h</span>, so a different board is a configuration change.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);align-self:start">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">First checks</p>
+              <p class="kicker kicker-a" style="margin:0 0 10px">First checks</p>
               <ol style="margin:0;padding-left:20px;font-size:14.5px;line-height:1.75">
                 <li>Tracks still. If they lurch at power-up, the motor pins floated — reflash.</li>
-                <li><span style="font-family:var(--font-mono);font-size:13px">R90</span> then <span style="font-family:var(--font-mono);font-size:13px">T57</span>. The head should centre smoothly, not snap.</li>
-                <li><span style="font-family:var(--font-mono);font-size:13px">M80</span>, then <span style="font-family:var(--font-mono);font-size:13px">S</span>. Both tracks forward, then stop.</li>
-                <li><span style="font-family:var(--font-mono);font-size:13px">D</span>. Demo mode. Put it on the floor first.</li>
+                <li><span class="mono" style="font-size:13px">R90</span> then <span class="mono" style="font-size:13px">T57</span>. The head should centre smoothly, not snap.</li>
+                <li><span class="mono" style="font-size:13px">M80</span>, then <span class="mono" style="font-size:13px">S</span>. Both tracks forward, then stop.</li>
+                <li><span class="mono" style="font-size:13px">D</span>. Demo mode. Put it on the floor first.</li>
               </ol>
             </div>
           </div>
@@ -345,20 +461,21 @@
       </div>
     </section>
 
+    <!-- ═══ 05 First drive ═══ -->
     <section id="drive" aria-labelledby="mv-first" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
         <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Stage 05</p>
+          <p class="kicker">Stage 05</p>
           <h2 id="mv-first" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">First drive</h2>
           <p style="margin:0 0 22px;max-width:64ch">Serve the controller app, open it in Chrome or Edge, and pick Marvin from the device picker. One thing trips up nearly everyone:</p>
           <div class="blueprint" style="position:relative;padding:clamp(16px,2.4vw,24px);max-width:70ch;margin-bottom:24px">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">It must be served, not opened</p>
-            <p style="margin:0 0 12px;font-size:clamp(17px,1.8vw,20px);line-height:1.45">Web Bluetooth only works in a secure context. Open the file with <span style="font-family:var(--font-mono);font-size:.9em">file://</span> and the Bluetooth API is simply undefined — the Scan button does nothing at all.</p>
-            <code style="font-family:var(--font-mono);font-size:13.5px;display:block;white-space:pre;overflow-x:auto;padding-top:8px;border-top:1px solid var(--rule)"><span style="color:var(--muted)">$</span> cd controller &amp;&amp; ./serve.sh   <span style="color:var(--muted)"># then http://localhost:3000</span></code>
+            <p class="kicker kicker-a" style="margin:0 0 8px">It must be served, not opened</p>
+            <p style="margin:0 0 12px;font-size:clamp(17px,1.8vw,20px);line-height:1.45">Web Bluetooth only works in a secure context. Open the file with <span class="mono" style="font-size:.9em">file://</span> and the Bluetooth API is simply undefined — the Scan button does nothing at all.</p>
+            <code class="mono" style="font-size:13.5px;display:block;white-space:pre;overflow-x:auto;padding-top:8px;border-top:1px solid var(--rule)"><span style="color:var(--muted)">$</span> cd controller &amp;&amp; ./serve.sh   <span style="color:var(--muted)"># then http://localhost:3000</span></code>
           </div>
-          <p style="margin:0"><a href="drive.html">Continue to 03 — Drive: the command language, the app, and what it does when left alone</a></p>
+          <p style="margin:0"><a href="drive.html">Continue to 04 — Drive: the command language, the app, and what it does when left alone</a></p>
         </div>
       </div>
     </section>
@@ -367,8 +484,8 @@
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
     <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
       <span>Marvin — open source robot toy</span>
-      <span>Sheet 02 of 05</span>
-      <span>Rev. A · partially issued</span>
+      <span>Sheet 02 of 06</span>
+      <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>
   </footer>

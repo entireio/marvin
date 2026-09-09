@@ -1,19 +1,20 @@
 # Marvin — Project website
 
-The public Marvin website. Five pages of plain HTML, CSS and JavaScript, with
+The public Marvin website. Six pages of plain HTML, CSS and JavaScript, with
 no build step and no framework — the same constraint the controller app is
 built under, so it can be served from anywhere.
 
 ```
 docs/
-├── index.html            01 Marvin     — long-scroll home
-├── build.html            02 Build      — print, electronics, assemble, flash
-├── drive.html            03 Drive      — the command language, controller app
-├── contribute.html       04 Contribute — firmware, software, mechanics, electronics
-├── reference.html        05 Reference  — protocol, pin map, parts, licensing
+├── index.html            01 Marvin      — long-scroll home
+├── build.html            02 Build       — parts, print, assemble, flash
+├── electronics.html      03 Electronics — the two paths: soldered, and the PCB spec
+├── drive.html            04 Drive       — the command language, controller app
+├── contribute.html       05 Contribute  — firmware, software, mechanics, electronics
+├── reference.html        06 Reference   — protocol, pin map, parts, files, licensing
 ├── assets/
 │   ├── css/industry.css  Design-system tokens and components (verbatim from the design)
-│   ├── css/site.css      Page styles lifted from the design artboards
+│   ├── css/site.css      Page styles, shared furniture, the path switch
 │   ├── js/site.js        Theme toggle, video controls, exploded-view assembly
 │   ├── img/              Video posters and the favicon
 │   └── video/            Demo footage — silent, no audio track
@@ -104,10 +105,10 @@ shot list:
 
 | Fig. | Needed | Page |
 | --- | --- | --- |
-| 08 | Assembly step drawing | Build |
-| 10 | Video of one full demo cycle | Drive |
+| 07 | One line drawing per assembly step — seventeen of them | Build |
+| 11 | Video of one full demo cycle | Drive |
 
-Fig. 07 is filled: `assets/img/marvin-wiring.webp`, the wiring as it was
+Fig. 08 is filled: `assets/img/marvin-wiring.webp`, the wiring as it was
 actually built — LiPo, USB-C charger, step-up converter, motor driver, two
 gearmotors and two servos, with the six named GPIOs traced from the board to
 where they land. Colours are load-bearing here, which is the sharpest case yet
@@ -133,7 +134,7 @@ labels read `GPI2O` and `GPI1O` for GPIO 20 and GPIO 10; and the board drawn is
 a **DevKitM-1** where the table specifies an **ESP32-C3 SuperMini**. The GPIO
 assignments themselves match the table exactly.
 
-Fig. 09 is filled: `assets/img/marvin-controller.webp`, the controller
+Fig. 10 is filled: `assets/img/marvin-controller.webp`, the controller
 connected to a real robot — the cheat sheet it prints on connect, then `D` and
 `S` with the replies the firmware sent back. It keeps the app's own dark chrome
 in both schemes, untreated: a screenshot of a terminal has to look like the
@@ -141,8 +142,14 @@ terminal the reader will meet. WebP at q88, 1588 × 1178: 48 KB against 147 KB
 as PNG. Note that the app is a terminal, not a pad-and-slider console — the
 slot had been written the other way round.
 
-Fig. 06 is filled: `assets/img/marvin-print-plate.webp`, all eight parts on one
-plate. Colours are the source render's, untouched. It is rotated 90° so it sits
+Fig. 09 is drawn rather than photographed: the two-board block diagram on the
+Electronics page is inline SVG in the page ground's ink, with the accent
+reserved for the six conductors that cross the neck joint. It is the one figure
+whose subject does not exist, so it had to be a diagram of the specification
+rather than a picture of a thing.
+
+Fig. 06 is filled: `assets/img/marvin-print-plate.webp`, all eight PLA parts on
+one plate. Colours are the source render's, untouched. It is rotated 90° so it sits
 landscape rather than portrait, and the light surround around the build plate
 is cut to alpha so the plate floats on the page — which is why its box carries
 no background fill. Edge pixels are colour-decontaminated, so the cut leaves no
@@ -166,8 +173,25 @@ Two conventions, and it matters which one a figure gets:
 Both kinds still get the `.blueprint` frame with its four corner registration
 marks, so they read as one family regardless of treatment.
 
-The assembly instructions themselves do not exist yet, and the Build page says
-so rather than pretending otherwise.
+## The two electronics paths
+
+The site's central distinction is that Marvin's electronics can be **soldered
+from four modules today**, or built on **two PCBs that are specified and not
+yet designed**. Chapter 03 is that distinction; chapter 02 applies it.
+
+The assembly sequence exists once, in `build.html`, and is filtered rather
+than written twice: the two paths share every mechanical step and differ in
+five. Each `<li>` carries `data-when="both" | "solder" | "pcb"`, and the switch
+is a radio group plus `:has()` in `site.css` — **no JavaScript**. That is
+deliberate. The thing being hidden is instructions, so a scripted filter would
+show a reader whose script had failed a sequence with holes in it and no way to
+tell. Step numbers come from a CSS counter, so the visible steps always read
+01..n whichever path is chosen; the default state, and the one a browser
+without `:has()` is stuck in, is the soldered path — the only one anybody can
+build today.
+
+If you add a step, give it a `data-when` and let the counter do the numbering.
+Never hard-code a step number, in the markup or in prose that refers to one.
 
 ---
 

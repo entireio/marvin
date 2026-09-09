@@ -30,9 +30,10 @@
       <nav aria-label="Sections" style="display:flex;flex-wrap:wrap;gap:clamp(9px,1.8vw,24px);margin-left:auto;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase">
         <a href="index.html" style="text-decoration:none;color:var(--muted)">01 Marvin</a>
         <a href="build.html" style="text-decoration:none;color:var(--muted)">02 Build</a>
-        <a href="drive.html" style="text-decoration:none;color:var(--muted)">03 Drive</a>
-        <a href="contribute.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">04 Contribute</a>
-        <a href="reference.html" style="text-decoration:none;color:var(--muted)">05 Reference</a>
+        <a href="electronics.html" style="text-decoration:none;color:var(--muted)">03 Electronics</a>
+        <a href="drive.html" style="text-decoration:none;color:var(--muted)">04 Drive</a>
+        <a href="contribute.html" aria-current="page" style="text-decoration:none;color:var(--color-accent-700)">05 Contribute</a>
+        <a href="reference.html" style="text-decoration:none;color:var(--muted)">06 Reference</a>
       </nav>
       <button type="button" data-action="toggleTheme" aria-label="Switch colour scheme" style="flex:none;cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 8px">Dark</button>
     </div>
@@ -42,9 +43,9 @@
 
     <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
       <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
+        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 04 · Issued</p>
+          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Chapter 05 · Issued</p>
           <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Contribute</h1>
           <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Four routes in, because they attract different people. Below each one: the state of it, the conventions that matter, and the specific thing that needs doing next.</p>
         </div>
@@ -64,16 +65,16 @@
 
     <section aria-labelledby="mv-repo" style="padding:clamp(32px,4vw,64px) 0">
       <h2 id="mv-repo" style="margin:0 0 8px;font-size:clamp(22px,2.6vw,30px)">Where things live</h2>
-      <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Five folders. Two of them are working software, one is a scaffold, one holds geometry, and one is this site.</p>
+      <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Five folders. Two are working software, one holds geometry and print files, one is a specification waiting for a schematic, and one is this site.</p>
       <div style="overflow-x:auto">
         <table class="table" style="max-width:76ch">
           <thead><tr><th scope="col">Folder</th><th scope="col">Contains</th><th scope="col">State</th></tr></thead>
           <tbody>
             <tr><td style="font-family:var(--font-mono);font-size:12.5px">firmware/</td><td>ESP32 firmware — C++, PlatformIO, Arduino</td><td><span class="tag tag-outline">Working</span></td></tr>
             <tr><td style="font-family:var(--font-mono);font-size:12.5px">controller/</td><td>The browser-based Bluetooth control app</td><td><span class="tag tag-outline">Working</span></td></tr>
-            <tr><td style="font-family:var(--font-mono);font-size:12.5px">electronics/</td><td>Schematics, PCB, BOM, power design</td><td><span class="tag tag-neutral">Scaffolding only</span></td></tr>
-            <tr><td style="font-family:var(--font-mono);font-size:12.5px">mechanical/</td><td>CAD master model and printable meshes</td><td><span class="tag tag-neutral">Meshes exist</span></td></tr>
-            <tr><td style="font-family:var(--font-mono);font-size:12.5px">docs/</td><td>This website</td><td><span class="tag tag-neutral">Being designed</span></td></tr>
+            <tr><td style="font-family:var(--font-mono);font-size:12.5px">electronics/</td><td>Schematics, PCB, BOM, power design</td><td><span class="tag tag-accent">Specified, not drawn</span></td></tr>
+            <tr><td style="font-family:var(--font-mono);font-size:12.5px">mechanical/</td><td>CAD master, meshes, sliced print projects</td><td><span class="tag tag-outline">Complete</span></td></tr>
+            <tr><td style="font-family:var(--font-mono);font-size:12.5px">docs/</td><td>This website</td><td><span class="tag tag-outline">Working</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -149,14 +150,14 @@
             <div style="max-width:64ch">
               <p>The CAD model is the master; meshes are derived from it. Never edit a mesh directly — a corrected STL is a dead end, because the next export overwrites it.</p>
               <p>Part numbering is fixed at 01–08 and is used by the drawings, the tables and eventually the assembly steps. If you add a part, it takes the next number; nothing gets renumbered.</p>
-              <p style="margin-bottom:0">Keep the repository under about fifty megabytes. Oversized meshes are almost always over-tessellated rather than genuinely complex.</p>
+              <p style="margin-bottom:0">Keep individual files under about fifty megabytes. An oversized mesh is almost always over-tessellated rather than genuinely complex — <span style="font-family:var(--font-mono);font-size:13px">01_body.stl</span> was once a 454 MB export of what is essentially a printed box.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Most valuable thing you could do</p>
-              <h3 style="margin:0 0 10px;font-size:22px">Assemble one and write the steps</h3>
-              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">There are no assembly instructions. If you build a Marvin, photograph or draw each stage as you go and send the sequence — twelve to twenty steps, one drawing and one sentence each. Validated print settings and the assembled dimensions are worth almost as much.</p>
-              <a class="btn btn-primary" href="build.html#assemble" style="text-decoration:none">See the step format</a>
+              <h3 style="margin:0 0 10px;font-size:22px">Assemble one and draw the steps</h3>
+              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The seventeen steps are written; not one of them has a picture. Build a Marvin, photograph each stage as you go, and the sequence becomes something a stranger can follow without reading. A face-plate mesh, validated print settings and the assembled dimensions are worth almost as much.</p>
+              <a class="btn btn-primary" href="build.html#assemble" style="text-decoration:none">Read the sequence</a>
             </div>
           </div>
         </div>
@@ -171,19 +172,20 @@
           <h2 id="mv-el" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Electronics</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>This is the largest open invitation in the project. There is no schematic, no board, no battery selection and no charging circuit. What exists is breadboard wiring that works, a pin map, and a known brownout problem.</p>
-              <p style="margin-bottom:0">A first board would replace two breakouts and a loom of jumper wires with one part. It needs to carry the ESP32-C3, the H-bridge, servo headers, a battery input with protection, and enough decoupling that the microcontroller survives a motor stall.</p>
+              <p>This is the largest open invitation in the project, and it is now a well-posed one. Two boards have been specified down to part numbers, I²C addresses and a six-wire harness — and neither has been drawn. <a href="electronics.html#architecture">The specification is chapter 03</a>.</p>
+              <p style="margin-bottom:0">What exists besides that is hand-soldered wiring that works, a pin map, and a known brownout problem: servos and motors drawing together sag the rail enough to reset the microcontroller, which shows up as a Bluetooth disconnect mid-drive. Giving the logic rail its own regulator is half of what the main board is for.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Wanted, in order</p>
               <ol style="margin:0 0 14px;padding-left:20px;font-size:14.5px;line-height:1.75">
-                <li>A schematic of the current wiring, so there is something to review</li>
-                <li>Power design — cell choice, protection, charging, and a supply that does not sag under motor current</li>
-                <li>A parts list with real part numbers</li>
-                <li>A board layout that fits inside part 01</li>
+                <li>A KiCad schematic for each board, drawn against the specification</li>
+                <li>A measured current budget — the rails were chosen, not verified</li>
+                <li>A layout for each board that fits inside part 01 and part 05</li>
+                <li>Firmware for the CH32V003, and the I²C register map the ESP32 will talk to</li>
+                <li>One fabricated set, and an honest account of what was wrong with it</li>
               </ol>
-              <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Start the schematic</a>
+              <a class="btn btn-primary" href="electronics.html#architecture" style="text-decoration:none">Read the specification</a>
             </div>
           </div>
         </div>
@@ -211,20 +213,21 @@
         <table class="table">
           <thead><tr><th scope="col">Missing</th><th scope="col">Route</th><th scope="col">Why it matters</th></tr></thead>
           <tbody>
-            <tr><td>Assembly instructions</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">The largest gap, in the middle of the most important page</td></tr>
-            <tr><td>Fasteners and hardware BOM</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">No step can specify a screw until this exists</td></tr>
-            <tr><td>Schematic, PCB, BOM, battery, charging</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Electronics</td><td style="color:var(--muted)">Everything past breadboard wiring</td></tr>
-            <tr><td>Validated print settings</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Current figures are estimates</td></tr>
+            <tr><td>Schematics and layout for the two boards</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Electronics</td><td style="color:var(--muted)">The specification is written; nothing has been drawn</td></tr>
+            <tr><td>A measured current budget</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Electronics</td><td style="color:var(--muted)">Every rail in the specification was chosen, not verified</td></tr>
+            <tr><td>Assembly step drawings</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Seventeen steps, no pictures. Photographs would do</td></tr>
+            <tr><td>A face-plate mesh</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">The one printed part with no file, and the one everybody looks at</td></tr>
+            <tr><td>Validated print settings</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">The sliced projects have never been run on two different machines</td></tr>
             <tr><td>Assembled dimensions and weight</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Cannot honestly describe the object without them</td></tr>
-            <tr><td>Confirmed wheel and track-link counts</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Builders are currently guessing</td></tr>
-            <tr><td>Drawings, renders and video</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics · Software</td><td style="color:var(--muted)">There is not yet a single image in the repository</td></tr>
+            <tr><td>Confirmed track-link count</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Builders are currently guessing how many to print</td></tr>
             <tr><td>Left/right assignment of motors A and B</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Firmware</td><td style="color:var(--muted)">Undefined, so pivots are trial and error</td></tr>
+            <tr><td>A CH32V003 driver, and an ESP32-S3 pin profile</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Firmware</td><td style="color:var(--muted)">Neither exists; the firmware is C3-only today</td></tr>
           </tbody>
         </table>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(20px,3vw,32px)">
         <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Open the repository</a>
-        <a class="btn btn-secondary" href="reference.html" style="text-decoration:none">05 — Reference</a>
+        <a class="btn btn-secondary" href="reference.html" style="text-decoration:none">06 — Reference</a>
       </div>
     </section>
   </main>
@@ -232,7 +235,7 @@
   <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
     <div style="max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,32px) clamp(16px,4vw,56px);display:flex;flex-wrap:wrap;gap:12px 28px;justify-content:space-between;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
       <span>Marvin — open source robot toy</span>
-      <span>Sheet 04 of 05</span>
+      <span>Sheet 05 of 06</span>
       <span>Rev. A</span>
       <span>MIT · CERN-OHL-S-2.0</span>
     </div>
