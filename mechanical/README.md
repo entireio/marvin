@@ -4,7 +4,8 @@ CAD sources and printable meshes for Marvin's chassis, tracks, and head.
 
 ```
 mechanical/
-├── src/        CAD master model (Rhino 3D, .3dm)
+├── src/        CAD models (Rhino 3D, .3dm)
+├── step/       Whole-robot STEP, for other CAD packages
 ├── stl/        Meshes exported for printing
 └── README.md   You are here
 ```
@@ -59,6 +60,34 @@ please open an issue with your material, printer, and what worked.
 
 ---
 
+## Whole-robot models
+
+Two files carry the complete assembly — chassis, head, tracks, motors, servos,
+electronics — rather than a single printable part:
+
+| File | Size | For |
+| --- | --- | --- |
+| `src/marvin_design_v3_hq.3dm` | 74 MB | Rhino, native |
+| `step/marvin_robot.step` | 28 MB | any CAD that reads STEP AP242 |
+
+Both come from the 930 MB Rhino working model. Most of that bulk was not real
+NURBS: the heavy objects are degree-(1,1) 2x2 patches, i.e. flat triangles
+wearing a NURBS costume, inherited from the cinematic mesh the design started
+from. Converted to actual meshes they are ~100x cheaper and geometrically
+identical — `02_track_cover_left` alone is 147 MB as a Brep and 1.3 MB as a
+mesh. Genuinely modelled parts (`07_neck`, `08_neck_mount`, bearings, battery,
+and 814 smaller objects) are still NURBS and still editable.
+
+Accuracy against the source is 0.0000 mm on the converted parts and never worse
+than 0.05 mm anywhere in the STEP.
+
+**A caveat on the STEP.** It uses AP242 *tessellated* geometry, which is what
+makes 700k triangles fit in 28 MB — as a B-rep the same mesh would be about
+700 MB, because a STEP face costs ~1 kB whether it holds a NURBS patch or a flat
+triangle. Verified to open in OpenCASCADE and FreeCAD. **Rhino 8 does not read
+tessellated STEP** — Rhino users should take the `.3dm`, which is the same
+geometry.
+
 ## Large files
 
 One file exceeds what GitHub will accept and is **not in this repository**:
@@ -77,8 +106,9 @@ a coarser mesh tolerance it is 240 k triangles and 12 MB, with no visible
 detail lost at print resolution, so it now lives in the repository like every
 other part. The whole `stl/` set is 22 MB.
 
-Every mesh in `stl/` is tracked through Git LFS. Install LFS before cloning or
-you will get pointer files instead of geometry:
+Every mesh in `stl/`, the `.3dm` models and the `.step` export are tracked
+through Git LFS. Install LFS before cloning or you will get pointer files
+instead of geometry:
 
 ```bash
 git lfs install
@@ -96,6 +126,8 @@ Already cloned? `git lfs install && git lfs pull`.
 - Export in **binary** STL, never ASCII: same geometry, roughly a fifth the size.
 - Check the size of a mesh before committing it. Anything approaching 50 MB is
   over-tessellated; re-export rather than commit.
+- **Rhino's ordinary Save re-adds the render-mesh cache** — it took the 74 MB
+  model back to 142 MB in one open-and-save. Use `SaveSmall` when committing.
 - Keep the numeric prefixes and update the table above when parts are added,
   renamed, or renumbered.
 - Servo travel limits in

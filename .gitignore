@@ -72,7 +72,13 @@ electronics/**/production/
 #
 # Every STL is now tracked through Git LFS (see .gitattributes), 01_body.stl
 # included — re-exporting it at a coarser mesh tolerance brought it to 12 MB.
+#
+# The reduced Rhino model IS tracked: converting the triangle-soup Breps to real
+# meshes took the same geometry from 930 MB to 74 MB, which LFS handles fine.
+# Keep the negation narrow — dropping the rule entirely would start pushing the
+# 2.7 GB master.
 mechanical/src/*.3dm
+!mechanical/src/marvin_design_v3_hq.3dm
 
 # Slicer output — never commit machine-specific G-code
 *.gcode
