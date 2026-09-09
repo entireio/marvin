@@ -13,21 +13,23 @@ mechanical/
 
 ## Parts
 
-Parts are numbered in assembly order: chassis, then drivetrain, then head.
+Parts are numbered in print order: the PLA parts first — chassis, track
+covers, wheels, then the head — and the one TPU part last.
 
 | # | Part | File | Qty | Material |
 | --- | --- | --- | --- | --- |
-| 01 | Body / chassis | `01_body.stl` † | 1 | PLA |
+| 01 | Body / chassis | `01_body.stl` | 1 | PLA |
 | 02 | Track cover, left | `02_track_cover_left.stl` | 1 | PLA |
 | 03 | Track cover, right | `03_track_cover_right.stl` | 1 | PLA |
 | 04 | Wheel | `04_wheel.stl` | 4 | PLA |
-| 05 | Track link | `05_track.stl` | many | TPU |
-| 06 | Head base | `06_head_base.stl` | 1 | PLA |
-| 07 | Head cover | `07_head_cover.stl` | 1 | PLA |
+| 05 | Head base | `05_head_base.stl` | 1 | PLA |
+| 06 | Head cover | `06_head_cover.stl` | 1 | PLA |
+| 07 | Neck mount | `07_neck_mount.stl` | 1 | PLA |
 | 08 | Neck | `08_neck.stl` | 1 | PLA |
-| 09 | Neck mount | `09_neck_mount.stl` | 1 | PLA |
+| 09 | Track link | `09_track.stl` | many | TPU |
 
-† Distributed separately — see [Large files](#large-files) below.
+The eight PLA parts are 01–08; the track link is the only part in TPU, so it
+sits last.
 
 The numeric prefix is the only thing tying a mesh to its place in the assembly,
 so keep the sequence contiguous and unique. If you add a part, renumber rather
@@ -59,25 +61,24 @@ please open an issue with your material, printer, and what worked.
 
 ## Large files
 
-Two files exceed what GitHub will accept and are **not in this repository**:
+One file exceeds what GitHub will accept and is **not in this repository**:
 
 | File | Size | Why it is excluded |
 | --- | --- | --- |
 | `src/marvin_design.3dm` | 2.7 GB | Over GitHub's 100 MB file limit, and over Git LFS's 2 GB per-file cap |
-| `stl/01_body.stl` | 454 MB | Over GitHub's 100 MB hard limit |
 
-Both are listed in [`.gitignore`](../.gitignore). To get them, ask for a copy —
-or, better, help fix the underlying problem.
+It is listed in [`.gitignore`](../.gitignore). To get it, ask for a copy — or,
+better, help fix the underlying problem.
 
-**The real issue is tessellation, not complexity.** A 454 MB binary STL is
-roughly nine million triangles for a part that is essentially a printed box. Any
-slicer handles a few hundred thousand triangles for a part this size without
-losing visible detail. Re-exporting `01_body.stl` from Rhino at a coarser mesh
-tolerance should bring it under 50 MB, at which point it belongs in the
-repository like every other part.
+**The problem was tessellation, not complexity.** `01_body.stl` used to be a
+454 MB export — roughly nine million triangles for a part that is essentially a
+printed box — and had to be distributed out of band. Re-exported from Rhino at
+a coarser mesh tolerance it is 240 k triangles and 12 MB, with no visible
+detail lost at print resolution, so it now lives in the repository like every
+other part. The whole `stl/` set is 22 MB.
 
-Everything else in `stl/` **is** tracked, through Git LFS. Install LFS before
-cloning or you will get pointer files instead of geometry:
+Every mesh in `stl/` is tracked through Git LFS. Install LFS before cloning or
+you will get pointer files instead of geometry:
 
 ```bash
 git lfs install

@@ -51,15 +51,14 @@ electronics/**/production/
 # Mechanical — oversized binaries that GitHub cannot accept
 # ---------------------------------------------------------------------------
 # GitHub hard-rejects any single file over 100 MB, and Git LFS on the free tier
-# caps individual files at 2 GB. These two exceed those limits and are
-# distributed out-of-band instead — see mechanical/README.md.
+# caps individual files at 2 GB. The Rhino master model exceeds both limits and
+# is distributed out-of-band instead — see mechanical/README.md.
 #
 #   mechanical/src/marvin_design.3dm   2.7 GB  (Rhino master model)
-#   mechanical/stl/01_body.stl         454 MB  (needs decimating before commit)
 #
-# Every other STL is tracked normally through Git LFS (see .gitattributes).
+# Every STL is now tracked through Git LFS (see .gitattributes), 01_body.stl
+# included — re-exporting it at a coarser mesh tolerance brought it to 12 MB.
 mechanical/src/*.3dm
-mechanical/stl/01_body.stl
 
 # Slicer output — never commit machine-specific G-code
 *.gcode
