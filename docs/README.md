@@ -96,19 +96,23 @@ hand-edits.
 
 ---
 
-## Still to come
+## Figures
 
-The design carries **asset slots** — marked *To be drawn*, *To be filmed* or
-*To be captured* — where artwork is still needed. Each slot states what the
-drawing must show, at what aspect ratio, in what style. Together they are the
-shot list:
+Every figure on the site is a real one. The design originally carried **asset
+slots** — empty framed boxes marked *To be drawn* or *To be filmed*, each
+specifying what the missing artwork should show — but a placeholder reads as an
+unfinished page rather than an honest one, so they were removed rather than
+left standing. Two went: the per-step assembly drawings on Build, and a video
+of a full demo cycle on Drive.
 
-| Fig. | Needed | Page |
-| --- | --- | --- |
-| 07 | One line drawing per assembly step — seventeen of them | Build |
-| 11 | Video of one full demo cycle | Drive |
+Numbering is **contiguous, 01 to 09, in reading order across the site**. If you
+add a figure in the middle, renumber the ones after it and check the
+cross-references — several captions and code comments cite a figure by number,
+so `grep -rn 'Fig\. '` is the check. The assembly drawings are still wanted and
+are recorded on the Contribute page's open-problems table, which is where a gap
+belongs. The demo video is not planned.
 
-Fig. 08 is filled: `assets/img/marvin-wiring.webp`, the wiring as it was
+Fig. 07 is filled: `assets/img/marvin-wiring.webp`, the wiring as it was
 actually built — LiPo, USB-C charger, step-up converter, motor driver, two
 gearmotors and two servos, with the six named GPIOs traced from the board to
 where they land. Colours are load-bearing here, which is the sharpest case yet
@@ -134,7 +138,7 @@ labels read `GPI2O` and `GPI1O` for GPIO 20 and GPIO 10; and the board drawn is
 a **DevKitM-1** where the table specifies an **ESP32-C3 SuperMini**. The GPIO
 assignments themselves match the table exactly.
 
-Fig. 10 is filled: `assets/img/marvin-controller.webp`, the controller
+Fig. 09 is filled: `assets/img/marvin-controller.webp`, the controller
 connected to a real robot — the cheat sheet it prints on connect, then `D` and
 `S` with the replies the firmware sent back. It keeps the app's own dark chrome
 in both schemes, untreated: a screenshot of a terminal has to look like the
@@ -142,7 +146,7 @@ terminal the reader will meet. WebP at q88, 1588 × 1178: 48 KB against 147 KB
 as PNG. Note that the app is a terminal, not a pad-and-slider console — the
 slot had been written the other way round.
 
-Fig. 09 is drawn rather than photographed: the two-board block diagram on the
+Fig. 08 is drawn rather than photographed: the two-board block diagram on the
 Electronics page is inline SVG in the page ground's ink, with the accent
 reserved for the six conductors that cross the neck joint. It is the one figure
 whose subject does not exist, so it had to be a diagram of the specification
