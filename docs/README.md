@@ -16,7 +16,7 @@ docs/
 │   ├── css/site.css      Page styles lifted from the design artboards
 │   ├── js/site.js        Theme toggle, video controls, exploded-view assembly
 │   ├── img/              Video posters and the favicon
-│   └── video/            Demo footage
+│   └── video/            Demo footage — silent, no audio track
 ├── DESIGN-BRIEF.md       The brief the design was made from
 ├── convert-artboards.py  How the design artboards became these pages
 └── .nojekyll             Stops GitHub Pages hiding files that start with "_"
@@ -67,13 +67,19 @@ hand-edits.
 - **Nothing the site loads may go through Git LFS.** GitHub Pages does not
   resolve LFS pointers — an LFS-tracked image arrives as a ~130-byte text file
   and the page breaks silently. [`.gitattributes`](../.gitattributes) exempts
-  `docs/**` from LFS for exactly this reason; do not undo it.
+  the site's media patterns from LFS for exactly this reason; do not undo it.
+  Scope any such rule to the media extensions — a blanket `docs/**` override
+  also unsets `diff`, which makes Git treat the HTML, CSS and JS as binary.
 - **Take colours, fonts and spacing from the design-system variables**
   (`var(--color-*)`, `var(--font-*)`, `var(--space-*)`) rather than hard-coding
   values. `assets/css/industry.css` is the source of truth for the look.
 - **Motion must degrade.** Every animation has a static fallback and the site
   is complete under `prefers-reduced-motion: reduce`. The exploded view holds
   at its exploded state, which is the more legible of the two anyway.
+- **The site is silent.** The clips in `assets/video/` are encoded with no
+  audio track at all, the `<video>` tags carry `muted`, and `site.js` re-mutes
+  anything that tries to turn the sound on. Keep all three when adding footage:
+  strip the audio at encode time with `ffmpeg -i in.mp4 -c:v copy -an out.mp4`.
 - Keep `assets/js/site.js` dependency-free.
 
 ---
@@ -83,7 +89,7 @@ hand-edits.
 | Hook | What it does |
 | --- | --- |
 | `data-action="toggleTheme"` | Switches colour scheme and stores the choice. With nothing stored, `prefers-color-scheme` stays in charge. An inline script in each `<head>` applies a stored choice before first paint, so the other scheme never flashes. |
-| `data-action="togglePlay"` / `"toggleDemo"` | Play/pause for the two videos, with the button label kept in step. Under reduced motion the videos hold on their poster frame instead of autoplaying. |
+| `data-action="togglePlay"` / `"toggleDemo"` | Play/pause for the two videos, with the button label kept in step. Under reduced motion the videos hold on their poster frame instead of autoplaying. Both are also held muted at runtime, so nothing can start the sound. |
 | `data-ref="anatomyRef"` | The exploded axonometric. Each part carries `data-dx`/`data-dy` — its offset in the exploded state — and scrolling the figure up the viewport interpolates those to zero, so the robot assembles as you read past it. |
 | `data-ref="readoutRef"` | Reads *Exploded → Assembling → Assembled* alongside the drawing. |
 
@@ -98,11 +104,67 @@ shot list:
 
 | Fig. | Needed | Page |
 | --- | --- | --- |
-| 06 | Print plate layout, all nine parts | Build |
-| 07 | Wiring diagram, as built | Build |
 | 08 | Assembly step drawing | Build |
-| 09 | Screenshot of the controller app, connected | Drive |
 | 10 | Video of one full demo cycle | Drive |
+
+Fig. 07 is filled: `assets/img/marvin-wiring.webp`, the wiring as it was
+actually built — LiPo, USB-C charger, step-up converter, motor driver, two
+gearmotors and two servos, with the six named GPIOs traced from the board to
+where they land. Colours are load-bearing here, which is the sharpest case yet
+for the no-duotone rule: the accent would flatten the red rail, the black
+ground and the four blue signal lines into one hue. Unlike Fig. 06 the white
+surround is kept rather than cut to alpha, because this figure's labels are
+black type inside the image and would vanish on a dark page; the box therefore
+carries an explicit white plate with an inset, so it reads as a sheet laid on
+the page. WebP at q92, 1380 × 750: 186 KB against 1.1 MB as PNG (lossless WebP
+was 831 KB — hard type edges on flat white compress badly either way).
+
+The plate scrolls sideways instead of shrinking. Fitted to a phone this figure
+lands at about 235 px wide, which is legible as a shape and useless as a
+diagram, so it carries a `min-width` of 600 px inside an `overflow-x` box — the
+same treatment the wide tables already get. Nothing scrolls above roughly
+640 px of column.
+
+Three labels in the source render disagree with the rest of the project and
+should be corrected at the source rather than patched in HTML: the driver is
+lettered **DRV8811** where Table 02.3 and the firmware say **DRV8833** (a
+DRV8811 is a single stepper driver, not a dual H-bridge with IN1–IN4); two pin
+labels read `GPI2O` and `GPI1O` for GPIO 20 and GPIO 10; and the board drawn is
+a **DevKitM-1** where the table specifies an **ESP32-C3 SuperMini**. The GPIO
+assignments themselves match the table exactly.
+
+Fig. 09 is filled: `assets/img/marvin-controller.webp`, the controller
+connected to a real robot — the cheat sheet it prints on connect, then `D` and
+`S` with the replies the firmware sent back. It keeps the app's own dark chrome
+in both schemes, untreated: a screenshot of a terminal has to look like the
+terminal the reader will meet. WebP at q88, 1588 × 1178: 48 KB against 147 KB
+as PNG. Note that the app is a terminal, not a pad-and-slider console — the
+slot had been written the other way round.
+
+Fig. 06 is filled: `assets/img/marvin-print-plate.webp`, all eight parts on one
+plate. Colours are the source render's, untouched. It is rotated 90° so it sits
+landscape rather than portrait, and the light surround around the build plate
+is cut to alpha so the plate floats on the page — which is why its box carries
+no background fill. Edge pixels are colour-decontaminated, so the cut leaves no
+pale fringe when the page is dark. WebP at q95: 113 KB against 1.3 MB as PNG,
+visually lossless (47 dB over the visible pixels, alpha bit-identical).
+
+## Figure treatments
+
+Two conventions, and it matters which one a figure gets:
+
+- **Footage is duotoned.** The video figures wrap their `<video>` in
+  `.duotone`, which lays the accent over the frame with
+  `mix-blend-mode: color`. This is the design system's treatment for
+  photography.
+- **Technical figures stay neutral.** The exploded axonometric (Fig. 02) is
+  ink on the page ground, and the print plate (Fig. 06) keeps the colours of
+  the render it came from. Duotone forces a single accent hue at one saturation
+  and varies only lightness, which flattens exactly the surface shading a parts
+  drawing needs to be readable. Do not add `.duotone` to these.
+
+Both kinds still get the `.blueprint` frame with its four corner registration
+marks, so they read as one family regardless of treatment.
 
 The assembly instructions themselves do not exist yet, and the Build page says
 so rather than pretending otherwise.

@@ -91,24 +91,23 @@
               </table>
               <p style="margin:12px 0 0;font-size:14.5px;color:var(--muted)">Bluetooth Low Energy allows one client at a time. If Marvin is missing from the picker, something else is already holding the connection — or it is not powered.</p>
             </div>
-            <div style="aspect-ratio:16/10;display:grid"><figure class="blueprint" style="margin:0;position:relative;width:100%;height:100%;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;padding:12px;background-image:repeating-linear-gradient(0deg,var(--rule) 0 1px,transparent 1px 100%),repeating-linear-gradient(90deg,var(--rule) 0 1px,transparent 1px 100%);background-size:28px 28px;background-position:center">
+            <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px)">
   <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-  <div aria-hidden="true" style="position:absolute;left:10px;right:10px;top:50%;height:1px;background:var(--rule)"></div>
-  <div aria-hidden="true" style="position:absolute;top:10px;bottom:10px;left:50%;width:1px;background:var(--rule)"></div>
-  <div aria-hidden="true" style="position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border:1px solid var(--rule);border-radius:50%"></div>
-  <div style="position:relative;display:flex;justify-content:space-between;gap:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase">
-    <span style="color:var(--color-accent-700)">Fig. 09</span>
-    <span style="color:var(--muted)">Screenshot · interface</span>
+  <!-- The controller ships its own dark chrome, so this stays untreated: no
+       .duotone (that is the design system's photography treatment) and no
+       theme-dependent inversion. A screenshot of a terminal has to look like
+       the terminal the reader will actually see on their own screen. -->
+  <div style="position:relative;aspect-ratio:1588/1178">
+    <img src="assets/img/marvin-controller.webp" width="1588" height="1178" loading="lazy" decoding="async" alt="The controller web page connected to Marvin: a header reading Marvin, Bluetooth Terminal with a green Marvin status pill beside Scan and Disconnect buttons, and below it a dark terminal titled marvin — Marvin listing the seven commands, then the session log — scanning, connected, D returning Demo mode ON, S returning All motors stopped — above a Marvin&gt; command prompt." style="width:100%;height:100%;object-fit:contain;display:block">
   </div>
-  <figcaption style="position:relative;max-width:40ch;margin:0 auto;text-align:center;padding:14px 6px;font-size:inherit;color:inherit">
-    <span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px;line-height:1.16;letter-spacing:-.01em">The controller app, connected</span>
-    <span style="display:block;margin-top:7px;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--muted)">Full window of controller/index.html after a successful connect: device name, the seven-command cheat sheet, the head pad and the speed slider. Crop to the window, no browser chrome, no desktop.</span>
+  <!-- Fig. 06's caption sits on an 800px figure and stays on one line. This
+       one shares a two-column grid with Table 03.1, so it wraps: a tight row
+       gap keeps the wrapped meta reading as part of the same caption. -->
+  <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
+    <span><span style="color:var(--color-accent-700)">Fig. 09</span> &mdash; Connected. The cheat sheet is printed on connect; every command and its reply is echoed below it.</span>
+    <span>Controller &#183; connected</span>
   </figcaption>
-  <div style="position:relative;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">
-    <span>16:10 — 1600 × 1000</span>
-    <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9px;letter-spacing:.12em">To be captured</span>
-  </div>
-</figure></div>
+</figure>
           </div>
         </div>
       </div>

@@ -48,10 +48,10 @@ Not yet characterised — these are starting points, not validated settings.
 | | |
 | --- | --- |
 | Material | PLA for structure; TPU for the track links |
-| Layer height | 0.2 mm |
+| Layer height | 0.08 mm |
 | Walls | 3 |
 | Infill | 20 % (structural parts), 40 % (neck and head mount) |
-| Supports | Needed on the body and head cover |
+| Supports | Tree on the body (01) and neck (07); normal on the wheels (04) |
 
 The track links are the one part that genuinely needs a flexible filament —
 printing them rigid gives you a robot that cannot corner. If you print a set,

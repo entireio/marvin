@@ -80,6 +80,27 @@
   /* ------------------------------------------------------------------ */
   /* Videos                                                              */
   /* ------------------------------------------------------------------ */
+  // Every clip here is wallpaper, not a talk — none of them has anything to
+  // say, and a page that starts making noise on its own is a page people close.
+  // The files ship with no audio track at all and the markup carries `muted`;
+  // this is the third lock, for the cases the markup cannot cover — a restore
+  // from the back/forward cache, a browser media control, an extension.
+
+  function silence(video) {
+    video.defaultMuted = true;
+    video.muted = true;
+    video.volume = 0;
+  }
+
+  function silenceVideos() {
+    each('video', function (video) {
+      silence(video);
+      video.addEventListener('volumechange', function () {
+        // Guarded, or re-muting would fire this handler forever.
+        if (!video.muted || video.volume !== 0) silence(video);
+      });
+    });
+  }
 
   function wireVideo(refName, actionName) {
     var video = document.querySelector('[data-ref="' + refName + '"]');
@@ -209,6 +230,7 @@
     each('[data-action="toggleTheme"]', function (btn) {
       btn.addEventListener('click', toggleTheme);
     });
+    silenceVideos();
     wireVideo('videoRef', 'togglePlay');
     wireVideo('demoRef', 'toggleDemo');
     wireAnatomy();
