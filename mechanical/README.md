@@ -24,8 +24,8 @@ covers, wheels, then the head — and the one TPU part last.
 | 04 | Wheel | `04_wheel.stl` | 4 | PLA |
 | 05 | Head base | `05_head_base.stl` | 1 | PLA |
 | 06 | Head cover | `06_head_cover.stl` | 1 | PLA |
-| 07 | Neck mount | `07_neck_mount.stl` | 1 | PLA |
-| 08 | Neck | `08_neck.stl` | 1 | PLA |
+| 07 | Neck | `07_neck.stl` | 1 | PLA |
+| 08 | Neck mount | `08_neck_mount.stl` | 1 | PLA |
 | 09 | Track link | `09_track.stl` | many | TPU |
 
 The eight PLA parts are 01–08; the track link is the only part in TPU, so it
