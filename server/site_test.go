@@ -45,7 +45,7 @@ func TestRealSiteIsGated(t *testing.T) {
 		"/contribute.html", "/reference.html",
 		"/assets/css/site.css", "/assets/css/industry.css",
 		"/assets/js/site.js", "/assets/img/favicon.svg",
-		"/assets/video/marvin_moving_6sec.mp4",
+		"/assets/video/marvin_moving_12sec_pingpong.mp4",
 		"/DESIGN-BRIEF.md", "/README.md",
 	}
 	for _, p := range paths {
@@ -141,7 +141,7 @@ func TestRealSiteHidesAssetListings(t *testing.T) {
 // not break them for a signed-in visitor.
 func TestRealSiteSupportsRangeRequests(t *testing.T) {
 	a := realSiteApp(t)
-	req := httptest.NewRequest(http.MethodGet, "/assets/video/marvin_moving_6sec.mp4", nil)
+	req := httptest.NewRequest(http.MethodGet, "/assets/video/marvin_moving_12sec_pingpong.mp4", nil)
 	req.AddCookie(sessionCookieFor(t, a, "alice"))
 	req.Header.Set("Range", "bytes=0-1023")
 

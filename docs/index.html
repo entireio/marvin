@@ -68,7 +68,15 @@
         <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px)">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
           <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
-            <video data-ref="videoRef" src="assets/video/marvin_moving_10sec.mp4" poster="assets/img/marvin-hero-poster-10s.png" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <!-- Ping-pong loop: the clip plays forward, then backwards, and the
+                 file itself carries both passes — forward frames, then the same
+                 frames in reverse with the two turning points not repeated. So
+                 `loop` wraps from the second frame back to the first, which is a
+                 continuation of the motion rather than a cut back to the start.
+                 Doing this in the file rather than in JavaScript is deliberate:
+                 reversing playback in the browser means seeking backwards frame
+                 by frame, which no engine does smoothly at 1080p. -->
+            <video data-ref="videoRef" src="assets/video/marvin_moving_20sec_pingpong.mp4" poster="assets/img/marvin-hero-poster-10s.png" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block"></video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
             <span><span style="color:var(--color-accent-700)">Fig. 01</span> — Marvin under drive. A forward run, a pivot on one track, and a look around.</span>
@@ -281,7 +289,8 @@
         <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px);align-self:start">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
           <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
-            <video data-ref="demoRef" src="assets/video/marvin_moving_6sec.mp4" poster="assets/img/marvin-demo-poster.png" muted loop playsinline autoplay preload="none" aria-label="Marvin in demo mode: scanning with its head, then choosing a direction and moving off." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <!-- Ping-pong loop, as in Fig. 01. -->
+            <video data-ref="demoRef" src="assets/video/marvin_moving_12sec_pingpong.mp4" poster="assets/img/marvin-demo-poster.png" muted loop playsinline autoplay preload="none" aria-label="Marvin in demo mode: scanning with its head, then choosing a direction and moving off." style="width:100%;height:100%;object-fit:cover;display:block"></video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
             <span><span style="color:var(--color-accent-700)">Fig. 05</span> — Demo mode. Nobody is driving; the head leads and the body follows.</span>
