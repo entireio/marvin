@@ -1,0 +1,8 @@
+menu "Marvin"
+config MARVIN_PROBE_URL
+    string "Fixed HTTPS backend health URL for bench network verification"
+    default ""
+    help
+        Set to your reachable Marvin /api/health HTTPS URL. Empty disables
+        candidate application. It must not be localhost. Enrollment is M7.
+endmenu

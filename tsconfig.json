@@ -1,0 +1,4 @@
+{
+ "compilerOptions": { "target":"ES2023", "module":"ESNext", "moduleResolution":"Bundler", "lib":["ES2023","DOM","DOM.Iterable"], "jsx":"react-jsx", "strict":true, "esModuleInterop":true, "skipLibCheck":true, "resolveJsonModule":true, "allowImportingTsExtensions":true, "noEmit":true, "types":["node","vite/client"] },
+ "include":["apps/**/*.ts","apps/**/*.tsx","packages/**/*.ts","scripts/**/*.ts","tests/**/*.ts","*.config.ts"]
+}

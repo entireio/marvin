@@ -1,0 +1,14 @@
+
+> marvin-software@0.1.0 test:postgres
+> tsx scripts/test-postgres.ts
+
+
+ RUN  v4.1.11 /Users/stefanopedemonte/Projects/Marvin_software
+
+(node:80257) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  13:33:02
+   Duration  774ms (transform 33ms, setup 0ms, import 103ms, tests 580ms, environment 0ms)

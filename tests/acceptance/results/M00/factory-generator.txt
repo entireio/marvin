@@ -1,0 +1,4 @@
+
+Creating NVS binary with version: V2 - Multipage Blob Support Enabled
+
+Created NVS binary: ===> /Users/stefanopedemonte/Projects/Marvin_software/work/factory-generator-check/factory.bin

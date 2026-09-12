@@ -1,0 +1,46 @@
+import { beforeEach,afterEach,it,expect } from 'vitest';
+import { createApp } from '../../apps/server/src/app.js';
+import { config } from '../../apps/server/src/config.js';
+import { sqliteDatabase } from '../../packages/persistence/src/database.js';
+import { FixtureTextProvider } from '../../packages/runtime/src/provider.js';
+import { hashPassword,verifyPassword,safeReturnTo } from '../../apps/server/src/auth.js';
+import WebSocket from 'ws';
+import { randomUUID } from 'node:crypto';
+let service:Awaited<ReturnType<typeof createApp>>,cookie:string,csrf:string,ownerId:string;
+const origin='http://127.0.0.1:5173';
+beforeEach(async()=>{service=await createApp(config({NODE_ENV:'test'}),{database:sqliteDatabase(),provider:new FixtureTextProvider(0)});const login=await service.app.inject({method:'POST',url:'/api/auth/login',headers:{origin},payload:{}});expect(login.statusCode).toBe(200);cookie=login.cookies[0].name+'='+login.cookies[0].value;csrf=login.json().csrf;ownerId=login.json().owner.id;});
+afterEach(async()=>{await service.app.close();});
+const headers=()=>({cookie,origin,'x-csrf-token':csrf});
+it('private endpoints require authentication, origin and anti-CSRF token',async()=>{expect((await service.app.inject('/api/conversations')).statusCode).toBe(401);expect((await service.app.inject({method:'POST',url:'/api/conversations',headers:{cookie,origin},payload:{}})).statusCode).toBe(403);expect((await service.app.inject({method:'POST',url:'/api/conversations',headers:{...headers(),origin:'https://attacker.invalid'},payload:{}})).statusCode).toBe(403);});
+it('route-level tenant isolation blocks another account thread',async()=>{const other=await service.store.ensureOwner('test','other','Other'),c=await service.store.createConversation(other.id);expect((await service.app.inject({url:'/api/conversations/'+c.id,headers:headers()})).statusCode).toBe(404);});
+it('API cannot forge body_voice or send raw physical/write commands',async()=>{const c=await service.store.createConversation(ownerId);for(const payload of [{conversationId:c.id,interactionId:randomUUID(),routeId:'r',text:'move',surface:'body_voice'},{type:'physical_head'}])expect((await service.app.inject({method:'POST',url:'/api/turns',headers:headers(),payload})).statusCode).toBe(400);expect((await service.app.inject({method:'POST',url:'/api/physical/drive',headers:headers(),payload:{}})).statusCode).toBe(404);});
+it('turn retry is idempotent and persists partial/complete messages',async()=>{const c=await service.store.createConversation(ownerId);const payload={conversationId:c.id,interactionId:randomUUID(),routeId:'r',text:'hello'};const first=await service.app.inject({method:'POST',url:'/api/turns',headers:headers(),payload});expect(first.statusCode).toBe(202);await service.runtime.drain();const again=await service.app.inject({method:'POST',url:'/api/turns',headers:headers(),payload});expect(again.statusCode).toBe(200);expect(await service.store.turns(ownerId,c.id)).toHaveLength(1);});
+it('oversized messages and password-bearing simulation requests fail validation',async()=>{expect((await service.app.inject({method:'POST',url:'/api/turns',headers:headers(),payload:{text:'x'.repeat(40000)}})).statusCode).toBe(413);expect((await service.app.inject({method:'POST',url:'/api/simulation/robot',headers:headers(),payload:{deviceId:'test',enrollmentId:'enroll',network:'Test',password:'do-not-send'}})).statusCode).toBe(400);});
+it('logout revokes the server session and does not remove history',async()=>{await service.store.createConversation(ownerId);expect((await service.app.inject({method:'POST',url:'/api/auth/logout',headers:headers(),payload:{}})).statusCode).toBe(200);expect((await service.app.inject({url:'/api/conversations',headers:{cookie}})).statusCode).toBe(401);expect(await service.store.listConversations(ownerId)).toHaveLength(1);});
+it('local password hashing and deployment fail-closed checks',async()=>{const hash=await hashPassword('long enough phrase');expect(await verifyPassword('long enough phrase',hash)).toBe(true);expect(await verifyPassword('incorrect',hash)).toBe(false);expect(()=>config({NODE_ENV:'production'})).toThrow();expect(()=>config({HOST:'0.0.0.0',AUTH_MODE:'development'})).toThrow();expect(()=>config({MODEL_PROVIDER:'openai'})).toThrow();expect(safeReturnTo('//attacker.invalid')).toBe('/app');expect(safeReturnTo('/app/abc')).toBe('/app/abc');});
+it('websocket output is origin-routed, replayable, and stops immediately after logout',async()=>{
+ const c=await service.store.createConversation(ownerId);
+ const address=await service.app.listen({host:'127.0.0.1',port:0});
+ const open=()=>new Promise<WebSocket>((resolve,reject)=>{const ws=new WebSocket(address.replace('http:','ws:')+'/api/events',{headers:{cookie,origin}});ws.once('open',()=>resolve(ws));ws.once('error',reject);});
+ const sockets=await Promise.all(['r','other-route'].map(()=>open()));
+ const observed:any[][]=[[],[]];
+ await Promise.all(sockets.map((ws,index)=>new Promise<void>(resolve=>{ws.on('message',raw=>{const e=JSON.parse(raw.toString());observed[index].push(e);if(e.type==='subscribed')resolve();});ws.send(JSON.stringify({v:1,type:'subscribe',conversationId:c.id,routeId:index?'other-route':'r',after:0}));})));
+ const id=randomUUID();await service.runtime.start(await service.runtime.context(ownerId,c.id,id,'r'),'hello');await service.runtime.drain();
+ await new Promise(r=>setTimeout(r,40));
+ expect(observed[0].some(e=>e.type==='completed')).toBe(true);expect(observed[1].some(e=>e.type==='delta')).toBe(false);
+ sockets[0].terminate();const replay=await open();const replayed:any[]=[];
+ await new Promise<void>(resolve=>{replay.on('message',raw=>{const e=JSON.parse(raw.toString());replayed.push(e);if(e.type==='subscribed')resolve();});replay.send(JSON.stringify({v:1,type:'subscribe',conversationId:c.id,routeId:'r',after:0}));});
+ expect(replayed.filter(e=>e.type==='delta').map(e=>e.text).join('')).toBe((await service.store.turns(ownerId,c.id))[0].assistantText);
+ await service.app.inject({method:'POST',url:'/api/auth/logout',headers:headers(),payload:{}});
+ const before=replayed.length;const closed=new Promise<number>(resolve=>replay.once('close',resolve));service.runtime.events.emit('event',{v:1,type:'delta',conversationId:c.id,interactionId:id,routeId:'r',seq:999,text:'must not arrive'},ownerId);
+ expect(await closed).toBe(4401);expect(replayed).toHaveLength(before);sockets[1].terminate();
+});
+it('local passphrase login handles failure, intended route, expiration and cancelled identity flow',async()=>{
+ const local=await createApp(config({NODE_ENV:'test',AUTH_MODE:'local',LOCAL_PASSWORD_HASH:await hashPassword('a local test passphrase')}),{database:sqliteDatabase(),provider:new FixtureTextProvider(0)});
+ try{expect((await local.app.inject({method:'POST',url:'/api/auth/login',headers:{origin},payload:{password:'incorrect'}})).statusCode).toBe(401);
+ const result=await local.app.inject({method:'POST',url:'/api/auth/login',headers:{origin},payload:{password:'a local test passphrase',returnTo:'/app/saved-conversation'}});expect(result.statusCode).toBe(200);expect(result.json().returnTo).toBe('/app/saved-conversation');const cookie=result.cookies[0].name+'='+result.cookies[0].value;
+ expect((await local.app.inject({url:'/api/auth/session',headers:{cookie}})).json().owner.id).toBe(result.json().owner.id);
+ await local.store.db.query('UPDATE sessions SET expires_at=?',[1]);expect((await local.app.inject({url:'/api/conversations',headers:{cookie}})).statusCode).toBe(401);
+ const cancelled=await local.app.inject('/api/auth/callback?error=access_denied');expect(cancelled.statusCode).toBe(302);expect(cancelled.headers.location).toBe(origin+'/login?error=signin_failed');
+ }finally{await local.app.close();}
+});

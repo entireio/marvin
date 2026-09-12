@@ -1,0 +1,46 @@
+/* Seed portal tokens, derived from the existing Marvin docs implementation.
+   Review semantic contrast and font licensing during M2. No remote font import. */
+:root {
+  color-scheme: light;
+  --marvin-bg: #f2f2f3;
+  --marvin-surface: #e9e9ea;
+  --marvin-text: #1d1f20;
+  --marvin-muted: #5d5d60;
+  --marvin-accent: #5980a6;
+  --marvin-link: #416180;
+  --marvin-action-bg: #2c455d;
+  --marvin-action-text: #ffffff;
+  --marvin-rule: color-mix(in srgb, #1d1f20 16%, transparent);
+  --marvin-font-body: "Barlow", system-ui, sans-serif;
+  --marvin-font-heading: "Barlow Condensed", system-ui, sans-serif;
+  --marvin-font-code: "IBM Plex Mono", ui-monospace, monospace;
+  --marvin-radius-control: 4px;
+  --marvin-radius-panel: 7px;
+  --marvin-target-size: 44px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --marvin-bg: #17181a;
+    --marvin-surface: #1e1f21;
+    --marvin-text: #efece6;
+    --marvin-muted: #cfccc7;
+    --marvin-accent: #94bce3;
+    --marvin-link: #bad4ea;
+    --marvin-action-bg: #bad4ea;
+    --marvin-action-text: #17181a;
+    --marvin-rule: color-mix(in srgb, #efece6 20%, transparent);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --marvin-bg: #17181a;
+  --marvin-surface: #1e1f21;
+  --marvin-text: #efece6;
+  --marvin-muted: #cfccc7;
+  --marvin-accent: #94bce3;
+  --marvin-link: #bad4ea;
+  --marvin-action-bg: #bad4ea;
+  --marvin-action-text: #17181a;
+  --marvin-rule: color-mix(in srgb, #efece6 20%, transparent);
+}

@@ -1,0 +1,6 @@
+usage: bench.py [-h] --credentials CREDENTIALS [--apply]
+
+options:
+  -h, --help            show this help message and exit
+  --credentials CREDENTIALS
+  --apply               Interactively choose and apply a robot-scanned network
