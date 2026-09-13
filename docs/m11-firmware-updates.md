@@ -91,3 +91,9 @@ Seventy host bootstrap trials cover valid confirmation, unhealthy/mismatched ima
 The physical failure campaign passed10/10 trials. Each trial started from the online audible release, requested allowlisted sequence2, observed task quiescence and signed-image selection, then observed `boot_health_failed` after90.946–91.136seconds. The bootloader restored the prior audible release; every trial regained authenticated online presence, available audio and at least17,920 new AFE samples. Eight recovery `boot_confirmed` markers were captured directly. USB-JTAG dropped the reboot edge twice, so those two recoveries were identified through the prior image's immutable audible setting plus live health; the failure image is compiled silent. See `tests/acceptance/results/M11/physical-rollback-10-trials.json`.
 
 This passes the original10/10 failed-update recovery count for health-rejected signed images. It does not cover power removal during flash writes, production secure boot/flash encryption, signer rotation or fleet rollout behavior.
+
+## Clean release rollout
+
+Commit `89eca54` was rebuilt with ESP-IDF5.4.2 and signed as private release sequence4. The 1,918,000-byte application has SHA256 `44995666f20e79f2eb5144817a5c66b77dec7deccaeaa9aedb22fbdffd3c383d` and leaves48,080 bytes in its OTA slot. The isolated one-device backend offered that exact bundle. The board selected it and confirmed health in13.464seconds with authenticated online presence, audio availability and90,624 processed AFE samples. Sanitized evidence is in `tests/acceptance/results/M11/physical-final-release-install.json`; signing material and release bundles remain ignored.
+
+This proves the guarded release path on one development board. It is not a fleet rollout, independent install trial, production-key ceremony, secure-boot result or power-cut result.

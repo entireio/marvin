@@ -1,15 +1,15 @@
 # Marvin — Codex handoff
 
-Updated **2026-09-13 21:10 UTC / 14:10 America/Los_Angeles**.
+Updated **2026-09-13 21:40 UTC / 14:40 America/Los_Angeles**.
 Project root: `/Users/stefanopedemonte/Projects/Marvin_software`.
 
 ## Read this first
 
 Development resumed on the user's instruction. The user explicitly selected a sensitivity-first **Hey Marvin** alpha and accepted poor hard-negative performance for now. Public microWakeWord V1 is selected at cutoff128/window3; the final scoped physical confirmation passed5/5 positives exactly once with zero local faults or microphone upload. Earlier broader tests measured18/20 physical positives with9/20 negative false activations and19/20 direct-host positives with10/20 false activations. This is an alpha decision, not the original acoustic gate. Model redistribution licensing remains unresolved.
 
-Signed OTA is integrated physically. Sequence1 was installed with the guarded preserving bootstrap, confirmed healthy in12.863seconds and returned online with audio/AFE progress. A sequence2 signed failure image forces the90-second health timeout. The physical rollback campaign passed10/10, with every `boot_health_failed` marker observed and the prior audible image recovering online/audio/AFE health. Private details are in `work/releases/2-failure/physical-rollback-trials-final.json`; sanitized evidence is in `tests/acceptance/results/M11/physical-rollback-10-trials.json`. The harness may reset the Espressif USB device once through Homebrew libusb when USB-JTAG remains enumerated but silent. Sequence3 is the current dirty-tree release build and should remain unused; rebuild and sign a clean newer sequence after committing this implementation slice.
+Signed OTA is integrated physically. Sequence1 was installed with the guarded preserving bootstrap, confirmed healthy in12.863seconds and returned online with audio/AFE progress. A sequence2 signed failure image forces the90-second health timeout. The physical rollback campaign passed10/10, with every `boot_health_failed` marker observed and the prior audible image recovering online/audio/AFE health. Private details are in `work/releases/2-failure/physical-rollback-trials-final.json`; sanitized evidence is in `tests/acceptance/results/M11/physical-rollback-10-trials.json`. The harness may reset the Espressif USB device once through Homebrew libusb when USB-JTAG remains enumerated but silent. Clean commit `89eca54` was rebuilt, signed as sequence4 and installed through the isolated rollout. It confirmed healthy in13.464seconds with authenticated presence, audio availability and AFE progress. Sequence3 was a dirty-tree build and remains unused.
 
-The corrected24-hour M6 ten-device soak is active at `work/m6/soak-24h-final-20260913`; do not restart it. The preceding retry was intentionally stopped after2.27hours because its peak-versus-one-sample RSS criterion was already guaranteed to fail despite a downward memory trend. The current script uses first/last stabilized ten-minute medians plus a24-hour linear slope and retains peak RSS only as diagnostic evidence. After final sequence3 installation and a short release-soak check, start the eight-hour physical release soak with wake explicitly suppressed so false positives cannot open billable provider sessions. `board-runtime-soak.py --mode release-suppressed` verifies idle audio, AFE progress and zero uplink growth. No serial test may overlap another serial owner.
+The corrected24-hour M6 ten-device soak is active at `work/m6/soak-24h-final-20260913`; do not restart it. The preceding retry was intentionally stopped after2.27hours because its peak-versus-one-sample RSS criterion was already guaranteed to fail despite a downward memory trend. The current script uses first/last stabilized ten-minute medians plus a24-hour linear slope and retains peak RSS only as diagnostic evidence. The sequence4 release passed a60-second physical preflight and its single eight-hour soak is active in `board-runtime-soak.py --seconds 28800 --mode release-suppressed`; do not open serial, reset or flash until it finishes. Wake is explicitly suppressed so false positives cannot open billable provider sessions. The harness verifies idle audio, AFE progress and zero uplink growth.
 
 This file summarizes the current checkpoint. `docs/overnight-handoff.md` is a chronological journal containing superseded process IDs, configurations, and “currently running” statements. Its older sections are historical, not current operating instructions. Prefer fresh process/artifact checks and this checkpoint.
 
@@ -91,13 +91,7 @@ Partition layout remains unchanged: NVS `0x9000/0x6000`, PHY `0xf000/0x1000`, OT
 
 ### Flashed versus compiled
 
-**Flashed:** default-disarmed MultiNet6 segmented competing-phrase experiment. It is not an accepted wake detector. Boot check passed: local AFE processing, wake activation disabled, zero captured/uploaded samples and zero feed faults. A subsequent 15-second observation measured approximately 15,748 processed samples/s.
-
-- Build/flash logs: `work/board/build-wake-default-disarmed.log`, `flash-wake-default-disarmed.log`.
-- Reboot result: `work/board/wake-default-disarmed-check.json`.
-- Board is quiet; wake activation remains suppressed. No serial test owns the device at pause.
-
-The audible rollback-capable sequence1 image is physically installed and the clean current sequence3 release is built/signed but not yet installed. Both enable microWakeWord with cutoff128/window3 and use public V1 under the explicit sensitivity-first alpha decision. None of the locally trained candidates was installed on the board.
+**Flashed:** clean signed release sequence4 from commit `89eca54`, application SHA256 `44995666f20e79f2eb5144817a5c66b77dec7deccaeaa9aedb22fbdffd3c383d`. It enables microWakeWord public V1 at cutoff128/window3 and volume95 under the explicit sensitivity-first alpha decision. The OTA health check passed in13.464seconds. The active physical soak repeatedly sends the runtime suppression command, so automatic wake activation is disabled only for the duration of that test. None of the locally trained wake candidates was installed on the board.
 
 ### Serial/build discipline
 
@@ -199,11 +193,10 @@ Public model provenance:
 
 ## Concrete next steps
 
-1. Commit the verified implementation/evidence slice, rebuild the release from the clean commit and sign a sequence newer than3. Do not install the dirty-tree sequence3 artifact.
-2. Atomically point the isolated rollout directory at the clean signed bundle, restart only the physical backend, request that sequence, and verify selection plus healthy confirmation. Leave the board on this current release build.
-3. Run a short `board-runtime-soak.py --mode release-suppressed` check, then start the eight-hour physical run. Keep the separate24-hour M6 soak running. Record sanitized evidence when each finishes.
-4. Update delivery status/M11 evidence, run appropriate final checks, inspect the diff, then commit and push this verified slice. Private keys, release bundles, build trees, model binaries, raw audio and board backups remain ignored.
-5. Do not spend more alpha time optimizing wake. Preserve the measured false positives and production acoustic gate; revisit only with representative data and a licensed model path.
+1. Do not interrupt or duplicate either active long soak. The eight-hour physical run owns serial; the corrected24-hour M6 simulator run is independent.
+2. When each finishes, validate its result, add sanitized acceptance evidence and update delivery status. A partial observation is not a pass.
+3. Run appropriate final checks, inspect the diff, then commit and push the remaining verified slice. Private keys, release bundles, build trees, model binaries, raw audio and board backups remain ignored.
+4. Do not spend more alpha time optimizing wake. Preserve the measured false positives and production acoustic gate; revisit only with representative data and a licensed model path.
 
 ## Software architecture and useful commands
 
@@ -233,10 +226,10 @@ Use `docs/implementation-plan.md` as the original contract and `docs/delivery-st
 
 - Earlier milestones still have external/representative gates: approved Entire identity/hosted API contract, real browser BLE interoperability and different-AP/power-loss provisioning matrix, accessibility/participant evaluation and broader semantic continuity. A runnable preview is not full acceptance.
 - **M6:** finish and assess the current24-hour ten-device soak; preserve the failed original run. Physical command/reconnect/memory matrix remains incomplete.
-- **M8:** the sensitivity-first Hey Marvin alpha is selected with known poor hard-negative performance. The original ≥95% representative quiet/noisy wake and ≤1 false wake/hour gate remains open, along with60-minute packet evidence, a complete eight-hour physical resource/power/thermal run and unavailable peripheral evidence. The earlier physical soak stopped around6.1hours.
+- **M8:** the sensitivity-first Hey Marvin alpha is selected with known poor hard-negative performance. The original ≥95% representative quiet/noisy wake and ≤1 false wake/hour gate remains open, along with60-minute packet evidence, unavailable peripheral evidence and completion of the active eight-hour physical resource soak. The harness cannot measure supply power or enclosure thermals.
 - **M9:**20 actual web-text→web-voice→body-voice→web-text journeys;100-observation latency/routing checks and physical action/safety evidence. Standalone audio board cannot prove absent actuators/sensors.
 - **M10:** live second-provider credentials and parity, local/cloud suite parity and three independent installation trials. Anthropic/Deepgram adapters and fixtures exist; fixtures do not establish live parity.
-- **M11:** preserving signed OTA bootstrap and10/10 health-rejected update recovery are complete. Real-provider load, production recovery/rotation, all earlier release blockers and a seven-day ten-user beta remain. Normal bench flashing resets OTA metadata and is not the preserving bootstrap. No eFuses were programmed.
+- **M11:** preserving signed OTA bootstrap,10/10 health-rejected update recovery and the clean sequence4 one-device rollout are complete. Real-provider load, production recovery/rotation, all earlier release blockers and a seven-day ten-user beta remain. Normal bench flashing resets OTA metadata and is not the preserving bootstrap. No eFuses were programmed.
 
 Development is active under the user's instruction to complete all implementable milestone work.
 

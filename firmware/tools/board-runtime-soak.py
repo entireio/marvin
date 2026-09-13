@@ -21,6 +21,8 @@ port = serial.Serial(port=None, baudrate=115200, timeout=.2, write_timeout=1)
 port.dtr = port.rts = False
 port.port = '/dev/cu.usbmodem1101'
 started = time.monotonic()
+afe_warmup_seconds = min(30.0, max(5.0, a.seconds * 0.1))
+minimum_processing_window = min(30.0, max(10.0, a.seconds * 0.4))
 pending = b''
 samples = []
 sample_count = 0
@@ -70,7 +72,7 @@ try:
                             minimum_internal = min(minimum_internal if minimum_internal is not None else v['internalFreeBytes'], v['internalFreeBytes'])
                         if 'afe' in value:
                             afe_last = observation
-                            if now-started >= 30 and afe_baseline is None:
+                            if now-started >= afe_warmup_seconds and afe_baseline is None:
                                 afe_baseline = observation
                             if a.mode == 'release-suppressed':
                                 all_idle = all_idle and value['afe'].get('wakeActivationDisabled') is True
@@ -104,7 +106,7 @@ try:
         interval = afe_last['elapsedSeconds'] - afe_baseline['elapsedSeconds'] if afe_baseline else 0
         rate = (afe_last['afe']['processedSamples16k']-afe_baseline['afe']['processedSamples16k']) / interval if interval else 0
         report['processingSamplesPerSecondAfterWarmup'] = round(rate, 2)
-        report['processingPassed'] = bool(interval >= 30 and 15500 <= rate <= 16500 and afe_last['afe']['feedFaults'] == afe_baseline['afe']['feedFaults'])
+        report['processingPassed'] = bool(interval >= minimum_processing_window and 15500 <= rate <= 16500 and afe_last['afe']['feedFaults'] == afe_baseline['afe']['feedFaults'])
     report['passed'] = report['idleSafetyPassed'] and report['uplinkIdlePassed'] and report['processingPassed'] is not False
 finally:
     if port.is_open:

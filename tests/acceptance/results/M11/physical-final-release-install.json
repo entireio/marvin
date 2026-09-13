@@ -1,0 +1,32 @@
+{
+  "recordedAt": "2026-09-13T21:35:22Z",
+  "scope": "Physical signed OTA from the verified sequence1 fallback to clean release sequence4",
+  "gitRevision": "89eca54",
+  "releaseSequence": 4,
+  "minimumPriorSequence": 1,
+  "application": {
+    "bytes": 1918000,
+    "sha256": "44995666f20e79f2eb5144817a5c66b77dec7deccaeaa9aedb22fbdffd3c383d"
+  },
+  "update": {
+    "boardOnlineBeforeRequest": true,
+    "requested": true,
+    "quiescing": true,
+    "selected": true,
+    "selectionElapsedMs": 21067
+  },
+  "trialBoot": {
+    "bootConfirmed": true,
+    "confirmationElapsedMs": 13463,
+    "deviceOnline": true,
+    "audioAvailable": true,
+    "afeProcessedSamples16k": 90624,
+    "crashObserved": false
+  },
+  "passed": true,
+  "limitations": [
+    "This is a one-device development rollout.",
+    "Secure boot and flash encryption remain disabled on the development board.",
+    "The public wake model's redistribution license remains unresolved."
+  ]
+}
