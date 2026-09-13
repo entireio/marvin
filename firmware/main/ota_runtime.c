@@ -43,11 +43,17 @@ static void confirm_boot(void){
  if(!running||esp_ota_get_state_partition(running,&state)!=ESP_OK||(state!=ESP_OTA_IMG_PENDING_VERIFY&&state!=ESP_OTA_IMG_VALID))return;
  bool trial=state==ESP_OTA_IMG_PENDING_VERIFY;
  unsigned stable=0;uint32_t previous=marvin_body_health_progress();
+#ifdef CONFIG_MARVIN_OTA_TEST_REJECT_BOOT
+ printf("{\"update\":\"trial_health_reject_fixture\"}\n");
+#endif
  for(unsigned i=0;i<180;i++){
   vTaskDelay(pdMS_TO_TICKS(500));uint32_t progress=marvin_body_health_progress();
   bool healthy=marvin_device_link_online()&&marvin_body_health_ready();
 #ifdef CONFIG_MARVIN_LOCAL_AFE
   healthy=healthy&&progress>previous;
+#endif
+#ifdef CONFIG_MARVIN_OTA_TEST_REJECT_BOOT
+  healthy=false;
 #endif
   previous=progress;stable=healthy?stable+1:0;
   if(stable>=10&&(marvin_update_esp_confirm(true)||(trial&&confirm_initial_boot()))){printf("{\"update\":\"boot_confirmed\"}\n");return;}

@@ -26,6 +26,13 @@ config MARVIN_SIGNED_OTA
     help
         Requires dedicated factory release trust and a rollback-enabled bootloader.
         Local update commands never bypass signed manifest and owner authorization.
+config MARVIN_OTA_TEST_REJECT_BOOT
+    bool "TEST ONLY: reject trial-image boot health"
+    default n
+    depends on MARVIN_SIGNED_OTA
+    help
+        Forces a signed trial image to miss its health window so a guarded bench
+        test can verify bootloader rollback. Never enable in a release profile.
 config MARVIN_MICROPHONE_GAIN_DB
     int "Microphone analog gain in dB"
     range 0 36

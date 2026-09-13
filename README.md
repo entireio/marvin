@@ -1,6 +1,6 @@
 # Marvin software
 
-Private personal portal and backend for Marvin, plus original ESP-IDF firmware for an ESP32-S3-WROOM module. The public robot-building documentation remains a separate application. Implementation covers the M0–M3 development slice and the local M4 and realtime M5 implementations; hardware, approved Entire identity, and live-provider acceptance have outstanding gates. See [delivery status](docs/delivery-status.md).
+Private personal portal and backend for Marvin, plus original ESP-IDF firmware for an ESP32-S3-WROOM module and the Waveshare ESP32-S3 audio board. The public robot-building documentation remains a separate application. The repository implements the M0–M11 architecture: portal, persistence, provider and repository adapters, secure provisioning, native device transport, body voice, local Hey Marvin detection, deployment packaging, privacy controls and signed firmware updates. The original release gates still include external identity approval, representative-user studies, unavailable robot peripherals, second-provider credentials, independent installs, sustained soaks and beta operation. See [delivery status](docs/delivery-status.md).
 
 ## Run locally
 
@@ -20,7 +20,7 @@ For local passphrase authentication, run `npm run password:hash`, set `AUTH_MODE
 
 For local Entire repository access, follow [M4 setup and acceptance status](docs/m4-entire.md). This adapter uses the installed CLI and is not the hosted multi-user integration.
 
-For realtime speech, see [M5 voice setup and acceptance status](docs/m5-voice.md). Audio is backend-mediated and transcripts share the existing conversation. Live alpha verification is pending provider credit and Entire authorization.
+For realtime speech, see [M5 voice setup and acceptance status](docs/m5-voice.md). Audio is backend-mediated and transcripts share the existing conversation. Funded OpenAI text and voice smokes have passed. The standalone Waveshare board runs the16kHz microphone/audio path and sensitivity-first Hey Marvin alpha detector; see [physical audio evidence](docs/m8-audio-runtime.md).
 
 ## Verify
 
@@ -40,11 +40,11 @@ docker run --rm --name marvin-test-db -e POSTGRES_USER=marvin_test -e POSTGRES_P
 TEST_DATABASE_URL=postgresql://marvin_test:test-only@127.0.0.1:15439/marvin_test npm run test:postgres
 ```
 
-SQLite and PostgreSQL run the same persistence contract. `DATABASE_URL` selects PostgreSQL for the application. Transactions and constraints enforce one generation per conversation, one reserved/linked robot per owner, and one owner per device. Claims are groundwork; production hardware enrollment is M7.
+SQLite and PostgreSQL run the same persistence contract. `DATABASE_URL` selects PostgreSQL for the application. Transactions and constraints enforce one generation per conversation, one reserved/linked robot per owner, and one owner per device. Owner-bound physical enrollment and Wi-Fi provisioning are implemented and have passed same-AP board trials; broader browser/platform/location acceptance remains open.
 
 ## Build and deployment boundaries
 
-`npm run build` builds both server and UI. `npm start` serves them from port 4310; set `APP_ORIGIN=http://127.0.0.1:4310` for a local built preview. Production configuration rejects development sign-in, fixture models, and non-HTTPS origins. Use a TLS reverse proxy with WebSocket support, production OIDC, persistent database storage, and server secrets. This slice has no deployment, operational SLA, backups, or distributed socket broker; those are later release work. Run one API process for live stream delivery.
+`npm run build` builds both server and UI. `npm start` serves them from port 4310; set `APP_ORIGIN=http://127.0.0.1:4310` for a local built preview. Production configuration rejects development sign-in, fixture models, and non-HTTPS origins. Local HTTPS/PostgreSQL packaging, backups, recovery drills, retention/export/delete, rate limits and bounded diagnostics are implemented. Use a TLS reverse proxy with WebSocket support, approved production OIDC, persistent database storage and managed secrets. Run one API process for live stream delivery; a distributed socket broker is outside the current topology.
 
 Sources: `apps/web` React/Vite portal; `apps/server` Fastify API/auth; `packages/contracts` validation; `packages/persistence` migrations/store; `packages/runtime` orchestration/provider/policy; `packages/provisioning` UI transport boundary; `firmware` ESP-IDF implementation. [Firmware build and bench procedure](firmware/README.md).
 

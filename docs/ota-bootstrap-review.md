@@ -1,4 +1,4 @@
-# Initial OTA bootstrap review — not an installation procedure
+# Initial OTA bootstrap review and guarded installer
 
 The existing bench flasher writes the application toota0 and resets OTA selection metadata. Reusing it for the OTA profile would not establish the verified fallback required by the new installer guard. It remains intentionally unsupported for that profile.
 
@@ -14,10 +14,14 @@ Before constructing a real installation sequence after the soak:
 - Define explicit initial-health confirmation. Marking the candidate VALID during installation bypasses trial-health verification; marking it NEW without corresponding signed pending metadata would be refused by the current confirmation code. Neither shortcut is an accepted bootstrap procedure.
 - Retain a USB recovery route and a known selectable prior image before changing boot selection. The operator must be present for the first bootstrap. No automatic unattended initial install is authorized by the implementation itself.
 
-An acceptable next design is a narrowly scoped physical bootstrap confirmation that records initial health without bypassing signed-update verification for later releases, or a signed pending record staged with the new image while preserving existing NVS. This remains a design decision requiring implementation/tests before the initial installation helper is enabled. Subsequent application-only signed update trials then exercise the normal runtime, including the original ten physical recovery trials.
+The implemented design uses a narrowly scoped signed bootstrap capsule and pending trial record while preserving existing NVS. Subsequent application-only signed update trials exercise the normal runtime, including the original ten physical recovery trials.
 
 Relevant pinned sources: `work/esp-idf/components/bootloader_support/include/esp_flash_partitions.h`, `bootloader_support/src/bootloader_common_loader.c`, `app_update/esp_ota_ops.c`, and `esp_rom/linux/esp_rom_crc.c`.
 
 ## Implemented design update
 
-The chosen implementation uses a public **signed factory bootstrap capsule**, rather than an unsigned manual confirmation. See `m11-firmware-updates.md`. The trial runtime validates the capsule, current image, initial sequence, absence of another pending update and existence of a usable fallback after normal health checks. It then creates its own pending metadata without rewriting owner NVS. Host fault tests pass. The preserving USB installation planner and all physical trials are still pending; this document is not authorization to use the legacy flasher for OTA bootstrap.
+The chosen implementation uses a public **signed factory bootstrap capsule**. See `m11-firmware-updates.md`. The trial runtime validates the capsule, current image, initial sequence, absence of another pending update and existence of a usable fallback after normal health checks. It then creates its own pending metadata without rewriting owner NVS.
+
+`firmware/tools/ota-bootstrap-install.py` now enforces this plan. It requires a verified double-read16MB snapshot, a reviewed rollback-enabled build, a matching signed bundle/public key, an attested prior application and a compatible partition table. It verifies the current slot and partition on the physical board, preserves runtime NVS, PHY data, the prior application and AFE model, writes the boot selector last, and never changes eFuses. The first physical sequence1 installation passed: the new trial boot confirmed in12.863seconds, returned online, exposed audio and advanced AFE processing. Sanitized evidence is in `tests/acceptance/results/M11/physical-signed-bootstrap.json`.
+
+The legacy bench flasher remains inappropriate for OTA bootstrap. Production secure boot, flash encryption and protected release-key storage remain separate hardware-release work.

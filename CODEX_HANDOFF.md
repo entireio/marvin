@@ -1,15 +1,15 @@
 # Marvin — Codex handoff
 
-Updated **2026-09-13 19:42 UTC / 12:42 America/Los_Angeles**.
+Updated **2026-09-13 21:10 UTC / 14:10 America/Los_Angeles**.
 Project root: `/Users/stefanopedemonte/Projects/Marvin_software`.
 
 ## Read this first
 
-**Development is paused at the user's request.** This document was requested while paused. The user subsequently authorized committing/pushing the existing work to `https://github.com/spedemon/marvin_embodied_agent.git`; this does not resume implementation or acoustic tests. The user was explicitly told that the already-running 24-hour M6 simulator soak would continue. No training, export, acoustic or serial test is running at this checkpoint.
+Development resumed on the user's instruction. The user explicitly selected a sensitivity-first **Hey Marvin** alpha and accepted poor hard-negative performance for now. Public microWakeWord V1 is selected at cutoff128/window3; the final scoped physical confirmation passed5/5 positives exactly once with zero local faults or microphone upload. Earlier broader tests measured18/20 physical positives with9/20 negative false activations and19/20 direct-host positives with10/20 false activations. This is an alpha decision, not the original acoustic gate. Model redistribution licensing remains unresolved.
 
-The immediate unfinished task is **robust voice and on-device wake behavior using the exact phrase “Hey Marvin.”** Speaker playback works and the user approved its volume/clarity, but **no Hey Marvin detector has passed acceptance**. Multiple public and locally trained candidates falsely activate. Do not claim M8, M11, or the entire system complete.
+Signed OTA is integrated physically. Sequence1 was installed with the guarded preserving bootstrap, confirmed healthy in12.863seconds and returned online with audio/AFE progress. A sequence2 signed failure image forces the90-second health timeout. The physical rollback campaign passed10/10, with every `boot_health_failed` marker observed and the prior audible image recovering online/audio/AFE health. Private details are in `work/releases/2-failure/physical-rollback-trials-final.json`; sanitized evidence is in `tests/acceptance/results/M11/physical-rollback-10-trials.json`. The harness may reset the Espressif USB device once through Homebrew libusb when USB-JTAG remains enumerated but silent. Sequence3 is the current dirty-tree release build and should remain unused; rebuild and sign a clean newer sequence after committing this implementation slice.
 
-**Important distinction:** the firmware currently flashed on the board is different from the latest compiled image. The current build directory embeds a known-failing public wake model. Do not simply flash the latest build and call it an improvement.
+The corrected24-hour M6 ten-device soak is active at `work/m6/soak-24h-final-20260913`; do not restart it. The preceding retry was intentionally stopped after2.27hours because its peak-versus-one-sample RSS criterion was already guaranteed to fail despite a downward memory trend. The current script uses first/last stabilized ten-minute medians plus a24-hour linear slope and retains peak RSS only as diagnostic evidence. After final sequence3 installation and a short release-soak check, start the eight-hour physical release soak with wake explicitly suppressed so false positives cannot open billable provider sessions. `board-runtime-soak.py --mode release-suppressed` verifies idle audio, AFE progress and zero uplink growth. No serial test may overlap another serial owner.
 
 This file summarizes the current checkpoint. `docs/overnight-handoff.md` is a chronological journal containing superseded process IDs, configurations, and “currently running” statements. Its older sections are historical, not current operating instructions. Prefer fresh process/artifact checks and this checkpoint.
 
@@ -63,7 +63,7 @@ Docker was recovered after disk exhaustion using Docker Desktop's CLI. At this h
 - Safe diagnostic helper: `node_modules/.bin/tsx work/board/read-physical.ts`. It reads credentials internally and prints selected device/turn information. Do not dump its private input files.
 - Local portal normally uses `http://127.0.0.1:5173`; do not assume a preview process remains alive just because a browser tab exists.
 - Disk free space was about 28 GiB after recovery. Monitor before large dataset/build downloads; do not delete unrelated files.
-- The old `marvin-overnight-implementation` automation was paused. Do not reactivate/extend it while development is paused.
+- The old `marvin-overnight-implementation` automation was paused. Inspect existing automations before creating or reactivating a soak monitor; avoid duplicates.
 
 ## Hardware and current firmware
 
@@ -97,7 +97,7 @@ Partition layout remains unchanged: NVS `0x9000/0x6000`, PHY `0xf000/0x1000`, OT
 - Reboot result: `work/board/wake-default-disarmed-check.json`.
 - Board is quiet; wake activation remains suppressed. No serial test owns the device at pause.
 
-**Compiled but NOT flashed:** `work/board/build-wake-runtime-guards.log` passed. Current generated audible configuration enables microWakeWord with cutoff128/window3, and `firmware/afe/hey_marvin.tflite` still contains the known-failing **public V1** model. None of the locally trained candidates was installed on the board.
+The audible rollback-capable sequence1 image is physically installed and the clean current sequence3 release is built/signed but not yet installed. Both enable microWakeWord with cutoff128/window3 and use public V1 under the explicit sensitivity-first alpha decision. None of the locally trained candidates was installed on the board.
 
 ### Serial/build discipline
 
@@ -165,7 +165,7 @@ Read `docs/hey-marvin-wake.md`. Names below distinguish **public model versions*
 | Local training V3, original direct corpus | 20/20 | 20/20 | `wake-research/custom-v3-reference-corpus.json` |
 | Local training V3, reserved Daniel/Tessa voices | 8/8 | 160/160 | `wake-research/custom-v3-heldout-corpus.json` |
 
-All are rejected. Increasing a confidence cutoff alone cannot solve negatives scored at maximum confidence. A few successful initial positive clips were superseded by these fuller failed tests.
+The local training candidates and MultiNet experiments are rejected. Public V1 is selected only for the sensitivity-first alpha; its negative results remain disqualifying for the original production acoustic gate. Increasing a confidence cutoff alone cannot solve negatives scored at maximum confidence.
 
 Other findings:
 
@@ -197,14 +197,13 @@ Public model provenance:
 - V3: microWakeWords commit `e2e4f5ad41b7c944016d95350fc9d6fa17f3fa8f`, `microWakeWordsV3/hey_marvin.tflite`,63,520 bytes; SHA256 `32d550a8dae155ceb407981df189e6380f0abaf4545534b132821ef97036584a`.
 - `firmware/tools/fetch-wake-model.py` fetches pinned variants and refuses to overwrite an unknown custom asset. Public model redistribution licensing was not established; evaluation only. Model files are ignored by Git.
 
-## Concrete next steps when the user resumes
+## Concrete next steps
 
-1. Read this file, `docs/hey-marvin-wake.md`, current Git diff and fresh soak status. Confirm board/serial ownership; do not restart everything by default.
-2. Investigate **why continuous inference falsely activates while saved-window validation looks good** before another training run. Compare actual full-utterance feature windows with saved negative examples, their labels, normalization, augmentation, temporal alignment/coverage and model predictions. Include the known negative Hey Mary in both paths. Context correction alone did not solve it; do not describe the remaining cause as established.
-3. Keep the reserved test data separate. If used to tune a candidate, label it validation and obtain a new test set. Add representative human/noisy/ambient evidence before claiming robustness. The current synthetic datasets are feasibility experiments only.
-4. Only after a credible host candidate passes, deliberately select its exact asset/config, record hashes, inspect operators/memory/partition fit, build and flash while preserving ownership. The current public V1 compiled asset is not that candidate.
-5. Run local-only board corpus tests with activation suppressed before live provider tests. Then test real Hey Marvin + immediate command, repeated session/idle transitions, cancellation, no self-wake, acoustic interruption, failure/reconnect and no idle uploads. Ask the user for natural-voice/audibility feedback only when a meaningful test is ready.
-6. Re-run appropriate firmware/host/software checks for actual new changes, then document remaining original milestone gates. Do not mark the system complete merely because code compiles or a demo works.
+1. Commit the verified implementation/evidence slice, rebuild the release from the clean commit and sign a sequence newer than3. Do not install the dirty-tree sequence3 artifact.
+2. Atomically point the isolated rollout directory at the clean signed bundle, restart only the physical backend, request that sequence, and verify selection plus healthy confirmation. Leave the board on this current release build.
+3. Run a short `board-runtime-soak.py --mode release-suppressed` check, then start the eight-hour physical run. Keep the separate24-hour M6 soak running. Record sanitized evidence when each finishes.
+4. Update delivery status/M11 evidence, run appropriate final checks, inspect the diff, then commit and push this verified slice. Private keys, release bundles, build trees, model binaries, raw audio and board backups remain ignored.
+5. Do not spend more alpha time optimizing wake. Preserve the measured false positives and production acoustic gate; revisit only with representative data and a licensed model path.
 
 ## Software architecture and useful commands
 
@@ -224,7 +223,7 @@ npm run test:e2e
 
 `npm run check` runs typecheck, Vitest and production build. Last recorded full software check:155 tests passed, typecheck/build passed (`work/board/check-voice-cancel.log`). The subsequently authorized commit/push preparation reran `npm run check`:155 tests, typecheck and production build passed again; log `work/git-publish-check.log`. No physical or API test was run for publication. Delivery status also records53 PostgreSQL tests and14 browser tests from earlier scoped runs. Native browser sandbox limitations were historically worked around with the official Playwright Linux container, not application security bypasses.
 
-Live smoke commands (`npm run smoke:provider`, `npm run smoke:voice`, `npm run entire:check`) may call external services. Do not run while paused or print their credentials. The last selected OpenAI models were `gpt-5.4-mini-2026-03-17` for text, `gpt-5.4-2026-03-05` for repository reasoning, `gpt-realtime-2.1` for voice, and `gpt-4o-mini-transcribe` for transcription. Inspect configuration names safely if verifying current settings; do not blindly replace them with newer models.
+Live smoke commands (`npm run smoke:provider`, `npm run smoke:voice`, `npm run entire:check`) may call external services. Do not print their credentials. The last selected OpenAI models were `gpt-5.4-mini-2026-03-17` for text, `gpt-5.4-2026-03-05` for repository reasoning, `gpt-realtime-2.1` for voice, and `gpt-4o-mini-transcribe` for transcription. Inspect configuration names safely if verifying current settings; do not blindly replace them with newer models.
 
 Entire local CLI reads and the20-question repository review succeeded after full keychain access was available. This adapter is deliberately rejected for hosted OIDC use. See `docs/m4-entire.md` and `docs/decisions/0004-entire-integration.md`; never repurpose the CLI OAuth client as portal login.
 
@@ -234,12 +233,12 @@ Use `docs/implementation-plan.md` as the original contract and `docs/delivery-st
 
 - Earlier milestones still have external/representative gates: approved Entire identity/hosted API contract, real browser BLE interoperability and different-AP/power-loss provisioning matrix, accessibility/participant evaluation and broader semantic continuity. A runnable preview is not full acceptance.
 - **M6:** finish and assess the current24-hour ten-device soak; preserve the failed original run. Physical command/reconnect/memory matrix remains incomplete.
-- **M8:** robust Hey Marvin, ≥95% quiet/noisy wake criterion, ≤1 false wake/hour,60-minute idle packet evidence with zero audio/provider sessions, eight-hour physical resource/power/thermal run and actual peripheral evidence. Earlier eight-hour physical soak was interrupted around6.1 hours for user-requested audible tests and is not passed. The successful60-minute application-layer idle observation is not a packet capture.
+- **M8:** the sensitivity-first Hey Marvin alpha is selected with known poor hard-negative performance. The original ≥95% representative quiet/noisy wake and ≤1 false wake/hour gate remains open, along with60-minute packet evidence, a complete eight-hour physical resource/power/thermal run and unavailable peripheral evidence. The earlier physical soak stopped around6.1hours.
 - **M9:**20 actual web-text→web-voice→body-voice→web-text journeys;100-observation latency/routing checks and physical action/safety evidence. Standalone audio board cannot prove absent actuators/sensors.
 - **M10:** live second-provider credentials and parity, local/cloud suite parity and three independent installation trials. Anthropic/Deepgram adapters and fixtures exist; fixtures do not establish live parity.
-- **M11:** preserving signed OTA bootstrap, physical ten-trial update/recovery evidence, real deployment/load/restore/rotation, all earlier release blockers, and seven-day ten-user beta. Read `docs/m11-firmware-updates.md` and `docs/ota-bootstrap-review.md` before touching OTA. Normal bench flashing resets OTA metadata and is not the required preserving bootstrap. No eFuses were programmed.
+- **M11:** preserving signed OTA bootstrap and10/10 health-rejected update recovery are complete. Real-provider load, production recovery/rotation, all earlier release blockers and a seven-day ten-user beta remain. Normal bench flashing resets OTA metadata and is not the preserving bootstrap. No eFuses were programmed.
 
-Development remains paused. Creating this handoff and committing/pushing the checkpoint were subsequently authorized housekeeping; implementation resumes only on the user’s instruction.
+Development is active under the user's instruction to complete all implementable milestone work.
 
 ## Repository checkpoint scope
 

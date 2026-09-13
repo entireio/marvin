@@ -1,0 +1,45 @@
+{
+  "recordedAt": "2026-09-13T20:20:00Z",
+  "scope": "Sensitivity-first alpha wake-engine selection on the standalone Waveshare ESP32-S3 audio board",
+  "phrase": "Hey Marvin",
+  "selectedModel": {
+    "source": "Tater-Wake-Words microWakeWordsV1/hey_marvin.tflite",
+    "sourceCommit": "740bd31af8f28b1700daf49c36444d278715d298",
+    "sha256": "f8297bc0e1d42e173e4a47e09f073d93aeddc5fb3aec9791cc5afeac5c431f50",
+    "cutoff": 128,
+    "slidingWindow": 3
+  },
+  "measurements": {
+    "generatedReferenceCorpus": {
+      "positiveDetections": 19,
+      "positiveTrials": 20,
+      "negativeFalseActivations": 10,
+      "negativeTrials": 20
+    },
+    "earlierPhysicalCorpus": {
+      "positiveDetections": 18,
+      "positiveTrials": 20,
+      "negativeFalseActivations": 9,
+      "negativeTrials": 20
+    },
+    "finalScopedPhysicalConfirmation": {
+      "positiveDetections": 5,
+      "positiveTrials": 5,
+      "exactlyOneDetectionEach": true,
+      "unattributedDetections": 0,
+      "uploadedMicrophoneSamples": 0,
+      "wakeInferenceFaults": 0,
+      "afeFeedFaults": 0,
+      "applicationSha256": "89a2656f435e4a18e4c3a92d9727dc0d2b648864edb738e4d0581142a19b6fbc"
+    }
+  },
+  "alphaDecision": "Ship the more sensitive detector for the alpha and accept poor hard-negative performance while retaining the original production gate.",
+  "passedForAlpha": true,
+  "originalAcousticGatePassed": false,
+  "limitations": [
+    "The detector has a high measured false-activation rate on the generated negative corpus.",
+    "The final five-case confirmation used computer-generated speech in one bench arrangement.",
+    "Public-model redistribution licensing has not been established.",
+    "No representative human/noisy-room corpus or one-hour false-wake measurement has passed."
+  ]
+}

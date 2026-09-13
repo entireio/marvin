@@ -1,6 +1,6 @@
 # M5 — Realtime web voice
 
-12 September 2026. **Implementation is present; live alpha acceptance is not yet passed.** The funded OpenAI key and Entire CLI now work. Live text, backend voice, browser capture/playback and narrow cross-surface recall checks pass. Acoustic and repository-voice acceptance remain open.
+13 September 2026. **Implementation and scoped live alpha checks pass; the original M5 release gate remains open.** The funded OpenAI key and Entire CLI work. Live text, backend voice, browser capture/playback, repository voice and narrow cross-surface recall checks pass. A controlled100-sample provider/acoustic latency baseline remains open.
 
 ## Use voice
 
@@ -37,7 +37,7 @@ The deployment remains one API process. This is not a distributed voice broker, 
 
 Automated tests use explicit recorded provider replies and synthetic browser audio, never hidden fake live providers. They cover 20 text→voice→text reconstruction journeys with fresh voice connections, 100 routed audio interactions with another browser and a linked simulated robot, revoked login, permission refusal, microphone loss, socket loss, mute, cancellation fencing, idle cleanup, malformed input and tool authorization. The actual OpenAI SDK runs against a local TLS server using a generated trusted test certificate; TLS verification stays enabled.
 
-**Current regression:130 tests, typechecking and production build passed;14 fixture browser tests passed earlier.** Live evidence now includes20 reviewed text–voice–text recall journeys with source-surface metadata,100 browser voice rounds (zero failures; input-end to scheduled audio p95=2,040 ms, including VAD), and100 synthetic local interruption trials (p95=60 ms). These timing tests use headless Chrome152 on macOS and do not measure physical acoustics. Historical evidence remains in `tests/acceptance/results/M05/results.json`; current runs have separate descriptive JSON files.
+**Current regression:155 tests, typechecking and production build passed;14 fixture browser tests passed earlier.** Live evidence includes20 reviewed text–voice–text recall journeys with source-surface metadata,100 browser voice rounds (zero failures; input-end to scheduled audio p95=2,040 ms, including VAD), and100 synthetic local interruption trials (p95=60 ms). These timing tests use headless Chrome152 on macOS and do not measure physical acoustics. Historical evidence remains in `tests/acceptance/results/M05/results.json`; current runs have separate descriptive JSON files.
 
 Run `npm run check` and `npm run test:e2e`. The fixture browser suite ran in the official Playwright1.63 Linux container. With full system access, the live measurement scripts use installed Chrome on macOS. Voice browser tests reuse a signed-in test session to respect the application's real login rate limit.
 
@@ -53,4 +53,4 @@ This invokes the live provider through the real Marvin backend in an isolated in
 
 The earlier billing failures are resolved. Live backend voice returned a saved transcript and122,400 audio bytes, with1,262 ms from detected end to first received audio in its initial smoke test.
 
-Twenty narrow live recall journeys now pass; broader semantic scenarios and grounded repository voice remain, along with using `spedemon/marvin`, forced provider reconstruction, and at least 100 latency observations under the declared baseline. Report p50, p95, failures and sample count; do not omit failures. Required targets remain first audible response p95 ≤2 seconds and local playback stop p95 ≤200 milliseconds, with VAD detection delay measured separately. Browser scheduling assertions and deterministic context tests do not substitute for those gates. M4's live Entire and 20-question semantic gates are also still open. The web-only alpha is therefore **not yet accepted as fully working**.
+Twenty narrow live recall journeys and a grounded repository voice query against `spedemon/marvin` pass. M4's live Entire read smoke and20-question repository review also pass. The remaining M5 gate is at least100 live-provider/acoustic latency observations under a declared controlled baseline, reporting every failure; the target remains first audible response p95≤2seconds and local playback stop p95≤200milliseconds, with VAD delay separated. The existing100 browser rounds measure synthetic input end to scheduled output at p95=2,040ms and therefore do not satisfy that acoustic/provider gate. The web-only alpha is usable, but M5 is not accepted against the original release criterion.

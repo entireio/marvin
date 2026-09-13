@@ -92,4 +92,10 @@ Automatic USB reset remains intermittent. A successful BLE operation does not pr
 
 ## Owner enrollment profile
 
-`build-waveshare-owner.sh` builds the separate owner-authorized profile with signed tickets, a durable submitted journal and HTTPS redemption. Its C protocol tests pass, but it has not been flashed or accepted on hardware. The bench profile remains separate. See [physical setup status](../docs/m7-physical-setup.md) for trust installation, resume behavior and the exact remaining tests.
+`build-waveshare-owner.sh` builds the separate owner-authorized profile with signed tickets, a durable submitted journal and HTTPS redemption. It has passed physical claim, saved-owner recovery, same-AP network change and authenticated WSS presence on the development board. The bench profile remains separate. Native browser BLE, different-AP/power-loss matrices and broader acceptance remain open; see [physical setup status](../docs/m7-physical-setup.md).
+
+## Signed release profile
+
+`build-waveshare-release.sh` performs a clean rollback-enabled audible build with the selected Hey Marvin alpha detector and volume95. `build-waveshare-ota-failure.sh` builds a separate silent, deliberately unhealthy trial image for guarded rollback testing; never publish that profile as a release. `ota-bootstrap-install.py` is the only supported first-installation helper for this partition layout. It requires a fresh verified double-read snapshot, a signed bootstrap bundle, matching factory trust, an attested prior application and an explicit `--flash`. It preserves runtime NVS, PHY data, the prior application and the AFE model, then writes OTA selection metadata last. It never changes eFuses.
+
+After bootstrap, `ota-boot-check.py` verifies physical confirmation, connectivity, audio and advancing AFE processing. `ota-rollback-trials.py` exercises signed download, quiescence, an intentionally failed90-second trial, bootloader rollback and recovered release health. The local `uSEQUENCE` console command is a development/operator trigger; firmware does not poll for or automatically install releases. See [signed firmware updates](../docs/m11-firmware-updates.md).

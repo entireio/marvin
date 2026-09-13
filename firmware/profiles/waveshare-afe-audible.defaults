@@ -1,3 +1,4 @@
 # Explicitly attended, quiet acoustic tests.
 # CONFIG_MARVIN_SILENT_TEST is not set
 CONFIG_MARVIN_SPEAKER_VOLUME=95
+CONFIG_MARVIN_WAKE_AUTOSTART=y

@@ -1,0 +1,26 @@
+{
+  "recordedAt": "2026-09-13T21:03:00Z",
+  "scope": "Clean ESP-IDF 5.4.2 Waveshare release-profile build; no claim that this exact image was installed at record time",
+  "application": {
+    "bytes": 1918000,
+    "slotBytes": 1966080,
+    "freeBytes": 48080,
+    "sha256": "df925e57aa3b58c3dfb3169a0c199cb7c6b36ec06a2a9fd44866226341ff6cc1"
+  },
+  "afeModelPartitionSha256": "375507622ac65ba580420689ff4e5ecc33830e298689f88d85b5c10c5c41e4c8",
+  "compiledConfiguration": {
+    "signedOta": true,
+    "bootloaderRollback": true,
+    "heyMarvinAutostart": true,
+    "microWakeWord": true,
+    "speakerVolume": 95,
+    "testRejectBoot": false,
+    "silentTest": false
+  },
+  "passed": true,
+  "limitations": [
+    "The application slot has only 48080 bytes of remaining capacity.",
+    "The ignored wake model must be fetched with the pinned helper before a clean AFE build.",
+    "Public wake-model redistribution licensing remains unresolved."
+  ]
+}

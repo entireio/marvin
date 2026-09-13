@@ -2,6 +2,12 @@
 
 The required user-facing phrase is **Hey Marvin**. Hi,ESP and renamed stock models do not meet this requirement. Idle detection must remain on the ESP32-S3; it must not upload room audio or keep a provider session open.
 
+## Sensitivity-first alpha selection
+
+The alpha now uses the public microWakeWord V1 Hey Marvin model with a three-inference sliding window and cutoff128. Wake activation starts automatically in the audible release profile. The final scoped physical confirmation detected all five generated positive cases exactly once, with no unattributed detections, inference/feed faults or microphone upload. Earlier broader measurements found19/20 positives and10/20 negative false activations in direct host audio, and18/20 positives with9/20 negative false activations on the physical board.
+
+This is an explicit alpha tradeoff: favor recall and accept false positives for now. It does **not** pass the original ≥95% representative quiet/noisy recall and ≤1 false wake/hour gate. The corpus is generated speech in a limited bench arrangement, and redistribution licensing for the public model still needs resolution. Sanitized evidence is in `tests/acceptance/results/M08/hey-marvin-alpha-selection.json`; detailed audio artifacts remain private under `work/`.
+
 The installed ESP-SR2.4.4 package does not include a Hey Marvin WakeNet model. Espressif's custom model process remains an external option. A local fixed-phrase MultiNet prototype is being evaluated; it is not a trained Hey Marvin WakeNet model or a release-approved wake engine. Espressif documents MultiNet primarily after WakeNet activation, so continuous use here requires explicit CPU, false-activation and acoustic validation.
 
 The initial MultiNet7 image exceeded the existing OTA application slots (0x24ae30 bytes vs0x1e0000 capacity); it was never flashed. Testing the smaller quantized MultiNet5 with a single phonetic command. Only command1 may activate voice. Pronunciation is CMU `HH EY1 M AA1 R V IH0 N`, mapped through ESP-SR's documented alphabet to `hd MnRVgN`. The graph is static, with no general text-to-phoneme conversion in application code. Existing owner, factory, update and model partition offsets are unchanged. Image and model bounds must pass before flashing.
@@ -43,9 +49,9 @@ The MultiNet6 direct-injection diagnostic failed at0.50 and detected8 times at0.
 | microWakeWord V1, published .97/5 settings | 18/20 | 9/20 | `work/board/wake-corpus-1789325970999.json` |
 | MultiNet6, VAD segments,15 competing phrases,.20 threshold | 0/5 | 0/5 | `work/board/wake-corpus-1789326338239.json` |
 
-The segmented MultiNet trial repeatedly classified the positive phrase as HEY MARTIN. Both dedicated model versions also accepted near matches; V1 accepted an ordinary sentence at maximum score. Increasing the probability threshold alone is therefore insufficient. The current flashed image is the failed segmented MultiNet experiment; activation remains suppressed. No release wake engine has been selected.
+The segmented MultiNet trial repeatedly classified the positive phrase as HEY MARTIN. Both dedicated model versions also accepted near matches; V1 accepted an ordinary sentence at maximum score. Increasing the probability threshold alone is therefore insufficient. These results drove the documented sensitivity-first alpha choice above; they remain the reason the original acoustic gate is open.
 
-The corpus requires exactly one detection per positive, zero per negative, fresh status, continuous processing, no detections outside case windows, and no microphone upload. Physical link faults are recorded but do not invalidate offline-only detection unless they interrupt processing. The live voice helper now explicitly arms wake during a bounded trial, suppresses it afterward, and evaluates wake/interruption counter deltas rather than lifetime totals.
+The full corpus requires exactly one detection per positive, zero per negative, fresh status, continuous processing, no detections outside case windows, and no microphone upload. Physical link faults are recorded but do not invalidate offline-only detection unless they interrupt processing. The live voice helper explicitly arms wake during a bounded trial, suppresses it afterward, and evaluates wake/interruption counter deltas rather than lifetime totals.
 
 
 ## Direct-audio reference isolation
@@ -56,7 +62,7 @@ The firmware's pinned C microfrontend was compiled on the host and compared agai
 
 A private synthetic training feasibility experiment is being prepared using the Apache-2.0 OHF micro-wake-word source at commit `4665173cd35f1cff9a61e06fc427f124766c488e`. Training and validation voices are separated; the existing40-case diagnostic corpus is excluded from training. Generated noise/reflections are augmentations, not evidence of real noisy-room acceptance. No human room audio is recorded or uploaded, and no external training service is used. A trained artifact must still pass independent acoustic, idle and lifecycle gates before deployment.
 
-Experimental firmware now defaults `MARVIN_WAKE_AUTOSTART` off. Bounded bench tests can explicitly arm it; this prevents an unaccepted detector starting voice after a reboot. This is an evaluation safeguard, not completion of the required hands-free experience.
+The base experimental profile keeps `MARVIN_WAKE_AUTOSTART` off so diagnostic builds remain controlled. The audible and release profiles set it on for the selected alpha behavior.
 
 
 The first local training experiment (`work/wake-research/training-v1`) is rejected: nonstreaming validation on end-of-phrase windows was misleading; continuous host evaluation accepted20/20 negative phrases. A float streaming/nonstreaming comparison reproduced the failure, so quantization was not its cause. The initial feature builder retained178 frames while the chosen architecture needs214; zero padding and sparse negative windows did not represent continuous inference. The second experiment preserves the full context and samples negative speech and following silence in sliding windows. Neither candidate has been flashed.
@@ -64,6 +70,6 @@ The first local training experiment (`work/wake-research/training-v1`) is reject
 The OHF conversion helper in the private research checkout has one recorded local change: representative quantization examples discard an incomplete final stride instead of asserting the context length is divisible by the stride. The model shape and trained weights are unchanged by that calibration-only adjustment.
 
 
-## Paused checkpoint
+## Private-training checkpoint
 
-Development was paused at the user's request. V2's direct40-case result was14/20 positives and13/20 false negative-class activations. V3 broadened training to Samantha/Karen/Moira and retained Daniel/Tessa as reserved test voices. It failed the reserved168-case continuous test:8/8 positives detected but160/160 negative phrases also accepted. V3's float nonstreaming/streaming paths both falsely accepted Hey Mary, before quantization. These results invalidate any favorable end-window validation score; no trained candidate was flashed or accepted. Investigation must compare continuous inference windows against the saved training examples before further training. All failed artifacts and logs are retained under `work/wake-research`.
+V2's direct40-case result was14/20 positives and13/20 false negative-class activations. V3 broadened training to Samantha/Karen/Moira and retained Daniel/Tessa as reserved test voices. It failed the reserved168-case continuous test:8/8 positives detected but160/160 negative phrases also accepted. V3's float nonstreaming/streaming paths both falsely accepted Hey Mary, before quantization. V4 corrected temporal sampling but reached only16/20 positives with7/20 false activations on the original direct corpus and5/8 positives with8/160 false activations on the reserved Daniel/Tessa set. These trained candidates remain rejected and were not flashed. Further optimization is deferred for the alpha; all failed artifacts and logs remain under `work/wake-research`.

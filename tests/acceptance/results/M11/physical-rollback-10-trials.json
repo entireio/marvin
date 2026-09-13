@@ -1,0 +1,42 @@
+{
+  "recordedAt": "2026-09-13T21:30:15Z",
+  "scope": "Physical Waveshare ESP32-S3 signed download, forced trial-health failure, bootloader rollback and recovered prior-release health",
+  "releaseSequence": 2,
+  "requestedTrials": 10,
+  "completedTrials": 10,
+  "passedTrials": 10,
+  "checksPerTrial": [
+    "known-good audible release online with available audio and advancing AFE before update",
+    "owner-authorized update requested",
+    "device transport and audio quiesced",
+    "allowlisted signed image downloaded over certificate-checked HTTPS",
+    "inactive image selected",
+    "trial-health failure observed after bounded window",
+    "known-good audible release recovered online with available audio and advancing AFE"
+  ],
+  "measurements": {
+    "healthFailureMarkersObserved": 10,
+    "bootConfirmedMarkersObserved": 8,
+    "recoveriesConfirmedByPriorReleaseHealthAfterUsbGap": 2,
+    "rejectionWindowMs": {
+      "minimum": 90946,
+      "median": 91039.5,
+      "maximum": 91136
+    },
+    "cycleElapsedSeconds": {
+      "minimum": 125.261,
+      "median": 128.3065,
+      "maximum": 193.913
+    },
+    "recoveredAfeAdvanceSamples16k": {
+      "minimum": 17920,
+      "maximum": 29696
+    }
+  },
+  "passed": true,
+  "limitations": [
+    "The injected image is correctly signed but compiled to reject trial health; this is not a flash power-cut test.",
+    "USB-JTAG dropped two reboot-edge boot markers. The harness distinguished the prior image through its immutable audible build setting, authenticated online presence, available audio and advancing AFE.",
+    "Secure boot and flash encryption remain disabled on this development board."
+  ]
+}
