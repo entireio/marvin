@@ -1,0 +1,67 @@
+{
+  "scope": "User-observed full-count replay; one quiet bench trial, not full M8 acceptance",
+  "recordedAt": "2026-09-13T16:31:47.870375+00:00",
+  "source": "work/board/body-audio-1789317091197.json",
+  "result": {
+    "listeningReached": true,
+    "elapsedSeconds": 45.71,
+    "audio": {
+      "available": true,
+      "silent": false,
+      "captureActive": false,
+      "playing": false,
+      "capturedSamples16k": 401280,
+      "playedSamples16k": 214400,
+      "mic1Peak": 1872,
+      "queuedSamplesPeak": 5520,
+      "captureStackFree": 3228,
+      "playbackStackFree": 3188,
+      "internalFreeBytes": 44111,
+      "internalLargestBlock": 26624
+    },
+    "voiceStates": [
+      "listening",
+      "closed"
+    ],
+    "scope": "Computer synthesized speech through system speaker, actual board microphone, provider and speaker-driver path. Subjective audibility and semantic transcript require separate review.",
+    "fatalDiagnostics": [],
+    "audibleFirmwareConfirmed": true,
+    "playedSamplesThisRun": 214400,
+    "capturedSamplesThisRun": 401280,
+    "interruptRequested": false,
+    "samplesWrittenAfterInterruptRequest": null,
+    "fixtureExitCode": 0,
+    "playbackTiming": {
+      "convertMaxUs": 6017,
+      "writeMaxUs": 13892
+    },
+    "afeTiming": {
+      "feedMaxUs": 28020,
+      "readError": 0
+    },
+    "audioTiming": {
+      "flushMaxUs": 10531,
+      "appendMaxUs": 7307
+    },
+    "linkFailureDetails": [],
+    "captureQueue": {
+      "takeCalls": 2766,
+      "dequeuedPackets": 2505,
+      "discardedPackets": 0,
+      "waiting": 0
+    },
+    "uplink": {
+      "online": true,
+      "pcmSamples16k": 400800,
+      "attempts": 261,
+      "maxWriteUs": 72768,
+      "stackFree": 3356
+    },
+    "passed": true
+  },
+  "userFeedback": "Perfect",
+  "subjectiveQualityConfirmedForThisTrial": true,
+  "limitations": [
+    "Does not establish acoustic latency, wake accuracy, sustained duplex or full milestone acceptance"
+  ]
+}

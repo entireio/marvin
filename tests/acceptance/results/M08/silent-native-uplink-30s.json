@@ -1,0 +1,41 @@
+{
+  "listeningReached": true,
+  "elapsedSeconds": 57.06,
+  "audio": {
+    "available": true,
+    "silent": true,
+    "captureActive": false,
+    "playing": false,
+    "capturedSamples16k": 480160,
+    "playedSamples16k": 0,
+    "mic1Peak": 18,
+    "queuedSamplesPeak": 0,
+    "captureStackFree": 3220,
+    "playbackStackFree": 5020,
+    "internalFreeBytes": 36639,
+    "internalLargestBlock": 20480
+  },
+  "voiceStates": [
+    "listening",
+    "closed"
+  ],
+  "captureQueue": {
+    "takeCalls": 3118,
+    "dequeuedPackets": 3000,
+    "discardedPackets": 0,
+    "waiting": 0
+  },
+  "uplink": {
+    "online": true,
+    "pcmSamples16k": 480000,
+    "attempts": 283,
+    "maxWriteUs": 252699,
+    "stackFree": 3248
+  },
+  "fatalDiagnostics": [],
+  "scope": "Silent amplifier-disabled physical microphone capture and live provider session, followed by local stop. No speech or acoustic playback stimulus; not an audio quality/latency test.",
+  "passed": true,
+  "firmwareProfile": "waveshare-afe, silent, protocol 1.2",
+  "inputSampleRate": 16000,
+  "providerSampleRate": 24000
+}

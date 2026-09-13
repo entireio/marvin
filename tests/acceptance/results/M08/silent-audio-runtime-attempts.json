@@ -1,0 +1,101 @@
+{
+  "accepted": false,
+  "attempts": [
+    {
+      "listeningReached": false,
+      "elapsedSeconds": 100.01,
+      "audio": {
+        "available": true,
+        "captureActive": false,
+        "playing": false,
+        "capturedSamples16k": 0,
+        "playedSamples16k": 0,
+        "mic1Peak": 0,
+        "queuedSamplesPeak": 0,
+        "captureStackFree": 0,
+        "playbackStackFree": 0
+      },
+      "voiceStates": [],
+      "fatalDiagnostics": [],
+      "scope": "Silent amplifier-disabled physical microphone capture and live provider session, followed by local stop. No speech or acoustic playback stimulus; not an audio quality/latency test.",
+      "passed": false,
+      "source": "body-silent-1789284638958.json"
+    },
+    {
+      "listeningReached": true,
+      "elapsedSeconds": 56.65,
+      "audio": {
+        "available": true,
+        "captureActive": false,
+        "playing": false,
+        "capturedSamples16k": 15840,
+        "playedSamples16k": 0,
+        "mic1Peak": 19,
+        "queuedSamplesPeak": 0,
+        "captureStackFree": 2332,
+        "playbackStackFree": 0,
+        "internalFreeBytes": 42855,
+        "internalLargestBlock": 29696
+      },
+      "voiceStates": [
+        "listening",
+        "closed"
+      ],
+      "fatalDiagnostics": [],
+      "scope": "Silent amplifier-disabled physical microphone capture and live provider session, followed by local stop. No speech or acoustic playback stimulus; not an audio quality/latency test.",
+      "passed": false,
+      "source": "body-silent-1789285131018.json"
+    },
+    {
+      "listeningReached": true,
+      "elapsedSeconds": 61.16,
+      "audio": {
+        "available": true,
+        "captureActive": false,
+        "playing": false,
+        "capturedSamples16k": 35200,
+        "playedSamples16k": 0,
+        "mic1Peak": 18,
+        "queuedSamplesPeak": 0,
+        "captureStackFree": 2324,
+        "playbackStackFree": 0,
+        "internalFreeBytes": 43115,
+        "internalLargestBlock": 29696
+      },
+      "voiceStates": [
+        "listening"
+      ],
+      "fatalDiagnostics": [],
+      "scope": "Silent amplifier-disabled physical microphone capture and live provider session, followed by local stop. No speech or acoustic playback stimulus; not an audio quality/latency test.",
+      "passed": false,
+      "source": "body-silent-1789285351958.json"
+    },
+    {
+      "listeningReached": true,
+      "elapsedSeconds": 55.68,
+      "audio": {
+        "available": true,
+        "captureActive": false,
+        "playing": false,
+        "capturedSamples16k": 22080,
+        "playedSamples16k": 0,
+        "mic1Peak": 17,
+        "queuedSamplesPeak": 0,
+        "captureStackFree": 2328,
+        "playbackStackFree": 0,
+        "internalFreeBytes": 39711,
+        "internalLargestBlock": 29696
+      },
+      "voiceStates": [
+        "listening"
+      ],
+      "fatalDiagnostics": [
+        "audioFault"
+      ],
+      "scope": "Silent amplifier-disabled physical microphone capture and live provider session, followed by local stop. No speech or acoustic playback stimulus; not an audio quality/latency test.",
+      "passed": false,
+      "source": "body-silent-1789285603424.json"
+    }
+  ],
+  "scope": "Retained failed live hardware attempts. No acoustic playback was generated during these silent tests."
+}

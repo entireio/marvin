@@ -1,0 +1,272 @@
+{
+  "at": "2026-09-13T02:02:14.633Z",
+  "runId": 1789264749525,
+  "status": "failed",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "browser": "Chrome 152.0.7977.84",
+  "platform": "darwin",
+  "node": "v25.2.1",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "targetSamples": 100,
+  "samples": [
+    {
+      "sample": 1,
+      "passed": true,
+      "firstVisibleMs": 612.1999999880791
+    },
+    {
+      "sample": 2,
+      "passed": true,
+      "firstVisibleMs": 580.9000000357628
+    },
+    {
+      "sample": 3,
+      "passed": true,
+      "firstVisibleMs": 480.19999998807907
+    },
+    {
+      "sample": 4,
+      "passed": true,
+      "firstVisibleMs": 629.1000000238419
+    },
+    {
+      "sample": 5,
+      "passed": true,
+      "firstVisibleMs": 448.0999999642372
+    },
+    {
+      "sample": 6,
+      "passed": true,
+      "firstVisibleMs": 497.60000002384186
+    },
+    {
+      "sample": 7,
+      "passed": true,
+      "firstVisibleMs": 496.7999999523163
+    },
+    {
+      "sample": 8,
+      "passed": true,
+      "firstVisibleMs": 379.2999999523163
+    },
+    {
+      "sample": 9,
+      "passed": true,
+      "firstVisibleMs": 397.5
+    },
+    {
+      "sample": 10,
+      "passed": true,
+      "firstVisibleMs": 430.19999998807907
+    },
+    {
+      "sample": 11,
+      "passed": true,
+      "firstVisibleMs": 463.60000002384186
+    },
+    {
+      "sample": 12,
+      "passed": true,
+      "firstVisibleMs": 480.5
+    },
+    {
+      "sample": 13,
+      "passed": true,
+      "firstVisibleMs": 646.5
+    },
+    {
+      "sample": 14,
+      "passed": true,
+      "firstVisibleMs": 462.9000000357628
+    },
+    {
+      "sample": 15,
+      "passed": true,
+      "firstVisibleMs": 480.2000000476837
+    },
+    {
+      "sample": 16,
+      "passed": true,
+      "firstVisibleMs": 547.1000000238419
+    },
+    {
+      "sample": 17,
+      "passed": true,
+      "firstVisibleMs": 34979
+    },
+    {
+      "sample": 18,
+      "passed": true,
+      "firstVisibleMs": 480.9000000357628
+    },
+    {
+      "sample": 19,
+      "passed": true,
+      "firstVisibleMs": 647.9000000357628
+    },
+    {
+      "sample": 20,
+      "passed": true,
+      "firstVisibleMs": 347
+    },
+    {
+      "sample": 21,
+      "passed": true,
+      "firstVisibleMs": 1297.699999988079
+    },
+    {
+      "sample": 22,
+      "passed": true,
+      "firstVisibleMs": 547.4000000357628
+    },
+    {
+      "sample": 23,
+      "passed": true,
+      "firstVisibleMs": 446.9000000357628
+    },
+    {
+      "sample": 24,
+      "passed": true,
+      "firstVisibleMs": 346.7000000476837
+    },
+    {
+      "sample": 25,
+      "passed": true,
+      "firstVisibleMs": 447.89999997615814
+    },
+    {
+      "sample": 26,
+      "passed": true,
+      "firstVisibleMs": 414.10000002384186
+    },
+    {
+      "sample": 27,
+      "passed": true,
+      "firstVisibleMs": 445.5
+    },
+    {
+      "sample": 28,
+      "passed": true,
+      "firstVisibleMs": 415.10000002384186
+    },
+    {
+      "sample": 29,
+      "passed": true,
+      "firstVisibleMs": 430.89999997615814
+    },
+    {
+      "sample": 30,
+      "passed": true,
+      "firstVisibleMs": 463.80000001192093
+    },
+    {
+      "sample": 31,
+      "passed": true,
+      "firstVisibleMs": 464
+    },
+    {
+      "sample": 32,
+      "passed": true,
+      "firstVisibleMs": 513.6999999880791
+    },
+    {
+      "sample": 33,
+      "passed": true,
+      "firstVisibleMs": 530.8999999761581
+    },
+    {
+      "sample": 34,
+      "passed": false,
+      "firstVisibleMs": null
+    },
+    {
+      "sample": 35,
+      "passed": true,
+      "firstVisibleMs": 630.3000000119209
+    },
+    {
+      "sample": 36,
+      "passed": true,
+      "firstVisibleMs": 396.5
+    },
+    {
+      "sample": 37,
+      "passed": true,
+      "firstVisibleMs": 414.89999997615814
+    },
+    {
+      "sample": 38,
+      "passed": true,
+      "firstVisibleMs": 780.7000000476837
+    },
+    {
+      "sample": 39,
+      "passed": true,
+      "firstVisibleMs": 381
+    },
+    {
+      "sample": 40,
+      "passed": true,
+      "firstVisibleMs": 347.0999999642372
+    },
+    {
+      "sample": 41,
+      "passed": true,
+      "firstVisibleMs": 414.10000002384186
+    },
+    {
+      "sample": 42,
+      "passed": true,
+      "firstVisibleMs": 380
+    },
+    {
+      "sample": 43,
+      "passed": true,
+      "firstVisibleMs": 380.89999997615814
+    },
+    {
+      "sample": 44,
+      "passed": true,
+      "firstVisibleMs": 379.7000000476837
+    },
+    {
+      "sample": 45,
+      "passed": true,
+      "firstVisibleMs": 431.30000001192093
+    },
+    {
+      "sample": 46,
+      "passed": true,
+      "firstVisibleMs": 463.30000001192093
+    },
+    {
+      "sample": 47,
+      "passed": true,
+      "firstVisibleMs": 613.1999999880791
+    },
+    {
+      "sample": 48,
+      "passed": true,
+      "firstVisibleMs": 563.9000000357628
+    },
+    {
+      "sample": 49,
+      "passed": true,
+      "firstVisibleMs": 497.7999999523163
+    },
+    {
+      "sample": 50,
+      "passed": true,
+      "firstVisibleMs": 381.0999999642372
+    }
+  ],
+  "failures": 1,
+  "fatal": "Subscription failed before measurement",
+  "p50Ms": 463.60000002384186,
+  "p95Ms": 780.7000000476837,
+  "measurement": "Composer submit event to two animation frames after the first assistant paragraph appears. Real model through Marvin HTTP/WebSocket/UI, fresh isolated conversation per request. Headless Chrome on developer host; other local soak processes may be running. Not a physical display or controlled-network baseline.",
+  "acceptance": "not accepted"
+}

@@ -14,3 +14,22 @@ __pycache__/
 firmware/sdkconfig.old
 *.bin
 *.elf
+firmware/build-*/
+firmware/sdkconfig.*.generated*
+/build-waveshare/
+
+/build-waveshare-provisioning/
+
+/build-waveshare-owner/
+/build-waveshare-afe/
+firmware/managed_components/
+
+# Third-party wake model under private evaluation; not approved for redistribution.
+/firmware/afe/hey_marvin.tflite
+
+# Generated ESP-IDF build trees and temporary diagnostic audio embedding.
+/build-waveshare-*/
+/firmware/afe/hey_marvin_fixture.h
+
+# Unused vendored WebSocket examples contain upstream demo private keys.
+/firmware/components/esp_websocket_client/examples/

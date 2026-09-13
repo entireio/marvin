@@ -1,0 +1,34 @@
+{
+  "requestedSeconds": 90,
+  "elapsedSeconds": 89.93,
+  "complete": true,
+  "fatalDiagnostics": [],
+  "audio": {
+    "available": true,
+    "silent": true,
+    "captureActive": false,
+    "playing": false,
+    "capturedSamples16k": 0,
+    "playedSamples16k": 0,
+    "mic1Peak": 0,
+    "queuedSamplesPeak": 0,
+    "captureStackFree": 2548,
+    "playbackStackFree": 5040,
+    "internalFreeBytes": 34607,
+    "internalLargestBlock": 18432
+  },
+  "afe": {
+    "processedSamples16k": 1268736,
+    "wakeDetections": 0,
+    "feedFaults": 0,
+    "wakeActivationDisabled": true
+  },
+  "sampleCount": 36,
+  "allObservationsIdleAndSilent": true,
+  "minimumInternalFreeBytes": 34607,
+  "scope": "Physical idle runtime with PA disabled. Numeric diagnostics only. No acoustic stimulus or external power measurement.",
+  "idleSafetyPassed": true,
+  "processingPassed": true,
+  "processingSamplesPerSecondAfterWarmup": 15992.12,
+  "passed": true
+}

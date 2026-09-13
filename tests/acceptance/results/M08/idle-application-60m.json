@@ -1,0 +1,26 @@
+{
+  "at": "2026-09-13T09:40:45.004Z",
+  "requestedSeconds": 3600,
+  "elapsedSeconds": 3600.003,
+  "complete": true,
+  "passed": true,
+  "samples": 719,
+  "failures": 0,
+  "baseline": {
+    "bootId": "a399bfdc-c5a8-45a9-b0a3-a61713d6f564",
+    "connectionOpenedAt": 1789288839485,
+    "audioReceivedBytes": 0,
+    "audioSentBytes": 0,
+    "voiceStarts": 0,
+    "voiceActive": false
+  },
+  "last": {
+    "bootId": "a399bfdc-c5a8-45a9-b0a3-a61713d6f564",
+    "connectionOpenedAt": 1789288839485,
+    "audioReceivedBytes": 0,
+    "audioSentBytes": 0,
+    "voiceStarts": 0,
+    "voiceActive": false
+  },
+  "scope": "Authenticated application-layer physical device counters and provider-session state. Continuous connection required; complements but does not replace packet capture or acoustic tests."
+}

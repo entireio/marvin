@@ -19,13 +19,18 @@
     "start": "node --env-file-if-exists=.env dist/apps/server/src/main.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:e2e": "playwright test",
+    "test:e2e": "tsx scripts/browser-tests.ts",
     "test:postgres": "tsx scripts/test-postgres.ts",
     "check": "npm run typecheck && npm test && npm run build",
     "password:hash": "tsx scripts/password.ts",
-    "smoke:provider": "tsx scripts/provider-smoke.ts"
+    "smoke:provider": "tsx scripts/provider-smoke.ts",
+    "entire:setup": "tsx scripts/entire-setup.ts",
+    "entire:check": "tsx scripts/entire-smoke.ts",
+    "smoke:voice": "tsx scripts/voice-smoke.ts",
+    "soak:device": "tsx scripts/device-soak.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "0.125.0",
     "@fastify/cookie": "11.1.2",
     "@fastify/rate-limit": "11.2.0",
     "@fastify/static": "10.1.3",
@@ -41,6 +46,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "10.1.0",
+    "ws": "8.21.3",
     "zod": "4.6.2"
   },
   "devDependencies": {

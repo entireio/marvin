@@ -1,0 +1,5 @@
+menu "Marvin local speech processing"
+config MARVIN_LOCAL_AFE
+    bool "Local WakeNet and acoustic echo cancellation"
+    default y
+endmenu

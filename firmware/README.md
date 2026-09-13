@@ -1,4 +1,4 @@
-# ESP32-S3-WROOM firmware — M0 bench spike
+# ESP32-S3 firmware — bench provisioning and Waveshare diagnostics
 
 Original ESP-IDF **v5.4.2** C firmware targeting `esp32s3`. No previous Arduino/SuperMini firmware or board pin assignments are reused. Conservative baseline: 4 MB flash, no PSRAM required, two 1.875 MB app partitions. Verify the exact WROOM ordering code, carrier, regulator, antenna, USB/UART and peripheral wiring before flashing. Audio, displays, actuators, owner enrollment, updates, and the physical runtime are later milestones; this image configures no actuator GPIO.
 
@@ -19,7 +19,7 @@ export IDF_TOOLS_PATH="$PWD/work/idf-tools"
 IDF_COMPONENT_MANAGER=0 idf.py -C firmware build
 ```
 
-Disabling the optional component manager is supported here because all dependencies are bundled with ESP-IDF. It avoids process enumeration prohibited by this host's sandbox. No SDK source patches were needed. A successful compile is recorded under `tests/acceptance/results/M00`; no board was attached, flashed, or radio-tested.
+Disabling the optional component manager is supported here because dependencies are bundled with ESP-IDF or vendored under `components` with provenance. It avoids process enumeration prohibited by this host's sandbox. No SDK source patches were needed. The original compile is recorded under `tests/acceptance/results/M00`. A Waveshare ESP32-S3-AUDIO-Board is now connected and backed up; both diagnostic and provisioning profiles have been flashed, and encrypted radio scans now pass.
 
 ## Unique setup credentials
 
@@ -30,7 +30,7 @@ python firmware/tools/factory.py --output work/device-001
 python "$IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py" generate work/device-001/factory.csv work/device-001/factory.bin 0x6000
 ```
 
-The generator creates private files (0600, directory0700) without printing credentials. Retain the setup secret offline with the physical robot. `factory.bin` belongs at **0x12000** in this partition table. Review the carrier/port and existing flash before using `idf.py -C firmware -p PORT flash` and Espressif's `write_flash 0x12000 work/device-001/factory.bin` command. Neither flashing nor irreversible security eFuse programming is automated here. Production protected identity, signed firmware and encrypted NVS require M7/M11 design; the bench NVS is not protected against physical flash extraction.
+The generator creates private files (0600, directory0700) without printing credentials. Retain the setup secret offline with the physical robot. `factory.bin` belongs at **0x12000** in this partition table. Review the carrier/port and existing flash before using `idf.py -C firmware -p PORT flash` and Espressif's `write_flash 0x12000 work/device-001/factory.bin` command. The guarded board flash helper requires an explicit `--flash`; it never programs security eFuses. Production protected identity, signed firmware and encrypted NVS require M7/M11 design; the bench NVS is not protected against physical flash extraction.
 
 ## Protocol and bench sequence
 
@@ -45,7 +45,7 @@ Encrypted JSON commands (maximum384 bytes):
 - `{"op":"network","index":0}` returns one robot-observed network, RSSI/channel and security support; bounded to32 observations. Read indices separately to stay below BLE response limits.
 - `{"op":"apply","index":0,"scanGeneration":1,"password":"…"}` tests a network from that exact scan. Stale indices, enterprise/WEP/WPA3-only APs and invalid credentials are rejected. Baseline supports visible 2.4 GHz open and WPA2-Personal (including WPA/WPA2 mixed) networks; hidden SSIDs are deferred to M7. UI hidden-network behavior remains simulation only.
 
-`WIFI_STORAGE_RAM` stages the candidate without replacing saved NVS credentials. Success requires DHCP, SNTP clock synchronization, and certificate-verified HTTPS200 from a fixed configured backend health URL. Set **Marvin → probe URL** in `idf.py -C firmware menuconfig`. Empty URL rejects apply. A laptop's localhost is not reachable from the robot; use a robot-reachable HTTPS server. No TLS bypass or redirect following. The result is `network_verified`, **not account linked**. Failed connection/probe/storage restores the previous network, and failed restoration is represented by the failed state rather than a ready claim. Power loss before commit leaves the prior NVS record. Credentials are not logged.
+`WIFI_STORAGE_RAM` stages the candidate without replacing saved NVS credentials. Success requires DHCP, a clock from the authenticated BLE session (or SNTP fallback), and certificate-verified HTTPS200 from a fixed configured backend health URL. Set **Marvin → probe URL** in `idf.py -C firmware menuconfig`. Empty URL rejects apply. A laptop's localhost is not reachable from the robot; use a robot-reachable HTTPS server. No TLS bypass or redirect following. The result is `network_verified`, **not account linked**. Failed connection/probe/storage restores the previous network, and failed restoration is represented by the failed state rather than a ready claim. Power loss before commit leaves the prior NVS record. Credentials are not logged.
 
 The bench client uses Espressif's Security2 implementation and `bleak` in your activated Python environment:
 
@@ -55,6 +55,41 @@ python firmware/tools/bench.py --credentials work/device-001/setup-secret.json
 python firmware/tools/bench.py --credentials work/device-001/setup-secret.json --apply
 ```
 
-It prompts locally for network index/password, never stores the Wi-Fi password, and does not call Marvin's account APIs. Do not turn on verbose security logging. This client and all BLE/radio paths still require physical validation. Browser transport intentionally stops after discovery until reviewed Web Bluetooth Security2 framing and M7 ownership authorization are implemented.
+It prompts locally for network index/password, never stores the Wi-Fi password, and does not call Marvin's account APIs. Do not turn on verbose security logging. The TypeScript Security2 client has now passed physical radio/network tests below. The standalone Web Bluetooth adapter has operation deadlines, disconnect cleanup and version rejection tests; live browser interoperability and M7 ownership authorization remain required before portal setup is enabled.
 
 M0 HIL acceptance: ten consecutive encrypted scan/connect cycles, including reconfiguration; bad proof rejection; laptop-only AP absent; wrong password/DHCP/DNS/TLS failure rollback; power-cycle persistence; setup-window closure. Record board ordering code, flash/heap, browser/client OS, AP security/RSSI, timings and every failure. Firmware compilation alone does not satisfy this gate.
+
+## Waveshare ESP32-S3-AUDIO-Board diagnostic
+
+`firmware/tools/build-waveshare.sh` builds the separate `build-waveshare` profile for 16 MB flash and 8 MB octal PSRAM. It starts a local USB console before any networking: `t` plays a quiet half-second test tone, `m` measures microphone levels, and the amplifier is otherwise muted. It does not run enrollment, robot voice, or motion. Codec source and provenance are documented in `components/README.md`.
+
+The original board flash has been read twice and verified in `work/board/backup-20260912T221258Z`. The guarded `board-flash.py --backup PATH` command validates and previews the diagnostic flash plan; only adding `--flash` writes it. It checks the board identity, flash capacity and security state. It never programs eFuses. `board-monitor.py` provides the text-only diagnostic console. Full system access now permits direct serial and BLE tests from this task.
+
+Factory generation now also creates a per-device P-256 identity key and public key. Firmware can sign setup challenges inside Security2. Full ticket verification, enrollment redemption, persistent ownership recovery and production BLE browser transport are unfinished; this image must not be advertised as account-linked firmware.
+
+
+## Measured board evidence — 12 September 2026
+
+The first audio image exposed a main-task stack overflow. Static audio buffers and an 8192-byte diagnostic stack fixed it. Ten subsequent two-second microphone measurements and the quiet tone transfer passed, with 5136 bytes minimum free stack. Slots 1 and 3 carry the two microphones. This proves local data transfer and mute control, not acoustic quality, echo cancellation, wake-word accuracy, or the complete M8 gate. `board-smoke.py --cycles 10 --tone` reproduces the numeric test without saving audio.
+
+Build the separate BLE bench profile with `sh firmware/tools/build-waveshare-provisioning.sh`. The flash helper accepts `--profile provisioning --factory PRIVATE_FACTORY_DIRECTORY --backup VERIFIED_BACKUP_DIRECTORY --flash`; it validates board identity and image layout and includes the unique factory NVS partition. Never reuse one robot's factory directory for another robot.
+
+`node --import tsx scripts/ble-smoke.ts PRIVATE_FACTORY_DIRECTORY` exercises the same TypeScript SRP/AES-GCM implementation used by the portal project through a private Python BLE transport. It requests protocol version first, requires Security2 patch1, proves the P-256 identity and reads only robot-observed networks. Ten complete physical scan trials passed; an incorrect setup secret was rejected. Results omit SSIDs and secrets. These tests do not apply Wi-Fi or redeem an ownership ticket.
+
+The bounded transfer component has host tests for payload limits, duplicate integrity, expiry, session isolation and clearing. It is not yet wired into the enrollment endpoint. Complete firmware ticket verification/redemption, power-loss recovery and UI integration are still required before enabling real account setup.
+
+## Wi-Fi recovery evidence and private test configuration
+
+Create `work/board/wifi-test.json` locally with only `ssid` and `password`, mode 0600. The TypeScript smoke runner reads it into memory and sends the password only inside the authenticated BLE session. Do not commit or print it. Add `--wifi-file work/board/wifi-test.json` to `scripts/ble-smoke.ts` to apply that robot-visible network. `--wrong-wifi` tests an intentionally incorrect password, while `--verify-saved` first requires a saved network and an active connection after reset. Results exclude SSIDs and credentials.
+
+The authenticated `clock` operation accepts UTC milliseconds before applying Wi-Fi. TLS still checks certificate validity and the configured trust root. For the local bench server, `bench-trust.py` adds only its HTTPS health URL and public CA to the unique factory directory; regenerate its NVS image afterward. Never transfer a CA private key to the robot. This is explicit bench trust, not finished production enrollment bootstrap.
+
+Ten real encrypted scan/connect cycles passed in `tests/acceptance/results/M07/physical-wifi-matrix.json`, with Wi-Fi application/HTTPS verification taking 3.69–4.90 seconds. Trials include resets and reuse of the previously committed AP. A wrong-password trial took 22.8 seconds and restored the prior active connection. `status.networkConnected` distinguishes actual reconnection from mere retention of saved credentials; failed recovery reports `PREVIOUS_NETWORK_UNAVAILABLE`. These are same-AP bench tests, not the M7 20 first-time/20 different-location ownership trials.
+
+The audio diagnostic also supports `a`: a bounded numeric 440 Hz acoustic loopback test with no saved audio. After increasing the original inaudible tone, the two microphones measured tone-energy increases of 42.47 dB and 11.43 dB. This establishes an acoustic path, not speech intelligibility, echo cancellation or wake-word performance.
+
+Automatic USB reset remains intermittent. A successful BLE operation does not prove the ROM bootloader is reachable. The flash helper stops when board identity cannot be read; it never proceeds on an assumed connection. Preserve the backup and unique factory identity during recovery.
+
+## Owner enrollment profile
+
+`build-waveshare-owner.sh` builds the separate owner-authorized profile with signed tickets, a durable submitted journal and HTTPS redemption. Its C protocol tests pass, but it has not been flashed or accepted on hardware. The bench profile remains separate. See [physical setup status](../docs/m7-physical-setup.md) for trust installation, resume behavior and the exact remaining tests.

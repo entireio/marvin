@@ -1,0 +1,20 @@
+{
+  "scope": "Host HTTP transport fixture and ESP32-S3 compilation, no physical OTA",
+  "trials": 80,
+  "failureModes": [
+    "redirect",
+    "wrong length",
+    "invalid manifest",
+    "truncation",
+    "wrong image digest",
+    "cancellation",
+    "deadline"
+  ],
+  "failedDownloadSelectedImage": 0,
+  "additionalChecks": [
+    "origin and bearer validation",
+    "requested sequence matches signed manifest"
+  ],
+  "passed": true,
+  "physicalOtaPassed": false
+}

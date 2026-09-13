@@ -18,8 +18,22 @@ export const migrations = [
  `CREATE INDEX turn_history ON turns(conversation_id,ordinal)`,
  `CREATE INDEX session_expiry ON sessions(expires_at)`
  ]}
+ ,{ version: 3, statements: [
+ `CREATE TABLE device_credentials (hash TEXT PRIMARY KEY, device_id TEXT NOT NULL, owner_id TEXT NOT NULL REFERENCES owners(id), epoch INTEGER NOT NULL, expires_at BIGINT NOT NULL)`,
+ `CREATE INDEX device_credential_lookup ON device_credentials(device_id,epoch)`,
+ `CREATE TABLE device_commands (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, owner_id TEXT NOT NULL REFERENCES owners(id), epoch INTEGER NOT NULL, boot_id TEXT NOT NULL, action TEXT NOT NULL, args_json TEXT NOT NULL, deadline BIGINT NOT NULL, state TEXT NOT NULL, created_at BIGINT NOT NULL)`,
+ `CREATE INDEX device_command_pending ON device_commands(device_id,state,deadline)`
+ ]}
+ ,{version:4,statements:[
+ `CREATE TABLE device_identities (device_id TEXT PRIMARY KEY, public_key TEXT NOT NULL, registered_at BIGINT NOT NULL)`,
+ `CREATE TABLE enrollment_tickets (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES owners(id), device_id TEXT NOT NULL REFERENCES device_identities(device_id), nonce TEXT NOT NULL, operation TEXT NOT NULL, epoch INTEGER NOT NULL, ticket_hash TEXT NOT NULL, expires_at BIGINT NOT NULL, receipt TEXT, network TEXT, UNIQUE(device_id,nonce))`
+ ]}
+ ,{version:5,statements:[
+ `ALTER TABLE owners ADD COLUMN retention_days INTEGER`,
+ `CREATE INDEX owner_turn_retention ON turns(owner_id,created_at)`
+ ]}
 ];
-export async function migrate(db: Database, target=2) {
+export async function migrate(db: Database, target=migrations.at(-1)!.version) {
  await db.transaction(async tx => {
   if(db.kind==='postgres') await tx.query('SELECT pg_advisory_xact_lock(71263381)');
   await tx.query('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)');

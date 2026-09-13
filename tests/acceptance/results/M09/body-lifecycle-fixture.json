@@ -1,0 +1,16 @@
+{
+  "scope": "Authenticated simulated device sockets, no real board audio",
+  "cases": [
+    "stop during context",
+    "stop during admission",
+    "interrupt during context",
+    "interrupt during admission"
+  ],
+  "checks": [
+    "no late audio",
+    "late-admitted turn cancelled",
+    "old failure cannot close replacement"
+  ],
+  "passed": true,
+  "physicalVoiceAccepted": false
+}

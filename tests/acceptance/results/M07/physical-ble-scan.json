@@ -1,0 +1,121 @@
+{
+  "at": "2026-09-13T00:31:25.149Z",
+  "passed": true,
+  "security": 2,
+  "patch": 1,
+  "deviceProofVerified": true,
+  "networkCount": 22,
+  "networks": [
+    {
+      "channel": 6,
+      "rssi": -56,
+      "supported": false
+    },
+    {
+      "channel": 8,
+      "rssi": -60,
+      "supported": true
+    },
+    {
+      "channel": 1,
+      "rssi": -61,
+      "supported": true
+    },
+    {
+      "channel": 6,
+      "rssi": -73,
+      "supported": true
+    },
+    {
+      "channel": 4,
+      "rssi": -79,
+      "supported": true
+    },
+    {
+      "channel": 4,
+      "rssi": -79,
+      "supported": true
+    },
+    {
+      "channel": 6,
+      "rssi": -81,
+      "supported": true
+    },
+    {
+      "channel": 1,
+      "rssi": -85,
+      "supported": false
+    },
+    {
+      "channel": 1,
+      "rssi": -85,
+      "supported": false
+    },
+    {
+      "channel": 6,
+      "rssi": -85,
+      "supported": true
+    },
+    {
+      "channel": 1,
+      "rssi": -86,
+      "supported": true
+    },
+    {
+      "channel": 11,
+      "rssi": -86,
+      "supported": true
+    },
+    {
+      "channel": 2,
+      "rssi": -87,
+      "supported": true
+    },
+    {
+      "channel": 6,
+      "rssi": -87,
+      "supported": false
+    },
+    {
+      "channel": 6,
+      "rssi": -89,
+      "supported": true
+    },
+    {
+      "channel": 11,
+      "rssi": -89,
+      "supported": true
+    },
+    {
+      "channel": 1,
+      "rssi": -90,
+      "supported": true
+    },
+    {
+      "channel": 6,
+      "rssi": -90,
+      "supported": true
+    },
+    {
+      "channel": 11,
+      "rssi": -90,
+      "supported": true
+    },
+    {
+      "channel": 1,
+      "rssi": -91,
+      "supported": true
+    },
+    {
+      "channel": 11,
+      "rssi": -92,
+      "supported": true
+    },
+    {
+      "channel": 6,
+      "rssi": -93,
+      "supported": true
+    }
+  ],
+  "note": "SSID and setup secrets excluded. Scan only; no Wi-Fi configuration or ownership claim."
+}

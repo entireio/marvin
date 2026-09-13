@@ -1,0 +1,18 @@
+{
+  "at": "2026-09-13T02:21:22.561Z",
+  "model": "gpt-realtime-2.1",
+  "success": true,
+  "transcriptSaved": true,
+  "audioBytes": 1240800,
+  "firstAudioAfterDetectedEndMs": 1169,
+  "error": null,
+  "providerErrors": [],
+  "measurement": "Live provider through Marvin backend; synthetic input, no acoustic/browser latency claim",
+  "repository": "spedemon/marvin",
+  "semanticReview": {
+    "passed": true,
+    "scope": "Arduino framework and 115200 baud verified from committed repository source; four evidence cards returned.",
+    "latencyCaveat": "First audio was a spoken preamble, not the final factual answer.",
+    "physicalAcousticsVerified": false
+  }
+}

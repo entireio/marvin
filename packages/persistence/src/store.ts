@@ -86,7 +86,7 @@ export class Store {
    const all=await tx.query<Row>('SELECT * FROM turns WHERE conversation_id=? AND status<>? ORDER BY ordinal',[id,'running']);
    const older=all.slice(0,Math.max(0,all.length-keep)); if(!older.length) return;
    const through=older.at(-1)!.ordinal; if(through<=c.summaryThrough) return;
-   const summary=older.slice(-32).map(r=>`[Turn ${r.ordinal}; repo ${r.repository_id??'none'}; ${r.status}] User: ${r.user_text.slice(0,350)}\nMarvin: ${r.assistant_text.slice(0,500)}`).join('\n').slice(-16000);
+   const summary=older.slice(-32).map(r=>`[Turn ${r.ordinal}; surface ${r.surface}; repo ${r.repository_id??'none'}; ${r.status}] User: ${r.user_text.slice(0,350)}\nMarvin: ${r.assistant_text.slice(0,500)}`).join('\n').slice(-16000);
    await tx.query('UPDATE conversations SET summary=?,summary_through=? WHERE id=? AND summary_through<?',[summary,through,id,through]);
   });
  }
@@ -108,6 +108,7 @@ export class Store {
  }
  async changeNetwork(ownerId: string,deviceId: string,network: string) { const r=await this.db.query("UPDATE body_slots SET network=? WHERE owner_id=? AND device_id=? AND state='linked' RETURNING device_id",[network,ownerId,deviceId]); if(!r.length) throw new DomainError('DEVICE_MISMATCH','This is not your linked Marvin.',403); }
  async unlink(ownerId: string) { await this.db.transaction(async tx=>{
+  await tx.query('UPDATE owners SET created_at=created_at WHERE id=?',[ownerId]);
   const slot=(await tx.query<Row>('DELETE FROM body_slots WHERE owner_id=? RETURNING device_id',[ownerId]))[0];
   if(slot) await tx.query('UPDATE device_epochs SET epoch=epoch+1 WHERE device_id=?',[slot.device_id]);
   await tx.query('INSERT INTO audit_events(id,owner_id,kind,created_at) VALUES (?,?,?,?)',[randomUUID(),ownerId,'robot_unlinked',Date.now()]);

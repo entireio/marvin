@@ -1,0 +1,12 @@
+{
+  "at": "2026-09-13T01:12:45.041Z",
+  "passed": true,
+  "expectedFailure": true,
+  "phase": "failed",
+  "error": "WIFI_CONNECTION_FAILED",
+  "hasSavedNetwork": true,
+  "networkConnected": true,
+  "elapsedMs": 22802,
+  "accountLinked": false,
+  "note": "Bench Wi-Fi and TLS probe only. Password stayed on the encrypted BLE path; no owner claim."
+}

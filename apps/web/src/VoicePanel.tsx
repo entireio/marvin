@@ -1,0 +1,16 @@
+import { useEffect,useRef,useState } from 'react';
+import { Mic,MicOff,Square,ArrowRight,RotateCcw } from 'lucide-react';
+import { Dialog } from './Dialog';
+import { Face } from './Face';
+import { BrowserVoice,type VoiceView } from './voice-client';
+const labels={connecting:'Connecting',listening:'I’m listening',hearing:'I hear you',thinking:'Thinking with you',speaking:'Marvin is speaking',muted:'Microphone muted',closed:'Voice paused',error:'Let’s reconnect'};
+export function VoicePanel({conversationId,available,onClose,onRefresh}:{conversationId:string;available:boolean;onClose:()=>void;onRefresh:()=>void}){
+ const [view,setView]=useState<VoiceView>({state:'closed'}),[started,setStarted]=useState(false),[muted,setMuted]=useState(false);const client=useRef<BrowserVoice|null>(null),refresh=useRef(onRefresh);refresh.current=onRefresh;
+ useEffect(()=>()=>client.current?.stop(),[]);
+ const start=()=>{client.current?.stop();setStarted(true);setMuted(false);setView({state:'connecting',userText:'',assistantText:''});const voice=new BrowserVoice(conversationId,next=>setView(v=>({...v,...next})),()=>refresh.current());client.current=voice;void voice.start();};
+ const active=started&&!['closed','error'].includes(view.state);
+ return <Dialog title="Talk to Marvin" onClose={onClose}><div className={`voice-panel voice-${view.state}`}><p className="eyebrow">THE SAME CONVERSATION, OUT LOUD</p><div className="voice-orbit"><Face large thinking={view.state==='thinking'||view.state==='connecting'}/></div><h3>{started?labels[view.state]:'A little more natural.'}</h3><p className="muted" role="status">{view.message??(muted?'Your microphone is muted. Unmute when you’re ready.':active?'Speak naturally. You can interrupt Marvin at any time.':available?'Start when you’re ready. Your microphone is off.':'Your microphone is off. Voice needs to be enabled on your Marvin server.')}</p>
+ {active?<><div className="voice-controls"><button className={`button secondary ${muted?'is-muted':''}`} aria-pressed={muted} onClick={()=>{client.current?.mute(!muted);setMuted(!muted);}}>{muted?<MicOff size={18}/>:<Mic size={18}/>} {muted?'Unmute':'Mute'}</button><button className="button secondary" onClick={()=>{client.current?.interrupt();setView(v=>({...v,state:muted?'muted':'listening'}));}}><Square size={15}/>Stop speaking</button></div><button className="button primary full" onClick={onClose}>Continue in text <ArrowRight size={16}/></button></>:<><button className="button primary full" disabled={!available} onClick={start}>{started?<RotateCcw size={17}/>:<Mic size={17}/>} {started?'Reconnect voice':'Start voice'}</button><button className="text-button" onClick={onClose}>Continue in text <ArrowRight size={15}/></button></>}
+ {(view.userText||view.assistantText)&&<div className="voice-transcripts" tabIndex={0} aria-label="Voice transcript">{view.userText&&<div><span className="message-label">YOU</span><p>{view.userText}</p></div>}{view.assistantText&&<div><span className="message-label">MARVIN</span><p>{view.assistantText}</p></div>}</div>}
+ <p className="fine-print">Marvin’s voice is AI-generated. While voice is active, audio goes through your server to the voice provider. Transcripts join this conversation; Marvin does not save raw audio.</p></div></Dialog>;
+}

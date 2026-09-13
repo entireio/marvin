@@ -1,0 +1,11 @@
+{
+ admin off
+ default_sni {$MARVIN_TLS_NAME:localhost}
+ auto_https disable_redirects
+ skip_install_trust
+}
+{$APP_ORIGIN} {
+ tls internal
+ encode zstd gzip
+ reverse_proxy marvin:4310
+}

@@ -1,6 +1,6 @@
 # Marvin software
 
-Private personal portal and backend for Marvin, plus original ESP-IDF firmware for an ESP32-S3-WROOM module. The public robot-building documentation remains a separate application. Implementation covers the M0–M3 development slice; hardware, approved Entire identity, and live-provider acceptance have outstanding gates. See [delivery status](docs/delivery-status.md).
+Private personal portal and backend for Marvin, plus original ESP-IDF firmware for an ESP32-S3-WROOM module. The public robot-building documentation remains a separate application. Implementation covers the M0–M3 development slice and the local M4 and realtime M5 implementations; hardware, approved Entire identity, and live-provider acceptance have outstanding gates. See [delivery status](docs/delivery-status.md).
 
 ## Run locally
 
@@ -17,6 +17,10 @@ Open **http://127.0.0.1:5173** and select **Enter local preview**. No credential
 To use an actual text model, set `MODEL_PROVIDER=openai`, `OPENAI_API_KEY`, and an explicit supported `OPENAI_MODEL` in `.env`, then restart. The server uses the Responses API with storage disabled and rebuilds context from its own database. No keys are sent to the browser. `npm run smoke:provider` performs one billable adapter smoke request and writes sanitized timing evidence; `MARVIN_SMOKE_SAMPLES=100` opts into 100 requests. Adapter timing is not browser latency acceptance.
 
 For local passphrase authentication, run `npm run password:hash`, set `AUTH_MODE=local`, and put the generated value in `LOCAL_PASSWORD_HASH`. This is a single-owner local deployment. Hosted multi-user authentication uses `AUTH_MODE=oidc` with an **approved** issuer/client registration. Generic OIDC authorization-code flow includes PKCE, state, nonce, and issuer/subject identity. Entire's CLI tokens are not used as web login assertions. [Entire discovery](docs/entire-discovery.md) records the unresolved external contract.
+
+For local Entire repository access, follow [M4 setup and acceptance status](docs/m4-entire.md). This adapter uses the installed CLI and is not the hosted multi-user integration.
+
+For realtime speech, see [M5 voice setup and acceptance status](docs/m5-voice.md). Audio is backend-mediated and transcripts share the existing conversation. Live alpha verification is pending provider credit and Entire authorization.
 
 ## Verify
 

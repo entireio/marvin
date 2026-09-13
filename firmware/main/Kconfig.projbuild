@@ -1,4 +1,81 @@
 menu "Marvin"
+config MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC
+    bool "Waveshare Audio Board local diagnostic only"
+    default n
+    help
+        Disables all networking and provisioning. USB commands enable bounded
+        local speaker and microphone tests. No motor GPIOs are configured.
+config MARVIN_OWNER_ENROLLMENT
+    bool "Require owner-authorized setup with durable enrollment recovery"
+    default n
+    help
+        Requires enroll_iss and enroll_pub in factory NVS. Missing trust or a
+        corrupt journal disables setup. The bench profile keeps this off.
+config MARVIN_BODY_AUDIO
+    select ESP_WS_CLIENT_SEPARATE_TX_LOCK
+    bool "Waveshare runtime audio with explicit local activation"
+    default n
+    depends on MARVIN_OWNER_ENROLLMENT
+    help
+        Enables codec drivers and bounded streaming. Voice starts only from an
+        explicit local command; wake word and AEC require separate validation.
+config MARVIN_SIGNED_OTA
+    bool "Enable explicitly requested signed application updates"
+    default n
+    depends on MARVIN_OWNER_ENROLLMENT && MARVIN_BODY_AUDIO
+    help
+        Requires dedicated factory release trust and a rollback-enabled bootloader.
+        Local update commands never bypass signed manifest and owner authorization.
+config MARVIN_MICROPHONE_GAIN_DB
+    int "Microphone analog gain in dB"
+    range 0 36
+    default 30
+config MARVIN_WAKE_AUTOSTART
+    bool "Arm automatic voice activation at boot"
+    depends on MARVIN_LOCAL_AFE
+    default n
+    help
+        Enable only after the selected wake model passes acoustic acceptance.
+        Bench trials can explicitly arm activation through the diagnostic console.
+
+config MARVIN_MICRO_WAKE_WORD
+    bool "Evaluate dedicated Hey Marvin microWakeWord"
+    depends on MARVIN_LOCAL_AFE
+    default n
+
+config MARVIN_WAKE_WINDOW
+    int "Hey Marvin sliding probability window"
+    depends on MARVIN_MICRO_WAKE_WORD
+    range 1 8
+    default 3
+
+config MARVIN_WAKE_PROBABILITY_CUTOFF
+    int "Hey Marvin probability cutoff (0-255 quantization)"
+    depends on MARVIN_MICRO_WAKE_WORD
+    range 64 250
+    default 174
+
+config MARVIN_HEY_MARVIN_WAKE
+    bool "Experimental on-device Hey Marvin phrase detector"
+    depends on MARVIN_LOCAL_AFE && (MARVIN_MICRO_WAKE_WORD || SR_MN_EN_MULTINET6_QUANT)
+    default y
+    help
+        Uses the dedicated evaluation model or a competing English phrase graph.
+        Must pass continuous
+        false-activation, CPU and acoustic tests before release acceptance.
+
+config MARVIN_SPEAKER_VOLUME
+    int "Speaker codec volume (0–100)"
+    range 0 100
+    default 60
+    help
+        Independent of the computer volume. Audible bench tests use 95 for the user-provided 8-ohm speaker.
+config MARVIN_SILENT_TEST
+    bool "Keep the amplifier disabled for unattended tests"
+    default n
+    help
+        Forces the physical speaker amplifier off even when audio playback is
+        requested. Digital playback tests do not prove acoustic output.
 config MARVIN_PROBE_URL
     string "Fixed HTTPS backend health URL for bench network verification"
     default ""

@@ -1,0 +1,55 @@
+{
+  "listeningReached": true,
+  "elapsedSeconds": 44.79,
+  "audio": {
+    "available": true,
+    "silent": false,
+    "captureActive": false,
+    "playing": false,
+    "capturedSamples16k": 401280,
+    "playedSamples16k": 39200,
+    "mic1Peak": 123,
+    "queuedSamplesPeak": 10400,
+    "captureStackFree": 3284,
+    "playbackStackFree": 3836,
+    "internalFreeBytes": 25375,
+    "internalLargestBlock": 14848
+  },
+  "voiceStates": [
+    "listening",
+    "closed"
+  ],
+  "scope": "Computer synthesized speech through system speaker, actual board microphone, provider and speaker-driver path. Subjective audibility and semantic transcript require separate review.",
+  "fatalDiagnostics": [],
+  "audibleFirmwareConfirmed": true,
+  "playedSamplesThisRun": 39200,
+  "capturedSamplesThisRun": 401280,
+  "captureQueue": {
+    "takeCalls": 2586,
+    "dequeuedPackets": 2508,
+    "discardedPackets": 0,
+    "waiting": 0
+  },
+  "uplink": {
+    "online": true,
+    "pcmSamples16k": 401280,
+    "attempts": 235,
+    "maxWriteUs": 106310,
+    "stackFree": 3356
+  },
+  "passed": true,
+  "evidenceFile": "work/board/body-audio-1789311597087.json",
+  "at": "2026-09-13T15:01:11.525765+00:00",
+  "firmwareSha256": "2030574819d6e8235bd44079a8a4c183571098a68320874c4ee639d33231d049",
+  "computerSystemVolume": "3/16, as set by user",
+  "computerFixtureGain": 1,
+  "boardCodecVolume": 50,
+  "acousticQualityAccepted": false,
+  "limitations": [
+    "Transcript substituted BIOS for quiet; no word-accuracy gate claimed",
+    "Digital played counter does not prove acoustic amplitude or stop latency",
+    "Standalone audio board has no physical actuators",
+    "Brief audibility confirmed; continuous clarity and acoustic latency still unmeasured"
+  ],
+  "subjectiveConfirmation": "User confirmed hearing brief speech from the ESP32-S3 board during attended tests"
+}

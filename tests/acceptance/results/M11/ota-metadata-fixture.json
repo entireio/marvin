@@ -1,0 +1,7 @@
+{
+  "scope": "Offline metadata format; no serial access or generated board image",
+  "crcReference": "Pinned ESP-IDF5.4.2 esp_rom/linux/esp_rom_crc.c compiled for host",
+  "passed": true,
+  "physicalBootloaderPassed": false,
+  "bootstrapReady": false
+}

@@ -1,0 +1,10 @@
+import {it,expect} from 'vitest';
+import {mkdtempSync,writeFileSync,readFileSync,rmSync,existsSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {randomBytes} from 'node:crypto';
+import {sqliteDatabase} from '../../packages/persistence/src/database.js';
+import {migrate} from '../../packages/persistence/src/migrations.js';
+import {Store} from '../../packages/persistence/src/store.js';
+import {createBackup,restoreBackup} from '../../packages/operations/src/backup.js';
+it('encrypted backup restores canonical data; corruption, wrong keys and overwrites fail closed',async()=>{const dir=mkdtempSync(join(tmpdir(),'marvin-backup-test-')),db=sqliteDatabase(join(dir,'live.sqlite')),key=randomBytes(32);try{await migrate(db);const store=new Store(db),owner=await store.ensureOwner('test','backup','Restored owner');await store.createConversation(owner.id);const config=join(dir,'config.env');writeFileSync(config,'SECRET=fixture-only-backup-secret');const archive=join(dir,'backup.enc');await createBackup(join(dir,'live.sqlite'),key,archive,config);expect(readFileSync(archive).includes(Buffer.from('fixture-only-backup-secret'))).toBe(false);const target=join(dir,'restore');restoreBackup(archive,key,target);const restored=sqliteDatabase(join(target,'marvin.sqlite'));try{expect((await new Store(restored).owner(owner.id)).name).toBe('Restored owner');}finally{await restored.close();}expect(readFileSync(join(target,'configuration.env'),'utf8')).toContain('fixture-only-backup-secret');expect(()=>restoreBackup(archive,key,target)).toThrow();const wrong=join(dir,'wrong');expect(()=>restoreBackup(archive,randomBytes(32),wrong)).toThrow();expect(existsSync(wrong)).toBe(false);const bytes=readFileSync(archive);bytes[bytes.length-1]^=1;writeFileSync(archive,bytes);expect(()=>restoreBackup(archive,key,join(dir,'corrupt'))).toThrow();}finally{await db.close();rmSync(dir,{recursive:true,force:true});}});

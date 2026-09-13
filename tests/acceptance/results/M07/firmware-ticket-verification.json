@@ -1,0 +1,19 @@
+{
+  "at": "2026-09-13T01:41:47.293883+00:00",
+  "passed": true,
+  "vectors": 27,
+  "scope": "Native build of firmware ticket verifier with the ESP-IDF checkout\u2019s Mbed TLS and cJSON sources; AddressSanitizer and UndefinedBehaviorSanitizer enabled for verifier/parser/harness. Not an end-to-end flashed enrollment test.",
+  "checks": [
+    "P-256 signature",
+    "issuer/device/nonce/operation binding",
+    "linked-owner/epoch binding",
+    "wall-clock and monotonic expiry",
+    "algorithm confusion",
+    "malformed signature/token",
+    "duplicate fields",
+    "nested payload limits",
+    "embedded NUL rejection",
+    "cleared output on failure"
+  ],
+  "sha256": "6067de7106d4bfb344c10eb92b5358bfdd984b702c64747282d2a31db2d376dd"
+}

@@ -1,0 +1,405 @@
+{
+  "completedAt": "2026-09-13T00:19:17.511680+00:00",
+  "cycles": 10,
+  "passed": true,
+  "toneTransferTested": true,
+  "acousticOutputVerified": false,
+  "minimumStackFreeBytes": 5136,
+  "events": [
+    {
+      "test": "i2c",
+      "address": 24,
+      "ok": true
+    },
+    {
+      "test": "i2c",
+      "address": 64,
+      "ok": true
+    },
+    {
+      "test": "i2c",
+      "address": 32,
+      "ok": true
+    },
+    {
+      "test": "ready",
+      "psramBytes": 8388608,
+      "speakerMuted": true
+    },
+    {
+      "test": "tone",
+      "ok": true,
+      "durationMs": 500
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.88,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 37.54,
+      "peak": 248,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 38.8,
+      "peak": 210,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.89,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 24.94,
+      "peak": 142,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 25.65,
+      "peak": 149,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.88,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 28.21,
+      "peak": 263,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.91,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 28.11,
+      "peak": 258,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.88,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 41.79,
+      "peak": 414,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 44.54,
+      "peak": 360,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.89,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 33.07,
+      "peak": 258,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 35.26,
+      "peak": 254,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.89,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 56.49,
+      "peak": 486,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 59.8,
+      "peak": 526,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.88,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 39.98,
+      "peak": 377,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 40.22,
+      "peak": 446,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.89,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 9.04,
+      "peak": 99,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 9.69,
+      "peak": 106,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.89,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 27.92,
+      "peak": 218,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 28.71,
+      "peak": 186,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    },
+    {
+      "test": "levels",
+      "slot": 0,
+      "frames": 32000,
+      "rms": 0.88,
+      "peak": 3,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 1,
+      "frames": 32000,
+      "rms": 26.85,
+      "peak": 116,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 2,
+      "frames": 32000,
+      "rms": 0.9,
+      "peak": 4,
+      "ioOk": true
+    },
+    {
+      "test": "levels",
+      "slot": 3,
+      "frames": 32000,
+      "rms": 27.11,
+      "peak": 125,
+      "ioOk": true
+    },
+    {
+      "test": "resources",
+      "stackFreeMinBytes": 5136,
+      "internalFreeBytes": 356787
+    }
+  ]
+}

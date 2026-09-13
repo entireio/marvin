@@ -1,3 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
+if(MARVIN_ENABLE_AFE)
+    list(APPEND EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/afe")
+endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(marvin)

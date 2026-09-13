@@ -1,0 +1,13 @@
+.git
+.env
+.env.*
+node_modules
+work
+data
+dist
+build-*
+firmware
+*.docx
+*.bin
+*.pem
+*.key

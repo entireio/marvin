@@ -1,0 +1,12 @@
+{
+  "provider": "openai",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "samples": 1,
+  "successes": 1,
+  "failures": [],
+  "diagnostics": [],
+  "p50Ms": 1030.673084,
+  "p95Ms": 1030.673084,
+  "measurement": "Server adapter to first text delta; not browser end-to-end latency",
+  "at": "2026-09-13T01:45:05.702Z"
+}

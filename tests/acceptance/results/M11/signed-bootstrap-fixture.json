@@ -1,0 +1,15 @@
+{
+  "scope": "Host platform and ephemeral factory-signature fixtures; no physical installation",
+  "bootstrapTrials": 70,
+  "passed": true,
+  "checks": [
+    "signed current-image digest",
+    "initial sequence only",
+    "trial state",
+    "existing pending refusal",
+    "usable rollback image required",
+    "replay refusal",
+    "metadata recovery after image confirmation"
+  ],
+  "physicalBootstrapPassed": false
+}

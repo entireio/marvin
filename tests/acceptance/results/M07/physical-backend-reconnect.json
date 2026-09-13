@@ -1,0 +1,71 @@
+{
+  "passed": true,
+  "before": {
+    "at": "2026-09-13T07:01:30.813Z",
+    "passed": true,
+    "bootId": "d50114e2-50d5-4529-9784-a012a7346495",
+    "samples": [
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      }
+    ],
+    "scope": "Five physical gateway presence checks at five-second intervals, exceeding the 15-second heartbeat expiry; no BLE reset, speech or action claim."
+  },
+  "after": {
+    "at": "2026-09-13T07:02:27.389Z",
+    "passed": true,
+    "bootId": "d50114e2-50d5-4529-9784-a012a7346495",
+    "samples": [
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      },
+      {
+        "online": true,
+        "epochMatches": true,
+        "sameBoot": true
+      }
+    ],
+    "scope": "Five physical gateway presence checks at five-second intervals, exceeding the 15-second heartbeat expiry; no BLE reset, speech or action claim."
+  },
+  "sameBootAcrossBackendRestart": true,
+  "scope": "Physical device authenticated WSS heartbeat and automatic reconnect after restarting the isolated backend container. One restart trial; not full reconnect/impairment matrix."
+}

@@ -1,0 +1,18 @@
+{
+  "at": "2026-09-13T02:17:38.766Z",
+  "tests": [
+    {
+      "case": "P256 challenge and UTF8-network redemption verified by actual backend format",
+      "passed": true
+    },
+    {
+      "case": "Wrong device fingerprint rejected",
+      "passed": true
+    },
+    {
+      "case": "P384 identity rejected",
+      "passed": true
+    }
+  ],
+  "scope": "Actual device_identity.c linked to synthetic host NVS and host RNG; real ESP-IDF MbedTLS. No physical-device or factory-secret access."
+}

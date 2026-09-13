@@ -1,0 +1,109 @@
+{
+  "scope": "Single attended physical count trial; not M8 acceptance",
+  "recordedAt": "2026-09-13T16:05:02.816577+00:00",
+  "source": "work/board/body-audio-1789315475647.json",
+  "result": {
+    "listeningReached": true,
+    "elapsedSeconds": 45.14,
+    "audio": {
+      "available": true,
+      "silent": false,
+      "captureActive": false,
+      "playing": false,
+      "capturedSamples16k": 400800,
+      "playedSamples16k": 214400,
+      "mic1Peak": 508,
+      "queuedSamplesPeak": 5040,
+      "captureStackFree": 3228,
+      "playbackStackFree": 3188,
+      "internalFreeBytes": 35831,
+      "internalLargestBlock": 20480
+    },
+    "voiceStates": [
+      "listening",
+      "closed"
+    ],
+    "scope": "Computer synthesized speech through system speaker, actual board microphone, provider and speaker-driver path. Subjective audibility and semantic transcript require separate review.",
+    "fatalDiagnostics": [],
+    "audibleFirmwareConfirmed": true,
+    "playedSamplesThisRun": 214400,
+    "capturedSamplesThisRun": 400800,
+    "interruptRequested": false,
+    "samplesWrittenAfterInterruptRequest": null,
+    "fixtureExitCode": 0,
+    "playbackTiming": {
+      "convertMaxUs": 7116,
+      "writeMaxUs": 12021
+    },
+    "afeTiming": {
+      "feedMaxUs": 28384,
+      "readError": 0
+    },
+    "audioTiming": {
+      "flushMaxUs": 6643,
+      "appendMaxUs": 13411
+    },
+    "linkFailureDetails": [],
+    "captureQueue": {
+      "takeCalls": 2766,
+      "dequeuedPackets": 2505,
+      "discardedPackets": 0,
+      "waiting": 0
+    },
+    "uplink": {
+      "online": true,
+      "pcmSamples16k": 400800,
+      "attempts": 261,
+      "maxWriteUs": 63175,
+      "stackFree": 3484
+    },
+    "passed": true
+  },
+  "canonicalReply": {
+    "userText": "Please count slowly from one to ten.",
+    "assistantText": "1, 2, 3, 4, 5, 6, 7, 8, 9, 10.",
+    "status": "completed"
+  },
+  "firmware": {
+    "flashedAt": "2026-09-13T15:55:25.127855+00:00",
+    "backup": "/Users/stefanopedemonte/Projects/Marvin_software/work/board/backup-20260912T221258Z",
+    "images": {
+      "0x0": {
+        "path": "/Users/stefanopedemonte/Projects/Marvin_software/build-waveshare-afe-audible/bootloader/bootloader.bin",
+        "sha256": "cf97d71badf36b594b0833048efc7f3e3f4aa345fe5e00d99cb3f2b8ca402ce7",
+        "bytes": 20784
+      },
+      "0x8000": {
+        "path": "/Users/stefanopedemonte/Projects/Marvin_software/build-waveshare-afe-audible/partition_table/partition-table.bin",
+        "sha256": "30fecb62143b0a0ff0e7dde159b9b745dec28c30ad42b55ae799cf67c6a2b559",
+        "bytes": 3072
+      },
+      "0x10000": {
+        "path": "/Users/stefanopedemonte/Projects/Marvin_software/build-waveshare-afe-audible/ota_data_initial.bin",
+        "sha256": "7d2c7ac4888bfd75cd5f56e8d61f69595121183afc81556c876732fd3782c62f",
+        "bytes": 8192
+      },
+      "0x20000": {
+        "path": "/Users/stefanopedemonte/Projects/Marvin_software/build-waveshare-afe-audible/marvin.bin",
+        "sha256": "c4014a43156462c73acec206c707874893e7cf2fcb7515a1f083d94712254d8a",
+        "bytes": 1692336
+      },
+      "0x3e0000": {
+        "path": "/Users/stefanopedemonte/Projects/Marvin_software/build-waveshare-afe-audible/srmodels/srmodels.bin",
+        "sha256": "2a162e78cb30938d9c55172df2a1b0f9bee307f8ee27ddf90e3ffbcd8ece736a",
+        "bytes": 291142
+      },
+      "0x12000": {
+        "path": "/Users/stefanopedemonte/Projects/Marvin_software/work/board/factory-owner-288485b2ab10/factory.bin",
+        "sha256": "14926aeddf380fd8cff1231d39d2c8d93f97f88a275aeb5053103a6089210c5e",
+        "bytes": 24576
+      }
+    },
+    "esptoolWriteAndVerifySucceeded": true
+  },
+  "acousticQualityAccepted": false,
+  "limitations": [
+    "Listening feedback pending for this trial",
+    "One trial does not prove sustained duplex, acoustic latency, wake accuracy or release acceptance"
+  ]
+}

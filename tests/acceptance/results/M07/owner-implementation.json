@@ -1,0 +1,22 @@
+{
+  "at": "2026-09-13",
+  "implemented": [
+    "owner ticket transfer and verification",
+    "durable submitted journal and receipt recovery",
+    "signed HTTPS device redemption",
+    "guided browser setup and resume"
+  ],
+  "hostTestsPassed": true,
+  "esp32S3OwnerBuildPassed": true,
+  "physicalEnrollmentPassed": false,
+  "browserHardwareGateEnabled": false,
+  "sourceHashes": {
+    "firmware/main/owner_setup.c": "69c8d1586bda4fa0a5f8a1e9f96ac8c2ed40589387713d0879069bdc98d8b1c8",
+    "firmware/main/enrollment_client.c": "55bc492b38ba53a8c5d4938a732b66d09e924d8e8e3b98161c1310989a0074c4",
+    "firmware/main/device_identity.c": "9fa2e182fb19a4cf3200528df4bbc2a301082db531a7adb72eb17b76f68a5c49",
+    "firmware/main/marvin.c": "26aee2f9420890b8f87c8ef4367e160dc5fa5e04e1d7ae529b05cffd51a0c510",
+    "firmware/components/marvin_journal/journal.c": "ca1b4b2aa95c002cfc2ac50ed1d3b144cb86a6dcf16489cf5aca7e68b7fe9f6d",
+    "packages/provisioning/src/physical.ts": "92178dbdd16ef0582ffb61448b430f56434bdbd753d432949eee559608d5c970",
+    "apps/web/src/PhysicalSetup.tsx": "188ac1042ff042a57aa3771cf2809b309027dfab993c33134d5e4cfe30a6e2b6"
+  }
+}

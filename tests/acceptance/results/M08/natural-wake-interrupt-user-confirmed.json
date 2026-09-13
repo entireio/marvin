@@ -1,0 +1,25 @@
+{
+  "recordedAt": "2026-09-13T17:09:45.039443+00:00",
+  "scope": "One user-observed natural-voice wake and interruption journey on 8-ohm 1W speaker at startup volume95",
+  "userFeedback": "Worked",
+  "turns": [
+    {
+      "userText": "Hi, ESP, count slowly from one to ten.",
+      "assistantText": "Okay, let me take this step by step.1, 2, 3, 4, 5,",
+      "status": "cancelled",
+      "ordinal": 50
+    },
+    {
+      "userText": "Stop counting and say blue sky.",
+      "assistantText": "Blue sky.",
+      "status": "completed",
+      "ordinal": 51
+    }
+  ],
+  "passed": true,
+  "limitations": [
+    "No instrumented acoustic stop or response latency",
+    "No assertion that local rather than provider VAD triggered cancellation",
+    "One natural-voice journey does not establish corpus accuracy or sustained reliability"
+  ]
+}

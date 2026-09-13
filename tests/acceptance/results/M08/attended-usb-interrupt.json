@@ -1,0 +1,67 @@
+{
+  "scope": "One USB interrupt trial; not acoustic latency acceptance",
+  "source": "work/board/body-audio-1789315545723.json",
+  "result": {
+    "listeningReached": true,
+    "elapsedSeconds": 28.17,
+    "audio": {
+      "available": true,
+      "silent": false,
+      "captureActive": false,
+      "playing": false,
+      "capturedSamples16k": 129440,
+      "playedSamples16k": 4480,
+      "mic1Peak": 464,
+      "queuedSamplesPeak": 4560,
+      "captureStackFree": 2620,
+      "playbackStackFree": 3188,
+      "internalFreeBytes": 33755,
+      "internalLargestBlock": 20480
+    },
+    "voiceStates": [
+      "listening",
+      "closed"
+    ],
+    "scope": "Computer synthesized speech through system speaker, actual board microphone, provider and speaker-driver path. Subjective audibility and semantic transcript require separate review. USB interruption measures driver submissions, not acoustic silence latency.",
+    "fatalDiagnostics": [],
+    "audibleFirmwareConfirmed": true,
+    "playedSamplesThisRun": 4480,
+    "capturedSamplesThisRun": 129440,
+    "interruptRequested": true,
+    "samplesWrittenAfterInterruptRequest": 1280,
+    "fixtureExitCode": 0,
+    "playbackTiming": {
+      "convertMaxUs": 791,
+      "writeMaxUs": 9252
+    },
+    "afeTiming": {
+      "feedMaxUs": 28320,
+      "readError": 259
+    },
+    "audioTiming": {
+      "flushMaxUs": 20278,
+      "appendMaxUs": 515
+    },
+    "linkFailureDetails": [],
+    "captureQueue": {
+      "takeCalls": 890,
+      "dequeuedPackets": 806,
+      "discardedPackets": 0,
+      "waiting": 0
+    },
+    "uplink": {
+      "online": true,
+      "pcmSamples16k": 128960,
+      "attempts": 84,
+      "maxWriteUs": 43703,
+      "stackFree": 3484
+    },
+    "passed": true
+  },
+  "canonicalTurnStatus": "cancelled",
+  "limitations": [
+    "80ms is submitted samples after host request, not measured acoustic silence",
+    "AFE readError259 occurred before voice listening; startup buffer overrun remains open",
+    "No provider diagnostic observed"
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "at": "2026-09-13T03:20:52.411Z",
+  "runDirectory": "work/m4/golden/live-1789269491677",
+  "sourceHash": "eae1efcb737fd09b6a59800ea9ea3099cccc95efda64b914ba39dfaa866f8fce",
+  "model": "gpt-5.4-2026-03-05",
+  "repository": "spedemon/marvin",
+  "live": true,
+  "results": [
+    {
+      "case": 1,
+      "path": "firmware/platformio.ini",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 2,
+      "path": "firmware/platformio.ini",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 3,
+      "path": "firmware/platformio.ini",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 4,
+      "path": "firmware/platformio.ini",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 5,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 6,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 7,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 8,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 9,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 10,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 11,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 12,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 13,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 14,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 15,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 16,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 17,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 18,
+      "path": "firmware/src/motor.cpp",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 19,
+      "path": "firmware/src/motor.cpp",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    },
+    {
+      "case": 20,
+      "path": "controller/README.md",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    }
+  ],
+  "acceptance": "Retrieval conformance only until all live answers receive independent semantic/citation review; missing-data, graph and service capability gates are separate.",
+  "semanticReview": {
+    "passed": 20,
+    "total": 20,
+    "method": "Manual review of every answer against committed platformio.ini, config.h, constructor, motor/servo code, BLE caller/advertising code and controller launch script. Repository is the original ESP32-C3 source, not the new ESP32-S3 project.",
+    "scope": "Twenty narrow implementation questions on one repository and revision. Does not establish graph, missing-data/service failures, representative user quality or hosted Entire authorization.",
+    "previousFailuresRetained": [
+      "live-golden-review.json",
+      "live-golden-regression-review.json"
+    ],
+    "acceptance": "20-question semantic gate passed for this recorded run; M4 overall remains open."
+  }
+}

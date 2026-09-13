@@ -1,0 +1,16 @@
+{
+  "at": "2026-09-13T01:24:30.354Z",
+  "passed": true,
+  "fixtureConversations": 100,
+  "fixtureTurns": 1000,
+  "databaseBytes": 9146368,
+  "archiveBytes": 1361906,
+  "backupMs": 221,
+  "restoreAndVerifyMs": 213,
+  "canonicalRowsMatch": true,
+  "configurationMatches": true,
+  "healthStatus": 200,
+  "scope": "Synthetic SQLite snapshot and configuration restored into a fresh directory, application restarted, canonical owners/conversations/turns/events/tool records compared. Excludes production traffic switching, PostgreSQL recovery, off-machine retrieval, deletion reconciliation and backup scheduling. Does not establish a deployed RPO.",
+  "rtoTargetMs": 1800000,
+  "localFixtureWithinTarget": true
+}

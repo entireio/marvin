@@ -1,0 +1,11 @@
+{
+  "at": "2026-09-13T06:55:05.845Z",
+  "passed": true,
+  "epochMatches": true,
+  "capabilities": [],
+  "scope": "Physical native WSS gateway presence after owner enrollment; no speech or action claim.",
+  "firmware": {
+    "bytes": 1234576,
+    "sha256": "94fcf8993ea8784a034e992ade6919f55bf51156c02ac92870bf887193fcd18e"
+  }
+}

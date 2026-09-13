@@ -1,0 +1,64 @@
+{
+  "scope": "Louder replay after user-requested volume increase",
+  "speakerCodecVolume": 70,
+  "source": "work/board/body-audio-1789317328520.json",
+  "result": {
+    "listeningReached": true,
+    "elapsedSeconds": 44.88,
+    "audio": {
+      "available": true,
+      "silent": false,
+      "captureActive": false,
+      "playing": false,
+      "capturedSamples16k": 401280,
+      "playedSamples16k": 244800,
+      "mic1Peak": 2804,
+      "queuedSamplesPeak": 7200,
+      "captureStackFree": 3260,
+      "playbackStackFree": 3188,
+      "internalFreeBytes": 44071,
+      "internalLargestBlock": 25600
+    },
+    "voiceStates": [
+      "listening",
+      "closed"
+    ],
+    "scope": "Computer synthesized speech through system speaker, actual board microphone, provider and speaker-driver path. Subjective audibility and semantic transcript require separate review.",
+    "fatalDiagnostics": [],
+    "audibleFirmwareConfirmed": true,
+    "playedSamplesThisRun": 244800,
+    "capturedSamplesThisRun": 401280,
+    "interruptRequested": false,
+    "samplesWrittenAfterInterruptRequest": null,
+    "fixtureExitCode": 0,
+    "playbackTiming": {
+      "convertMaxUs": 7993,
+      "writeMaxUs": 14304
+    },
+    "afeTiming": {
+      "feedMaxUs": 30311,
+      "readError": 0
+    },
+    "audioTiming": {
+      "flushMaxUs": 12246,
+      "appendMaxUs": 16706
+    },
+    "linkFailureDetails": [],
+    "captureQueue": {
+      "takeCalls": 2766,
+      "dequeuedPackets": 2505,
+      "discardedPackets": 0,
+      "waiting": 0
+    },
+    "uplink": {
+      "online": true,
+      "pcmSamples16k": 400800,
+      "attempts": 261,
+      "maxWriteUs": 91865,
+      "stackFree": 3484
+    },
+    "passed": true
+  },
+  "subjectiveQualityConfirmed": true,
+  "userFeedback": "Perfect"
+}

@@ -1,0 +1,21 @@
+/** Produce an immutable signed bundle locally. Does not upload or install it. */
+import {createHash,createPrivateKey,sign} from 'node:crypto';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {parseArgs} from 'node:util';
+import {resolve} from 'node:path';
+import {z} from 'zod';
+const {values}=parseArgs({options:{key:{type:'string'},image:{type:'string'},sequence:{type:'string'},'minimum-sequence':{type:'string',default:'0'},layout:{type:'string'},out:{type:'string'}}});
+const options=z.object({key:z.string().min(1),image:z.string().min(1),sequence:z.coerce.number().int().min(1).max(4294967295),'minimum-sequence':z.coerce.number().int().min(0).max(4294967295),layout:z.enum(['owner-v1','afe-v1']),out:z.string().min(1)}).parse(values);
+if(options['minimum-sequence']>=options.sequence)throw new Error('Minimum prior sequence must precede this release.');
+const binary=readFileSync(options.image);if(binary.length<1024||binary.length>0x1e0000||binary[0]!==0xe9||binary.readUInt16LE(12)!==9)throw new Error('Use an ESP32-S3 application image that fits the reviewed OTA slot.');
+const key=createPrivateKey(readFileSync(options.key));
+if(key.asymmetricKeyType!=='ec'||key.asymmetricKeyDetails?.namedCurve!=='prime256v1')throw new Error('Use a dedicated P-256 firmware release key.');
+const payload=Buffer.alloc(112);payload.write('MRVOTA01');payload.writeUInt32BE(options.sequence,8);payload.writeUInt32BE(binary.length,12);
+const digest=createHash('sha256').update(binary).digest();digest.copy(payload,16);payload.write('waveshare-esp32s3-audio',48);payload.write(options.layout,80);payload.writeUInt32BE(options['minimum-sequence'],96);
+const signature=sign('sha256',payload,{key,dsaEncoding:'ieee-p1363'});
+if(signature.length!==64)throw new Error('Unexpected release signature format.');
+const directory=resolve(options.out);mkdirSync(directory,{mode:0o700});
+writeFileSync(directory+'/image.bin',binary,{mode:0o600,flag:'wx'});
+writeFileSync(directory+'/manifest.bin',Buffer.concat([payload,signature]),{mode:0o600,flag:'wx'});
+writeFileSync(directory+'/release.json',JSON.stringify({format:1,board:'waveshare-esp32s3-audio',layout:options.layout,sequence:options.sequence,minimumSequence:options['minimum-sequence'],imageBytes:binary.length,sha256:digest.toString('hex')},null,2)+'\n',{mode:0o600,flag:'wx'});
+console.log(JSON.stringify({directory,sequence:options.sequence,imageBytes:binary.length,sha256:digest.toString('hex'),published:false}));

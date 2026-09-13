@@ -1,0 +1,15 @@
+{
+  "scope": "Temporary factory identities and host NVS loader fixture; no real factory modification",
+  "passed": true,
+  "checks": [
+    "optional public key in new factory",
+    "identity-preserving new CSV",
+    "private output permissions",
+    "no overwrite or implicit rotation",
+    "separate enrollment/release keys",
+    "public P-256 validation",
+    "failed NVS sequence read",
+    "bounded factory blob"
+  ],
+  "physicalProvisioningPassed": false
+}

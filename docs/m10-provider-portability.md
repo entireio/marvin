@@ -1,0 +1,17 @@
+# Provider portability — implementation and remaining verification
+
+Marvin supports independent text and speech configuration. OpenAI Realtime remains the physically tested speech path. A second adapter now uses Deepgram streaming recognition and synthesis around the configured canonical text provider (OpenAI or Anthropic). The same text-model execution supplies the response and executes authorized tools; synthesis does not interpret tools or independently rewrite the answer.
+
+Configure `VOICE_PROVIDER=deepgram`, a private `DEEPGRAM_API_KEY`, and explicit `DEEPGRAM_STT_MODEL=nova-3` / `DEEPGRAM_TTS_MODEL=aura-2-asteria-en`. A real `MODEL_PROVIDER` and its credentials are required. These exact model selections follow the current official API documentation; live model availability and performance have not been verified in this workspace. Do not put keys into browser configuration or commit them.
+
+The adapter accepts mono s16le at 24 kHz, matching the internal voice boundary. Final recognition fragments become one canonical utterance. Clearing input replaces the recognition socket and rejects events from its previous generation. At most256 KiB of fresh input can wait for reconnection. Each utterance can be consumed once. Each spoken response owns a separate synthesis socket, preventing late audio from a previous response reaching a new turn. Abort closes that socket immediately; browser/robot playback still has its independent local flush.
+
+Limits include bounded WebSocket messages, a 1 MiB output queue, a 120-second response deadline, 2400 text characters per spoken response, and explicit connection failures. Provider/account rate limits can be lower or shared across sessions; reaching them fails the turn rather than silently changing providers. The text provider must honor cancellation. The adapter currently uses English model selections and does not claim native multimodal/audio reasoning, acoustic parity, or the M10 exit gate.
+
+Local protocol fixtures verify 20 canonical responses with tools and generated PCM, single-use utterances, recognition replacement, duplicate transcript suppression, interruption without a final flush, malformed recognition and invalid PCM. Fixtures are not live Deepgram measurements. No Deepgram or Anthropic credentials are presently configured for live portability verification. The cloud/local acceptance matrix, 20 live provider switches, independent installations and physical latency checks remain open.
+
+Primary protocol references: [live recognition](https://developers.deepgram.com/reference/speech-to-text/listen-streaming), [streaming synthesis](https://developers.deepgram.com/reference/text-to-speech/speak-streaming). The adapter uses authenticated server WebSockets and never follows redirects with provider credentials.
+
+The adapter is additionally verified through Marvin's authenticated voice endpoint:20 successive sessions upload fixture PCM, receive synthesized fixture audio, close their provider sockets and recover the same persisted conversation. This covers the actual adapter/runtime/session integration, not a real browser microphone, acoustic playback or live Deepgram service.
+
+Voice lifecycle regression checks now cover provider exceptions during mute and muting while conversation-context retrieval or database admission is pending. Muting advances an input generation; superseded transcripts do not start a response, and a late-admitted turn is cancelled. Ordinary text remains usable after a provider-clear failure.

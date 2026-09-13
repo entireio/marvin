@@ -1,0 +1,11 @@
+{
+  "at": "2026-09-13T01:46:13.963Z",
+  "model": "gpt-realtime-2.1",
+  "success": true,
+  "transcriptSaved": true,
+  "audioBytes": 122400,
+  "firstAudioAfterDetectedEndMs": 1262,
+  "error": null,
+  "providerErrors": [],
+  "measurement": "Live provider through Marvin backend; synthetic input, no acoustic/browser latency claim"
+}

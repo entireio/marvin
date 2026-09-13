@@ -1,0 +1,12 @@
+{
+  "scope": "Authenticated local voice WebSocket endpoint with actual Deepgram adapter and fixture provider transport",
+  "freshSessions": 20,
+  "checks": [
+    "PCM upload/output",
+    "provider socket retirement",
+    "same owner/conversation",
+    "persisted prior user and assistant content"
+  ],
+  "passed": true,
+  "liveProviderParityPassed": false
+}

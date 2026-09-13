@@ -1,0 +1,13 @@
+{
+  "scope": "Local WebSocket protocol fixtures; no live second-provider calls",
+  "canonicalTurns": 20,
+  "textProvider": "fixture",
+  "speechProtocols": "Deepgram listen/speak",
+  "liveParityPassed": false,
+  "remaining": [
+    "live credentials",
+    "latency and acoustic tests",
+    "cloud/local parity",
+    "independent installation"
+  ]
+}
