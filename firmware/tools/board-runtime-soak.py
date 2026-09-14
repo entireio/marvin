@@ -111,7 +111,7 @@ try:
 finally:
     if port.is_open:
         try:
-            port.write(b'x')
+            port.write(b'W' if a.mode == 'release-suppressed' else b'x')
         except serial.SerialException:
             pass
         port.close()
