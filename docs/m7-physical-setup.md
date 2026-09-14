@@ -1,6 +1,6 @@
 # Physical account linking and network changes
 
-The owner enrollment profile and guided UI are implemented, compiled and host-tested. **Physical owner enrollment, same-AP reprovisioning and native gateway presence now pass on the isolated LAN test deployment.** `HARDWARE_PROVISIONING_ENABLED=false` keeps the public setup path closed until native-browser BLE and the remaining physical recovery matrix pass. The original bench profile remains available separately and makes no account-link claim.
+The owner enrollment profile and guided UI are implemented, compiled and host-tested. **Physical owner enrollment, same-AP reprovisioning, hidden-network application, wrong-password rollback, native gateway presence and direct Chrome Web Bluetooth now pass on the isolated LAN test deployment.** `HARDWARE_PROVISIONING_ENABLED=false` remains the public default while multi-AP, power-cut, reset and participant gates remain. The original bench profile remains available separately and makes no account-link claim.
 
 The browser uses the unique setup card to establish Security2. The robot supplies the network scan, including supported security modes. Equivalent duplicate APs are merged by SSID and security while the strongest robot-observed record remains selected internally; results are sorted by signal. A scan older than30seconds must be refreshed before credentials are sent. An advanced hidden-network path accepts a1–32-byte SSID and WPA2-Personal credentials without pretending that the network appeared in the scan. The browser obtains a signed owner ticket only after a network has been chosen, transfers it in bounded120-byte chunks, and sends the Wi-Fi password only after the device confirms ticket verification. The server never receives the Wi-Fi password. A network-change ticket must name the existing owner, device and ownership epoch.
 
@@ -25,9 +25,13 @@ The browser confirms both robot connectivity and the backend binding before show
 
 The provisioning client now treats Bluetooth loss, timeouts, unconfirmed binding, enrollment retry, clock failure, TLS/transport failure and backend failure as resumable uncertainty. A confirmed Wi-Fi rollback remains a retryable network failure and releases the unused backend reservation. Status frames that include a failure reason are distinguished from bare protocol errors, so the browser does not skip rollback cleanup. User-facing messages name the failed layer without exposing credentials.
 
-Thirty focused TypeScript tests pass across the physical client, Web Bluetooth transport, enrollment service and enrollment API. The complete software suite passes160 tests, strict type checking and the production build; all14 browser tests pass. The ESP-IDF5.4.2 signed release profile compiles with the hidden-network command, and the ticket, identity, journal, HTTP and owner coordinator host suites pass. Sanitized scope and limitations are recorded in `tests/acceptance/results/M07/provisioning-software-matrix.json`.
+Thirty-one focused TypeScript tests pass across the physical client, Web Bluetooth transport, enrollment service and enrollment API. The complete software suite passes161 tests, strict type checking and the production build; all14 browser tests pass. The ESP-IDF5.4.2 signed release profile compiles with the hidden-network command, and the ticket, identity, journal, HTTP and owner coordinator host suites pass. Sanitized scope and limitations are recorded in `tests/acceptance/results/M07/provisioning-software-matrix.json`.
 
-This completes the implementable software matrix. It does not substitute fixtures for direct Chrome-to-board BLE, a second physical AP, arbitrary physical power cuts, or participant trials. The new firmware branch is compiled but is not flashed while the eight-hour release soak owns the board.
+This completes the implementable software matrix. The clean image from commit `1dfa600` was signed as sequence5 for the `afe-v1` layout, installed through the authenticated HTTPS rollout, and passed independent post-reset audio, AFE and uplink health checks. The board rejected an earlier incorrectly labeled `owner-v1` bundle before selection and remained healthy on sequence4, demonstrating the pre-selection safety path.
+
+The available physical matrix now passes visible same-AP change, hidden WPA2 application, wrong-password rollback, owner/epoch preservation, native presence and direct Chrome-to-board Security2. Chrome also demonstrated that a stale robot scan is rejected before applying credentials and that a dropped BLE session leads to a successful fresh-pair resume. The browser run exposed two recovery-state defects: native transport errors were not normalized, and a later non-resumable error did not clear an earlier resume flag. Both are fixed and covered by the161-test regression suite. Sanitized evidence is in `tests/acceptance/results/M07/physical-provisioning-sequence5.json`.
+
+One physical access point cannot satisfy the original different-location/AP isolation gate. Arbitrary physical cuts at every commit boundary, full reset, offline unlink/relink,19-of-20 rate trials and participant usability also remain. The original M7 exit gate is therefore not claimed.
 
 Reproduce host checks after the ESP-IDF workspace is installed:
 
@@ -55,7 +59,7 @@ npx tsx scripts/owner-ble-smoke.ts --change
 npx tsx scripts/owner-ble-smoke.ts --resume
 ```
 
-These target only the isolated LAN test account and the user-supplied Wi-Fi test file. They do not print credentials or SSIDs. The guided browser flow must also pass on supported Chrome before enabling the feature for users. No eFuses have been changed; production protected storage and firmware update security are not claimed.
+These target only the isolated LAN test account and the user-supplied Wi-Fi test file. They do not print credentials or SSIDs. The guided browser flow passes on Chrome through a loopback-only adapter that retains TLS verification upstream; production needs a publicly trusted HTTPS certificate. No eFuses have been changed; production protected storage is not claimed.
 
 ## Native gateway presence
 

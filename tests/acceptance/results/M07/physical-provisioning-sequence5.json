@@ -1,0 +1,63 @@
+{
+  "recordedAt": "2026-09-14T06:27:00Z",
+  "passed": true,
+  "scope": "Available single-board, single-access-point physical provisioning matrix on signed firmware sequence 5 and the isolated LAN deployment",
+  "firmware": {
+    "sequence": 5,
+    "layout": "afe-v1",
+    "minimumSequence": 1,
+    "imageBytes": 1918192,
+    "sha256": "b919a07cda4c2e272043fdbf0f09697c757da5e9e967102f07913e62eb79b4fe",
+    "signedSelectionPassed": true,
+    "postResetBootHealthPassed": true,
+    "priorSequencePreservedAsFallback": 4
+  },
+  "physicalCases": [
+    {
+      "case": "owner-preserving visible-network change through the shared TypeScript client",
+      "passed": true,
+      "finding": "BLE completion became uncertain while the radio changed state; a new Security2 session confirmed the saved network, owner binding, epoch and native presence without resending credentials."
+    },
+    {
+      "case": "explicit hidden WPA2 network",
+      "passed": true,
+      "finding": "The board accepted apply_hidden without a scan index or BSSID pin; secure resume confirmed the existing owner and native presence."
+    },
+    {
+      "case": "wrong-password rollback",
+      "passed": true,
+      "finding": "After a deliberately invalid candidate credential, the board returned through the previous saved network and retained its owner epoch and native presence."
+    },
+    {
+      "case": "direct Chrome Web Bluetooth interoperability",
+      "passed": true,
+      "finding": "Chrome paired with the physical board, completed Security2, and rendered the robot-originated scan with incompatible networks disabled."
+    },
+    {
+      "case": "stale scan and browser recovery",
+      "passed": true,
+      "finding": "A scan older than 30 seconds was rejected before credential application. After refresh, BLE loss produced the Resume setup action; a new Chrome pairing reached the visible success state."
+    }
+  ],
+  "securityAndContinuity": {
+    "wifiCredentialInPortalHttp": false,
+    "setupSecretsRecorded": false,
+    "ssidValuesRecorded": false,
+    "sameDeviceAndOwnerEpochConfirmed": true,
+    "nativeGatewayPresenceConfirmed": true,
+    "wakeEnabledAfterTesting": true
+  },
+  "automatedRegression": {
+    "typescriptTests": 161,
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "browserTests": 14
+  },
+  "limitations": [
+    "Only one physical access point was available, so different-location and laptop-only-AP isolation were not physically demonstrated.",
+    "The original 19-of-20 setup and 19-of-20 network-change rate gates were not rerun on this sequence.",
+    "Arbitrary power cuts at every commit boundary, full physical reset, offline unlink/relink and five-participant usability remain separate acceptance work.",
+    "The localhost bridge was a loopback-only test adapter that preserved upstream TLS verification; production deployment still requires a browser-trusted HTTPS certificate."
+  ],
+  "originalM7ExitGatePassed": false
+}

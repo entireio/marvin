@@ -1,0 +1,56 @@
+{
+  "recordedAt": "2026-09-14T06:10:45.285342+00:00",
+  "passed": true,
+  "release": {
+    "sequence": 5,
+    "minimumSequence": 1,
+    "layout": "afe-v1",
+    "imageBytes": 1918192,
+    "sha256": "b919a07cda4c2e272043fdbf0f09697c757da5e9e967102f07913e62eb79b4fe",
+    "sourceRevision": "1dfa600"
+  },
+  "rollout": {
+    "selected": true,
+    "bootConfirmed": true,
+    "deviceOnline": true,
+    "audioAvailable": true,
+    "afeProcessedSamples16k": 4561920,
+    "crashObserved": false,
+    "events": [
+      {
+        "update": "requested",
+        "elapsedMs": 318
+      },
+      {
+        "update": "quiescing",
+        "elapsedMs": 426
+      },
+      {
+        "update": "selected",
+        "elapsedMs": 18393
+      },
+      {
+        "update": "boot_confirmed",
+        "elapsedMs": 32818
+      }
+    ],
+    "elapsedSeconds": 32.82
+  },
+  "independentReset": {
+    "passed": true,
+    "elapsedSeconds": 16.013,
+    "bootConfirmed": true,
+    "deviceOnline": true,
+    "audioAvailable": true,
+    "afeProcessedSamples16k": 102912,
+    "crashObserved": false,
+    "updateEvents": [
+      {
+        "update": "boot_confirmed",
+        "elapsedMs": 16012
+      }
+    ]
+  },
+  "fallbackSequence": 4,
+  "scope": "One-device authenticated signed OTA and independent physical boot-health check; signing key, credential, device identifier and raw serial output excluded."
+}

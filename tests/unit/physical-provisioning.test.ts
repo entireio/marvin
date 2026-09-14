@@ -16,7 +16,7 @@ it('forged networks and a different device fail before passwords or HTTP authori
  const r=rig(),scan=await r.robot.scan();await expect(r.robot.connect({...scan.networks[0],ssid:'Laptop-only AP'},'synthetic-password',()=>{},new AbortController().signal)).rejects.toMatchObject({code:'NETWORK_NOT_SCANNED'});r.foreign();await expect(r.robot.connect(scan.networks[0],'synthetic-password',()=>{},new AbortController().signal)).rejects.toMatchObject({code:'DEVICE_IDENTITY_MISMATCH'});expect(r.http).toHaveLength(0);expect(r.commands.some(c=>'password'in c)).toBe(false);
 });
 it('cancellation while the backend issues a ticket closes BLE and cancels only the unused reservation',async()=>{
- const r=rig(),scan=await r.robot.scan();let resolve:(v:any)=>void=()=>{};r.server.ticket=()=>new Promise(r=>{resolve=r;});const abort=new AbortController(),work=r.robot.connect(scan.networks[0],'synthetic-password',()=>{},abort.signal);for(let i=0;i<5;i++)await Promise.resolve();abort.abort();resolve({ticket:'ticket',enrollmentId:'unused',expiresAt:Date.now()+120000});await expect(work).rejects.toThrow();expect(r.closed()).toBe(true);expect(r.commands.some(c=>'password'in c)).toBe(false);expect(r.http).toContainEqual({cancel:'unused'});
+ const r=rig(),scan=await r.robot.scan();let resolve:((v:any)=>void)|undefined;r.server.ticket=()=>new Promise(r=>{resolve=r;});const abort=new AbortController(),work=r.robot.connect(scan.networks[0],'synthetic-password',()=>{},abort.signal);for(let i=0;!resolve&&i<20;i++)await new Promise(done=>setTimeout(done,0));expect(resolve).toBeDefined();abort.abort();resolve!({ticket:'ticket',enrollmentId:'unused',expiresAt:Date.now()+120000});await expect(work).rejects.toThrow();expect(r.closed()).toBe(true);expect(r.commands.some(c=>'password'in c)).toBe(false);expect(r.http).toContainEqual({cancel:'unused'});
 });
 it('resume uses the robot pending network and confirms the server binding without resending credentials',async()=>{const r=rig();r.pending();const stages:string[]=[];await r.robot.resume(undefined,s=>stages.push(s),new AbortController().signal);expect(stages).toContain('ready');expect(r.commands.some(c=>'password'in c)).toBe(false);expect(r.http).toHaveLength(0);});
 it('resume after reboot confirms the saved network and binding without a new ticket or apply',async()=>{
@@ -34,6 +34,11 @@ it('classifies only post-commit or service uncertainty as resumable',()=>{
  for(const code of ['SETUP_PENDING','BLUETOOTH_DISCONNECTED','BLUETOOTH_TIMEOUT','BINDING_UNCONFIRMED','ENROLLMENT_RETRY','BACKEND_UNREACHABLE','TLS_OR_TRANSPORT_FAILED','BACKEND_HTTP_FAILED','CLOCK_SYNC_FAILED'])expect(canResumePhysicalSetup(new DomainError(code,'fixture'))).toBe(true);
  for(const code of ['WIFI_CONNECTION_FAILED','WIFI_AUTH_FAILED','ENROLLMENT_REVOKED','CHALLENGE_EXPIRED','DEVICE_IDENTITY_MISMATCH'])expect(canResumePhysicalSetup(new DomainError(code,'fixture'))).toBe(false);
  expect(canResumePhysicalSetup(new Error('fixture'))).toBe(false);
+});
+
+it('maps a lost BLE transport to an actionable resumable error without exposing its cause',async()=>{
+ const r=rig();r.link.command=async()=>{throw new Error('private native transport detail');};
+ await expect(r.robot.scan()).rejects.toMatchObject({code:'BLUETOOTH_DISCONNECTED',message:'Reconnect to Marvin to continue.'});
 });
 
 it('normalizes firmware recovery failures during encrypted status polling',async()=>{
