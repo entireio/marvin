@@ -1,8 +1,8 @@
 # Physical account linking and network changes
 
-The owner enrollment profile and guided UI are implemented, compiled and host-tested. **Physical owner enrollment, same-AP reprovisioning and native gateway presence now pass on the isolated LAN test deployment.** `HARDWARE_PROVISIONING_ENABLED=false` keeps the public setup path closed until native-browser BLE and the remaining recovery matrix pass. The original bench profile remains available separately and makes no account-link claim.
+The owner enrollment profile and guided UI are implemented, compiled and host-tested. **Physical owner enrollment, same-AP reprovisioning and native gateway presence now pass on the isolated LAN test deployment.** `HARDWARE_PROVISIONING_ENABLED=false` keeps the public setup path closed until native-browser BLE and the remaining physical recovery matrix pass. The original bench profile remains available separately and makes no account-link claim.
 
-The browser uses the unique setup card to establish Security2. The robot supplies the network scan, including supported security modes. The browser obtains a signed owner ticket only after a network has been chosen, transfers it in bounded120-byte chunks, and sends the Wi-Fi password only after the device confirms ticket verification. The server never receives the Wi-Fi password. A network-change ticket must name the existing owner, device and ownership epoch.
+The browser uses the unique setup card to establish Security2. The robot supplies the network scan, including supported security modes. Equivalent duplicate APs are merged by SSID and security while the strongest robot-observed record remains selected internally; results are sorted by signal. A scan older than30seconds must be refreshed before credentials are sent. An advanced hidden-network path accepts a1–32-byte SSID and WPA2-Personal credentials without pretending that the network appeared in the scan. The browser obtains a signed owner ticket only after a network has been chosen, transfers it in bounded120-byte chunks, and sends the Wi-Fi password only after the device confirms ticket verification. The server never receives the Wi-Fi password. A network-change ticket must name the existing owner, device and ownership epoch.
 
 The robot pins its deployment’s P-256 verification key and HTTPS issuer in factory NVS. It checks ticket signature, device, nonce, operation, owner/epoch, wall time and the monotonic challenge lifetime. Disconnecting BLE clears transient challenges and ticket fragments. It does not erase a durable transaction that may already have reached the backend.
 
@@ -18,7 +18,16 @@ The browser confirms both robot connectivity and the backend binding before show
 - C setup coordinator: real ES256 ticket chunks, session fencing, repeated finish, failed persistence, reboot/redeem retry and expiry.
 - HTTP client: bounded chunked receipts, credential shape, device/epoch, duplicate fields, TLS errors, redirects and HTTP failures. These use a host transport fixture, not a claim of physical TLS success.
 - Browser protocol tests: robot-only networks, no password in HTTP requests, cancellation and reservation cleanup, preserved identity, and resume.
+- Browser recovery tests: stale scans, equivalent-AP merging, bounded hidden SSIDs, post-commit Bluetooth/service uncertainty, categorized DHCP/clock/TLS/backend recovery, and confirmed rollback before password retry.
 - Setup entry/error UI:360/768/1440px, no overflow or serious accessibility violations. Network-selection and full physical flows still need browser/hardware verification.
+
+## Software fault matrix — 14 September 2026
+
+The provisioning client now treats Bluetooth loss, timeouts, unconfirmed binding, enrollment retry, clock failure, TLS/transport failure and backend failure as resumable uncertainty. A confirmed Wi-Fi rollback remains a retryable network failure and releases the unused backend reservation. Status frames that include a failure reason are distinguished from bare protocol errors, so the browser does not skip rollback cleanup. User-facing messages name the failed layer without exposing credentials.
+
+Thirty focused TypeScript tests pass across the physical client, Web Bluetooth transport, enrollment service and enrollment API. The complete software suite passes160 tests, strict type checking and the production build; all14 browser tests pass. The ESP-IDF5.4.2 signed release profile compiles with the hidden-network command, and the ticket, identity, journal, HTTP and owner coordinator host suites pass. Sanitized scope and limitations are recorded in `tests/acceptance/results/M07/provisioning-software-matrix.json`.
+
+This completes the implementable software matrix. It does not substitute fixtures for direct Chrome-to-board BLE, a second physical AP, arbitrary physical power cuts, or participant trials. The new firmware branch is compiled but is not flashed while the eight-hour release soak owns the board.
 
 Reproduce host checks after the ESP-IDF workspace is installed:
 

@@ -194,18 +194,18 @@ static esp_err_t control(uint32_t session,const uint8_t *input,ssize_t length,ui
             cJSON_AddNumberToObject(reply,"scanGeneration",scan_generation);
             cJSON_AddBoolToObject(reply,"supported",ap->authmode==WIFI_AUTH_OPEN || ap->authmode==WIFI_AUTH_WPA2_PSK || ap->authmode==WIFI_AUTH_WPA_WPA2_PSK);
         } else cJSON_AddStringToObject(reply,"error","INVALID_NETWORK");
-    } else if(!strcmp(op->valuestring,"apply") && !busy()) {
+    } else if((!strcmp(op->valuestring,"apply")||!strcmp(op->valuestring,"apply_hidden")) && !busy()) {
         cJSON *index=cJSON_GetObjectItemCaseSensitive(request,"index"), *password=cJSON_GetObjectItemCaseSensitive(request,"password"), *generation=cJSON_GetObjectItemCaseSensitive(request,"scanGeneration");
+        bool hidden=!strcmp(op->valuestring,"apply_hidden");cJSON *ssid=cJSON_GetObjectItemCaseSensitive(request,"ssid"),*security_mode=cJSON_GetObjectItemCaseSensitive(request,"security");
         if(strncmp(probe_url,"https://",8)) cJSON_AddStringToObject(reply,"error","BACKEND_NOT_CONFIGURED");
-        else if(!cJSON_IsNumber(index) || index->valuedouble!=index->valueint || index->valueint<0 || index->valueint>=ap_count || !cJSON_IsNumber(generation) || generation->valuedouble!=scan_generation || !cJSON_IsString(password) || strlen(password->valuestring)>63) cJSON_AddStringToObject(reply,"error","INVALID_REQUEST");
+        else if(!cJSON_IsString(password) || strlen(password->valuestring)>63 || (hidden?(!cJSON_IsString(ssid)||!strlen(ssid->valuestring)||strlen(ssid->valuestring)>32||!cJSON_IsString(security_mode)||strcmp(security_mode->valuestring,"wpa2-personal")):(!cJSON_IsNumber(index)||index->valuedouble!=index->valueint||index->valueint<0||index->valueint>=ap_count||!cJSON_IsNumber(generation)||generation->valuedouble!=scan_generation))) cJSON_AddStringToObject(reply,"error","INVALID_REQUEST");
         else {
-            wifi_ap_record_t *ap=&aps[index->valueint];size_t len=strlen(password->valuestring);
-            bool open=ap->authmode==WIFI_AUTH_OPEN;
+            wifi_ap_record_t hidden_ap={0},*ap;if(hidden){memcpy(hidden_ap.ssid,ssid->valuestring,strlen(ssid->valuestring));hidden_ap.authmode=WIFI_AUTH_WPA2_PSK;ap=&hidden_ap;}else ap=&aps[index->valueint];size_t len=strlen(password->valuestring);bool open=ap->authmode==WIFI_AUTH_OPEN;
             if((!open && ap->authmode!=WIFI_AUTH_WPA2_PSK && ap->authmode!=WIFI_AUTH_WPA_WPA2_PSK) || (open?len!=0:len<8)) cJSON_AddStringToObject(reply,"error","UNSUPPORTED_CREDENTIALS");
             else {
                 job_t job={.operation=2};memcpy(job.candidate.sta.ssid,ap->ssid,sizeof(job.candidate.sta.ssid));
                 memcpy(job.candidate.sta.password,password->valuestring,len);
-                memcpy(job.candidate.sta.bssid,ap->bssid,6);job.candidate.sta.bssid_set=true;
+                if(!hidden){memcpy(job.candidate.sta.bssid,ap->bssid,6);job.candidate.sta.bssid_set=true;}
                 job.candidate.sta.threshold.authmode=open?WIFI_AUTH_OPEN:WIFI_AUTH_WPA2_PSK;
                 if(owner_mode&&!marvin_owner_setup_stage(session,&job.candidate))cJSON_AddStringToObject(reply,"error","OWNER_TICKET_REQUIRED");
                 else if(xQueueSend(jobs,&job,0)==pdTRUE) { snprintf(phase,sizeof(phase),"connecting");failure[0]=0;cJSON_AddStringToObject(reply,"phase",phase); }

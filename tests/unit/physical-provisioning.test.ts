@@ -1,9 +1,10 @@
-import {it,expect} from 'vitest';
-import {PhysicalRobot,type EnrollmentApi,type SecureSetupLink} from '../../packages/provisioning/src/physical.js';
+import {it,expect,vi} from 'vitest';
+import {PhysicalRobot,canResumePhysicalSetup,type EnrollmentApi,type SecureSetupLink} from '../../packages/provisioning/src/physical.js';
+import {DomainError} from '../../packages/contracts/src/index.js';
 function rig(change=false){
- const commands:Record<string,unknown>[]=[],http:unknown[]=[],deviceId='marvin_'+'a'.repeat(32);let applied=false,verified=false,closed=false,foreign=false,pending=false;
- const link:SecureSetupLink={async command(r){commands.push(r);if(r.op==='clock')return {clockSet:true};if(r.op==='scan')return {phase:'scanning'};if(r.op==='status')return {phase:pending?'awaiting_backend':applied?'network_verified':'scan_complete',linked:applied,networkConnected:true,hasSavedNetwork:applied,scanGeneration:4,count:1,error:'',...(pending?{pendingNetwork:'Robot-visible AP'}:{})};if(r.op==='network')return {source:'robot',ssid:'Robot-visible AP',rssi:-62,channel:6,scanGeneration:4,supported:true,security:'wpa2-personal'};if(r.op==='challenge')return {challenge:{deviceId:foreign?'marvin_'+'b'.repeat(32):deviceId,nonce:'1'.repeat(64),operation:r.operation,issuedAt:r.issuedAt},proof:'synthetic-proof'};if(r.op==='ticket_begin')return {accepted:true};if(r.op==='ticket_chunk')return {received:Number(r.offset)+String(r.hex).length/2};if(r.op==='ticket_finish'){verified=true;return {verified:true};}if(r.op==='apply'){expect(verified).toBe(true);applied=true;return {phase:'connecting'};}if(r.op==='resume'){pending=false;applied=true;return {phase:'connecting'};}throw new Error('Unknown command');},close(){closed=true;}};
- const server:EnrollmentApi={async ticket(r){http.push(r);return {ticket:'signed-ticket'.repeat(50),enrollmentId:'enrollment',expiresAt:Date.now()+120000};},async cancel(id){http.push({cancel:id});},async binding(){return applied?{device_id:deviceId,network:'Robot-visible AP',simulated:0}:null;}};
+ const commands:Record<string,unknown>[]=[],http:unknown[]=[],deviceId='marvin_'+'a'.repeat(32);let applied=false,appliedNetwork='Robot-visible AP',verified=false,closed=false,foreign=false,pending=false;
+ const link:SecureSetupLink={async command(r){commands.push(r);if(r.op==='clock')return {clockSet:true};if(r.op==='scan')return {phase:'scanning'};if(r.op==='status')return {phase:pending?'awaiting_backend':applied?'network_verified':'scan_complete',linked:applied,networkConnected:true,hasSavedNetwork:applied,scanGeneration:4,count:1,error:'',...(pending?{pendingNetwork:'Robot-visible AP'}:{})};if(r.op==='network')return {source:'robot',ssid:'Robot-visible AP',rssi:-62,channel:6,scanGeneration:4,supported:true,security:'wpa2-personal'};if(r.op==='challenge')return {challenge:{deviceId:foreign?'marvin_'+'b'.repeat(32):deviceId,nonce:'1'.repeat(64),operation:r.operation,issuedAt:r.issuedAt},proof:'synthetic-proof'};if(r.op==='ticket_begin')return {accepted:true};if(r.op==='ticket_chunk')return {received:Number(r.offset)+String(r.hex).length/2};if(r.op==='ticket_finish'){verified=true;return {verified:true};}if(r.op==='apply'||r.op==='apply_hidden'){expect(verified).toBe(true);applied=true;if(r.op==='apply_hidden')appliedNetwork=String(r.ssid);return {phase:'connecting'};}if(r.op==='resume'){pending=false;applied=true;return {phase:'connecting'};}throw new Error('Unknown command');},close(){closed=true;}};
+ const server:EnrollmentApi={async ticket(r){http.push(r);return {ticket:'signed-ticket'.repeat(50),enrollmentId:'enrollment',expiresAt:Date.now()+120000};},async cancel(id){http.push({cancel:id});},async binding(){return applied?{device_id:deviceId,network:appliedNetwork,simulated:0}:null;}};
  return {robot:new PhysicalRobot(deviceId,link,server,change,1),commands,http,server,link,foreign:()=>{foreign=true;},pending:()=>{pending=true;},closed:()=>closed};
 }
 it('robot scan indices and ticket chunks precede encrypted password delivery; HTTP gets no Wi-Fi credentials',async()=>{
@@ -28,3 +29,45 @@ it('resume after reboot confirms the saved network and binding without a new tic
 it('setup cards reject malformed or extra data without echoing private input',async()=>{const {decodeSetupCode}=await import('../../packages/provisioning/src/setup-code.js');const card={deviceId:'marvin_'+'a'.repeat(32),username:'marvin-test',password:'private-synthetic-code'};expect(decodeSetupCode('marvin1.'+Buffer.from(JSON.stringify(card)).toString('base64url'))).toEqual(card);try{decodeSetupCode('private-synthetic-code');throw new Error('unexpected');}catch(e){expect((e as Error).message).not.toContain('private-synthetic-code');}expect(()=>decodeSetupCode('marvin1.'+Buffer.from(JSON.stringify({...card,privateKey:'never allowed'})).toString('base64url'))).toThrow();});
 
 it('confirmed rollback releases the unused server reservation for an immediate password retry',async()=>{const r=rig(),scan=await r.robot.scan(),command=r.link.command.bind(r.link);r.link.command=async request=>{const reply=await command(request) as any;return request.op==='status'&&reply.phase==='network_verified'?{...reply,phase:'failed',linked:false,error:'WIFI_CONNECTION_FAILED'}:reply;};await expect(r.robot.connect(scan.networks[0],'synthetic-password',()=>{},new AbortController().signal)).rejects.toMatchObject({code:'WIFI_CONNECTION_FAILED'});expect(r.http).toContainEqual({cancel:'enrollment'});});
+
+it('classifies only post-commit or service uncertainty as resumable',()=>{
+ for(const code of ['SETUP_PENDING','BLUETOOTH_DISCONNECTED','BLUETOOTH_TIMEOUT','BINDING_UNCONFIRMED','ENROLLMENT_RETRY','BACKEND_UNREACHABLE','TLS_OR_TRANSPORT_FAILED','BACKEND_HTTP_FAILED','CLOCK_SYNC_FAILED'])expect(canResumePhysicalSetup(new DomainError(code,'fixture'))).toBe(true);
+ for(const code of ['WIFI_CONNECTION_FAILED','WIFI_AUTH_FAILED','ENROLLMENT_REVOKED','CHALLENGE_EXPIRED','DEVICE_IDENTITY_MISMATCH'])expect(canResumePhysicalSetup(new DomainError(code,'fixture'))).toBe(false);
+ expect(canResumePhysicalSetup(new Error('fixture'))).toBe(false);
+});
+
+it('normalizes firmware recovery failures during encrypted status polling',async()=>{
+ for(const [code,message] of [
+  ['ENROLLMENT_RETRY','could not confirm the account link'],
+  ['BACKEND_UNREACHABLE','could not contact the Marvin service'],
+  ['TLS_OR_TRANSPORT_FAILED','secure connection'],
+  ['BACKEND_HTTP_FAILED','connectivity check'],
+  ['CLOCK_SYNC_FAILED','set its clock securely'],
+  ['PREVIOUS_NETWORK_UNAVAILABLE','previous network']
+ ] as const){
+  const r=rig(),command=r.link.command.bind(r.link);r.pending();r.link.command=async request=>request.op==='status'?{error:code}:command(request);
+  await expect(r.robot.resume(undefined,()=>{},AbortSignal.timeout(1000))).rejects.toMatchObject({code,message:expect.stringContaining(message)});
+ }
+});
+
+it('merges only equivalent AP records, retains the strongest robot record and sorts by signal',async()=>{
+ const r=rig(),command=r.link.command.bind(r.link),aps=[
+  {source:'robot',ssid:'Mesh',rssi:-75,channel:1,scanGeneration:4,supported:true,security:'wpa2-personal'},
+  {source:'robot',ssid:'Guest',rssi:-50,channel:6,scanGeneration:4,supported:true,security:'open'},
+  {source:'robot',ssid:'Mesh',rssi:-42,channel:11,scanGeneration:4,supported:true,security:'wpa2-personal'},
+  {source:'robot',ssid:'Mesh',rssi:-38,channel:1,scanGeneration:4,supported:false,security:'wpa3-personal'}
+ ];
+ r.link.command=async request=>request.op==='status'?{phase:'scan_complete',linked:false,networkConnected:false,hasSavedNetwork:false,scanGeneration:4,count:aps.length,error:''}:request.op==='network'?aps[Number(request.index)]:command(request);
+ const scan=await r.robot.scan();expect(scan.networks.map(n=>[n.ssid,n.security,n.rssi,n.channel,n.compatible])).toEqual([['Mesh','wpa3-personal',-38,1,false],['Mesh','wpa2-personal',-42,11,true],['Guest','open',-50,6,true]]);
+});
+
+it('supports an explicit bounded hidden WPA2 network without claiming it came from the scan',async()=>{
+ const r=rig(),network=r.robot.hiddenNetwork('Hidden fixture');await r.robot.connect(network,'synthetic-password',()=>{},AbortSignal.timeout(1000));
+ expect(r.commands.find(c=>c.op==='apply_hidden')).toMatchObject({ssid:'Hidden fixture',security:'wpa2-personal',password:'synthetic-password'});expect(r.commands.some(c=>c.op==='apply')).toBe(false);expect(JSON.stringify(r.http)).not.toMatch(/Hidden fixture|synthetic-password/);
+ expect(()=>r.robot.hiddenNetwork('é'.repeat(17))).toThrowError(/1 and 32 bytes/);
+});
+
+it('rejects stale robot scan selections before requesting a ticket or sending a password',async()=>{
+ const r=rig(),scan=await r.robot.scan(),now=Date.now();vi.spyOn(Date,'now').mockReturnValue(now+30001);
+ try{await expect(r.robot.connect(scan.networks[0],'synthetic-password',()=>{},AbortSignal.timeout(1000))).rejects.toMatchObject({code:'SCAN_EXPIRED'});expect(r.http).toHaveLength(0);expect(r.commands.some(c=>'password' in c)).toBe(false);}finally{vi.restoreAllMocks();}
+});
