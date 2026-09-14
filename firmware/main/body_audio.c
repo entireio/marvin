@@ -63,7 +63,7 @@ static void capture_task(void *unused){
 static atomic_uint local_wakes,afe_samples,afe_faults,afe_feed_max_us,afe_read_error,afe_feed_calls,afe_feed_total_us;
 static int16_t *afe_feed_buffer;
 static marvin_preroll_t *preroll;
-static atomic_uint preroll_samples,local_interrupts;
+static atomic_uint preroll_samples,local_interrupts,echo_suppressed_samples;
 static size_t afe_chunk,afe_channels;
 static void feed_task(void *unused){
  (void)unused;size_t used=0;int16_t input[160*3];
@@ -84,22 +84,13 @@ static void feed_task(void *unused){
  }
 }
 static void capture_task(void *unused){
- (void)unused;capture_t packet;unsigned generation=0;int64_t last_wake=0;int16_t partial[160];size_t partial_count=0;unsigned speech_run=0;bool speech_interrupted=false;
+ (void)unused;capture_t packet;unsigned generation=0,echo_tail=0;int64_t last_wake=0;int16_t partial[160];size_t partial_count=0;
  for(;;){
   if(park(1))continue;
   marvin_afe_wake_enabled(!atomic_load(&capture_active));
   marvin_afe_result_t result;
   if(!marvin_afe_fetch(&result)){if(result.fault)atomic_store(&fault,6);vTaskDelay(pdMS_TO_TICKS(10));continue;}
   atomic_fetch_add(&afe_samples,result.frames);
-#ifndef CONFIG_MARVIN_SILENT_TEST
-  if(!result.speech){speech_run=0;speech_interrupted=false;}
-  else if(atomic_load(&capture_active)&&atomic_load(&playing)){
-   speech_run+=result.frames;
-   if(speech_run>=1024&&!speech_interrupted){speech_interrupted=true;atomic_fetch_add(&local_interrupts,1);marvin_device_voice_interrupt();}
-  }else speech_run=0;
-#else
-  (void)speech_run;(void)speech_interrupted;
-#endif
   atomic_store(&capture_stack,uxTaskGetStackHighWaterMark(NULL));
   if(result.wake&&!atomic_load(&capture_active)&&esp_timer_get_time()-last_wake>2000000){last_wake=esp_timer_get_time();atomic_fetch_add(&local_wakes,1);
 #ifndef CONFIG_MARVIN_SILENT_TEST
@@ -113,6 +104,16 @@ static void capture_task(void *unused){
     atomic_fetch_add(&preroll_samples,packet.count);atomic_fetch_add(&captured_samples,packet.count);memset(&packet,0,sizeof(packet));
    }
   }
+  /* The present AFE/board alignment does not reject the 95/100 loudspeaker
+   * strongly enough for reliable full-duplex VAD. Forwarding that residual to
+   * either the local or provider VAD cancels every answer as its first word is
+   * played. Keep the microphones clocked and the AFE fed, but do not upload
+   * speaker echo or its short acoustic tail. This makes body turns dependable
+   * half-duplex until measured echo-resistant barge-in is available. */
+  if(atomic_load(&playing))echo_tail=4800;
+  else if(echo_tail>result.frames)echo_tail-=result.frames;
+  else echo_tail=0;
+  if(echo_tail){partial_count=0;atomic_fetch_add(&echo_suppressed_samples,result.frames);continue;}
   for(size_t i=0;i<result.frames;i++){
    int16_t sample=result.pcm[i];unsigned peak=sample<0?-(int)sample:sample;
    if(peak>atomic_load(&microphone_peak))atomic_store(&microphone_peak,peak);
@@ -227,6 +228,7 @@ void marvin_body_audio_status(void){printf("{\"speakerVolume\":%u}\n",marvin_aud
 #ifdef CONFIG_MARVIN_LOCAL_AFE
  marvin_afe_status();
  printf("{\"localInterrupts\":%u}\n",atomic_load(&local_interrupts));
+ printf("{\"echoSuppressedSamples16k\":%u}\n",atomic_load(&echo_suppressed_samples));
  printf("{\"prerollSamples16k\":%u}\n",atomic_load(&preroll_samples));
  printf("{\"afeChannels\":%u}\n",(unsigned)afe_channels);
  printf("{\"afeFeedBudget\":{\"framesPerCall\":%u,\"calls\":%u,\"totalUs\":%u}}\n",(unsigned)afe_chunk,atomic_load(&afe_feed_calls),atomic_load(&afe_feed_total_us));
