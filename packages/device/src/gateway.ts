@@ -66,7 +66,7 @@ export class DeviceGateway {
      const current=c;
      try{if(!this.voice)throw new DomainError('VOICE_UNAVAILABLE','Voice is not configured.',409);
       const alreadyActive=this.voice.active(c.identity.deviceId);
-      await this.voice.start(c.identity,{control:event=>this.send(current,event),audio:async(id,pcm)=>{await this.current(current);if(current.socket.readyState!==1||current.socket.bufferedAmount>65536)throw new Error('Audio backpressure');const header=Buffer.concat([Buffer.from('MVA1'),Buffer.from(id.replaceAll('-',''),'hex')]);current.socket.send(Buffer.concat([header,pcm]));current.audioSentBytes+=pcm.length;}},c.audioInputRate);
+      await this.voice.start(c.identity,{control:event=>this.send(current,event),audio:async(id,pcm)=>{await this.current(current);if(current.socket.readyState!==1||current.socket.bufferedAmount>65536)throw new Error('Audio backpressure');const header=Buffer.concat([Buffer.from('MVA1'),Buffer.from(id.replaceAll('-',''),'hex')]);current.socket.send(Buffer.concat([header,pcm]));current.audioSentBytes+=pcm.length;}},c.audioInputRate,message.reason==='wake');
       if(!alreadyActive&&this.voice.active(c.identity.deviceId))current.voiceStarts++;
      }catch{await this.send(current,{type:'voice_error',message:'Voice could not connect. Try again later; Marvin remains online.'});}return;
     }

@@ -63,7 +63,7 @@ static void capture_task(void *unused){
 static atomic_uint local_wakes,afe_samples,afe_faults,afe_feed_max_us,afe_read_error,afe_feed_calls,afe_feed_total_us;
 static int16_t *afe_feed_buffer;
 static marvin_preroll_t *preroll;
-static atomic_uint preroll_samples,local_interrupts,echo_suppressed_samples;
+static atomic_uint preroll_samples,local_interrupts,echo_suppressed_samples,playback_leadin_samples;
 static size_t afe_chunk,afe_channels;
 static void feed_task(void *unused){
  (void)unused;size_t used=0;int16_t input[160*3];
@@ -87,14 +87,17 @@ static void capture_task(void *unused){
  (void)unused;capture_t packet;unsigned generation=0,echo_tail=0;int64_t last_wake=0;int16_t partial[160];size_t partial_count=0;
  for(;;){
   if(park(1))continue;
-  marvin_afe_wake_enabled(!atomic_load(&capture_active));
+  /* Keep the phrase detector running during a response so "Hey Marvin" can
+   * interrupt playback without treating every loudspeaker syllable as speech. */
+  marvin_afe_wake_enabled(true);
   marvin_afe_result_t result;
   if(!marvin_afe_fetch(&result)){if(result.fault)atomic_store(&fault,6);vTaskDelay(pdMS_TO_TICKS(10));continue;}
   atomic_fetch_add(&afe_samples,result.frames);
   atomic_store(&capture_stack,uxTaskGetStackHighWaterMark(NULL));
-  if(result.wake&&!atomic_load(&capture_active)&&esp_timer_get_time()-last_wake>2000000){last_wake=esp_timer_get_time();atomic_fetch_add(&local_wakes,1);
+  if(result.wake&&esp_timer_get_time()-last_wake>2000000){last_wake=esp_timer_get_time();
 #ifndef CONFIG_MARVIN_SILENT_TEST
-   if(atomic_load(&wake_activation_enabled))marvin_device_voice_wake();
+   if(atomic_load(&capture_active)&&atomic_load(&playing)){atomic_fetch_add(&local_interrupts,1);marvin_device_voice_interrupt();}
+   else if(!atomic_load(&capture_active)){atomic_fetch_add(&local_wakes,1);if(atomic_load(&wake_activation_enabled))marvin_device_voice_wake();}
 #endif
   }
   if(!atomic_load(&capture_active)){partial_count=0;marvin_preroll_push(preroll,result.pcm,result.frames);continue;}
@@ -129,7 +132,7 @@ static void capture_task(void *unused){
 }
 #endif
 static void playback_task(void *unused){
- (void)unused;int16_t source[240],samples[160];int64_t last_write=0;
+ (void)unused;int16_t source[240],samples[160],silence[160]={0};int64_t last_write=0;
  for(;;){
   if(park(4))continue;
   if(atomic_load(&flush_requests)){vTaskDelay(1);continue;}
@@ -144,8 +147,17 @@ static void playback_task(void *unused){
    int64_t began=esp_timer_get_time();size_t frames=marvin_rate_convert(&output_rate,source,n,samples,160);
    unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&convert_max_us))atomic_store(&convert_max_us,elapsed);
    if(frames){
-    if(!atomic_load(&playing)&&marvin_audio_mute(false)!=ESP_OK)atomic_store(&fault,3);
-    atomic_store(&playing,true);
+    if(!atomic_load(&playing)){
+     /* The ES8311 and external amplifier need a short quiet settling period.
+      * Clock silence through the complete analog path before consuming the
+      * first response sample, otherwise the first phoneme is clipped. */
+     atomic_store(&playing,true);
+     if(marvin_audio_mute(false)!=ESP_OK)atomic_store(&fault,3);
+     for(unsigned lead=0;lead<5;lead++){
+      if(marvin_audio_write(silence,160)!=ESP_OK){atomic_store(&fault,4);break;}
+      atomic_fetch_add(&playback_leadin_samples,160);
+     }
+    }
     began=esp_timer_get_time();if(marvin_audio_write(samples,frames)!=ESP_OK)atomic_store(&fault,4);
     else {atomic_fetch_add(&played_samples,frames);last_write=esp_timer_get_time();}
     elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&write_max_us))atomic_store(&write_max_us,elapsed);
@@ -229,6 +241,7 @@ void marvin_body_audio_status(void){printf("{\"speakerVolume\":%u}\n",marvin_aud
  marvin_afe_status();
  printf("{\"localInterrupts\":%u}\n",atomic_load(&local_interrupts));
  printf("{\"echoSuppressedSamples16k\":%u}\n",atomic_load(&echo_suppressed_samples));
+ printf("{\"playbackLeadInSamples16k\":%u}\n",atomic_load(&playback_leadin_samples));
  printf("{\"prerollSamples16k\":%u}\n",atomic_load(&preroll_samples));
  printf("{\"afeChannels\":%u}\n",(unsigned)afe_channels);
  printf("{\"afeFeedBudget\":{\"framesPerCall\":%u,\"calls\":%u,\"totalUs\":%u}}\n",(unsigned)afe_chunk,atomic_load(&afe_feed_calls),atomic_load(&afe_feed_total_us));
