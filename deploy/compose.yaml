@@ -35,7 +35,7 @@ services:
     security_opt: [no-new-privileges:true]
     environment:
       APP_ORIGIN: ${APP_ORIGIN:?Set an HTTPS origin with port 8443}
-      MARVIN_TLS_NAME: ${MARVIN_TLS_NAME:-localhost}
+      MARVIN_TLS_NAME: ${MARVIN_TLS_NAME:?Set MARVIN_TLS_NAME to the APP_ORIGIN hostname or IP}
     ports:
       - "${MARVIN_BIND_IP:-127.0.0.1}:8443:8443"
     volumes:

@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-09-14T05:58:00Z",
+  "scope": "Uninterrupted physical sequence4 release-runtime soak with wake activation explicitly suppressed",
+  "requestedSeconds": 28800,
+  "observedSeconds": 28799.9,
+  "samples": 16716,
+  "audio": {
+    "available": true,
+    "captureActive": false,
+    "playing": false,
+    "capturedSamples16k": 0,
+    "playedSamples16k": 0,
+    "minimumInternalFreeBytes": 42771
+  },
+  "afe": {
+    "processedSamples16k": 460670464,
+    "processedSamplesPerSecondAfterWarmup": 16000.18,
+    "wakeDetectionsWhileSuppressed": 10,
+    "feedFaults": 0
+  },
+  "uplink": {
+    "pcmSamplesDelta": 0,
+    "attemptsDelta": 0
+  },
+  "fatalDiagnostics": [],
+  "postSoakRestore": {
+    "wakeActivationEnabled": true,
+    "authenticatedUplinkOnline": true,
+    "localProxyDefaultTlsNameCorrected": true
+  },
+  "passed": true,
+  "limitations": [
+    "Wake activation was intentionally suppressed so sensitivity-first false positives could not open provider sessions.",
+    "The run did not measure supply power or enclosure temperature.",
+    "The board is a standalone Waveshare audio board without Marvin motors, display or external sensors."
+  ]
+}

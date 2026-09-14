@@ -28,7 +28,9 @@ Initial integration exposed internal-RAM pressure when AFE, BLE and TLS started 
 - Early live capture attempts still ended on uplink backpressure. Wi-Fi power saving is disabled during an explicit voice session and restored on stop; the send deadline and bounded capture cushion are under physical test.
 - The host resampler passes exact rate/count, chunk continuity, passband gain, >49-dB rejection of a10-kHz input during downsampling, and capacity rollback checks under address/undefined-behavior sanitizers. Wire framing covers audio/text limits and malformed fragments. Neither is a physical acoustic measurement.
 
-Remaining gates include the representative wake/acoustic corpus, instrumented audible-stop latency, a complete eight-hour physical soak, full hardware fixtures and measured safety timing. M8 and M9 are not accepted.
+The sequence4 release completed an uninterrupted28,799.9-second physical soak. It sustained16,000.18 processed samples/s with no AFE faults, capture, playback, provider uplink or fatal diagnostics; minimum internal free memory was42,771bytes. Wake activation was intentionally suppressed, while the detector still counted10 candidates. Afterward wake activation was restored and the authenticated device link returned online following correction of the local proxy's default TLS name. See `tests/acceptance/results/M08/physical-release-soak-8h.json`.
+
+Remaining gates include the representative production wake/acoustic corpus, instrumented audible-stop latency, supply-power/enclosure-temperature instrumentation, full hardware fixtures and measured safety timing. M8 and M9 are not accepted.
 
 ## Native microphone transport (protocol 1.2)
 
