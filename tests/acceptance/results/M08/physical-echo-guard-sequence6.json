@@ -6,6 +6,7 @@
     "sourceCommit": "183eb17",
     "applicationSha256": "8a5fcb0326f29af469cea9cb05428eb0f2dfcbf1a7ac3844e38403a473cba18f",
     "signedSelectionAndBootHealthSeconds": 35.223,
+    "independentResetBootHealthSeconds": 13.427,
     "fallbackSequence": 5
   },
   "trigger": "At speaker volume 95, playback echo caused four local interruptions and repeatedly cancelled the response within its opening words.",
