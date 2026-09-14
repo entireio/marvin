@@ -73,10 +73,12 @@ try:
  result['speakerVolume']=next((r['speakerVolume'] for r in reversed(records) if 'speakerVolume' in r),None)
  interrupts=[r['localInterrupts'] for r in records if 'localInterrupts' in r]
  result['localInterrupts']=interrupts[-1]-interrupts[0] if interrupts else 0
+ suppressed=[r['echoSuppressedSamples16k'] for r in records if 'echoSuppressedSamples16k' in r]
+ result['echoSuppressedSamples16k']=suppressed[-1]-suppressed[0] if suppressed else 0
  result['wakeOnlyActivation']=a.wake
  wakes=[r['afe']['wakeDetections'] for r in records if 'afe' in r]
  result['wakeDetections']=wakes[-1]-wakes[0] if wakes else 0
- result['activationRemainsSuppressedAfterTest']=True
+ result['wakeActivationRestoreRequestedAfterTest']=True
  result['prerollSamples16k']=next((r['prerollSamples16k'] for r in reversed(records) if 'prerollSamples16k' in r),0)
  result['playedSamplesThisRun']=stats[-1]['playedSamples16k']-stats[0]['playedSamples16k'] if stats else 0
  result['capturedSamplesThisRun']=stats[-1]['capturedSamples16k']-stats[0]['capturedSamples16k'] if stats else 0
@@ -93,7 +95,7 @@ try:
  result['captureQueue']=next((r['captureQueue'] for r in reversed(records) if 'captureQueue' in r),None)
  result['uplink']=next((r['uplink'] for r in reversed(records) if 'uplink' in r),None)
  result['passed']=not result['fatalDiagnostics'] and audible and bool(listening and stats and result['playedSamplesThisRun']>0 and not stats[-1]['captureActive'])
- if not a.interrupt:result['passed']=result['passed'] and result['capturedSamplesThisRun']>=24*16000
+ if not a.interrupt:result['passed']=result['passed'] and result['capturedSamplesThisRun']+result['echoSuppressedSamples16k']>=24*16000
  result['passed']=result['passed'] and (a.manual or result['fixtureExitCode']==0)
  if not a.manual and not a.barge_fixture and not a.interrupt:result['passed']=result['passed'] and result['localInterrupts']==0
  if a.barge_fixture:result['passed']=result['passed'] and result['localInterrupts']>0 and result['bargeFixtureExitCode']==0
@@ -103,7 +105,7 @@ except serial.SerialException:
  result={'passed':False,'serialDisconnected':True,'listeningReached':listening is not None,'elapsedSeconds':round(time.monotonic()-started,2),'scope':'Trial interrupted by serial transport loss; not a wake or acoustic pass.'}
 finally:
  if port.is_open:
-  try:port.write(b'xw')
+  try:port.write(b'xW')
   except serial.SerialException:pass
   port.close()
  if play and play.poll() is None:play.terminate()

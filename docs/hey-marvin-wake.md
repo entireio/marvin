@@ -64,6 +64,14 @@ A private synthetic training feasibility experiment is being prepared using the 
 
 The base experimental profile keeps `MARVIN_WAKE_AUTOSTART` off so diagnostic builds remain controlled. The audible and release profiles set it on for the selected alpha behavior.
 
+## Playback echo guard
+
+The small8Ω speaker requires volume95. At that level, sequence5's residual playback echo was classified as fresh speech and emitted four local interruptions during repeated normal replies. The isolated backend recorded the affected turns as cancelled after only14–20 assistant characters. This was a deterministic self-interruption failure, not a wake, network or amplifier failure.
+
+Sequence6 from commit `183eb17` keeps I2S capture and AFE processing active but does not upload microphone output while the board speaker is playing or during its300ms acoustic tail. The same guard removes generic local VAD interruption during that interval. Two generated acoustic repetitions of “Hey Marvin, what can you do?” each produced one wake, zero local interruptions,15.35–15.45seconds of submitted playback and a completed durable response of263–264 characters. The second trial accounted for252,416 suppressed16kHz echo samples. No fatal diagnostic occurred. Sanitized evidence is `tests/acceptance/results/M08/physical-echo-guard-sequence6.json`.
+
+This is a reliable half-duplex alpha policy. Spoken barge-in while the body speaker is active is deferred until AEC alignment and an echo-resistant admission rule are measured on the assembled hardware. Explicit transport interruption remains available, and Hey Marvin rearms after playback for the next turn.
+
 
 The first local training experiment (`work/wake-research/training-v1`) is rejected: nonstreaming validation on end-of-phrase windows was misleading; continuous host evaluation accepted20/20 negative phrases. A float streaming/nonstreaming comparison reproduced the failure, so quantization was not its cause. The initial feature builder retained178 frames while the chosen architecture needs214; zero padding and sparse negative windows did not represent continuous inference. The second experiment preserves the full context and samples negative speech and following silence in sliding windows. Neither candidate has been flashed.
 
