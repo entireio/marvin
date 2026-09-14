@@ -1,6 +1,6 @@
 # Marvin — Codex handoff
 
-Updated **2026-09-14 06:00 UTC / 23:00 America/Los_Angeles**.
+Updated **2026-09-14 23:00 UTC / 16:00 America/Los_Angeles**.
 Project root: `/Users/stefanopedemonte/Projects/Marvin_software`.
 
 ## Read this first
@@ -9,7 +9,7 @@ Development resumed on the user's instruction. The user explicitly selected a se
 
 Signed OTA is integrated physically. Sequence1 was installed with the guarded preserving bootstrap, confirmed healthy in12.863seconds and returned online with audio/AFE progress. A sequence2 signed failure image forces the90-second health timeout. The physical rollback campaign passed10/10, with every `boot_health_failed` marker observed and the prior audible image recovering online/audio/AFE health. Private details are in `work/releases/2-failure/physical-rollback-trials-final.json`; sanitized evidence is in `tests/acceptance/results/M11/physical-rollback-10-trials.json`. The harness may reset the Espressif USB device once through Homebrew libusb when USB-JTAG remains enumerated but silent. Clean commit `89eca54` was rebuilt and installed as sequence4; clean `1dfa600` became sequence5. Clean commit `183eb17` is now installed as `afe-v1` sequence6, confirmed in35.223seconds and independently reset-checked in13.427seconds; it fixes volume95 playback self-interruption. Sequence5 remains the fallback. Sequence3 was a dirty-tree build and remains unused.
 
-The corrected24-hour M6 ten-device soak is active at `work/m6/soak-24h-final-20260913`; do not restart it. The preceding retry was intentionally stopped after2.27hours because its peak-versus-one-sample RSS criterion was already guaranteed to fail despite a downward memory trend. The current script uses first/last stabilized ten-minute medians plus a24-hour linear slope and retains peak RSS only as diagnostic evidence. The sequence4 release completed its uninterrupted28,799.9-second physical soak:16,000.18 processed samples/s, minimum42,771bytes internal free memory, no faults and zero capture/playback/uplink. Wake activation was restored and authenticated uplink is online. Sanitized evidence is `tests/acceptance/results/M08/physical-release-soak-8h.json`.
+The latest M6 ten-device soak at `work/m6/soak-24h-final-20260913` has stopped. It was healthy across83,587seconds of continuous ten-second observations, but a7,119-second terminal observation gap crossed the24-hour target. The original harness incorrectly accepted90,706seconds of wall time because it did not validate that terminal interval. Sanitized evidence retains the run as not accepted at `tests/acceptance/results/M06/platform-soak-terminal-gap.json`; `scripts/device-soak.ts` now rejects any observation gap over30seconds, including the terminal gap. The sequence4 release completed its uninterrupted28,799.9-second physical soak:16,000.18 processed samples/s, minimum42,771bytes internal free memory, no faults and zero capture/playback/uplink. Wake activation was restored and authenticated uplink is online. Sanitized physical evidence is `tests/acceptance/results/M08/physical-release-soak-8h.json`.
 
 This file summarizes the current checkpoint. `docs/overnight-handoff.md` is a chronological journal containing superseded process IDs, configurations, and “currently running” statements. Its older sections are historical, not current operating instructions. Prefer fresh process/artifact checks and this checkpoint.
 
@@ -41,12 +41,12 @@ This file summarizes the current checkpoint. `docs/overnight-handoff.md` is a ch
 
 ## Running processes and services
 
-### M6 simulator soak — leave running
+### M6 simulator soak — completed but not accepted
 
-- Actual worker PID at checkpoint: **42401**; wrappers **42388 / 42397**. PIDs may change/be reused: confirm the command before acting.
-- Command: `caffeinate -i node_modules/.bin/tsx scripts/device-soak.ts --seconds 86400 --devices 10 --output work/m6/soak-24h-retry-20260913`.
-- Progress: `work/m6/soak-24h-retry-20260913/results.json`.
-- Last read for this handoff: **running, 2,375 seconds, zero failures**. This is not a 24-hour pass.
+- Final raw report: `work/m6/soak-24h-final-20260913/results.json`; no soak process remains active.
+- Continuous sampled span: **83,587 seconds**, with no in-run gap over11seconds, no failures, no connection sample failures and no audio upload.
+- The terminal gap was **7,119 seconds**, so the original wall-clock acceptance result is invalid. The sanitized result is `tests/acceptance/results/M06/platform-soak-terminal-gap.json`.
+- A future release acceptance run must use the corrected harness and finish a continuous24-hour observation. Development flashing and provisioning may continue under the user's earlier instruction; do not represent this run as M6 acceptance.
 - Original `work/m6/soak-24h/results.json` run failed around 73,358 seconds (~20.4 hours) because of ENOSPC while writing results. Preserve it as a failure.
 - Do not start a duplicate soak. A new session cannot rely on this session's tool handles; inspect the OS process and progress file.
 
@@ -193,10 +193,10 @@ Public model provenance:
 
 ## Concrete next steps
 
-1. Do not interrupt or duplicate the active corrected24-hour M6 simulator soak. Its partial observations are not a pass.
+1. The latest M6 simulator soak has finished but is not accepted because of its terminal observation gap. Use the corrected harness for any future24-hour release acceptance run; do not reinterpret the retained result as a pass.
 2. Continue only the unavailable M7 acceptance cases if new infrastructure is supplied: a second physical AP, laptop-only-AP isolation, commit-boundary power cuts, full reset/offline unlink-relink, rate trials and participant evaluation. Sequence5 and direct Chrome Web Bluetooth already pass the available single-AP matrix; preserve sequence4 as fallback and the current owner/factory state.
 3. Record sanitized provisioning evidence without claiming a second AP, arbitrary physical power cuts, physical reset or participant trials unless actually performed.
-4. When M6 finishes, validate its result, add sanitized evidence and update delivery status. Run appropriate checks, inspect the diff, commit and push.
+4. M6 post-run validation and sanitized evidence are complete. A new continuous24-hour run remains an acceptance gate.
 5. Do not spend more alpha time optimizing wake. Preserve the measured false positives and production acoustic gate; revisit only with representative data and a licensed model path.
 
 ## Software architecture and useful commands
@@ -215,7 +215,7 @@ npm run test:postgres
 npm run test:e2e
 ```
 
-`npm run check` runs typecheck, Vitest and production build. Last recorded full software check:155 tests passed, typecheck/build passed (`work/board/check-voice-cancel.log`). The subsequently authorized commit/push preparation reran `npm run check`:155 tests, typecheck and production build passed again; log `work/git-publish-check.log`. No physical or API test was run for publication. Delivery status also records53 PostgreSQL tests and14 browser tests from earlier scoped runs. Native browser sandbox limitations were historically worked around with the official Playwright Linux container, not application security bypasses.
+`npm run check` runs typecheck, Vitest and production build. The latest full check passes162 tests, typecheck and the production build. The idle-audio regression now completes the native hello handshake before proving that an authenticated but inactive voice transport is rejected. Delivery status also records53 PostgreSQL tests and14 browser tests from earlier scoped runs. Native browser sandbox limitations were historically worked around with the official Playwright Linux container, not application security bypasses.
 
 Live smoke commands (`npm run smoke:provider`, `npm run smoke:voice`, `npm run entire:check`) may call external services. Do not print their credentials. The last selected OpenAI models were `gpt-5.4-mini-2026-03-17` for text, `gpt-5.4-2026-03-05` for repository reasoning, `gpt-realtime-2.1` for voice, and `gpt-4o-mini-transcribe` for transcription. Inspect configuration names safely if verifying current settings; do not blindly replace them with newer models.
 
@@ -226,7 +226,7 @@ Entire local CLI reads and the20-question repository review succeeded after full
 Use `docs/implementation-plan.md` as the original contract and `docs/delivery-status.md` for broader evidence. Some prose there predates the latest successful audio work; this handoff and `docs/hey-marvin-wake.md` give the current wake state. Do not rewrite gates to match available fixtures.
 
 - Earlier milestones still have external/representative gates: approved Entire identity/hosted API contract, real browser BLE interoperability and different-AP/power-loss provisioning matrix, accessibility/participant evaluation and broader semantic continuity. A runnable preview is not full acceptance.
-- **M6:** finish and assess the current24-hour ten-device soak; preserve the failed original run. Physical command/reconnect/memory matrix remains incomplete.
+- **M6:** the latest run provided83,587seconds of healthy continuous evidence but failed final24-hour validation because of a7,119-second terminal observation gap. The harness is corrected; a new continuous24-hour run and the physical command/reconnect matrix remain incomplete.
 - **M7:** signed `afe-v1` sequence6 is installed and retains sequence5's passing direct Chrome-to-board Security2 behavior. The available single-AP matrix covers robot scans, unsupported-network disabling, stale-scan rejection, visible and hidden application, wrong-password rollback, BLE-loss resume, owner/epoch continuity and native presence. A second AP, laptop-only-AP isolation, arbitrary power cuts, physical reset/offline unlink-relink, rate trials and participant evaluation remain.
 - **M8:** the sensitivity-first Hey Marvin alpha is selected with known poor hard-negative performance. The full eight-hour physical resource soak now passes, but the harness cannot measure supply power or enclosure thermals. The original ≥95% representative quiet/noisy wake and ≤1 false wake/hour gate and unavailable peripheral evidence remain open.
 - **M9:**20 actual web-text→web-voice→body-voice→web-text journeys;100-observation latency/routing checks and physical action/safety evidence. Standalone audio board cannot prove absent actuators/sensors.
