@@ -82,7 +82,7 @@ export class OpenAIVoiceProvider implements VoiceProvider {
     const abort=()=>{if(state)cancel(state);queue.fail(new Error('Voice interrupted'));};signal.addEventListener('abort',abort,{once:true});
     try{
      const request=randomUUID();state={cancelled:false,cancelSent:false};responses.set(request,state);
-     send({type:'response.create',response:{conversation:'none',metadata:{marvin_request:request,marvin_lifecycle:'linked'},input:[{type:'message',role:'user',content:[{type:'input_text',text}]}],instructions:'Speak the supplied sentence exactly once, naturally and briefly. Do not add or change any words.',output_modalities:['audio'],max_output_tokens:120}});
+     send({type:'response.create',response:{conversation:'none',metadata:{marvin_request:request,marvin_lifecycle:'linked'},input:[{type:'message',role:'user',content:[{type:'input_text',text}]}],instructions:'Speak the supplied sentence exactly once, naturally and briefly. Do not add or change any words.',output_modalities:['audio'],max_output_tokens:512}});
      let done:Extract<RealtimeServerEvent,{type:'response.done'}>|undefined;
      while(!done){const e=await queue.next(signal);if(e.type==='response.created'&&e.response.metadata?.marvin_request===request)responseId=e.response.id;if(!responseId)continue;
       if(e.type==='response.output_audio.delta'&&e.response_id===responseId){if(e.delta.length>262144)throw new Error('Oversized audio');const bytes=Buffer.from(e.delta,'base64');if(bytes.length%2)throw new Error('Invalid PCM');for(let at=0;at<bytes.length;at+=12000){signal.throwIfAborted();yield bytes.subarray(at,at+12000);}}

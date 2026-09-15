@@ -14,8 +14,10 @@ A short computer-speaker stimulus, “Hey Marvin, what is up?”, triggered a lo
 
 One AFE feed fault appeared during the observed startup and did not increase in subsequent samples. It did not prevent this successful turn. It remains a separate startup observation, not the cause of disabled activation.
 
-## Build correction and remaining limitation
+## Permanent correction
 
 The audible build helper now removes only its generated sdkconfig before configuring, so checked-in profile defaults take effect on each build, matching the release helper's approach. The regenerated configuration enables wake autostart and retains the requested 8192-byte NimBLE host stack. The full ESP-IDF audible firmware build completed successfully; shell syntax and diff whitespace checks also passed.
 
-The installed firmware has not been replaced. The console recovery is volatile: rebooting the current image disables wake activation again. Installing a corrected image through the preserving firmware-update procedure is still needed for persistence. Preserve current ownership, factory identity and OTA fallback.
+Signed production builds now fail at compile time if wake autostart is absent, except for the explicit rollback-failure fixture. The guarded bootstrap installer also refuses a release build without wake autostart.
+
+On 15 September, a verified double-read recovery snapshot was taken before installing the corrected bootloader and application in their existing regions. Runtime NVS, Wi-Fi, factory identity, OTA metadata and the wake model were preserved. A subsequent reset received no `W` command and reported `wakeActivationDisabled: false`, `update: boot_confirmed` and an authenticated online uplink. The protocol 1.3 welcome parser was corrected after the first verification boot exposed its stale 1.2 check.

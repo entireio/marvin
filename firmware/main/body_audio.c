@@ -12,6 +12,9 @@
 #include <stdio.h>
 #include "sdkconfig.h"
 #include "esp_timer.h"
+#if defined(CONFIG_MARVIN_SIGNED_OTA) && !defined(CONFIG_MARVIN_OTA_TEST_REJECT_BOOT) && !defined(CONFIG_MARVIN_WAKE_AUTOSTART)
+#error "Signed release firmware must arm wake activation at boot"
+#endif
 static atomic_uint flush_max_us,append_max_us,flush_requests,convert_max_us,write_max_us;
 #ifdef CONFIG_MARVIN_LOCAL_AFE
 #include "local_afe.h"
@@ -84,7 +87,7 @@ static void feed_task(void *unused){
  }
 }
 static void capture_task(void *unused){
- (void)unused;capture_t packet;unsigned generation=0,echo_tail=0;int64_t last_wake=0;int16_t partial[160];size_t partial_count=0;
+ (void)unused;capture_t packet;unsigned generation=0,echo_tail=0;int64_t last_wake=0,wake_resume_at=0;int16_t partial[160];size_t partial_count=0;
  for(;;){
   if(park(1))continue;
   /* Keep the phrase detector running during a response so "Hey Marvin" can
@@ -94,10 +97,11 @@ static void capture_task(void *unused){
   if(!marvin_afe_fetch(&result)){if(result.fault)atomic_store(&fault,6);vTaskDelay(pdMS_TO_TICKS(10));continue;}
   atomic_fetch_add(&afe_samples,result.frames);
   atomic_store(&capture_stack,uxTaskGetStackHighWaterMark(NULL));
-  if(result.wake&&esp_timer_get_time()-last_wake>2000000){last_wake=esp_timer_get_time();
+  int64_t now=esp_timer_get_time();if(atomic_load(&playing))wake_resume_at=now+2000000;
+  if(result.wake&&now-last_wake>2000000){last_wake=now;
 #ifndef CONFIG_MARVIN_SILENT_TEST
    if(atomic_load(&capture_active)&&atomic_load(&playing)){atomic_fetch_add(&local_interrupts,1);marvin_device_voice_interrupt();}
-   else if(!atomic_load(&capture_active)){atomic_fetch_add(&local_wakes,1);if(atomic_load(&wake_activation_enabled))marvin_device_voice_wake();}
+   else if(!atomic_load(&capture_active)&&!atomic_load(&playing)&&now>=wake_resume_at){atomic_fetch_add(&local_wakes,1);if(atomic_load(&wake_activation_enabled))marvin_device_voice_wake();}
 #endif
   }
   if(!atomic_load(&capture_active)){partial_count=0;marvin_preroll_push(preroll,result.pcm,result.frames);continue;}

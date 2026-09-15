@@ -76,6 +76,7 @@ for required in (
     "#define CONFIG_MARVIN_SIGNED_OTA 1",
     "#define CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 1",
     "#define CONFIG_MARVIN_HEY_MARVIN_WAKE 1",
+    "#define CONFIG_MARVIN_WAKE_AUTOSTART 1",
 ):
     if required not in config:
         raise RuntimeError(f"Release build lacks required setting: {required}")

@@ -5,8 +5,9 @@
 #include <stdlib.h>
 static marvin_wire_t w;
 int main(void){
- const char *welcome="{\"type\":\"welcome\",\"protocol\":{\"major\":1,\"minor\":2},\"epoch\":7,\"heartbeatMs\":5000,\"serverTime\":2000000000000}";
+ const char *welcome="{\"type\":\"welcome\",\"protocol\":{\"major\":1,\"minor\":3},\"epoch\":7,\"heartbeatMs\":5000,\"serverTime\":2000000000000}";
  assert(marvin_wire_control(welcome,7,false));assert(!marvin_wire_control(welcome,8,false));assert(!marvin_wire_control(welcome,7,true));
+ assert(!marvin_wire_control("{\"type\":\"welcome\",\"protocol\":{\"major\":1,\"minor\":2},\"epoch\":7,\"heartbeatMs\":5000}",7,false));
  assert(!marvin_wire_control("{\"type\":\"ping\"}",7,false));assert(marvin_wire_control("{\"type\":\"ping\"}",7,true));
  assert(!marvin_wire_control("{\"type\":\"ping\",\"type\":\"command\"}",7,true));assert(!marvin_wire_control("{\"type\":\"ping\\u0000command\"}",7,true));
  assert(!marvin_wire_control("{\"type\":\"command\",\"action\":\"tracks\"}",7,true));assert(!marvin_wire_control("{\"type\":\"error\",\"code\":\"DEVICE_REVOKED\"}",7,true));assert(!marvin_wire_control("{\"type\":\"ping\"}junk",7,true));
