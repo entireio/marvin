@@ -24,8 +24,10 @@
     "check": "npm run typecheck && npm test && npm run build",
     "password:hash": "tsx scripts/password.ts",
     "smoke:provider": "tsx scripts/provider-smoke.ts",
+    "smoke:deployment": "tsx scripts/deployment-smoke.ts",
     "entire:setup": "tsx scripts/entire-setup.ts",
     "entire:check": "tsx scripts/entire-smoke.ts",
+    "entire:companion": "tsx scripts/entire-companion.ts",
     "smoke:voice": "tsx scripts/voice-smoke.ts",
     "soak:device": "tsx scripts/device-soak.ts"
   },

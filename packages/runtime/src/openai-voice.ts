@@ -76,7 +76,21 @@ export class OpenAIVoiceProvider implements VoiceProvider {
      }
      throw new Error('Voice tool-call limit');
     }finally{signal.removeEventListener('abort',abort);if(signal.aborted)abort();active=undefined;if(!closed)try{send({type:'conversation.item.delete',item_id:itemId});}catch{/* Connection is closing. */}}
-   }} as TextProvider;}
+   }} as TextProvider;},
+   async *speak(text,signal){
+    if(active)throw new Error('Voice response already active');const queue=new Events();active=queue;let responseId:string|undefined;let state:ResponseState|undefined;
+    const abort=()=>{if(state)cancel(state);queue.fail(new Error('Voice interrupted'));};signal.addEventListener('abort',abort,{once:true});
+    try{
+     const request=randomUUID();state={cancelled:false,cancelSent:false};responses.set(request,state);
+     send({type:'response.create',response:{conversation:'none',metadata:{marvin_request:request,marvin_lifecycle:'linked'},input:[{type:'message',role:'user',content:[{type:'input_text',text}]}],instructions:'Speak the supplied sentence exactly once, naturally and briefly. Do not add or change any words.',output_modalities:['audio'],max_output_tokens:120}});
+     let done:Extract<RealtimeServerEvent,{type:'response.done'}>|undefined;
+     while(!done){const e=await queue.next(signal);if(e.type==='response.created'&&e.response.metadata?.marvin_request===request)responseId=e.response.id;if(!responseId)continue;
+      if(e.type==='response.output_audio.delta'&&e.response_id===responseId){if(e.delta.length>262144)throw new Error('Oversized audio');const bytes=Buffer.from(e.delta,'base64');if(bytes.length%2)throw new Error('Invalid PCM');for(let at=0;at<bytes.length;at+=12000){signal.throwIfAborted();yield bytes.subarray(at,at+12000);}}
+      if(e.type==='response.done'&&e.response.id===responseId)done=e;
+     }
+     if(done.response.status!=='completed')throw new Error('Voice announcement incomplete');
+    }finally{signal.removeEventListener('abort',abort);if(signal.aborted)abort();active=undefined;}
+   }
   };
   return connection;
  }

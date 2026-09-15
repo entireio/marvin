@@ -14,7 +14,7 @@ static marvin_journal_t journal;
 static marvin_journal_record_t loaded;
 static marvin_transfer_t transfer;
 static marvin_ticket_claims_t claims;
-static char issuer[201],public_key[1024],nonce[65],operation[8],verified_ticket[4097];
+static char issuer[201],public_key[1024],nonce[65],operation[12],verified_ticket[4097];
 static uint32_t challenge_session;
 static int64_t challenged_at;
 static bool ready,verified;
@@ -40,12 +40,14 @@ static bool integer(const cJSON *value,double max){return cJSON_IsNumber(value)&
 static int unhex(char c){if(c>='0'&&c<='9')return c-'0';if(c>='a'&&c<='f')return c-'a'+10;return -1;}
 bool marvin_owner_setup_control(uint32_t session,const cJSON *request,cJSON *reply){
  const cJSON *op=cJSON_GetObjectItemCaseSensitive(request,"op");if(!cJSON_IsString(op))return false;
- if(strcmp(op->valuestring,"challenge")&&strncmp(op->valuestring,"ticket_",7))return false;
- if(!ready||journal.current.pending){cJSON_AddStringToObject(reply,"error",journal.current.pending?"SETUP_PENDING":"ENROLLMENT_UNAVAILABLE");return true;}
+ if(strcmp(op->valuestring,"challenge")&&strncmp(op->valuestring,"ticket_",7)&&strcmp(op->valuestring,"clear_owner"))return false;
+ if(!ready){cJSON_AddStringToObject(reply,"error","ENROLLMENT_UNAVAILABLE");return true;}
+ if(journal.current.pending&&strcmp(op->valuestring,"challenge")&&strcmp(op->valuestring,"clear_owner")&&strncmp(op->valuestring,"ticket_",7)){cJSON_AddStringToObject(reply,"error","SETUP_PENDING");return true;}
  const char *error=NULL;
  if(!strcmp(op->valuestring,"challenge")){
   marvin_owner_setup_disconnected();const cJSON *kind=cJSON_GetObjectItemCaseSensitive(request,"operation"),*issued=cJSON_GetObjectItemCaseSensitive(request,"issuedAt");
-  if(!cJSON_IsString(kind)||!cJSON_IsNumber(issued)||(!strcmp(kind->valuestring,"network")&&!journal.current.linked)||(!strcmp(kind->valuestring,"claim")&&journal.current.linked))error="OWNERSHIP_STATE";
+  bool reconcile=cJSON_IsString(kind)&&!strcmp(kind->valuestring,"reconcile");
+  if(!cJSON_IsString(kind)||!cJSON_IsNumber(issued)||(!strcmp(kind->valuestring,"network")&&!journal.current.linked)||(!strcmp(kind->valuestring,"claim")&&journal.current.linked)||(reconcile&&!journal.current.linked)||(journal.current.pending&&!reconcile))error=journal.current.pending?"SETUP_PENDING":"OWNERSHIP_STATE";
   else if(marvin_identity_challenge(kind->valuestring,issued->valuedouble,reply)!=ESP_OK)error="INVALID_CHALLENGE";
   else{const cJSON *challenge=cJSON_GetObjectItemCaseSensitive(reply,"challenge"),*value=cJSON_GetObjectItemCaseSensitive(challenge,"nonce");if(!cJSON_IsString(value)||strlen(value->valuestring)!=64)error="INVALID_CHALLENGE";else{memcpy(nonce,value->valuestring,65);strcpy(operation,kind->valuestring);challenge_session=session;challenged_at=esp_timer_get_time();}}
  }else if(!fresh(session))error="CHALLENGE_EXPIRED";
@@ -62,6 +64,10 @@ bool marvin_owner_setup_control(uint32_t session,const cJSON *request,cJSON *rep
   marvin_ticket_expectation_t expected={.public_key_pem=public_key,.issuer=issuer,.device_id=marvin_identity_device_id(),.nonce=nonce,.operation=operation,.owner=journal.current.linked?journal.current.owner:NULL,.epoch=journal.current.linked?journal.current.epoch:0,.now_seconds=now.tv_sec,.challenge_age_ms=(uint32_t)((esp_timer_get_time()-challenged_at)/1000)};
   if(!ticket||memchr(ticket,0,size)||!marvin_ticket_verify((const char*)ticket,size,&expected,&claims))error="TICKET_INVALID";
   else{memcpy(verified_ticket,ticket,size);verified_ticket[size]=0;verified=true;cJSON_AddBoolToObject(reply,"verified",true);}marvin_transfer_clear(&transfer);
+ }else if(!strcmp(op->valuestring,"clear_owner")){
+  if(!verified||strcmp(operation,"reconcile"))error="OWNER_TICKET_REQUIRED";
+  else if(!marvin_journal_revoke(&journal,claims.owner,claims.epoch))error="OWNERSHIP_STATE";
+  else{atomic_store(&linked_view,false);marvin_owner_setup_disconnected();cJSON_AddBoolToObject(reply,"cleared",true);}
  }else error="UNKNOWN_OPERATION";
  if(error){cJSON_AddStringToObject(reply,"error",error);}
  return true;

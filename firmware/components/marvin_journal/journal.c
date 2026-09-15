@@ -38,4 +38,11 @@ bool marvin_journal_complete(marvin_journal_t *j,uint32_t epoch,const char *cred
  return publish(j);
 }
 bool marvin_journal_cancel(marvin_journal_t *j){if(!j||!j->save||!j->current.pending)return false;memcpy(&j->scratch,&j->current,sizeof(j->scratch));clear_pending(&j->scratch);return publish(j);}
+bool marvin_journal_revoke(marvin_journal_t *j,const char *owner,uint32_t epoch){
+ if(!j||!j->save||!j->current.linked||!owner||strcmp(j->current.owner,owner)||j->current.epoch!=epoch)return false;
+ memcpy(&j->scratch,&j->current,sizeof(j->scratch));marvin_journal_record_t *r=&j->scratch;
+ clear_pending(r);r->linked=false;r->epoch=0;r->credential_expires_ms=0;
+ erase(r->owner,sizeof(r->owner));erase(r->credential,sizeof(r->credential));
+ return publish(j);
+}
 void marvin_journal_close(marvin_journal_t *j){if(j)erase(j,sizeof(*j));}

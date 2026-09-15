@@ -27,6 +27,14 @@ int main(void){
  assert(marvin_journal_stage(&journal,&claims,"network-ticket-2",true,replacement,sizeof(replacement)));assert(marvin_journal_submitted(&journal));assert(!marvin_journal_complete(&journal,7,"replacement-credential",2000000000000));
  assert(marvin_journal_complete(&journal,7,NULL,0));reboot();assert(!strcmp((char*)journal.current.network,replacement));assert(!strcmp(journal.current.credential,"credential"));assert(journal.current.epoch==7);
  for(size_t i=0;i<sizeof(journal.current.ticket);i++)assert(!journal.current.ticket[i]);
+ fail_write=true;assert(!marvin_journal_revoke(&journal,"owner",7));assert(journal.current.linked);fail_write=false;
+ assert(!marvin_journal_revoke(&journal,"other",7));assert(!marvin_journal_revoke(&journal,"owner",8));
+ assert(marvin_journal_revoke(&journal,"owner",7));reboot();assert(!journal.current.linked&&!journal.current.pending&&!journal.current.owner[0]&&!journal.current.credential[0]);
+ assert(!marvin_journal_revoke(&journal,"owner",7));
+ claims.epoch=8;assert(marvin_journal_stage(&journal,&claims,"new-claim-ticket",false,network,sizeof(network)));
+ assert(marvin_journal_cancel(&journal));claims.epoch=7;
+ /* Restore a linked fixture for the ambiguous persistence test. */
+ assert(marvin_journal_stage(&journal,&claims,"restored-ticket",false,network,sizeof(network)));assert(marvin_journal_submitted(&journal));assert(marvin_journal_complete(&journal,7,"credential",2000000000000));
  assert(marvin_journal_stage(&journal,&claims,"ambiguous-ticket",true,network,sizeof(network)));assert(marvin_journal_submitted(&journal));ambiguous_write=true;assert(!marvin_journal_complete(&journal,7,NULL,0));ambiguous_write=false;reboot();assert(!journal.current.pending&&!strcmp((char*)journal.current.network,network));
  disk.version++;assert(!marvin_journal_open(&journal,&disk,save,NULL));assert(!journal.save);
  puts("Enrollment journal: staged claim, replay after lost receipt, network rollback, owner/epoch checks and storage failures passed.");

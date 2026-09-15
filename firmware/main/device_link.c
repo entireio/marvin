@@ -64,7 +64,7 @@ static bool send_json(esp_websocket_client_handle_t client,cJSON *message){
 }
 static bool hello(esp_websocket_client_handle_t client){
  cJSON *message=cJSON_CreateObject();if(!message)return false;
- cJSON_AddStringToObject(message,"type","hello");cJSON *protocol=cJSON_AddObjectToObject(message,"protocol");cJSON_AddNumberToObject(protocol,"major",1);cJSON_AddNumberToObject(protocol,"minor",2);
+ cJSON_AddStringToObject(message,"type","hello");cJSON *protocol=cJSON_AddObjectToObject(message,"protocol");cJSON_AddNumberToObject(protocol,"major",1);cJSON_AddNumberToObject(protocol,"minor",3);
  cJSON_AddStringToObject(message,"deviceId",identity.device_id);cJSON_AddStringToObject(message,"bootId",boot_id);cJSON *caps=cJSON_AddArrayToObject(message,"capabilities");if(marvin_body_audio_available())cJSON_AddItemToArray(caps,cJSON_CreateString("voice"));cJSON_AddNumberToObject(message,"audioInputRate",16000);cJSON_AddStringToObject(message,"firmware","marvin-owner-audio-0.1");return send_json(client,message);
 }
 static bool uuid(const char *text,uint8_t bytes[16]){
@@ -82,6 +82,7 @@ static bool receive(bool welcomed){
  cJSON *m=cJSON_ParseWithOpts(frame.text,NULL,true);const cJSON *type=cJSON_GetObjectItemCaseSensitive(m,"type");
  if(cJSON_IsString(type)){
   if(!strcmp(type->valuestring,"voice_ready")&&voice_pending){const cJSON *rate=cJSON_GetObjectItemCaseSensitive(m,"sampleRate"),*channels=cJSON_GetObjectItemCaseSensitive(m,"channels"),*format=cJSON_GetObjectItemCaseSensitive(m,"format");const cJSON *input=cJSON_GetObjectItemCaseSensitive(m,"inputSampleRate");ok=cJSON_IsNumber(input)&&input->valuedouble==16000&&cJSON_IsNumber(rate)&&rate->valuedouble==24000&&cJSON_IsNumber(channels)&&channels->valuedouble==1&&cJSON_IsString(format)&&!strcmp(format->valuestring,"s16le");if(ok){voice_pending=false;voice_active=true;voice_since=esp_timer_get_time();atomic_store(&uplink_enabled,true);printf("{\"voice\":\"listening\"}\n");}}
+  else if(!strcmp(type->valuestring,"voice_announcement")&&!voice_active&&!voice_pending){const cJSON *rate=cJSON_GetObjectItemCaseSensitive(m,"sampleRate"),*channels=cJSON_GetObjectItemCaseSensitive(m,"channels"),*format=cJSON_GetObjectItemCaseSensitive(m,"format"),*value=cJSON_GetObjectItemCaseSensitive(m,"interactionId");uint8_t id[16];ok=cJSON_IsNumber(rate)&&rate->valuedouble==24000&&cJSON_IsNumber(channels)&&channels->valuedouble==1&&cJSON_IsString(format)&&!strcmp(format->valuestring,"s16le")&&cJSON_IsString(value)&&uuid(value->valuestring,id);if(ok){marvin_body_capture(false);marvin_body_audio_turn(id);voice_active=true;voice_since=esp_timer_get_time();atomic_store(&uplink_enabled,false);printf("{\"voice\":\"announcing_link\"}\n");}}
   else if(!strcmp(type->valuestring,"voice_turn")&&voice_active){uint8_t id[16];const cJSON *value=cJSON_GetObjectItemCaseSensitive(m,"interactionId");ok=cJSON_IsString(value)&&uuid(value->valuestring,id);if(ok)marvin_body_audio_turn(id);}
   else if(!strcmp(type->valuestring,"audio_flush")){marvin_body_audio_flush();ok=true;}
   else if(!strcmp(type->valuestring,"voice_turn_end")){ok=voice_active;}

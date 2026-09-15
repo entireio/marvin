@@ -26,4 +26,6 @@ bool marvin_journal_submitted(marvin_journal_t *journal);
 bool marvin_journal_complete(marvin_journal_t *journal,uint32_t epoch,const char *credential,int64_t expires_ms);
 /* Only cancel after confirming the server did not commit, or explicitly revoking that transaction. */
 bool marvin_journal_cancel(marvin_journal_t *journal);
+/* Apply a server-signed revocation for the exact persisted owner and epoch. */
+bool marvin_journal_revoke(marvin_journal_t *journal,const char *owner,uint32_t epoch);
 void marvin_journal_close(marvin_journal_t *journal);

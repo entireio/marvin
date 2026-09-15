@@ -9,7 +9,7 @@ export const Env=z.object({
  HARDWARE_PROVISIONING_ENABLED:z.enum(['true','false']).default('false'),
  FIRMWARE_ROLLOUT_FILE:z.string().optional(),
  ENROLLMENT_KEYS_FILE:z.string().optional(),DEVICE_PUBLIC_ORIGIN:z.url().optional(),
- ENTIRE_CLI_PATH:z.string().optional(),ENTIRE_BINDINGS_FILE:z.string().optional(),
+ ENTIRE_CLI_PATH:z.string().optional(),ENTIRE_BINDINGS_FILE:z.string().optional(),ENTIRE_COMPANION_URL:z.preprocess(value=>value===''?undefined:value,z.url().optional()),ENTIRE_COMPANION_TOKEN:z.preprocess(value=>value===''?undefined:value,z.string().min(32).max(256).optional()),
  OIDC_ISSUER:z.url().optional(),OIDC_CLIENT_ID:z.string().optional(),OIDC_CLIENT_SECRET:z.string().optional(),OIDC_LABEL:z.string().default('Identity provider'),OIDC_REDIRECT_URI:z.url().optional(),PUBLIC_DOCS_URL:z.url().default('https://spedemon.github.io/marvin/')
 });
 export type Config=z.infer<typeof Env>;
@@ -20,8 +20,10 @@ export function config(env:NodeJS.ProcessEnv=process.env):Config{
  if(!!c.ENROLLMENT_KEYS_FILE!==!!c.DEVICE_PUBLIC_ORIGIN)throw new Error('Device enrollment requires ENROLLMENT_KEYS_FILE and DEVICE_PUBLIC_ORIGIN.');
  if(c.ENROLLMENT_KEYS_FILE&&!c.ENROLLMENT_KEYS_FILE.startsWith('/'))throw new Error('ENROLLMENT_KEYS_FILE must be an absolute private file path.');
  if(!!c.ENTIRE_CLI_PATH!==!!c.ENTIRE_BINDINGS_FILE)throw new Error('Entire requires both ENTIRE_CLI_PATH and ENTIRE_BINDINGS_FILE.');
+ if(!!c.ENTIRE_COMPANION_URL!==!!c.ENTIRE_COMPANION_TOKEN)throw new Error('Entire companion requires both ENTIRE_COMPANION_URL and ENTIRE_COMPANION_TOKEN.');
  if(c.ENTIRE_CLI_PATH&&c.AUTH_MODE==='oidc')throw new Error('The Entire CLI adapter supports local deployments only. Hosted OIDC requires an approved Entire server integration.');
  if(c.ENTIRE_CLI_PATH&&!c.ENTIRE_CLI_PATH.startsWith('/'))throw new Error('ENTIRE_CLI_PATH must be an absolute executable path.');
+ if(c.ENTIRE_COMPANION_URL){const entireUrl=new URL(c.ENTIRE_COMPANION_URL);if(entireUrl.pathname!=='/'||entireUrl.search||entireUrl.hash||!['http:','https:'].includes(entireUrl.protocol))throw new Error('ENTIRE_COMPANION_URL must be an HTTP origin.');c.ENTIRE_COMPANION_URL=entireUrl.origin;}
  if(url.pathname!=='/'||url.search||url.hash||url.username||url.password)throw new Error('APP_ORIGIN must be an origin, with no path or credentials.');
  c.APP_ORIGIN=url.origin;
  if(c.AUTH_MODE==='development'&&c.TRUST_PROXY_HOPS)throw new Error('Development sign-in must not trust forwarded addresses.');

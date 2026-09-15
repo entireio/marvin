@@ -20,6 +20,14 @@ export class DeviceVoice {
   }catch(e){await this.stopSession(s);throw e;}
  }
  active(deviceId:string){return this.sessions.has(deviceId);}
+ async announce(identity:DeviceIdentity,sink:DeviceVoiceSink,text:string){
+  if(!this.provider||this.sessions.has(identity.deviceId))return false;const connection=await this.provider.connect(()=>{});if(!connection.speak){connection.close();return false;}
+  const id=randomUUID(),controller=new AbortController();let playhead=performance.now();
+  try{await sink.control({type:'voice_announcement',interactionId:id,sampleRate:24000,channels:1,format:'s16le'});
+   for await(const pcm of connection.speak(text,controller.signal)){const bytes=Buffer.from(pcm);if(!bytes.length||bytes.length%2||bytes.length>12000)throw new Error('Invalid announcement audio');for(let at=0;at<bytes.length;at+=3840){const delay=playhead-performance.now()-160;if(delay>0)await new Promise(resolve=>setTimeout(resolve,delay));const frame=bytes.subarray(at,at+3840);playhead=Math.max(playhead,performance.now())+frame.length/48;await sink.audio(id,frame);}}
+   await sink.control({type:'voice_turn_end',interactionId:id});await new Promise(resolve=>setTimeout(resolve,750));await sink.control({type:'voice_closed'});return true;
+  }catch{await sink.control({type:'audio_flush',interactionId:id}).catch(()=>{});await sink.control({type:'voice_closed'}).catch(()=>{});return false;}finally{controller.abort();connection.close();}
+ }
  append(deviceId:string,pcm:Buffer){const s=this.sessions.get(deviceId);if(!s||!s.connection||s.closed)throw new DomainError('AUDIO_NOT_ACTIVE','Start voice before uploading audio.',403);if(!pcm.length||pcm.length>4096||pcm.length%2)throw new DomainError('AUDIO_INVALID','Send mono s16le PCM in bounded frames.',400);s.connection.append(s.resampler?s.resampler.convert(pcm):pcm);}
  private current(s:Session){return !s.closed&&this.sessions.get(s.identity.deviceId)===s;}
  private async flush(s:Session){if(!this.current(s))return;const id=s.activeId||s.lastId;s.activeId='';s.playhead=0;await s.sink.control({type:'audio_flush',interactionId:id||null});if(id){await this.runtime.cancel(s.identity.ownerId,id);await this.runtime.waitTurn(id);}}

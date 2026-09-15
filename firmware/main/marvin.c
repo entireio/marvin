@@ -205,7 +205,9 @@ static esp_err_t control(uint32_t session,const uint8_t *input,ssize_t length,ui
             else {
                 job_t job={.operation=2};memcpy(job.candidate.sta.ssid,ap->ssid,sizeof(job.candidate.sta.ssid));
                 memcpy(job.candidate.sta.password,password->valuestring,len);
-                if(!hidden){memcpy(job.candidate.sta.bssid,ap->bssid,6);job.candidate.sta.bssid_set=true;}
+                /* Choose the network rather than pinning one access point. Mesh
+                 * and multi-AP networks may move Marvin to another BSSID. */
+                job.candidate.sta.bssid_set=false;
                 job.candidate.sta.threshold.authmode=open?WIFI_AUTH_OPEN:WIFI_AUTH_WPA2_PSK;
                 if(owner_mode&&!marvin_owner_setup_stage(session,&job.candidate))cJSON_AddStringToObject(reply,"error","OWNER_TICKET_REQUIRED");
                 else if(xQueueSend(jobs,&job,0)==pdTRUE) { snprintf(phase,sizeof(phase),"connecting");failure[0]=0;cJSON_AddStringToObject(reply,"phase",phase); }
@@ -284,7 +286,7 @@ void app_main(void) {
     static protocomm_ble_name_uuid_t endpoints[]={{"proto-ver",0xff51},{"prov-session",0xff52},{"marvin-control",0xff53}};
     protocomm_ble_config_t ble={.device_name="Marvin setup",.service_uuid={0xfb,0x34,0x9b,0x5f,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0x50,0xff,0x00,0x00},.nu_lookup_count=3,.nu_lookup=endpoints};
     ESP_ERROR_CHECK(protocomm_ble_start(pc,&ble));
-    ESP_ERROR_CHECK(protocomm_set_version(pc,"proto-ver",owner_mode?"{\"marvin\":1,\"security\":2,\"patch\":1,\"enrollment\":1}":"{\"marvin\":1,\"security\":2,\"patch\":1,\"bench\":true}"));
+    ESP_ERROR_CHECK(protocomm_set_version(pc,"proto-ver",owner_mode?"{\"marvin\":1,\"security\":2,\"patch\":1,\"enrollment\":1,\"reconciliation\":1}":"{\"marvin\":1,\"security\":2,\"patch\":1,\"bench\":true}"));
     ESP_ERROR_CHECK(protocomm_set_security(pc,"prov-session",&protocomm_security2,&security));
     ESP_ERROR_CHECK(protocomm_add_endpoint(pc,"marvin-control",control,NULL));
     /* Finish BLE allocation before audio and TLS startup, avoiding simultaneous
@@ -294,8 +296,8 @@ void app_main(void) {
     else ESP_LOGE("marvin","Audio hardware unavailable; voice capability disabled");
 #endif
     if(owner_mode)ESP_ERROR_CHECK(marvin_device_link_start(link_snapshot,probe_ca));
-    /* Setup requires physical power-cycle presence and the unique Security2 secret. Owner mode additionally requires the signed account ticket. */
-    vTaskDelay(pdMS_TO_TICKS(300000));
-    xSemaphoreTake(lock,portMAX_DELAY);if(owner_mode)marvin_owner_setup_disconnected();xSemaphoreGive(lock);
-    ESP_ERROR_CHECK(protocomm_ble_stop(pc));protocomm_delete(pc);
+    /* NimBLE resumes advertising after every disconnect. Keep the transport
+     * available so an interrupted setup never requires a power cycle. Security2
+     * and the signed owner ticket continue to gate privileged operations. */
+    for(;;)vTaskDelay(pdMS_TO_TICKS(3600000));
 }

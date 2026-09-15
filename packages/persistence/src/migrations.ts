@@ -32,6 +32,13 @@ export const migrations = [
  `ALTER TABLE owners ADD COLUMN retention_days INTEGER`,
  `CREATE INDEX owner_turn_retention ON turns(owner_id,created_at)`
  ]}
+ ,{version:6,statements:[
+ `CREATE TABLE device_revocations (device_id TEXT PRIMARY KEY, former_owner_id TEXT NOT NULL, revoked_epoch INTEGER NOT NULL, replacement_epoch INTEGER NOT NULL, revoked_at BIGINT NOT NULL, acknowledged_at BIGINT)`,
+ `CREATE INDEX device_revocation_owner ON device_revocations(former_owner_id,revoked_at)`
+ ]}
+ ,{version:7,statements:[
+ `ALTER TABLE body_slots ADD COLUMN greeted_at BIGINT`
+ ]}
 ];
 export async function migrate(db: Database, target=migrations.at(-1)!.version) {
  await db.transaction(async tx => {

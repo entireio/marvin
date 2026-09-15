@@ -6,15 +6,17 @@ import { Actions,DeviceControl,type DeviceAction,type DeviceCapability,type Devi
 import { DomainError,Id,type InteractionContext } from '../../contracts/src/index.js';
 import { DeviceStore,type DeviceIdentity } from './store.js';
 
-type Connection={identity:DeviceIdentity;token:string;bootId:string;capabilities:DeviceCapability[];socket:WebSocket;lastSeen:number;lastSeq:number;candidate?:boolean;candidateSince:number;stablePickedUp:boolean;closed:boolean;openedAt:number;audioReceivedBytes:number;audioSentBytes:number;voiceStarts:number;audioInputRate:16000|24000;lateAudioUntil:number};
+type Connection={identity:DeviceIdentity;token:string;bootId:string;protocolMinor:number;capabilities:DeviceCapability[];socket:WebSocket;lastSeen:number;lastSeq:number;candidate?:boolean;candidateSince:number;stablePickedUp:boolean;closed:boolean;openedAt:number;audioReceivedBytes:number;audioSentBytes:number;voiceStarts:number;audioInputRate:16000|24000;lateAudioUntil:number};
 export class DeviceGateway {
  voice?:DeviceVoice;
- readonly events=new EventEmitter();private online=new Map<string,Connection>();
+ readonly events=new EventEmitter();private online=new Map<string,Connection>();private greeting=new Set<string>();
  constructor(readonly persistence:DeviceStore){this.events.setMaxListeners(100);}
  presence(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'online' as const}:null;}
  diagnostics(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{bootId:c.bootId,connectionOpenedAt:c.openedAt,audioReceivedBytes:c.audioReceivedBytes,audioSentBytes:c.audioSentBytes,voiceStarts:c.voiceStarts,voiceActive:this.voice?.active(c.identity.deviceId)??false}:null;}
  private async current(c:Connection){const id=await this.persistence.authenticate(c.token);if(c.closed||this.online.get(id.deviceId)!==c||id.epoch!==c.identity.epoch)throw new DomainError('DEVICE_OFFLINE','This device connection has ended.',409);return id;}
  private async send(c:Connection,event:unknown){await this.current(c);if(c.socket.readyState!==1||c.socket.bufferedAmount>65536){c.socket.close(1013,'Connection too slow');throw new DomainError('DEVICE_BACKPRESSURE','Marvin needs to reconnect.',409);}c.socket.send(JSON.stringify(event));}
+ private sink(c:Connection){return {control:async(event:unknown)=>{if((event as {type?:string})?.type==='voice_closed')c.lateAudioUntil=Date.now()+1000;await this.send(c,event);},audio:async(id:string,pcm:Buffer)=>{await this.current(c);if(c.socket.readyState!==1||c.socket.bufferedAmount>65536)throw new Error('Audio backpressure');const header=Buffer.concat([Buffer.from('MVA1'),Buffer.from(id.replaceAll('-',''),'hex')]);c.socket.send(Buffer.concat([header,pcm]));c.audioSentBytes+=pcm.length;}};}
+ private async greet(c:Connection){const id=c.identity.deviceId;if(this.greeting.has(id)||c.protocolMinor<3||!c.capabilities.includes('voice')||!this.voice||!await this.persistence.greetingPending(c.identity))return;this.greeting.add(id);try{if(await this.voice.announce(c.identity,this.sink(c),"Account linked. I'm Marvin. Apparently we're in this together now."))await this.persistence.markGreeted(c.identity);}finally{this.greeting.delete(id);}}
  async dispatch(ctx:InteractionContext,action:DeviceAction,args:unknown,id:string,ttlMs=3000){
   if(ctx.surface!=='body_voice'||!ctx.body||ctx.routeId!==ctx.body.deviceId)throw new DomainError('PHYSICAL_ROUTE_FORBIDDEN','Physical actions require the originating robot interaction.',403);
   Id.parse(id);const parsed=Actions[action]?.parse(args);if(!parsed)throw new DomainError('ACTION_UNSUPPORTED','Unknown physical action.',400);
@@ -42,14 +44,14 @@ export class DeviceGateway {
     const message=DeviceControl.parse(JSON.parse(raw.toString()));
     if(message.type==='hello'){
      if(initialized)throw new DomainError('HELLO_DUPLICATE','Hello was already received.',400);initialized=true;
-     if(message.protocol.major!==1||![0,1,2].includes(message.protocol.minor)){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.2 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
+     if(message.protocol.major!==1||![0,1,2,3].includes(message.protocol.minor)){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.3 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
      if(message.audioInputRate&&message.protocol.minor<2)throw new DomainError('AUDIO_PROTOCOL','Native input rate requires protocol 1.2.',400);
      const identity=await this.persistence.authenticate(token);if(identity.deviceId!==message.deviceId)throw new DomainError('DEVICE_MISMATCH','Device identity mismatch.',403);
      if(this.online.size>=1000&&!this.online.has(identity.deviceId))throw new DomainError('GATEWAY_BUSY','Device gateway is busy.',429);
      const previous=this.online.get(identity.deviceId);if(previous){await this.voice?.stop(identity.deviceId);previous.closed=true;previous.socket.close(4409,'Replaced by a new device connection');}
-     c={identity,token,bootId:message.bootId,capabilities:[...new Set(message.capabilities)],socket,lastSeen:Date.now(),lastSeq:-1,candidateSince:0,stablePickedUp:false,closed:false,openedAt:Date.now(),audioReceivedBytes:0,audioSentBytes:0,voiceStarts:0,audioInputRate:message.audioInputRate??24000,lateAudioUntil:0};this.online.set(identity.deviceId,c);clearTimeout(setup);
+     c={identity,token,bootId:message.bootId,protocolMinor:message.protocol.minor,capabilities:[...new Set(message.capabilities)],socket,lastSeen:Date.now(),lastSeq:-1,candidateSince:0,stablePickedUp:false,closed:false,openedAt:Date.now(),audioReceivedBytes:0,audioSentBytes:0,voiceStarts:0,audioInputRate:message.audioInputRate??24000,lateAudioUntil:0};this.online.set(identity.deviceId,c);clearTimeout(setup);
      await this.send(c,{type:'welcome',protocol:{major:1,minor:message.protocol.minor},epoch:identity.epoch,heartbeatMs:5000,serverTime:Date.now()});
-     for(const command of await this.persistence.reconnect(identity,c.bootId))await this.send(c,command);this.events.emit('online',identity);return;
+     for(const command of await this.persistence.reconnect(identity,c.bootId))await this.send(c,command);this.events.emit('online',identity);void this.greet(c).catch(()=>{});return;
     }
     if(!c)throw new DomainError('HELLO_REQUIRED','Send hello first.',400);await this.current(c);c.lastSeen=Date.now();
     if(message.type==='heartbeat'){if(message.seq<=c.lastSeq)throw new DomainError('STALE_FRAME','Heartbeat sequence must increase.',400);c.lastSeq=message.seq;return;}
@@ -67,7 +69,7 @@ export class DeviceGateway {
      try{if(!this.voice)throw new DomainError('VOICE_UNAVAILABLE','Voice is not configured.',409);
       const alreadyActive=this.voice.active(c.identity.deviceId);
       current.lateAudioUntil=0;
-      await this.voice.start(c.identity,{control:async event=>{if((event as {type?:string})?.type==='voice_closed')current.lateAudioUntil=Date.now()+1000;await this.send(current,event);},audio:async(id,pcm)=>{await this.current(current);if(current.socket.readyState!==1||current.socket.bufferedAmount>65536)throw new Error('Audio backpressure');const header=Buffer.concat([Buffer.from('MVA1'),Buffer.from(id.replaceAll('-',''),'hex')]);current.socket.send(Buffer.concat([header,pcm]));current.audioSentBytes+=pcm.length;}},c.audioInputRate,message.reason==='wake');
+      await this.voice.start(c.identity,this.sink(current),c.audioInputRate,message.reason==='wake');
       if(!alreadyActive&&this.voice.active(c.identity.deviceId))current.voiceStarts++;
      }catch{await this.send(current,{type:'voice_error',message:'Voice could not connect. Try again later; Marvin remains online.'});}return;
     }

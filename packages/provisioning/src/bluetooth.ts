@@ -4,8 +4,14 @@ import {PROVISIONING_SERVICE,provisioningSupport} from './index.js';
 export interface GattCharacteristic {writeValueWithResponse(value:Uint8Array<ArrayBuffer>):Promise<void>;readValue():Promise<DataView>;}
 export interface GattServer {connected:boolean;connect():Promise<GattServer>;disconnect():void;getPrimaryService(uuid:string):Promise<{getCharacteristic(uuid:string):Promise<GattCharacteristic>}>;}
 export interface BluetoothDevice {gatt?:GattServer;addEventListener(type:'gattserverdisconnected',listener:()=>void):void;removeEventListener(type:'gattserverdisconnected',listener:()=>void):void;}
+export function bluetoothError(error:unknown){
+ if(error instanceof DOMException&&(error.name==='NotFoundError'||/cancelled|canceled/i.test(error.message)))return new DomainError('BLUETOOTH_CANCELLED','');
+ if(error instanceof DomainError)return error;
+ return new DomainError('BLUETOOTH_UNAVAILABLE','Marvin could not be reached over Bluetooth. Make sure it is nearby and try again.');
+}
 /** One selected robot and one secure session. Never persists setup secrets or network data. */
 export class BluetoothSetupSession {
+ reconciliation=false;
  private secure=new Security2();private endpoints=new Map<string,GattCharacteristic>();private closed=false;private pending=false;private cancel=new AbortController();
  private onDisconnect=()=>this.close();
  private constructor(private device:BluetoothDevice,private timeoutMs:number){device.addEventListener('gattserverdisconnected',this.onDisconnect);}
@@ -19,6 +25,7 @@ export class BluetoothSetupSession {
    const version=JSON.parse(new TextDecoder().decode(await session.exchange('ff51',new TextEncoder().encode('---'))));
    if(version.marvin!==1||version.security!==2||version.patch!==1)throw new DomainError('FIRMWARE_INCOMPATIBLE','Marvin needs compatible secure setup firmware.');
    if(requireEnrollment&&version.enrollment!==1)throw new DomainError('FIRMWARE_INCOMPATIBLE','Marvin needs firmware that supports account linking.');
+   session.reconciliation=version.reconciliation===1;
    await session.secure.open(username,secret,bytes=>session.exchange('ff52',bytes));
    if(session.closed)throw new DomainError('BLUETOOTH_DISCONNECTED','Reconnect to Marvin to continue setup.');
    return session;
@@ -48,5 +55,5 @@ export class BluetoothSetupSession {
 export async function chooseBluetoothRobot():Promise<BluetoothDevice>{
  const support=provisioningSupport();if(!support.supported)throw new DomainError('BROWSER_UNSUPPORTED',support.reason);
  const bluetooth=(navigator as unknown as {bluetooth:{requestDevice(options:unknown):Promise<BluetoothDevice>}}).bluetooth;
- return bluetooth.requestDevice({filters:[{services:[PROVISIONING_SERVICE]}]});
+ try{return await bluetooth.requestDevice({filters:[{services:[PROVISIONING_SERVICE]}]});}catch(error){throw bluetoothError(error);}
 }

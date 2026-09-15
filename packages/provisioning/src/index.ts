@@ -1,6 +1,6 @@
 import { ScanResult, DomainError, type Network } from '../../contracts/src/index.js';
 export const PROVISIONING_SERVICE='0000ff50-0000-1000-8000-00805f9b34fb';
-export type ProvisioningStage='connecting_wifi'|'checking_server'|'ready';
+export type ProvisioningStage='reconciling'|'connecting_wifi'|'checking_server'|'ready';
 export interface ProvisioningTransport { readonly simulated:boolean; deviceId:string; scan():Promise<ScanResult>; connect(network:Network,password:string,progress:(stage:ProvisioningStage)=>void,signal:AbortSignal):Promise<void>; }
 export function provisioningSupport(){
  if(typeof window==='undefined')return {supported:false,reason:'Setup requires a browser.'};

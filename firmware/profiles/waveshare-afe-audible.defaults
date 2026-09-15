@@ -2,3 +2,6 @@
 # CONFIG_MARVIN_SILENT_TEST is not set
 CONFIG_MARVIN_SPEAKER_VOLUME=95
 CONFIG_MARVIN_WAKE_AUTOSTART=y
+# Security2, Wi-Fi scan replies and concurrent audio callbacks exceed the
+# NimBLE default host stack on the combined owner/audio firmware.
+CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=8192

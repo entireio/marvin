@@ -8,6 +8,7 @@ const cases:{name:string;ticket:string;accept:boolean;expect:typeof expectation|
 const add=(name:string,body:object,accept=false,changes:object={},header?:object,privateKey=key.privateKey)=>cases.push({name,ticket:ticket(body,header,privateKey),accept,expect:{...expectation,...changes}});
 add('valid-claim',base,true);
 add('valid-network',{...base,op:'network'},true,{operation:'network',owner:base.sub,epoch:7});
+add('valid-reconcile',{...base,jti:randomUUID(),op:'reconcile'},true,{operation:'reconcile',owner:base.sub,epoch:7});
 add('wrong-backend',{...base,iss:'https://attacker.example'});
 add('wrong-device',{...base,aud:'marvin_'+'b'.repeat(32)});
 add('wrong-nonce',{...base,nonce:'2'.repeat(64)});

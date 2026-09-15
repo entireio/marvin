@@ -107,10 +107,16 @@ export class Store {
   if(!r.length) throw new DomainError('ENROLLMENT_EXPIRED','Setup expired. Start again.',409);
  }
  async changeNetwork(ownerId: string,deviceId: string,network: string) { const r=await this.db.query("UPDATE body_slots SET network=? WHERE owner_id=? AND device_id=? AND state='linked' RETURNING device_id",[network,ownerId,deviceId]); if(!r.length) throw new DomainError('DEVICE_MISMATCH','This is not your linked Marvin.',403); }
- async unlink(ownerId: string) { await this.db.transaction(async tx=>{
+ async unlink(ownerId: string) { return this.db.transaction(async tx=>{
   await tx.query('UPDATE owners SET created_at=created_at WHERE id=?',[ownerId]);
-  const slot=(await tx.query<Row>('DELETE FROM body_slots WHERE owner_id=? RETURNING device_id',[ownerId]))[0];
-  if(slot) await tx.query('UPDATE device_epochs SET epoch=epoch+1 WHERE device_id=?',[slot.device_id]);
+  const slot=(await tx.query<Row>('DELETE FROM body_slots WHERE owner_id=? RETURNING device_id,epoch',[ownerId]))[0];
+  if(slot){
+   await tx.query('UPDATE device_epochs SET epoch=epoch+1 WHERE device_id=?',[slot.device_id]);
+   const replacement=Number((await tx.query<Row>('SELECT epoch FROM device_epochs WHERE device_id=?',[slot.device_id]))[0].epoch);
+   await tx.query('INSERT INTO device_revocations(device_id,former_owner_id,revoked_epoch,replacement_epoch,revoked_at,acknowledged_at) VALUES (?,?,?,?,?,NULL) ON CONFLICT(device_id) DO UPDATE SET former_owner_id=excluded.former_owner_id,revoked_epoch=excluded.revoked_epoch,replacement_epoch=excluded.replacement_epoch,revoked_at=excluded.revoked_at,acknowledged_at=NULL',[slot.device_id,ownerId,Number(slot.epoch),replacement,Date.now()]);
+  }
   await tx.query('INSERT INTO audit_events(id,owner_id,kind,created_at) VALUES (?,?,?,?)',[randomUUID(),ownerId,'robot_unlinked',Date.now()]);
+  return slot?{deviceId:String(slot.device_id),deviceErasureConfirmed:false}:null;
  }); }
+ async acknowledgeRevocation(ownerId:string,deviceId:string){const rows=await this.db.query('UPDATE device_revocations SET acknowledged_at=? WHERE device_id=? AND former_owner_id=? AND acknowledged_at IS NULL RETURNING device_id',[Date.now(),deviceId,ownerId]);return rows.length>0;}
 }

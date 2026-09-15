@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {BluetoothSetupSession,type BluetoothDevice,type GattCharacteristic,type GattServer} from '../../packages/provisioning/src/bluetooth.js';
+import {BluetoothSetupSession,bluetoothError,type BluetoothDevice,type GattCharacteristic,type GattServer} from '../../packages/provisioning/src/bluetooth.js';
 function fixture(version:object,stall=false){
  let disconnects=0,writes=0,listeners=0;const bytes=new TextEncoder().encode(JSON.stringify(version));
  const endpoint:GattCharacteristic={async writeValueWithResponse(){writes++;},async readValue(){if(stall)return new Promise<DataView>(()=>{});return new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);}};
@@ -23,4 +23,7 @@ it('disconnects a connection that completes after the setup deadline',async()=>{
  const f=fixture({});let finish:(server:GattServer)=>void=()=>{};const server=f.device.gatt!;server.connect=()=>new Promise(resolve=>{finish=resolve;});
  await expect(BluetoothSetupSession.open(f.device,'fixture-user','fixture-secret',15)).rejects.toMatchObject({code:'BLUETOOTH_TIMEOUT'});
  finish(server);await new Promise(resolve=>setTimeout(resolve,0));expect(f.disconnects).toBe(2);expect(f.writes).toBe(0);expect(f.listeners).toBe(0);
+});
+it('treats dismissal of the browser chooser as a silent cancellation',()=>{
+ const error=bluetoothError(new DOMException('User cancelled the requestDevice() chooser.','NotFoundError'));expect(error).toMatchObject({code:'BLUETOOTH_CANCELLED',message:''});
 });
