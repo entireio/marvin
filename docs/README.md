@@ -192,20 +192,26 @@ visually lossless (47 dB over the visible pixels, alpha bit-identical).
 
 ## Figure treatments
 
-Two conventions, and it matters which one a figure gets:
+The two homepage videos have real alpha transparency, so they sit directly on
+both system themes. Their original white-background MP4s remain in
+`assets/video/` as source material; the page serves the `*_alpha.mov` (HEVC with
+alpha, Safari) or `*_alpha.webm` (VP9 with alpha, Chromium/Firefox) derivatives.
+HEVC comes first because Safari can accept WebM without displaying its alpha.
+Transparent WebP posters cover loading and reduced-motion views. Rounded video
+corners, playback controls, silent playback and the existing loop timing remain.
 
-- **Footage is duotoned.** The video figures wrap their `<video>` in
-  `.duotone`, which lays the accent over the frame with
-  `mix-blend-mode: color`. This is the design system's treatment for
-  photography.
-- **Technical figures stay neutral.** The exploded axonometric is ink on the
-  page ground, and the print plate keeps the colours of
-  the render it came from. Duotone forces a single accent hue at one saturation
-  and varies only lightness, which flattens exactly the surface shading a parts
-  drawing needs to be readable. Do not add `.duotone` to these.
+The derivatives retain 1920 × 1080 at 24 fps: 480 frames for the driving loop
+and 168 for the head loop. Background removal uses BiRefNet general-lite subject
+masks, with optical-flow interpolation between masks every four frames. Enclosed
+mask holes are filled to keep the white shell opaque; edge pixels are cleaned
+of the original white background. The reverse half reuses the forward cutouts.
+VP9 is encoded with libvpx-vp9, CRF 25, `yuva420p`, and `-auto-alt-ref 0`.
+HEVC is written directly with Apple's AVAssetWriter and `hevcWithAlpha` codec;
+FFmpeg's MOV muxer did not preserve a playable alpha stream in this workflow.
+No segmentation or video processing runs in the browser.
 
-Both kinds still get the `.blueprint` frame with its four corner registration
-marks, so they read as one family regardless of treatment.
+Technical figures retain their original neutral colours. The shared Entire
+stylesheet disables the old duotone overlay and decorative corner marks.
 
 ## The two electronics paths
 

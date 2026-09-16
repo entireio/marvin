@@ -58,7 +58,7 @@
       <dl class="hero-facts"><div><dt>Stage</dt><dd>Early prototype</dd></div><div><dt>Subsystems</dt><dd>5 of 10 working</dd></div><div><dt>Electronics</dt><dd>Two paths &mdash; soldered, or PCBs</dd></div><div><dt>Parts printed</dt><dd>9 &mdash; PLA FDM, or PA12 SLS</dd></div><div><dt>Parts sourced</dt><dd>6, plus 4 to solder</dd></div><div><dt>Licence</dt><dd>MIT · CERN&#8209;OHL&#8209;S&#8209;2.0</dd></div></dl>
       <div style="margin-top:clamp(28px,5vw,60px)">
         <figure class="hero-video" style="margin:0">
-          <div class="hero-video__media" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
+          <div class="hero-video__media" style="position:relative;aspect-ratio:16/9;overflow:hidden">
             <!-- Ping-pong loop: the clip plays forward, then backwards, and the
                  file itself carries both passes — forward frames, then the same
                  frames in reverse with the two turning points not repeated. So
@@ -67,7 +67,11 @@
                  Doing this in the file rather than in JavaScript is deliberate:
                  reversing playback in the browser means seeking backwards frame
                  by frame, which no engine does smoothly at 1080p. -->
-            <video data-ref="videoRef" src="assets/video/marvin_moving_20sec_pingpong.mp4" poster="assets/img/marvin-hero-poster-10s.png" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <video data-ref="videoRef" poster="assets/img/marvin-hero-poster-alpha.webp" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block">
+              <!-- Safari uses HEVC alpha; other browsers use VP9 alpha. -->
+              <source src="assets/video/marvin_moving_20sec_alpha.mov" type='video/quicktime; codecs="hvc1"'>
+              <source src="assets/video/marvin_moving_20sec_alpha.webm" type='video/webm; codecs="vp9"'>
+            </video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
             <span><span style="">Marvin under drive</span> — A forward run, a pivot on one track, and a look around.</span>
@@ -276,9 +280,13 @@
         </figure>
         <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px);align-self:start">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
+          <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden">
             <!-- Ping-pong loop, matching the hero clip. -->
-            <video data-ref="demoRef" src="assets/video/marvin_head_7sec_pingpong.mp4" poster="assets/img/marvin-demo-poster.png" muted loop playsinline autoplay preload="none" aria-label="Marvin tilting its head back through its full range and lowering it again, the body still." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <video data-ref="demoRef" poster="assets/img/marvin-demo-poster-alpha.webp" muted loop playsinline autoplay preload="none" aria-label="Marvin tilting its head back through its full range and lowering it again, the body still." style="width:100%;height:100%;object-fit:cover;display:block">
+              <!-- Safari uses HEVC alpha; other browsers use VP9 alpha. -->
+              <source src="assets/video/marvin_head_7sec_alpha.mov" type='video/quicktime; codecs="hvc1"'>
+              <source src="assets/video/marvin_head_7sec_alpha.webm" type='video/webm; codecs="vp9"'>
+            </video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
             <span><span style="">Demo mode</span> — Nobody is driving; the head leads and the body follows.</span>
