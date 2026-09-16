@@ -1,0 +1,65 @@
+This repo contains a basic website in the docs folder. I want you to make it look like the entire.io landing page, see ../entire.io, without adopting React. It should be hosted as static page. Include the Entire logo in the top-left corner, which links back to entire.io, the entire.io footer, fonts, colors, etc. but otherwise keep the content as is.
+
+---
+
+Remove the dark/light switch. Only adopt the system style. Remove MARVIN from the top left. Remove the "Marvin — open source exploring robot" footer above the footer.
+
+---
+
+Ok, now on top, remove the Open source exploring robot header as well. And set the right favicon in all variants. No sloppy work. Then compare the page design, especially how sections are separate with the entire.io design. Did you really adopt the design I wanted?
+
+---
+
+Next, MARVIN on top of the page, is that how Entire renders headlines? Or the sidebar in the Documentation? Review all .html pages and ask yourself, is this the best I can do or did I slop it like it's 1999?
+
+---
+
+Also, on entire.io, what happens with the top menu when the page width isn't fitting? I give you a hint, it doesn't create a second header. There a bunch more problems on mobile, I let you find those yourself. After all, OpenAI called you AGI.
+
+---
+
+[Image #1] Make the left box same height as the right one. The charts should still fit.
+
+---
+
+In Documentation, the sidebar doesn't highlight the section that I just clicked on or scrolled to. Same on Get involved with the secondary header.
+
+---
+
+On the front page, remove the Read the documentation, Get involved, Repository buttons as those just repeat the header. And remove the rounded rect around the big video.
+
+---
+
+[Image #1] I don't know what you did with the favicon, but you clearly slopped it. Top: your work, bottom: actual entire.io.
+
+---
+
+On the large video, I didn't ask you to remove its rounded corners. Bring those back.
+
+---
+
+On Get involved, remove the 07 Nothing over about 50 MB in the repository convention
+
+---
+
+Change the Marvin headline to be in the purple brand color. Look that up in entire.io to get the right rgb.
+
+---
+
+Headlines like Behaviour or How it is made should also have that color. You tell me why they don't. Or you just do your fucking job.
+
+---
+
+Ok, but now you made What it is, Anatomy, etc. also purple. That's not how entire.io does it. Why, why, why?
+
+---
+
+Review the pages again. You just slopped the same purple all over the place, for random heading. Is that how entire.io does it?
+
+---
+
+commit/push
+
+---
+
+Can you modify the 2 videos to have a transparent background, not a white background?

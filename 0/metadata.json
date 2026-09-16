@@ -1,0 +1,63 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M2P0BS8MHG2F0TPPNFKYMAC9",
+  "session_id": "01a0abbd-c140-79b0-8ac9-9b91ed1e3705",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-16T21:01:07.069408Z",
+  "branch": "ashtom/website-design",
+  "checkpoints_count": 2,
+  "save_step_count": 2,
+  "files_touched": [
+    "docs/README.md",
+    "docs/assets/img/marvin-demo-poster-alpha.webp",
+    "docs/assets/img/marvin-hero-poster-alpha.webp",
+    "docs/assets/video/marvin_head_7sec_alpha.mov",
+    "docs/assets/video/marvin_head_7sec_alpha.webm",
+    "docs/assets/video/marvin_moving_20sec_alpha.mov",
+    "docs/assets/video/marvin_moving_20sec_alpha.webm",
+    "docs/index.html"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "7fa0659f597f",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 322087,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 21699840,
+    "output_tokens": 61009,
+    "api_call_count": 172,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 13
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-16T21:01:06.953526Z",
+    "agent_lines": 30,
+    "agent_removed": 16,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 30,
+    "total_lines_changed": 46,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 30,
+      "agent_lines_removed": 16
+    }
+  ]
+}
