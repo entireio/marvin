@@ -15,10 +15,12 @@ docs/
 ├── reference.html        Documentation / Reference — protocol, pins, files, licensing
 ├── contribute.html       Get involved — firmware, software, mechanics, electronics
 ├── assets/
-│   ├── css/industry.css  Design-system tokens and components (verbatim from the design)
-│   ├── css/site.css      Page styles, shared furniture, the path switch
-│   ├── js/site.js        Theme toggle, video controls, exploded-view assembly
-│   ├── img/              Video posters and the favicon
+│   ├── css/industry.css  Original component primitives
+│   ├── css/site.css      Diagram motion and assembly path switch
+│   ├── css/entire.css    Entire brand theme, responsive header and footer
+│   ├── fonts/            Self-hosted Entire Headline and Entire Mono
+│   ├── js/site.js        Responsive menus, scroll hints, videos, assembly
+│   ├── img/              Video posters, adaptive SVG favicon, Apple touch icon
 │   └── video/            Demo footage — silent, no audio track
 ├── DESIGN-BRIEF.md       The brief the design was made from
 ├── convert-artboards.py  How the design artboards became these pages
@@ -39,6 +41,31 @@ Then open <http://127.0.0.1:4173>. Opening `index.html` as a `file://` URL
 mostly works, but relative asset paths and the fonts behave better over HTTP.
 
 ---
+
+## Entire styling
+
+The site uses the logo, headline and monospace fonts, neutral surfaces, indigo
+accent, and footer from the sibling `entire.io` checkout. `assets/css/entire.css`
+adapts that design to the existing HTML components. Landing sections use full-width
+horizontal dividers with a 1280px inner frame, desktop side rails, and compact
+section headings matching Entire’s `SiteSection` structure. Headlines use
+Entire’s 32px mobile / 40px desktop scale (48px for the homepage). Navigation
+collapses into a fullscreen menu below 768px while the header stays 64px tall.
+Escape closes the menu; focus and background scrolling are contained while open.
+The documentation sidebar becomes its own disclosure below 901px, keeping
+page and section links accessible. Wide tables and the board diagram scroll
+within their own containers, with keyboard access and overflow hints. Body text uses Entire’s
+system sans-serif stack. All font and logo assets are local; there are no
+Google Fonts requests, React dependencies, or build requirements.
+
+The Entire logo links to `https://entire.io`; the original Marvin navigation
+remains. The color scheme follows the system preference automatically. Footer links use absolute Entire URLs, and the
+status link opens the live status page. The header and footer are static HTML
+on each of the six pages, so they work with JavaScript disabled. Keep those
+shared sections in sync when editing.
+
+To publish, serve `docs/` with any static host (for GitHub Pages, select the
+branch and `/docs` folder). Asset links remain relative for project subpaths.
 
 ## Where this came from
 
@@ -94,7 +121,6 @@ hand-edits.
 
 | Hook | What it does |
 | --- | --- |
-| `data-action="toggleTheme"` | Switches colour scheme and stores the choice. With nothing stored, `prefers-color-scheme` stays in charge. An inline script in each `<head>` applies a stored choice before first paint, so the other scheme never flashes. |
 | `data-action="togglePlay"` / `"toggleDemo"` | Play/pause for the two videos, with the button label kept in step. Under reduced motion the videos hold on their poster frame instead of autoplaying. Both are also held muted at runtime, so nothing can start the sound. |
 | `data-ref="anatomyRef"` | The exploded axonometric. Each part carries `data-dx`/`data-dy` — its offset in the exploded state — and scrolling the figure up the viewport interpolates those to zero, so the robot assembles as you read past it. |
 | `data-ref="readoutRef"` | Reads *Exploded → Assembling → Assembled* alongside the drawing. |
