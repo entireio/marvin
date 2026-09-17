@@ -1,0 +1,26 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M2QEPNZVGK1NCWD8DK4WK5XR",
+  "strategy": "manual-commit",
+  "branch": "ashtom/website-design",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "docs/index.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 36086,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 178816,
+    "output_tokens": 897,
+    "api_call_count": 7
+  }
+}
