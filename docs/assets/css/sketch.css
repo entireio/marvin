@@ -1,0 +1,195 @@
+/* Architectural pen study: retain the brand palette and page geometry.
+   Texture and imperfect strokes belong to the paper and drawing, never type. */
+:root {
+  --sketch-ink: var(--color-divider);
+  --sketch-faint: color-mix(in srgb, var(--color-text) 12%, transparent);
+  --sketch-hatch: repeating-linear-gradient(112deg, transparent 0 5px, var(--sketch-faint) 5px 5.6px, transparent 5.6px 8px);
+}
+
+/* The page itself is a drawing sheet: replace the original straight grid,
+   rather than laying a textured line over a still-visible CSS border. */
+.site-header, .site-section, .doc-section, .site-footer,
+.site-header__inner, .site-section__inner, .docs-layout, .docs-content,
+.entire-footer { border-color: transparent; }
+.site-section, .doc-section, .site-header__inner, .site-section__inner,
+.docs-layout, .entire-footer { position: relative; }
+.site-section::after, .doc-section::after, .site-header::after {
+  content: ''; position: absolute; bottom: -11px; left: 0; right: 0;
+  width: 100%; height: 22px; margin-inline: auto;
+  background: var(--sketch-ink); pointer-events: none; z-index: 2;
+  -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+  mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+}
+.doc-section::after { width: calc(100% + 12px); left: -6px; }
+.doc-section:last-child::after { display: none; }
+.site-header__inner::before, .site-section__inner::before,
+.docs-layout::before, .entire-footer::before {
+  content: ''; position: absolute; inset: -10px -7px;
+  background: var(--sketch-ink); opacity: .8; pointer-events: none; z-index: 2;
+  -webkit-mask: url('../img/sketch-rail.svg') left / 14px 100% no-repeat,
+                url('../img/sketch-rail.svg') right / 14px 100% no-repeat;
+  mask: url('../img/sketch-rail.svg') left / 14px 100% no-repeat,
+        url('../img/sketch-rail.svg') right / 14px 100% no-repeat;
+}
+@media (max-width: 1295px) {
+  .site-header__inner::before, .site-section__inner::before,
+  .docs-layout::before, .entire-footer::before { inset-inline: 0; }
+}
+.docs-content { position: relative; }
+@media (min-width: 901px) {
+  .docs-content::before {
+    content: ''; position: absolute; inset: 0 auto 0 -7px; width: 14px;
+    background: var(--sketch-ink); opacity: .65; pointer-events: none;
+    -webkit-mask: url('../img/sketch-rail.svg') center / 100% 100%;
+    mask: url('../img/sketch-rail.svg') center / 100% 100%;
+  }
+}
+
+/* Two slightly different passes of the pen around a sheet. */
+.blueprint, .hero-facts {
+  position: relative; border: 1px solid var(--sketch-faint);
+  border-radius: 2px 4px 1px 3px / 3px 1px 4px 2px;
+    box-shadow: none;
+}
+.blueprint::after, .hero-facts::after {
+  content: ''; display: block; position: absolute; inset: -3px;
+  background: var(--sketch-ink);
+  -webkit-mask: url('../img/sketch-frame.svg') center / 100% 100% no-repeat;
+  mask: url('../img/sketch-frame.svg') center / 100% 100% no-repeat;
+  pointer-events: none;
+}
+.blueprint .corner { display: block; opacity: .45; }
+.blueprint .corner::before { transform: rotate(3deg); }
+.blueprint .corner::after { transform: rotate(-3deg); }
+.hero-facts { overflow: visible; }
+.hero-facts dt, .table th, .spec dt, .doc-section .kicker,
+.doc-section .section-heading > div > .eyebrow:first-child {
+  font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.hero-facts dt { color: var(--muted); }
+.hero-facts > div { border-color: var(--sketch-faint); }
+
+
+/* Short graphite swatches under headings, with the original indigo ink. */
+.section-heading h2::after, .doc-section h1::after,
+.contribute-page h1::after, #mv-hero::after {
+  content: ''; display: block; width: 94px; height: 9px; margin-top: 14px;
+  background: currentColor; opacity: .65;
+  -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+  mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+}
+#mv-hero::after, .home-page .section-heading h2::after { margin-inline: auto; }
+.btn, .pathsw label, .tag { border-radius: 2px; }
+
+.btn, .pathsw label { box-shadow: 2px 2px 0 var(--sketch-faint); }
+.btn-ghost { box-shadow: none; }
+
+.card.blueprint::before {
+  content: ''; display: block; position: absolute; inset: auto 10px 5px auto;
+  width: 45px; height: 10px; background: var(--sketch-hatch); pointer-events: none;
+}
+
+.card.blueprint:hover { border-color: var(--color-accent); }
+.table th { border-bottom-color: var(--sketch-ink); }
+.table td { border-bottom-color: var(--sketch-faint); }
+
+/* SVG geometry alone gets a small ink irregularity; labels and leaders stay crisp. */
+[data-ref="anatomyRef"] svg defs > g { filter: url(#mv-pen); }
+[data-ref="anatomyRef"] svg use { stroke-linejoin: round; stroke-linecap: round; }
+
+@media (forced-colors: active) {
+  .site-section__inner, .docs-content, .entire-footer, .blueprint, .hero-facts { background-image: none; }
+  .blueprint::after, .hero-facts::after, .site-section::after, .doc-section::after { display: none; }
+}
+
+/* Pen rules replace the remaining machine-straight table and fact dividers. */
+.hero-facts > div { position: relative; border-color: transparent !important; }
+.hero-facts > div::after {
+  content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 8px;
+  background: var(--sketch-ink); opacity: .55; pointer-events: none;
+  -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+  mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+}
+.hero-facts > div::before {
+  content: ''; position: absolute; top: 0; bottom: 0; right: -4px; width: 8px;
+  background: var(--sketch-ink); opacity: .55; pointer-events: none;
+  -webkit-mask: url('../img/sketch-rail.svg') center / 100% 100% no-repeat;
+  mask: url('../img/sketch-rail.svg') center / 100% 100% no-repeat;
+}
+.hero-facts > div:nth-child(3n)::before { display: none; }
+.hero-facts > div:nth-last-child(-n+3)::after { display: none; }
+@media (max-width:700px) {
+  .hero-facts > div:nth-child(3n)::before { display: block; }
+  .hero-facts > div:nth-child(2n)::before { display: none; }
+  .hero-facts > div:nth-last-child(3)::after { display: block; }
+}
+
+.table th, .table td { position: relative; border-bottom-color: transparent; }
+.table th::after, .table td::after {
+  content: ''; position: absolute; bottom: -3px; left: 0; right: 0; height: 6px;
+  background: var(--sketch-ink); opacity: .45; pointer-events: none;
+  -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+  mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+}
+.table th::after { opacity: .9; }
+@media (forced-colors: active) {
+  .site-header__inner::before, .site-section__inner::before, .docs-layout::before,
+  .docs-content::before, .entire-footer::before, .site-header::after,
+  .hero-facts > div::before, .hero-facts > div::after { display: none; }
+}
+
+/* Original background and brand colors come exclusively from entire.css.
+   Sparse, fixed stroke clusters shade the rails; no page-wide grain or tint. */
+.section-sketch-number {
+  position: absolute; top: 24px; left: 32px; width: 44px; height: 57px;
+  color: var(--muted); opacity: .48; transform: rotate(-5deg);
+  pointer-events: none;
+}
+.section-sketch-number svg { display: block; width: 100%; height: 100%; }
+.rail-shading {
+  position: absolute; width: min(260px, 30%); height: 52px;
+  color: var(--color-text); opacity: .15; pointer-events: none;
+  background: currentColor;
+  -webkit-mask: var(--shading) center / 100% 100% no-repeat;
+  mask: var(--shading) center / 100% 100% no-repeat;
+}
+.rail-shading--top { top: 0; right: 1px; }
+.rail-shading--bottom { bottom: 0; left: 1px; transform: rotate(180deg); }
+.site-section:nth-child(2) .rail-shading { width: min(185px, 26%); height: 38px; }
+.site-section:nth-child(3) .rail-shading { height: 65px; width: min(310px, 30%); }
+.site-section:nth-child(4) .rail-shading { height: 43px; }
+.site-section:nth-child(5) .rail-shading { width: min(205px, 27%); }
+@media(max-width:700px) {
+  .section-sketch-number { left: 18px; top: 12px; width: 29px; height: 38px; }
+  .rail-shading { max-height: 30px; }
+}
+@media(forced-colors:active) { .rail-shading { display:none; } }
+
+.site-section:nth-child(1) .rail-shading { --shading: url('../img/rail-shading-1.svg'); }
+.site-section:nth-child(2) .rail-shading { --shading: url('../img/rail-shading-2.svg'); }
+.site-section:nth-child(3) .rail-shading { --shading: url('../img/rail-shading-3.svg'); }
+.site-section:nth-child(4) .rail-shading { --shading: url('../img/rail-shading-4.svg'); }
+.site-section:nth-child(5) .rail-shading { --shading: url('../img/rail-shading-5.svg'); }
+.site-section:nth-child(6) .rail-shading { --shading: url('../img/rail-shading-6.svg'); }
+
+/* Horizontal pen strokes taper inward from a few other rail corners. */
+.rail-shading-horizontal {
+  position: absolute; top: 1px; right: 1px; width: min(240px, 30%); height: 105px;
+  background: var(--color-text); opacity: .15; pointer-events: none;
+  -webkit-mask: url('../img/rail-shading-horizontal.svg') center / 100% 100% no-repeat;
+  mask: url('../img/rail-shading-horizontal.svg') center / 100% 100% no-repeat;
+}
+.site-section:nth-child(3) .rail-shading-horizontal { width: min(180px, 25%); height: 78px; }
+.site-section:nth-child(5) .rail-shading-horizontal { top: auto; bottom: 1px; transform: scaleY(-1); }
+@media(max-width:700px) { .rail-shading-horizontal { width: 100px; max-height: 65px; } }
+@media(forced-colors:active) { .rail-shading-horizontal { display: none; } }
+
+/* Documentation has no full-width final section rule, so its footer owns it. */
+.documentation-page .site-footer { position: relative; }
+.documentation-page .site-footer::before {
+  content: ''; position: absolute; top: -11px; left: 0; right: 0; height: 22px;
+  background: var(--sketch-ink); pointer-events: none;
+  -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+  mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
+}

@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
 <link rel="stylesheet" href="assets/css/entire.css">
+<link rel="stylesheet" href="assets/css/sketch.css">
 <script src="assets/js/site.js" defer></script>
 </head>
 <body class="home-page">
@@ -53,6 +54,9 @@
   <main id="content" class="landing-content">
 
     <section aria-labelledby="mv-hero" class="site-section"><div class="site-section__inner">
+        <span class="rail-shading-horizontal" aria-hidden="true"></span>
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M39 24 L50 15 L45 60"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
       <h1 id="mv-hero" style="margin:0">Marvin</h1>
       <p class="hero-intro">A small tracked robot with an expressive two&#8209;axis head. Roughly the size of a coffee cup. Every part is open source: firmware, electronics, mechanics.</p>
       <dl class="hero-facts"><div><dt>Stage</dt><dd>Early prototype</dd></div><div><dt>Subsystems</dt><dd>5 of 10 working</dd></div><div><dt>Electronics</dt><dd>Two paths &mdash; soldered, or PCBs</dd></div><div><dt>Parts printed</dt><dd>9 &mdash; PLA FDM, or PA12 SLS</dd></div><div><dt>Parts sourced</dt><dd>6, plus 4 to solder</dd></div><div><dt>Licence</dt><dd>MIT · CERN&#8209;OHL&#8209;S&#8209;2.0</dd></div></dl>
@@ -82,6 +86,8 @@
     </div></section>
 
     <section aria-labelledby="mv-s01" class="site-section"><div class="site-section__inner">
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M35 23 C42 7 63 12 56 27 C51 36 36 45 32 59 L57 57"/></svg></span>
+        <span class="rail-shading rail-shading--top" aria-hidden="true"></span>
       <div class="section-heading">
         <div>
           <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Meet Marvin</p>
@@ -118,6 +124,9 @@
     </div></section>
 
     <section aria-labelledby="mv-s02" class="site-section"><div class="site-section__inner">
+        <span class="rail-shading-horizontal" aria-hidden="true"></span>
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M35 18 C62 3 66 31 43 33 C68 27 62 66 34 58"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
       <div class="section-heading">
         <div>
           <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">How it is made</p>
@@ -130,12 +139,20 @@
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
           <svg viewBox="40 0 640 660" role="img" aria-label="Exploded axonometric drawing of Marvin: eight printed parts separated along their assembly axes, each with a numbered callout." style="display:block;width:100%;height:auto;color:var(--color-text)">
             <defs>
-              <g id="mv-chassis"><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -34 M0 -34 L103.9 -94 M0 -34 L-72.7 -76" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-head"><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -58 M0 -58 L129.9 -133 M0 -58 L-34.6 -78" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 -60 L120 -125 M8 -60 L8 -22 M120 -125 L120 -87 M8 -22 L120 -87" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/></g>
-              <g id="mv-headcap"><path d="M0 0 L129.9 -75 L129.9 -89 L95.3 -109 L-34.6 -34 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -14 M0 -14 L129.9 -89 M0 -14 L-34.6 -34" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-plate"><path d="M0 0 L65.8 -38 L65.8 -47 L13.9 -77 L-52 -39 L-52 -30 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -9 M0 -9 L65.8 -47 M0 -9 L-52 -39" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-cover"><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -30 M0 -30 L102.2 -89 M0 -30 L-29.4 -47" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-collar"><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -20 M0 -20 L26 -35 M0 -20 L-26 -35" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
+              <filter id="mv-pen" x="-8%" y="-8%" width="116%" height="116%">
+                <feTurbulence type="fractalNoise" baseFrequency=".075" numOctaves="2" seed="12" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.3" xChannelSelector="R" yChannelSelector="G"/>
+              </filter>
+              <pattern id="mv-ink-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
+                <path d="M1 -1 L.5 8 M4.5 -1 L5 8" fill="none" stroke="currentColor" stroke-width=".6" opacity=".3"/>
+              </pattern>
+
+              <g id="mv-chassis"><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -34 M0 -34 L103.9 -94 M0 -34 L-72.7 -76" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L-72.7 -42 L-72.7 -76 L0 -34 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-head"><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -58 M0 -58 L129.9 -133 M0 -58 L-34.6 -78" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 -60 L120 -125 M8 -60 L8 -22 M120 -125 L120 -87 M8 -22 L120 -87" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M0 0 L-34.6 -20 L-34.6 -78 L0 -58 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-headcap"><path d="M0 0 L129.9 -75 L129.9 -89 L95.3 -109 L-34.6 -34 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -14 M0 -14 L129.9 -89 M0 -14 L-34.6 -34" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L129.9 -75 L129.9 -89 L0 -14 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L129.9 -75 L129.9 -89 L95.3 -109 L-34.6 -34 L-34.6 -20 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-plate"><path d="M0 0 L65.8 -38 L65.8 -47 L13.9 -77 L-52 -39 L-52 -30 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -9 M0 -9 L65.8 -47 M0 -9 L-52 -39" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L65.8 -38 L65.8 -47 L0 -9 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L65.8 -38 L65.8 -47 L13.9 -77 L-52 -39 L-52 -30 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-cover"><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -30 M0 -30 L102.2 -89 M0 -30 L-29.4 -47" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L102.2 -59 L102.2 -89 L0 -30 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-collar"><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -20 M0 -20 L26 -35 M0 -20 L-26 -35" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L26 -15 L26 -35 L0 -20 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
               <g id="mv-wheel"><g transform="translate(-8.7,-5)"><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/></g><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/><circle r="3.6" fill="none" stroke="currentColor" stroke-width="1"/></g>
             </defs>
 
@@ -212,6 +229,8 @@
     </div></section>
 
     <section aria-labelledby="mv-s03" class="site-section"><div class="site-section__inner">
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M48 13 L30 43 L59 41 M52 17 L48 62"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
       <div class="section-heading">
         <div>
           <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Behaviour</p>
@@ -297,6 +316,9 @@
     </div></section>
 
     <section aria-labelledby="mv-s04" class="site-section"><div class="site-section__inner">
+        <span class="rail-shading-horizontal" aria-hidden="true"></span>
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M60 15 L39 17 L35 35 C60 23 65 61 33 60"/></svg></span>
+        <span class="rail-shading rail-shading--top" aria-hidden="true"></span>
       <div class="section-heading">
         <div>
           <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Start building</p>
@@ -351,6 +373,8 @@
     </div></section>
 
     <section aria-labelledby="mv-s05" class="site-section"><div class="site-section__inner">
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M56 15 C35 9 25 63 44 61 C64 59 60 29 37 37"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
       <div class="section-heading">
         <div>
           <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Open source</p>
@@ -376,8 +400,8 @@
                 <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Two boards, fully specified and entirely undrawn. The largest open invitation.</span></a>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(18px,3vw,28px)">
-                <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">github.com/spedemon/marvin</a>
-                <a class="btn btn-ghost" href="contribute.html" style="text-decoration:none">How to get involved</a>
+                <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Repository</a>
+                <a class="btn btn-secondary" href="contribute.html" style="text-decoration:none">Get involved</a>
               </div>
             </div>
           </div>

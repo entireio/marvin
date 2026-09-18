@@ -18,6 +18,7 @@ docs/
 │   ├── css/industry.css  Original component primitives
 │   ├── css/site.css      Diagram motion and assembly path switch
 │   ├── css/entire.css    Entire brand theme, responsive header and footer
+│   ├── css/sketch.css    Pen outlines, paper texture and drawing annotations
 │   ├── fonts/            Self-hosted Entire Headline and Entire Mono
 │   ├── js/site.js        Responsive menus, scroll hints, videos, assembly
 │   ├── img/              Video posters, adaptive SVG favicon, Apple touch icon
@@ -269,3 +270,14 @@ Pages and at the domain root on Cloud Run.
 ## Licence
 
 The website source is covered by the project's [MIT Licence](../LICENSE).
+
+## Architectural sketch treatment
+
+`assets/css/sketch.css` adds pen strokes over the Entire theme without
+changing its background colors or brand palette. Full-width section rules
+and outer rails use the existing divider color. Sparse, deterministic SVG
+hatching shades selected rail corners. The homepage's six decorative,
+hand-drawn section numbers run from 01 to 06 and are hidden from assistive
+technology. The anatomy SVG hatches selected faces and applies slight ink
+displacement only to geometry; callout lines and text stay crisp. Existing
+scroll and reduced-motion behavior, photographs and videos are unchanged.
