@@ -1,0 +1,29 @@
+Commit/push, then deploy the latest version.
+
+---
+
+Replace the current complex footer with just the line "Built with <3 by @spedemon and @entireio" and link to the respective GitHub accounts.
+
+---
+
+What's the localhost link?
+
+---
+
+Replace the <3 with the heart emoji. Also, in the header, move the 3 menu links to the right side.
+
+---
+
+[Image #1] Looks at this figure. The 06 and the line are pointing to the wrong part. It should be the part on top of the head. Fix this and verify your fix in the browser.
+
+---
+
+[Image #1] Next, fix that the 08 line isn't connected to it's part and avoid that 07 and 08 overlap in the end state. [Image #2] Also have the 04 line touch the wheel on the bottom, so it's still visible then.
+
+---
+
+Make the lines all horizontal and parallel to each other
+
+---
+
+Move the 01 and its line to the left, below the 03, touchting the body from the front.
