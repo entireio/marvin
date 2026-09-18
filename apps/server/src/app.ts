@@ -29,6 +29,7 @@ import { authorizeTool } from '../../../packages/runtime/src/policy.js';
 import { FixtureEntire,fixtureRepositories } from '../../../packages/runtime/src/entire.js';
 import { FixtureTextProvider,OpenAITextProvider,type TextProvider } from '../../../packages/runtime/src/provider.js';
 import { SendTurn, ClientEvent, DomainError, Id, RepositorySelection, type AgentEvent } from '../../../packages/contracts/src/index.js';
+import { PetAudioSettings } from '../../../packages/contracts/src/device.js';
 import { Identity,verifyPassword,safeReturnTo } from './auth.js';
 import type { Config } from './config.js';
 export async function createApp(cfg:Config,options:{database?:Database;provider?:TextProvider;logger?:boolean;entire?:RepositoryIntegration;voice?:VoiceProvider;voiceLimits?:{idleMs:number;maxMs:number;heartbeatMs:number}}={}){
@@ -54,10 +55,10 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   if(req.url.startsWith('/api/'))reply.header('Cache-Control','no-store');
   if(cfg.NODE_ENV==='production')reply.header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'").header('Strict-Transport-Security','max-age=31536000');
   if(!req.url.startsWith('/api/'))return;
-  if(req.url==='/api/device/enrollment/redeem'){if(req.headers.origin||req.headers.cookie)throw new DomainError('DEVICE_ONLY','Setup completion must come directly from Marvin.',403);return;}
+  if(req.url==='/api/device/enrollment/redeem'){if(req.headers.origin||req.headers.cookie)throw new DomainError('DEVICE_ONLY','Setup completion must come directly from your Desktop Pet.',403);return;}
   if(req.method==='GET'&&/^\/api\/device\/firmware(?:\/|$)/.test(req.url.split('?')[0]!)){if(req.headers.origin||req.headers.cookie)throw new DomainError('DEVICE_ONLY','Firmware downloads require direct device authorization.',403);return;}
   const mutating=!['GET','HEAD','OPTIONS'].includes(req.method);
-  if(mutating&&req.headers.origin!==cfg.APP_ORIGIN)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from Marvin.',403);
+  if(mutating&&req.headers.origin!==cfg.APP_ORIGIN)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);
   if(req.url.startsWith('/api/auth/')||req.url.split('?')[0]==='/api/config'||req.url==='/api/health'||req.url==='/api/device/socket')return;
   const session=await store.session(req.cookies.marvin_session);if(!session)throw new DomainError('UNAUTHENTICATED','Please sign in to continue.',401);
   if(mutating&&req.headers['x-csrf-token']!==session.csrf)throw new DomainError('CSRF_INVALID','Refresh the page and try again.',403);
@@ -88,6 +89,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.post('/api/robot/reconciliation/ack',async(req)=>{const b=z.object({deviceId:Id}).strict().parse(req.body),s=await session(req);if(!await store.acknowledgeRevocation(s.ownerId,b.deviceId))throw new DomainError('RECOVERY_NOT_AUTHORIZED','No pending ownership cleanup was found for this account.',403);return {ok:true};});
  app.post('/api/device/enrollment/redeem',{config:{rateLimit:{max:20,timeWindow:'1 minute'}}},async(req)=>requireEnrollment().redeem(req.body));
  app.get('/api/robot/presence',async(req)=>({body:await store.body((await session(req)).ownerId),presence:devices.presence((await session(req)).ownerId)}));
+ app.patch('/api/robot/audio',async(req)=>devices.setAudioSettings((await session(req)).ownerId,PetAudioSettings.parse(req.body)));
  app.get('/api/robot/diagnostics',async(req)=>({diagnostics:devices.diagnostics((await session(req)).ownerId)}));
  app.get('/api/conversations',async(req)=>store.listConversations((await session(req)).ownerId));
  app.post('/api/conversations',async(req)=>{z.object({}).strict().parse(req.body);return store.createConversation((await session(req)).ownerId);});
@@ -113,7 +115,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.get('/api/account/export/download',async(req,reply)=>{const s=await session(req),cutoff=Date.now();const stream=async function*(){let after:string|undefined,count=0;yield JSON.stringify({format:'marvin-conversations-v1',exportedAt:cutoff})+'\n';do{await session(req);const page=await exportPage(store,s.ownerId,after,cutoff);for(const turn of page.turns){count++;yield JSON.stringify(turn)+'\n';}after=page.nextCursor??undefined;}while(after);yield JSON.stringify({complete:true,exportedTurns:count})+'\n';};reply.header('Content-Type','application/x-ndjson').header('Content-Disposition','attachment; filename="marvin-conversations.jsonl"');return reply.send(Readable.from(stream()));});
  app.get('/api/account/export',async(req)=>{const query=z.object({after:Id.optional()}).strict().parse(req.query);return exportPage(store,(await session(req)).ownerId,query.after);});
  app.delete('/api/account',async(req,reply)=>{const s=await session(req);z.object({confirmation:z.literal('DELETE MY ACCOUNT')}).strict().parse(req.body);if(Date.now()-s.authenticatedAt>15*60*1000)throw new DomainError('REAUTH_REQUIRED','Sign in again before deleting your account.',401);const running=await store.db.query<{id:string}>("SELECT id FROM turns WHERE owner_id=? AND status='running'",[s.ownerId]);for(const t of running)await runtime.cancel(s.ownerId,t.id);devices.revoke(s.ownerId);for(const t of running)await runtime.waitTurn(t.id);realEntire?.invalidate(s.ownerId);await deleteAccount(store,s.ownerId);reply.clearCookie('marvin_session',{path:'/'});return {deleted:true,deviceErasureConfirmed:false,backups:'Deletion from backups follows the operator’s documented backup expiration policy.'};});
- app.delete('/api/robot',async(req)=>{const s=await session(req);if(Date.now()-s.authenticatedAt>15*60*1000)throw new DomainError('REAUTH_REQUIRED','Please sign in again before unlinking Marvin.',401);const result=await store.unlink(s.ownerId);devices.revoke(s.ownerId);return {ok:true,deviceId:result?.deviceId,deviceErasureConfirmed:false};});
+ app.delete('/api/robot',async(req)=>{const s=await session(req);if(Date.now()-s.authenticatedAt>15*60*1000)throw new DomainError('REAUTH_REQUIRED','Please sign in again before unlinking your Desktop Pet.',401);const result=await store.unlink(s.ownerId);devices.revoke(s.ownerId);return {ok:true,deviceId:result?.deviceId,deviceErasureConfirmed:false};});
  let eventConnections=0;
  app.get('/api/events',{websocket:true},(socket,req)=>{
   if(req.headers.origin!==cfg.APP_ORIGIN){socket.close(4403,'Invalid origin');return;}

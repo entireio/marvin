@@ -25,20 +25,21 @@ export const tools={
  repository_session:{name:'repository_session',description:'Read bounded local Entire session metadata by complete ID from a checkpoint; excludes transcripts.',parameters:params({id:{type:'string'}},['id'])},
  repository_graph:{name:'repository_graph',description:'Search committed-tree code relationships with the configured Entire graph plugin.',parameters:params({query:{type:'string',maxLength:300}},['query'])},
  repository_summary:{name:'repository_summary',description:'Read a bounded repository summary from the authorized active repository. Returns explicitly labeled sample data when using fixtures.',parameters:{type:'object',properties:{},additionalProperties:false,required:[]}},
- physical_eyes:{name:'physical_eyes',description:'Set this robot’s expression. A sent command is not proof of physical completion.',parameters:z.toJSONSchema(Actions.eyes)},
- physical_gaze:{name:'physical_gaze',description:'Request bounded eye gaze on the originating robot.',parameters:z.toJSONSchema(Actions.gaze)},
- physical_head:{name:'physical_head',description:'Request a bounded head movement on the originating robot. Report the returned status accurately; sent does not mean completed.',parameters:z.toJSONSchema(Actions.head)},
- physical_tracks:{name:'physical_tracks',description:'Request slow, brief track motion. Local safety may refuse it. Never claim completion from a sent status.',parameters:z.toJSONSchema(Actions.tracks)}
+ physical_eyes:{name:'physical_eyes',description:'Set this Desktop Pet’s expression. A sent command is not proof of physical completion.',parameters:z.toJSONSchema(Actions.eyes)},
+ physical_gaze:{name:'physical_gaze',description:'Request bounded eye gaze on the originating Desktop Pet.',parameters:z.toJSONSchema(Actions.gaze)},
+ physical_head:{name:'physical_head',description:'Move Marvin’s physical head. yaw: negative means look left, positive means look right; pitch: positive means look up, negative means look down. Use about 20 degrees for a clear look request and 400–700 ms duration. A sent status is not physical completion.',parameters:z.toJSONSchema(Actions.head)},
+ physical_tracks:{name:'physical_tracks',description:'Request a custom slow physical track movement for at most 500 ms. Positive left and right means forward. The local safety gate can refuse it. Prefer physical_motion for ordinary spoken requests. A sent status is not proof of completion.',parameters:z.toJSONSchema(Actions.tracks)},
+ physical_motion:{name:'physical_motion',description:'Use a named bounded physical movement for ordinary voice requests: “move forward a bit” → forward_bit; “turn around to the right” → turn_right; “turn around to the left” → turn_left; “move around” → move_around. Turning is approximate without wheel encoders. A locally armed bench test or cliff sensing is required; if refused, tell the user. A sent status is not proof of completion.',parameters:z.toJSONSchema(Actions.motion)}
 };
 export function allowedTools(ctx:InteractionContext){
  const result=[];
  if(ctx.entireState==='fixture' && ctx.repositoryId) result.push(tools.repository_summary);
  if(ctx.entireState==='connected'&&ctx.repositoryId)for(const capability of ctx.repositoryCapabilities??[]){const key=('repository_'+(capability==='code_search'?'search':capability)) as keyof typeof tools; if(key in tools&&!result.includes(tools[key]))result.push(tools[key]);}
- if(ctx.surface==='body_voice'&&ctx.body?.status==='online')for(const action of ['eyes','gaze','head','tracks'] as const)if(ctx.body.capabilities.includes(action))result.push(tools[`physical_${action}`]);
+ if(ctx.surface==='body_voice'&&ctx.body?.status==='online')for(const action of ['eyes','gaze','head','tracks','motion'] as const)if(ctx.body.capabilities.includes(action))result.push(tools[`physical_${action}`]);
  return result;
 }
 export function authorizeTool(ctx:InteractionContext,name:string,args:unknown){
  if(!allowedTools(ctx).some(t=>t.name===name)) throw new DomainError('TOOL_FORBIDDEN','This action is not available in this interaction.',403);
  if(name in repositoryArguments)validateRepositoryArguments(name as keyof typeof repositoryArguments,args);else if(name.startsWith('physical_'))Actions[name.slice(9) as keyof typeof Actions]?.parse(args);else z.object({}).strict().parse(args);
 }
-export function bodyExplanation(ctx:InteractionContext){return !ctx.body?'No physical Marvin is linked. You can set one up in Settings → Your Marvin.':ctx.body.status==='offline'?'Your Marvin is offline. You can check its connection in Settings → Your Marvin.':ctx.surface==='body_voice'?'This interaction originates from your Marvin. Only its reported physical capabilities are available; local safety can refuse actions.':'Ask me through the Marvin on your desk for physical actions. Web conversations cannot move the robot.';}
+export function bodyExplanation(ctx:InteractionContext){return !ctx.body?'No Desktop Pet is linked. You can set one up in Settings → Desktop Pet.':ctx.body.status==='offline'?'Your Desktop Pet is offline. You can check its connection in Settings → Desktop Pet.':ctx.surface==='body_voice'?'This interaction originates from your Desktop Pet. Only its reported physical capabilities are available; local safety can refuse actions.':'Ask me through your Desktop Pet for physical actions. Web conversations cannot move your Desktop Pet.';}

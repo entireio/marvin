@@ -40,7 +40,7 @@ bool marvin_wire_control(const char *text,uint32_t epoch,bool welcomed){
  cJSON *m=cJSON_ParseWithOpts(text,NULL,true);const cJSON *type=cJSON_GetObjectItemCaseSensitive(m,"type");bool ok=false;
  if(unique(m)&&cJSON_IsString(type)&&!strcmp(type->valuestring,"welcome")&&!welcomed){
   const cJSON *p=cJSON_GetObjectItemCaseSensitive(m,"protocol");
-  ok=unique(p)&&number(cJSON_GetObjectItemCaseSensitive(p,"major"),1)&&number(cJSON_GetObjectItemCaseSensitive(p,"minor"),3)&&number(cJSON_GetObjectItemCaseSensitive(m,"epoch"),epoch)&&number(cJSON_GetObjectItemCaseSensitive(m,"heartbeatMs"),5000);
+  ok=unique(p)&&number(cJSON_GetObjectItemCaseSensitive(p,"major"),1)&&number(cJSON_GetObjectItemCaseSensitive(p,"minor"),4)&&number(cJSON_GetObjectItemCaseSensitive(m,"epoch"),epoch)&&number(cJSON_GetObjectItemCaseSensitive(m,"heartbeatMs"),5000);
  }else if(unique(m)&&cJSON_IsString(type)&&!strcmp(type->valuestring,"ping")&&welcomed)ok=true;
  cJSON_Delete(m);return ok;
 }

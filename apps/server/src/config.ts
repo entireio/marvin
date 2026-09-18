@@ -10,7 +10,7 @@ export const Env=z.object({
  FIRMWARE_ROLLOUT_FILE:z.string().optional(),
  ENROLLMENT_KEYS_FILE:z.string().optional(),DEVICE_PUBLIC_ORIGIN:z.url().optional(),
  ENTIRE_CLI_PATH:z.string().optional(),ENTIRE_BINDINGS_FILE:z.string().optional(),ENTIRE_COMPANION_URL:z.preprocess(value=>value===''?undefined:value,z.url().optional()),ENTIRE_COMPANION_TOKEN:z.preprocess(value=>value===''?undefined:value,z.string().min(32).max(256).optional()),
- OIDC_ISSUER:z.url().optional(),OIDC_CLIENT_ID:z.string().optional(),OIDC_CLIENT_SECRET:z.string().optional(),OIDC_LABEL:z.string().default('Identity provider'),OIDC_REDIRECT_URI:z.url().optional(),PUBLIC_DOCS_URL:z.url().default('https://spedemon.github.io/marvin/')
+ OIDC_ISSUER:z.url().optional(),OIDC_CLIENT_ID:z.string().optional(),OIDC_CLIENT_SECRET:z.string().optional(),OIDC_LABEL:z.string().default('Identity provider'),OIDC_REDIRECT_URI:z.url().optional(),PUBLIC_DOCS_URL:z.url().default('https://marvin-site-r7vxrettpq-uc.a.run.app/')
 });
 export type Config=z.infer<typeof Env>;
 export function config(env:NodeJS.ProcessEnv=process.env):Config{

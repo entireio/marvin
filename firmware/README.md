@@ -1,6 +1,27 @@
 # ESP32-S3 firmware — bench provisioning and Waveshare diagnostics
 
-Original ESP-IDF **v5.4.2** C firmware targeting `esp32s3`. No previous Arduino/SuperMini firmware or board pin assignments are reused. Conservative baseline: 4 MB flash, no PSRAM required, two 1.875 MB app partitions. Verify the exact WROOM ordering code, carrier, regulator, antenna, USB/UART and peripheral wiring before flashing. Audio, displays, actuators, owner enrollment, updates, and the physical runtime are later milestones; this image configures no actuator GPIO.
+Original ESP-IDF **v5.4.2** C firmware targeting the Waveshare ESP32-S3-AUDIO-Board (`esp32s3`). No previous Arduino/SuperMini board assignments are reused. Conservative baseline: 4 MB flash, no PSRAM required, two 1.875 MB app partitions. Verify the exact carrier, regulator, antenna, USB/UART and peripheral wiring before flashing.
+
+## Wired actuators
+
+The installed dual DC motor module is a **DRV8833** carrier. `EEP` is its active-high nSLEEP input: low disables both H-bridges.
+
+| ESP32-S3 GPIO | Connection | Output |
+| --- | --- | --- |
+| 7 / 6 | IN1 / IN2 | OUT1 left track −, OUT2 left track + |
+| 5 / 4 | IN3 / IN4 | OUT3 right track −, OUT4 right track + |
+| 3 | EEP (DRV8833 nSLEEP) | Low at startup and after stopping |
+| 19 / 20 | Head rotation / tilt servo signal | 50 Hz, 1–2 ms pulses on explicit command |
+
+`actuators.c` configures 20 kHz motor PWM, holds EEP low while idle, raises it only after a bounded track command has set the inputs, and lowers it before clearing them on stop or expiry. Each track segment lasts at most 500 ms. Positive track speed selects IN2/IN4 because the motor positive leads are on OUT2/OUT4. The head outputs start without pulses and are configured only when explicitly commanded. The previous GPIO4/5/6 audio button placeholders are disabled by default.
+
+The authenticated body voice link supports `head`, `tracks`, and named `motion` commands with boot ID, epoch, deadline and a write-ahead command ID ledger. Named motions are `forward_bit` (350 ms), `turn_right` and `turn_left` (two 500 ms segments), and `move_around` (a short forward segment and two gentle arcs). These are timed open-loop movements: actual distance and turn angle require physical calibration. Small head tilts mark **listening**, **thinking**, and **speaking** after those states are actually reached; a spoken look direction becomes the new resting pose.
+
+Track motion remains **off by default** because no cliff or pickup sensor is connected. For the audible supervised profile, run `firmware/tools/build-waveshare-motion-afe.sh`. It includes the local Hey Marvin wake engine and `CONFIG_MARVIN_TRACK_BENCH_MODE=y`; both must be verified in the generated config before flashing. Send `B` on the local firmware console to arm a 120-second window. The device advertises named motions only in this bench profile, and checks the local arm again before every segment. The window expires automatically, and disconnect, cancel, or a command deadline puts EEP low. Without the bench build and arm, spoken track requests receive a refusal. Never run these tests near an edge.
+
+**Boot and reset safety requires hardware:** GPIO3 is not driven by firmware until `app_main` runs. On DRV8833 carriers with an EEP pull-up jumper (often marked J1), open that jumper and provide an external pull-down from EEP to ground, for example 10 kΩ, so EEP remains low while the ESP32-S3 is reset, unpowered, flashing, or booting. Verify the actual carrier circuit and measure EEP low through a full power cycle before connecting the tracks. The chip's internal 500 kΩ pull-down is weak; an onboard pull-up can override it. Firmware alone cannot guarantee an idle driver during boot.
+
+GPIO19/20 are also the ESP32-S3 native USB pair on this board. Servo output on those pins takes over that pair; disconnect USB for head movement and use the UART path for diagnostics. GPIO3 is a boot strapping pin: confirm that the EEP pull-down allows normal boot. Power servos and motors from suitable supplies with a common ground; check the carrier's EEP voltage before connecting it directly to the 3.3 V MCU GPIO.
 
 ## Build
 

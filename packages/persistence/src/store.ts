@@ -100,13 +100,13 @@ export class Store {
    const epoch=(await tx.query<Row>('SELECT epoch FROM device_epochs WHERE device_id=?',[deviceId]))[0].epoch;
    await tx.query('INSERT INTO body_slots(owner_id,device_id,enrollment_id,state,expires_at,epoch,simulated) VALUES (?,?,?,?,?,?,?)',[ownerId,deviceId,enrollmentId,'reserved',Date.now()+300000,epoch,simulated?1:0]);
    return (await tx.query<Row>('SELECT * FROM body_slots WHERE owner_id=?',[ownerId]))[0];
-  }); } catch(e) { if(e instanceof DomainError) throw e; if(/unique|constraint/i.test(String(e))) throw new DomainError('CLAIM_CONFLICT','Only one Marvin can be linked to your account, and a robot can have only one owner.',409); throw e; }
+  }); } catch(e) { if(e instanceof DomainError) throw e; if(/unique|constraint/i.test(String(e))) throw new DomainError('CLAIM_CONFLICT','Only one Desktop Pet can be linked to your account, and a Desktop Pet can have only one owner.',409); throw e; }
  }
  async redeem(ownerId: string,deviceId: string,enrollmentId: string,network: string) {
   const r=await this.db.query("UPDATE body_slots SET state='linked',network=? WHERE owner_id=? AND device_id=? AND enrollment_id=? AND (state='linked' OR expires_at>?) RETURNING device_id",[network,ownerId,deviceId,enrollmentId,Date.now()]);
   if(!r.length) throw new DomainError('ENROLLMENT_EXPIRED','Setup expired. Start again.',409);
  }
- async changeNetwork(ownerId: string,deviceId: string,network: string) { const r=await this.db.query("UPDATE body_slots SET network=? WHERE owner_id=? AND device_id=? AND state='linked' RETURNING device_id",[network,ownerId,deviceId]); if(!r.length) throw new DomainError('DEVICE_MISMATCH','This is not your linked Marvin.',403); }
+ async changeNetwork(ownerId: string,deviceId: string,network: string) { const r=await this.db.query("UPDATE body_slots SET network=? WHERE owner_id=? AND device_id=? AND state='linked' RETURNING device_id",[network,ownerId,deviceId]); if(!r.length) throw new DomainError('DEVICE_MISMATCH','This is not your linked Desktop Pet.',403); }
  async unlink(ownerId: string) { return this.db.transaction(async tx=>{
   await tx.query('UPDATE owners SET created_at=created_at WHERE id=?',[ownerId]);
   const slot=(await tx.query<Row>('DELETE FROM body_slots WHERE owner_id=? RETURNING device_id,epoch',[ownerId]))[0];

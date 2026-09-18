@@ -23,7 +23,11 @@ bool marvin_body_quiesce(void);
 bool marvin_body_health_ready(void);
 uint32_t marvin_body_health_progress(void);
 
-/* Local bench adjustment, serialized with playback; does not unmute. */
+/* Persistent Pet audio settings, serialized with playback. */
 bool marvin_body_adjust_volume(int delta);
+bool marvin_body_set_volume(unsigned volume);
+unsigned marvin_body_volume(void);
+bool marvin_body_set_microphone_muted(bool muted);
+bool marvin_body_microphone_muted(void);
 
 void marvin_body_wake_activation(bool enabled);

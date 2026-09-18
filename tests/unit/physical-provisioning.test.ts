@@ -40,7 +40,7 @@ it('classifies only post-commit or service uncertainty as resumable',()=>{
 
 it('maps a lost BLE transport to an actionable resumable error without exposing its cause',async()=>{
  const r=rig();r.link.command=async()=>{throw new Error('private native transport detail');};
- await expect(r.robot.scan()).rejects.toMatchObject({code:'BLUETOOTH_DISCONNECTED',message:'Reconnect to Marvin to continue.'});
+ await expect(r.robot.scan()).rejects.toMatchObject({code:'BLUETOOTH_DISCONNECTED',message:'Reconnect to your Desktop Pet to continue.'});
 });
 
 it('normalizes firmware recovery failures during encrypted status polling',async()=>{

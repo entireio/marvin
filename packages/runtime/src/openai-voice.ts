@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { OpenAIRealtimeWS } from 'openai/realtime/ws';
 import type { RealtimeClientEvent,RealtimeServerEvent,ConversationItem } from 'openai/resources/realtime/realtime';
 import { DomainError,type RepoCard } from '../../contracts/src/index.js';
-import { persona,priorUserText,repositoryToolRounds,type ModelContext,type ModelEvent,type ToolExecutor,type TextProvider } from './provider.js';
+import { persona,priorUserText,repositoryExplanation,repositoryToolRounds,type ModelContext,type ModelEvent,type ToolExecutor,type TextProvider } from './provider.js';
 import { allowedTools,bodyExplanation } from './policy.js';
 import type { VoiceConnection,VoiceProvider,VoiceSignal } from './voice.js';
 
@@ -57,7 +57,7 @@ export class OpenAIVoiceProvider implements VoiceProvider {
       signal.throwIfAborted();responseId=undefined;
       if(responses.size>=8)throw new Error('Too many pending voice responses');
       const request=randomUUID();responseState={cancelled:false,cancelSent:false};responses.set(request,responseState);
-      send({type:'response.create',response:{conversation:'none',metadata:{marvin_turn:ctx.interaction.interactionId,round:String(round),marvin_request:request},input:input as ConversationItem[],instructions:`${persona}\nSpeak naturally and briefly. This is an AI-generated voice. Surface: ${ctx.interaction.surface}. ${bodyExplanation(ctx.interaction)} Active repository: ${ctx.interaction.repositoryId??'none'}. Entire state: ${ctx.interaction.entireState}.`,output_modalities:['audio'],max_output_tokens:2400,tools:allowedTools(ctx.interaction).map(t=>({type:'function',...t})),...(round===repositoryToolRounds?{tool_choice:'none'}:{})}});
+      send({type:'response.create',response:{conversation:'none',metadata:{marvin_turn:ctx.interaction.interactionId,round:String(round),marvin_request:request},input:input as ConversationItem[],instructions:`${persona}\nSpeak naturally and briefly. This is an AI-generated voice. Surface: ${ctx.interaction.surface}. ${bodyExplanation(ctx.interaction)} ${repositoryExplanation(ctx.interaction)} Entire state: ${ctx.interaction.entireState}.`,output_modalities:['audio'],max_output_tokens:2400,tools:allowedTools(ctx.interaction).map(t=>({type:'function',...t})),...(round===repositoryToolRounds?{tool_choice:'none'}:{})}});
       let done:Extract<RealtimeServerEvent,{type:'response.done'}>|undefined;
       while(!done){const e=await queue.next(signal);
        if(e.type==='response.created'&&e.response.metadata?.marvin_turn===ctx.interaction.interactionId&&e.response.metadata?.round===String(round))responseId=e.response.id;

@@ -4,7 +4,7 @@ config MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC
     default n
     help
         Disables all networking and provisioning. USB commands enable bounded
-        local speaker and microphone tests. No motor GPIOs are configured.
+        local speaker and microphone tests. Actuator outputs stay disabled.
 config MARVIN_OWNER_ENROLLMENT
     bool "Require owner-authorized setup with durable enrollment recovery"
     default n
@@ -77,6 +77,47 @@ config MARVIN_SPEAKER_VOLUME
     default 60
     help
         Independent of the computer volume. Audible bench tests use 95 for the user-provided 8-ohm speaker.
+config MARVIN_VOLUME_UP_GPIO
+    int "Volume-up button GPIO"
+    range 0 48
+    default 17
+config MARVIN_VOLUME_DOWN_GPIO
+    int "Volume-down button GPIO"
+    range 0 48
+    default 18
+config MARVIN_MIC_MUTE_GPIO
+    int "Microphone mute-toggle button GPIO"
+    range 0 48
+    default 21
+    help
+        Placeholder active-low button assignments. Enable buttons only after wiring them.
+config MARVIN_AUDIO_BUTTONS
+    bool "Enable wired volume and microphone buttons"
+    default n
+    help
+        The motor wiring occupies the old placeholder GPIO4/5/6 pins.
+        Leave disabled until three separate button GPIOs are wired.
+config MARVIN_TRACK_BENCH_MODE
+    bool "Allow locally armed, bounded track tests without cliff sensors"
+    default n
+    help
+        No cliff or pickup sensor is wired yet. Track commands remain disabled
+        unless this option is built and the local console arms a short test
+        window. Use only on a clear, level floor under supervision.
+config MARVIN_HEAD_YAW_CENTER
+    int "Head rotation servo center angle"
+    range 30 150
+    default 90
+config MARVIN_HEAD_PITCH_CENTER
+    int "Head tilt servo center angle"
+    range 30 150
+    default 90
+config MARVIN_HEAD_YAW_REVERSE
+    bool "Reverse head rotation direction"
+    default n
+config MARVIN_HEAD_PITCH_REVERSE
+    bool "Reverse head tilt direction"
+    default n
 config MARVIN_SILENT_TEST
     bool "Keep the amplifier disabled for unattended tests"
     default n

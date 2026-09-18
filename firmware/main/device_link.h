@@ -16,6 +16,8 @@ void marvin_device_voice_start(void);
 void marvin_device_voice_wake(void);
 void marvin_device_voice_stop(void);
 void marvin_device_voice_interrupt(void);
+/* Report a locally changed GPIO audio setting to the connected web app. */
+void marvin_device_audio_changed(void);
 void marvin_device_link_status(void);
 
 /* Disconnects the provider/device socket and parks until reboot. */

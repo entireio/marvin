@@ -16,7 +16,8 @@
 #include "freertos/queue.h"
 #include <stdatomic.h>
 
-/* Waveshare schematic revision 1.1. GPIO19/20 remain USB. */
+/* Waveshare schematic revision 1.1. GPIO19/20 are the native USB pair;
+ * actuator PWM claims them only when the head is explicitly commanded. */
 static i2c_master_bus_handle_t bus;
 static i2c_master_dev_handle_t expander;
 static i2s_chan_handle_t tx,rx;

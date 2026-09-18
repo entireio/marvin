@@ -1,9 +1,11 @@
 #include "board_audio.h"
 #include "ota_runtime.h"
 #include "body_audio.h"
+#include "pet_controls.h"
+#include "actuators.h"
 #include "device_identity.h"
 #include "owner_setup.h"
-/* Marvin M0 bench firmware. No actuator pins are configured. */
+/* Waveshare ESP32-S3 audio board with wired track and head outputs. */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -229,7 +231,7 @@ static void ble_lifecycle(void *arg,esp_event_base_t base,int32_t id,void *data)
 #ifdef CONFIG_MARVIN_BODY_AUDIO
 static void audio_console(void *unused){
     (void)unused;setvbuf(stdout,NULL,_IONBF,0);
-    printf("Marvin audio: v starts microphone/provider; x stops and mutes; i interrupts playback. No microphone upload while idle.\n");
+    printf("Marvin audio: v starts microphone/provider; x stops and mutes; i interrupts playback. B arms a 120-second supervised track bench window when built. No microphone upload while idle.\n");
     #ifdef CONFIG_MARVIN_SIGNED_OTA
     bool update_line=false,invalid=false;uint32_t sequence=0;unsigned digits=0;
 #endif
@@ -245,10 +247,11 @@ static void audio_console(void *unused){
       }else if(c=='u'){update_line=true;invalid=false;sequence=digits=0;continue;}
 #endif
       if(c=='x')marvin_ota_cancel();
-      if(c=='w'){marvin_body_wake_activation(false);marvin_device_voice_stop();}else if(c=='W')marvin_body_wake_activation(true);else if(c=='+')marvin_body_adjust_volume(5);else if(c=='-')marvin_body_adjust_volume(-5);else if(c=='v')marvin_device_voice_start();else if(c=='x')marvin_device_voice_stop();else if(c=='i')marvin_device_voice_interrupt();else if(c=='s'){marvin_body_audio_status();marvin_device_link_status();}else{if(c==EOF)clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));}}
+      if(c=='w'){marvin_body_wake_activation(false);marvin_device_voice_stop();}else if(c=='W')marvin_body_wake_activation(true);else if(c=='B'){esp_err_t armed=marvin_tracks_bench_arm(120);printf("{\"trackBenchArmed\":%s}\n",armed==ESP_OK?"true":"false");}else if(c=='+')marvin_body_adjust_volume(5);else if(c=='-')marvin_body_adjust_volume(-5);else if(c=='v')marvin_device_voice_start();else if(c=='x')marvin_device_voice_stop();else if(c=='i')marvin_device_voice_interrupt();else if(c=='s'){marvin_body_audio_status();marvin_device_link_status();}else{if(c==EOF)clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));}}
 }
 #endif
 void app_main(void) {
+    ESP_ERROR_CHECK(marvin_actuators_init());
 #ifdef CONFIG_MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC
     marvin_audio_diagnostic();return;
 #endif
@@ -292,7 +295,12 @@ void app_main(void) {
     /* Finish BLE allocation before audio and TLS startup, avoiding simultaneous
      * transient allocations. A missing audio assembly must preserve setup. */
 #ifdef CONFIG_MARVIN_BODY_AUDIO
-    if(marvin_body_audio_init()==ESP_OK)assert(xTaskCreate(audio_console,"audio_console",6144,NULL,3,NULL)==pdPASS);
+    if(marvin_body_audio_init()==ESP_OK){
+#ifdef CONFIG_MARVIN_AUDIO_BUTTONS
+        ESP_ERROR_CHECK(marvin_pet_controls_start());
+#endif
+        assert(xTaskCreate(audio_console,"audio_console",6144,NULL,3,NULL)==pdPASS);
+    }
     else ESP_LOGE("marvin","Audio hardware unavailable; voice capability disabled");
 #endif
     if(owner_mode)ESP_ERROR_CHECK(marvin_device_link_start(link_snapshot,probe_ca));

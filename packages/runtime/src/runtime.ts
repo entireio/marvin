@@ -14,10 +14,11 @@ export class Runtime {
  constructor(readonly store:Store,readonly provider:TextProvider,readonly entire:EntireAdapter,readonly realEntire?:RepositoryIntegration){this.events.setMaxListeners(200);}
  async context(ownerId:string,conversationId:string,interactionId:string,routeId:string):Promise<InteractionContext>{
   const [o,c,b]=await Promise.all([this.store.owner(ownerId),this.store.getConversation(ownerId,conversationId),this.store.body(ownerId)]);
-  let repositoryCapabilities:string[]=[],repositoryError:string|undefined;
-  if(o.entireState==='connected'){try{repositoryCapabilities=(await this.realEntire?.configured(ownerId))?.find(r=>r.id===c.repositoryId)?.capabilities??[];}catch{repositoryError='Entire access needs to be reconnected. Ordinary chat is still available.';}}
+  let repositoryCapabilities:string[]=[],repositoryName:string|null=null,repositoryError:string|undefined;
+  if(o.entireState==='connected'){try{const repository=(await this.realEntire?.configured(ownerId))?.find(r=>r.id===c.repositoryId);repositoryCapabilities=repository?.capabilities??[];repositoryName=repository?.name??null;}catch{repositoryError='Entire access needs to be reconnected. Ordinary chat is still available.';}}
+  else if(o.entireState==='fixture'){const repository=(await this.entire.repositories()).find(r=>r.id===c.repositoryId);repositoryName=repository?.name??null;}
   const presence=this.devices?.presence(ownerId);
-  return {repositoryCapabilities,repositoryError,ownerId,conversationId,interactionId,routeId,surface:'web_text',repositoryId:c.repositoryId,entireState:o.entireState,body:b?{deviceId:b.device_id,status:presence?.deviceId===b.device_id?'online':'offline',capabilities:presence?.deviceId===b.device_id?presence?.capabilities??[]:[],simulated:!!b.simulated,network:b.network}:null};
+  return {repositoryCapabilities,repositoryName,repositoryError,ownerId,conversationId,interactionId,routeId,surface:'web_text',repositoryId:c.repositoryId,entireState:o.entireState,body:b?{deviceId:b.device_id,status:presence?.deviceId===b.device_id?'online':'offline',capabilities:presence?.deviceId===b.device_id?presence?.capabilities??[]:[],simulated:!!b.simulated,network:b.network}:null};
  }
  async start(ctx:InteractionContext,text:string,voice?:{provider:TextProvider;audio:(pcm:string)=>Promise<void>}){
   const started=await this.store.begin(ctx,text,this.workerId);if(!started.created)return started;
@@ -44,7 +45,7 @@ export class Runtime {
     try{
      if(name.startsWith('physical_')){
       if(!this.devices)throw new DomainError('DEVICE_OFFLINE','Device transport is unavailable.',409);
-      const result=await this.devices.dispatch({...fresh,surface:ctx.surface},name.slice(9) as DeviceAction,args,id);
+      const result=await this.devices.dispatch({...fresh,surface:ctx.surface},name.slice(9) as DeviceAction,args,id,['physical_head','physical_motion'].includes(name)?5000:3000);
       controller.signal.addEventListener('abort',()=>{void this.devices?.cancel(ctx.ownerId,fresh.body!.deviceId,id).catch(()=>{});},{once:true});
       await this.store.saveTool(id,ctx.interactionId,name,args,result,result.state);return result;
      }

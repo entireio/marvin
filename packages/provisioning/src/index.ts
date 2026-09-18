@@ -15,13 +15,13 @@ export async function discoverPhysicalRobot(){
  if(!device.gatt)throw new DomainError('BLUETOOTH_UNAVAILABLE','Bluetooth connection is unavailable.');
  const server=await device.gatt.connect();server.disconnect();
  // Fail closed: never send passwords before the Security 2 implementation is validated on hardware.
- throw new DomainError('SECURE_SETUP_PENDING',`${device.name??'Marvin'} was found. Secure hardware provisioning is not enabled in this M0–M3 build. No settings were changed.`);
+ throw new DomainError('SECURE_SETUP_PENDING',`${device.name??'Desktop Pet'} was found. Secure hardware provisioning is not enabled in this M0–M3 build. No settings were changed.`);
 }
 export class SimulatedRobot implements ProvisioningTransport {
  readonly simulated=true;deviceId='simulated-marvin-001';committedNetwork:string|null=null;
  async scan(){return ScanResult.parse({v:1,source:'robot',deviceId:this.deviceId,scanId:crypto.randomUUID(),scannedAt:Date.now(),networks:[{id:'studio',ssid:'Studio',rssi:-46,channel:6,security:'wpa2-personal',compatible:true},{id:'home',ssid:'Home Wi-Fi',rssi:-64,channel:1,security:'wpa2-personal',compatible:true},{id:'guest',ssid:'Guest network',rssi:-78,channel:11,security:'wpa2-personal',compatible:true}]});}
  async connect(network:Network,password:string,progress:(stage:ProvisioningStage)=>void,signal:AbortSignal){
-  if(!network.compatible)throw new DomainError('NETWORK_UNSUPPORTED','Marvin cannot join this network.');
+  if(!network.compatible)throw new DomainError('NETWORK_UNSUPPORTED','Your Desktop Pet cannot join this network.');
   if(network.security!=='open'&&(password.length<8||password.length>63))throw new DomainError('PASSWORD_LENGTH','Use the Wi-Fi password (8–63 characters).');
   const pause=()=>new Promise<void>((resolve,reject)=>{signal.throwIfAborted();const abort=()=>{clearTimeout(timer);reject(new DOMException('Cancelled','AbortError'));};const timer=setTimeout(()=>{signal.removeEventListener('abort',abort);resolve();},550);signal.addEventListener('abort',abort,{once:true});});
   progress('connecting_wifi');await pause();if(password==='wrong-password')throw new DomainError('WIFI_AUTH_FAILED','That password did not work. Check it and try again.');

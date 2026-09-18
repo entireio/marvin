@@ -7,7 +7,7 @@ export interface BluetoothDevice {gatt?:GattServer;addEventListener(type:'gattse
 export function bluetoothError(error:unknown){
  if(error instanceof DOMException&&(error.name==='NotFoundError'||/cancelled|canceled/i.test(error.message)))return new DomainError('BLUETOOTH_CANCELLED','');
  if(error instanceof DomainError)return error;
- return new DomainError('BLUETOOTH_UNAVAILABLE','Marvin could not be reached over Bluetooth. Make sure it is nearby and try again.');
+ return new DomainError('BLUETOOTH_UNAVAILABLE','Your Desktop Pet could not be reached over Bluetooth. Make sure it is nearby and try again.');
 }
 /** One selected robot and one secure session. Never persists setup secrets or network data. */
 export class BluetoothSetupSession {
@@ -19,32 +19,32 @@ export class BluetoothSetupSession {
   const session=new BluetoothSetupSession(device,timeoutMs);
   try{
    if(!device.gatt)throw new DomainError('BLUETOOTH_UNAVAILABLE','Bluetooth connection is unavailable.');
-   const connected=await session.bounded(device.gatt.connect().then(server=>{if(session.closed){server.disconnect();throw new DomainError('BLUETOOTH_DISCONNECTED','Reconnect to Marvin to continue setup.');}return server;}));
+   const connected=await session.bounded(device.gatt.connect().then(server=>{if(session.closed){server.disconnect();throw new DomainError('BLUETOOTH_DISCONNECTED','Reconnect to your Desktop Pet to continue setup.');}return server;}));
    const service=await session.bounded(connected.getPrimaryService(PROVISIONING_SERVICE));
    for(const suffix of ['ff51','ff52','ff53'])session.endpoints.set(suffix,await session.bounded(service.getCharacteristic(PROVISIONING_SERVICE.replace('ff50',suffix))));
    const version=JSON.parse(new TextDecoder().decode(await session.exchange('ff51',new TextEncoder().encode('---'))));
-   if(version.marvin!==1||version.security!==2||version.patch!==1)throw new DomainError('FIRMWARE_INCOMPATIBLE','Marvin needs compatible secure setup firmware.');
-   if(requireEnrollment&&version.enrollment!==1)throw new DomainError('FIRMWARE_INCOMPATIBLE','Marvin needs firmware that supports account linking.');
+   if(version.marvin!==1||version.security!==2||version.patch!==1)throw new DomainError('FIRMWARE_INCOMPATIBLE','Your Desktop Pet needs compatible secure setup firmware.');
+   if(requireEnrollment&&version.enrollment!==1)throw new DomainError('FIRMWARE_INCOMPATIBLE','Your Desktop Pet needs firmware that supports account linking.');
    session.reconciliation=version.reconciliation===1;
    await session.secure.open(username,secret,bytes=>session.exchange('ff52',bytes));
-   if(session.closed)throw new DomainError('BLUETOOTH_DISCONNECTED','Reconnect to Marvin to continue setup.');
+   if(session.closed)throw new DomainError('BLUETOOTH_DISCONNECTED','Reconnect to your Desktop Pet to continue setup.');
    return session;
   }catch(error){session.close();throw error;}
  }
  private async bounded<T>(operation:Promise<T>):Promise<T>{
   this.cancel.signal.throwIfAborted();let timer:ReturnType<typeof setTimeout>|undefined,abort=()=>{};
-  try{return await Promise.race([operation,new Promise<never>((_,reject)=>{abort=()=>reject(new DomainError('BLUETOOTH_DISCONNECTED','Bluetooth disconnected. Reconnect to check setup progress.'));this.cancel.signal.addEventListener('abort',abort,{once:true});timer=setTimeout(()=>{reject(new DomainError('BLUETOOTH_TIMEOUT','Marvin did not respond. Reconnect to check setup progress.'));this.close();},this.timeoutMs);})]);}
+  try{return await Promise.race([operation,new Promise<never>((_,reject)=>{abort=()=>reject(new DomainError('BLUETOOTH_DISCONNECTED','Bluetooth disconnected. Reconnect to check setup progress.'));this.cancel.signal.addEventListener('abort',abort,{once:true});timer=setTimeout(()=>{reject(new DomainError('BLUETOOTH_TIMEOUT','Your Desktop Pet did not respond. Reconnect to check setup progress.'));this.close();},this.timeoutMs);})]);}
   finally{clearTimeout(timer);this.cancel.signal.removeEventListener('abort',abort);}
  }
  private async exchange(channel:string,bytes:Uint8Array){
   if(this.closed||this.pending)throw new DomainError('BLUETOOTH_BUSY','Wait for the current Bluetooth operation or reconnect.');
-  const endpoint=this.endpoints.get(channel);if(!endpoint)throw new DomainError('FIRMWARE_INCOMPATIBLE','Marvin is missing a required setup endpoint.');
+  const endpoint=this.endpoints.get(channel);if(!endpoint)throw new DomainError('FIRMWARE_INCOMPATIBLE','Your Desktop Pet is missing a required setup endpoint.');
   this.pending=true;
   try{await this.bounded(endpoint.writeValueWithResponse(new Uint8Array(bytes)));const view=await this.bounded(endpoint.readValue());return new Uint8Array(view.buffer.slice(view.byteOffset,view.byteOffset+view.byteLength));}
   catch(error){this.close();throw error;}finally{this.pending=false;}
  }
  async command(request:Record<string,unknown>):Promise<unknown>{
-  if(this.closed)throw new DomainError('BLUETOOTH_DISCONNECTED','Reconnect to Marvin to continue setup.');
+  if(this.closed)throw new DomainError('BLUETOOTH_DISCONNECTED','Reconnect to your Desktop Pet to continue setup.');
   const bytes=new TextEncoder().encode(JSON.stringify(request));if(bytes.length>384)throw new DomainError('SETUP_MESSAGE_TOO_LARGE','Setup data must use the bounded transfer protocol.');
   try{const response=await this.secure.exchange(bytes,data=>this.exchange('ff53',data));return JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(response));}
   catch(error){this.close();throw error;}finally{bytes.fill(0);}

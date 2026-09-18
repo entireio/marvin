@@ -1,6 +1,6 @@
 import { csrf } from './api';
 import type { VoiceState } from '../../../packages/contracts/src/voice';
-export type VoiceView={state:VoiceState;message?:string;userText?:string;assistantText?:string};
+export type VoiceView={state:VoiceState;message?:string;interactionId?:string;userText?:string;assistantText?:string};
 /** Audio is never broadcast or stored. A fresh socket owns a fresh output route. */
 export class BrowserVoice {
  private socket?:WebSocket;private stream?:MediaStream;private context?:AudioContext;private worklet?:AudioWorkletNode;private source?:MediaStreamAudioSourceNode;
@@ -31,7 +31,7 @@ export class BrowserVoice {
   if(this.closed||e.v!==1)return;
   if(e.type==='ready'){if(e.sampleRate!==24000)throw new Error('Invalid format');clearTimeout(this.timer);this.ready=true;this.state('listening');}
   if(e.type==='state'){this.serverState=e.state;if(e.state==='hearing')this.flush();this.state(this.muted?'muted':this.sources.size?'speaking':e.state);}
-  if(e.type==='turn'){this.turn=e.interactionId;this.transcript='';this.notify({state:this.muted?'muted':'thinking',userText:e.text,assistantText:''});this.refresh();}
+  if(e.type==='turn'){this.turn=e.interactionId;this.transcript='';this.notify({state:this.muted?'muted':'thinking',interactionId:e.interactionId,userText:e.text,assistantText:''});this.refresh();}
   if(e.type==='audio'&&e.interactionId===this.turn&&!this.blocked.has(this.turn)&&!this.muted)this.play(e.pcm);
   if(e.type==='flush')this.flush();
   if(e.type==='event'){
