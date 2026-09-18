@@ -1,0 +1,25 @@
+<image name=[Image #1] path="/Users/thomi/Library/Application Support/CleanShot/media/media_40hisABkSY/CleanShot 2026-09-18 at 08.00.10@2x.png">
+
+---
+
+</image>
+
+---
+
+<image name=[Image #2] path="/Users/thomi/Library/Application Support/CleanShot/media/media_vLEdnLcS5o/CleanShot 2026-09-18 at 08.00.12@2x.png">
+
+---
+
+</image>
+
+---
+
+Once again, you didn't actually check your work: [Image #1] [Image #2]
+
+---
+
+When overscrolling the page on top or bottom, can you make the left and right rail lines continue?
+
+---
+
+Works in Chrome and Edge, doesn't work in Safari

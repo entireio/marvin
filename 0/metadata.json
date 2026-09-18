@@ -1,0 +1,72 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M2THJH8DM9W5QFMYF3A0TK2R",
+  "session_id": "01a0aee9-6a1b-7c30-b932-e1d1bbaaaadb",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-18T15:18:57.83543Z",
+  "branch": "ashtom/website-design",
+  "checkpoints_count": 3,
+  "save_step_count": 2,
+  "files_touched": [
+    "docs/assets/css/sketch.css",
+    "docs/assets/js/site.js",
+    "docs/build.html",
+    "docs/contribute.html",
+    "docs/drive.html",
+    "docs/electronics.html",
+    "docs/index.html",
+    "docs/reference.html"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "598304445dfa",
+  "checkpoint_transcript_start": 2331,
+  "transcript_lines_at_start": 2331,
+  "compact_transcript_start": 342,
+  "token_usage": {
+    "input_tokens": 54218,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3537152,
+    "output_tokens": 5889,
+    "api_call_count": 36,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 48
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-18T15:18:57.353132Z",
+    "agent_lines": 70,
+    "agent_removed": 26,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 70,
+    "total_lines_changed": 96,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 20,
+      "agent_lines_removed": 17
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 70,
+      "agent_lines_removed": 26
+    }
+  ]
+}
