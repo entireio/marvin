@@ -24,6 +24,7 @@ static i2s_chan_handle_t tx,rx;
 static esp_codec_dev_handle_t input,output;
 static atomic_bool output_muted=true;
 static atomic_uint speaker_volume=CONFIG_MARVIN_SPEAKER_VOLUME;
+static atomic_uint microphone_gain=CONFIG_MARVIN_MICROPHONE_GAIN_DB;
 #ifdef CONFIG_MARVIN_LOCAL_AFE
 /* These callbacks run before the driver's DMA auto-clear. The reference is the
  * PCM actually sent by I2S, never the network download queue. TX/RX share clocks;
@@ -160,6 +161,12 @@ esp_err_t marvin_audio_set_volume(unsigned volume){
     atomic_store(&speaker_volume,volume);return ESP_OK;
 }
 unsigned marvin_audio_volume(void){return atomic_load(&speaker_volume);}
+esp_err_t marvin_audio_set_microphone_gain(unsigned gain_db){
+    if(!input||gain_db>36||gain_db%6)return ESP_ERR_INVALID_ARG;
+    if(esp_codec_dev_set_in_gain(input,(float)gain_db))return ESP_FAIL;
+    atomic_store(&microphone_gain,gain_db);return ESP_OK;
+}
+unsigned marvin_audio_microphone_gain(void){return atomic_load(&microphone_gain);}
 esp_err_t marvin_audio_mute(bool mute){
     if(!output)return ESP_ERR_INVALID_STATE;
     atomic_store(&output_muted,mute);
@@ -235,6 +242,8 @@ void marvin_audio_diagnostic(void) {
 void marvin_audio_diagnostic(void) {}
 esp_err_t marvin_audio_set_volume(unsigned volume){(void)volume;return ESP_ERR_NOT_SUPPORTED;}
 unsigned marvin_audio_volume(void){return 0;}
+esp_err_t marvin_audio_set_microphone_gain(unsigned gain_db){(void)gain_db;return ESP_ERR_NOT_SUPPORTED;}
+unsigned marvin_audio_microphone_gain(void){return 0;}
 esp_err_t marvin_audio_open(void){return ESP_ERR_NOT_SUPPORTED;}
 esp_err_t marvin_audio_quiesce(void){return ESP_OK;}
 esp_err_t marvin_audio_read(int16_t *a,int16_t *b,size_t c,size_t *d){(void)a;(void)b;(void)c;(void)d;return ESP_ERR_NOT_SUPPORTED;}

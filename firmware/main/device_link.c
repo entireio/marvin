@@ -77,11 +77,11 @@ static bool send_json(esp_websocket_client_handle_t client,cJSON *message){
  char *text=message?cJSON_PrintUnformatted(message):NULL;cJSON_Delete(message);if(!text)return false;
  int64_t began=esp_timer_get_time();size_t size=strlen(text);bool ok=esp_websocket_client_send_text(client,text,(int)size,pdMS_TO_TICKS(2000))==(int)size;cJSON_free(text);unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&control_max_us))atomic_store(&control_max_us,elapsed);return ok;
 }
-static cJSON *audio_settings(void){cJSON *settings=cJSON_CreateObject();if(settings){cJSON_AddNumberToObject(settings,"volume",marvin_body_volume());cJSON_AddBoolToObject(settings,"muted",marvin_body_microphone_muted());}return settings;}
-static bool send_audio_settings(esp_websocket_client_handle_t client){cJSON *message=cJSON_CreateObject();if(!message)return false;cJSON_AddStringToObject(message,"type","audio_settings");cJSON_AddNumberToObject(message,"volume",marvin_body_volume());cJSON_AddBoolToObject(message,"muted",marvin_body_microphone_muted());return send_json(client,message);}
+static cJSON *audio_settings(void){cJSON *settings=cJSON_CreateObject();if(settings){cJSON_AddNumberToObject(settings,"volume",marvin_body_volume());cJSON_AddBoolToObject(settings,"muted",marvin_body_microphone_muted());cJSON_AddNumberToObject(settings,"microphoneGainDb",marvin_body_microphone_gain());}return settings;}
+static bool send_audio_settings(esp_websocket_client_handle_t client){cJSON *message=cJSON_CreateObject();if(!message)return false;cJSON_AddStringToObject(message,"type","audio_settings");cJSON_AddNumberToObject(message,"volume",marvin_body_volume());cJSON_AddBoolToObject(message,"muted",marvin_body_microphone_muted());cJSON_AddNumberToObject(message,"microphoneGainDb",marvin_body_microphone_gain());return send_json(client,message);}
 static bool hello(esp_websocket_client_handle_t client){
  cJSON *message=cJSON_CreateObject();if(!message)return false;
- cJSON_AddStringToObject(message,"type","hello");cJSON *protocol=cJSON_AddObjectToObject(message,"protocol");cJSON_AddNumberToObject(protocol,"major",1);cJSON_AddNumberToObject(protocol,"minor",4);
+ cJSON_AddStringToObject(message,"type","hello");cJSON *protocol=cJSON_AddObjectToObject(message,"protocol");cJSON_AddNumberToObject(protocol,"major",1);cJSON_AddNumberToObject(protocol,"minor",5);
  cJSON_AddStringToObject(message,"deviceId",identity.device_id);cJSON_AddStringToObject(message,"bootId",boot_id);cJSON *caps=cJSON_AddArrayToObject(message,"capabilities");if(marvin_body_audio_available()){cJSON *settings=audio_settings();if(!settings){cJSON_Delete(message);return false;}cJSON_AddItemToArray(caps,cJSON_CreateString("voice"));cJSON_AddItemToObject(message,"audioSettings",settings);}cJSON_AddItemToArray(caps,cJSON_CreateString("head"));
 #ifdef CONFIG_MARVIN_TRACK_BENCH_MODE
  cJSON_AddItemToArray(caps,cJSON_CreateString("tracks"));cJSON_AddItemToArray(caps,cJSON_CreateString("motion"));cJSON_AddItemToArray(caps,cJSON_CreateString("bench_tracks"));
@@ -243,8 +243,9 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
   else if(!strcmp(type->valuestring,"audio_flush")){marvin_body_audio_flush();ok=true;}
   else if(!strcmp(type->valuestring,"audio_settings")){
    const cJSON *volume=cJSON_GetObjectItemCaseSensitive(m,"volume"),*muted=cJSON_GetObjectItemCaseSensitive(m,"muted");
-   ok=cJSON_IsNumber(volume)&&isfinite(volume->valuedouble)&&volume->valuedouble==volume->valueint&&volume->valueint>=0&&volume->valueint<=100&&cJSON_IsBool(muted);
-   if(ok){ok=marvin_body_set_volume((unsigned)volume->valueint)&&marvin_body_set_microphone_muted(cJSON_IsTrue(muted));if(ok){atomic_store(&audio_settings_pending,true);if(cJSON_IsTrue(muted))atomic_store(&voice_request,2);}}
+   const cJSON *gain=cJSON_GetObjectItemCaseSensitive(m,"microphoneGainDb");
+   ok=cJSON_IsNumber(volume)&&isfinite(volume->valuedouble)&&volume->valuedouble==volume->valueint&&volume->valueint>=0&&volume->valueint<=100&&cJSON_IsBool(muted)&&cJSON_IsNumber(gain)&&isfinite(gain->valuedouble)&&gain->valuedouble==gain->valueint&&gain->valueint>=0&&gain->valueint<=36&&gain->valueint%6==0;
+   if(ok){ok=marvin_body_set_volume((unsigned)volume->valueint)&&marvin_body_set_microphone_gain((unsigned)gain->valueint)&&marvin_body_set_microphone_muted(cJSON_IsTrue(muted));if(ok){atomic_store(&audio_settings_pending,true);if(cJSON_IsTrue(muted))atomic_store(&voice_request,2);}}
   }
   else if(!strcmp(type->valuestring,"voice_turn_end")){ok=voice_active;}
   else if(!strcmp(type->valuestring,"voice_closed")||!strcmp(type->valuestring,"voice_error")){voice_stop_local();head_signal(0);printf("{\"voice\":\"closed\"}\n");ok=true;}

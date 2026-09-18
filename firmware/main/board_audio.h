@@ -19,3 +19,5 @@ esp_err_t marvin_audio_quiesce(void);
 
 esp_err_t marvin_audio_set_volume(unsigned volume);
 unsigned marvin_audio_volume(void);
+esp_err_t marvin_audio_set_microphone_gain(unsigned gain_db);
+unsigned marvin_audio_microphone_gain(void);

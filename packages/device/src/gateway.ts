@@ -19,7 +19,10 @@ export class DeviceGateway {
   const settings=PetAudioSettings.parse(value),c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);
   if(!c)throw new DomainError('DEVICE_OFFLINE','Your Desktop Pet must be online to change its audio controls.',409);
   if(c.protocolMinor<4||!c.capabilities.includes('voice'))throw new DomainError('AUDIO_SETTINGS_UNAVAILABLE','Update your Desktop Pet firmware to control its audio.',409);
-  await this.send(c,{type:'audio_settings',...settings});c.audioSettings=settings;this.events.emit('audio_settings',c.identity,settings);return settings;
+  if(settings.microphoneGainDb!==undefined&&c.protocolMinor<5)throw new DomainError('MICROPHONE_GAIN_UNAVAILABLE','Update your Desktop Pet firmware to control microphone sensitivity.',409);
+  const next=c.protocolMinor>=5?{...settings,microphoneGainDb:settings.microphoneGainDb??c.audioSettings?.microphoneGainDb}:settings;
+  if(c.protocolMinor>=5&&next.microphoneGainDb===undefined)throw new DomainError('AUDIO_SETTINGS_UNAVAILABLE','Reconnect your Desktop Pet to read its microphone sensitivity.',409);
+  await this.send(c,{type:'audio_settings',...next});c.audioSettings=next;this.events.emit('audio_settings',c.identity,next);return next;
  }
  private sink(c:Connection){return {control:async(event:unknown)=>{if((event as {type?:string})?.type==='voice_closed')c.lateAudioUntil=Date.now()+1000;await this.send(c,event);},audio:async(id:string,pcm:Buffer)=>{await this.current(c);if(c.socket.readyState!==1||c.socket.bufferedAmount>65536)throw new Error('Audio backpressure');const header=Buffer.concat([Buffer.from('MVA1'),Buffer.from(id.replaceAll('-',''),'hex')]);c.socket.send(Buffer.concat([header,pcm]));c.audioSentBytes+=pcm.length;}};}
  private async greet(c:Connection){const id=c.identity.deviceId;if(this.greeting.has(id)||c.protocolMinor<3||!c.capabilities.includes('voice')||!this.voice||!await this.persistence.greetingPending(c.identity))return;this.greeting.add(id);try{if(await this.voice.announce(c.identity,this.sink(c),"Your Desktop Pet is linked. I'm Marvin. Apparently we're in this together now."))await this.persistence.markGreeted(c.identity);}finally{this.greeting.delete(id);}}
@@ -57,9 +60,10 @@ export class DeviceGateway {
     const message=DeviceControl.parse(JSON.parse(raw.toString()));
     if(message.type==='hello'){
      if(initialized)throw new DomainError('HELLO_DUPLICATE','Hello was already received.',400);initialized=true;
-     if(message.protocol.major!==1||![0,1,2,3,4].includes(message.protocol.minor)){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.4 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
+     if(message.protocol.major!==1||![0,1,2,3,4,5].includes(message.protocol.minor)){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.5 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
      if(message.audioInputRate&&message.protocol.minor<2)throw new DomainError('AUDIO_PROTOCOL','Native input rate requires protocol 1.2.',400);
      if(message.audioSettings&&message.protocol.minor<4)throw new DomainError('AUDIO_PROTOCOL','Audio settings require protocol 1.4.',400);
+     if(message.audioSettings?.microphoneGainDb!==undefined&&message.protocol.minor<5)throw new DomainError('AUDIO_PROTOCOL','Microphone gain requires protocol 1.5.',400);
      const identity=await this.persistence.authenticate(token);if(identity.deviceId!==message.deviceId)throw new DomainError('DEVICE_MISMATCH','Device identity mismatch.',403);
      if(this.online.size>=1000&&!this.online.has(identity.deviceId))throw new DomainError('GATEWAY_BUSY','Device gateway is busy.',429);
      const previous=this.online.get(identity.deviceId);if(previous){await this.voice?.stop(identity.deviceId);previous.closed=true;previous.socket.close(4409,'Replaced by a new device connection');}
@@ -71,7 +75,8 @@ export class DeviceGateway {
     if(message.type==='heartbeat'){if(message.seq<=c.lastSeq)throw new DomainError('STALE_FRAME','Heartbeat sequence must increase.',400);c.lastSeq=message.seq;return;}
     if(message.type==='audio_settings'){
      if(c.protocolMinor<4||!c.capabilities.includes('voice'))throw new DomainError('CAPABILITY_UNAVAILABLE','Audio settings were not negotiated.',400);
-     c.audioSettings={volume:message.volume,muted:message.muted};this.events.emit('audio_settings',c.identity,c.audioSettings);return;
+     if(message.microphoneGainDb!==undefined&&c.protocolMinor<5)throw new DomainError('AUDIO_PROTOCOL','Microphone gain was not negotiated.',400);
+     c.audioSettings={volume:message.volume,muted:message.muted,...(message.microphoneGainDb!==undefined?{microphoneGainDb:message.microphoneGainDb}:{})};this.events.emit('audio_settings',c.identity,c.audioSettings);return;
     }
     if(message.type==='command_status'){await this.persistence.acknowledge(c.identity,c.bootId,message.id,message.status);this.events.emit('command',c.identity,{id:message.id,status:message.status,code:message.code});return;}
     if(message.type==='sensor'){

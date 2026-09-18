@@ -29,5 +29,7 @@ bool marvin_body_set_volume(unsigned volume);
 unsigned marvin_body_volume(void);
 bool marvin_body_set_microphone_muted(bool muted);
 bool marvin_body_microphone_muted(void);
+bool marvin_body_set_microphone_gain(unsigned gain_db);
+unsigned marvin_body_microphone_gain(void);
 
 void marvin_body_wake_activation(bool enabled);
