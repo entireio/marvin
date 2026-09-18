@@ -14,7 +14,7 @@
 <link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/css/entire.css">
+<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
 <link rel="stylesheet" href="assets/css/sketch.css?v=studies-5">
 <script src="assets/js/site.js?v=studies-5" defer></script>
 </head>
@@ -97,7 +97,7 @@
               <p>Marvin drives on two rubber tracks and looks around with a head that pans and tilts on two servos. That is the whole of its body language, and it turns out to be enough.</p>
               <p>It is published as open source hardware: firmware, electronics, mechanical design, and the app you drive it with. The purpose is reproducibility. Anyone with a 3D printer and a soldering iron should be able to build one.</p>
               <p>It is also an early prototype. The drivetrain, the head and the Bluetooth link work today, driven by four breakout modules soldered together by hand. The sensing and the eyes do not exist yet: they belong to a pair of circuit boards that have been specified and not drawn.</p>
-              <p style="margin-bottom:0">That is the fork every builder meets. <a href="electronics.html#choice">Solder it yourself and it works this weekend</a>; build the boards and it gains eyes, distance, an IMU and the sense not to drive off a table. The schedule opposite is the honest version, and it doubles as a list of things worth doing.</p>
+              <p style="margin-bottom:0">The <a href="electronics.html#choice">hand-soldered build</a> supports driving and head movement. The planned circuit boards would add displays and sensors. The table shows what works today and what still needs development.</p>
               <span class="margin-study margin-study--wiring" aria-hidden="true"></span>
             </div>
             <div>
@@ -238,12 +238,12 @@
           <h2 id="mv-s03" style="margin:0 0 clamp(16px,2vw,24px)">It is curious</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,48px)">
             <div style="max-width:68ch">
-              <p>The personality is not a claim made in marketing copy. It is a hand-written table of movements in the firmware, and the comments in that file are the truest statement of the project's character that exists.</p>
+              <p>Marvin follows a programmed sequence of movements: looking around, turning, pausing, and doing the occasional double-take.</p>
               <blockquote style="margin:20px 0;padding-left:clamp(14px,2vw,22px);border-left:1px solid var(--color-accent);max-width:60ch">
                 <p style="margin:0 0 8px;font-size:17.5px;line-height:1.5">The patterns are meant to feel organic: the head often moves before the body turns; pauses with head sweeps simulate curiosity; asymmetric durations avoid a metronomic feel.</p>
                 <cite style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-style:normal">firmware/demo.cpp</cite>
               </blockquote>
-              <p>The head servos hold a target angle and walk the current angle toward it in small steps on a timer. That interpolation is about ten lines of code, and it is the entire reason the movement reads as organic rather than mechanical.</p>
+              <p>The firmware moves the head servos gradually toward each target angle, so the head turns smoothly instead of snapping into position.</p>
               <p style="margin-bottom:0">One aside, and then we will let it go: the name nods to the perpetually depressed robot from <i>The Hitchhiker's Guide to the Galaxy</i>. The resemblance ends at the name. This one is curious, which is more interesting and is what the firmware actually does.</p>
             </div>
             <div>
@@ -333,12 +333,12 @@
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <span class="card-kicker" style="font-family:var(--font-mono)">Path A · Works today</span>
               <span class="card-title" style="font-size:22px">Solder it yourself</span>
-              <span class="card-body" style="opacity:1;color:var(--muted)">An ESP32-C3 SuperMini, a DRV8833, a charger and a step-up converter, joined with wire. Drive, head and Bluetooth, this weekend.</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">Connect an ESP32-C3 SuperMini, a DRV8833 motor driver, a charger and a step-up converter to control the motors and head servos over Bluetooth.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Wiring diagram</span>
             </a>
             <a class="card blueprint hatch" href="electronics.html#architecture" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span class="card-kicker" style="font-family:var(--font-mono)">Path B · Specification only</span>
+              <span style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><span class="card-kicker" style="margin:0;font-family:var(--font-mono)">Path B · Specification only</span> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></span>
               <span class="card-title" style="font-size:22px">The Marvin PCBs</span>
               <span class="card-body" style="opacity:1;color:var(--muted)">Two boards, one in the head and one in the base. They add the eyes and the senses — and they have not been designed yet.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Read the specification</span>
@@ -369,7 +369,8 @@
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Firmware</span>
             </a>
           </div>
-          <p class="mono" style="margin:clamp(18px,3vw,28px) 0 0;font-size:11.5px;color:var(--muted)">The steps are written; the step drawings are not. <a href="contribute.html#mechanics">That is the next useful thing anyone could do</a>.</p>
+          <span class="tag tag-neutral mono" style="display:table;width:fit-content;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:clamp(18px,3vw,28px) 0 8px">HELP NEEDED</span>
+          <p class="mono" style="margin:0 0 0;font-size:11.5px;color:var(--muted)">The assembly instructions still need illustrations. If you build a Marvin, you can help by <a href="contribute.html#mechanics">photographing each step</a>.</p>
         </div>
       </div>
     </div></section>
@@ -379,12 +380,11 @@
         <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
       <div class="section-heading">
         <div>
-          <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Open source</p>
-          <h2 id="mv-s05" style="margin:0 0 clamp(16px,2vw,24px)">Open, in the ordinary sense of the word</h2>
+          <h2 id="mv-s05" style="margin:0 0 clamp(16px,2vw,24px)">Open source</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
             <div style="max-width:68ch">
-              <p>Not source-available. Properly licensed, with the conventional open-hardware split: permissive for the code, strongly reciprocal for the hardware.</p>
-              <div class="table-scroll" role="region" aria-label="Open, in the ordinary sense of the word table" tabindex="0"><table class="table" style="margin-top:16px">
+              <p>Marvin’s code and hardware designs are open source. You can find the source files and licenses in the repository.</p>
+              <div class="table-scroll" role="region" aria-label="Open source licenses" tabindex="0"><table class="table" style="margin-top:16px">
                 <thead><tr><th scope="col">Covers</th><th scope="col">Licence</th></tr></thead>
                 <tbody>
                   <tr><td>Software — firmware, controller app, this website</td><td style="font-family:var(--font-mono);font-size:12.5px">MIT</td></tr>
@@ -394,12 +394,12 @@
               <p style="margin-top:16px">CERN-OHL-S is reciprocal: build and distribute a modified Marvin and you share your design changes too.</p>
             </div>
             <div>
-              <p class="eyebrow" style="margin:0 0 12px;">Four ways in</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Four ways in</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:clamp(12px,2vw,20px)">
                 <a href="contribute.html#firmware" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Firmware</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Embedded C++, PlatformIO, one class per peripheral.</span></a>
                 <a href="contribute.html#software" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Software</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">The controller app and this site. No build step, deliberately.</span></a>
                 <a href="contribute.html#mechanics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Mechanics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">CAD is the master. Meshes are derived, never edited.</span></a>
-                <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Two boards, fully specified and entirely undrawn. The largest open invitation.</span></a>
+                <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Help turn the two-board electronics specification into schematics and PCB layouts.</span></a>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(18px,3vw,28px)">
                 <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Repository</a>

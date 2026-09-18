@@ -14,7 +14,7 @@
 <link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/css/entire.css">
+<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
 <link rel="stylesheet" href="assets/css/sketch.css">
 <script src="assets/js/site.js" defer></script>
 </head>
@@ -57,7 +57,7 @@
         <div>
           <p class="eyebrow section-eyebrow" style="margin:0 0 10px;">Open source project</p>
           <h1 id="mv-title" style="margin:0 0 16px">Get involved</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Four routes in, because they attract different people. Below each one: the state of it, the conventions that matter, and the specific thing that needs doing next.</p>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Help with firmware, the controller app, mechanical design, or electronics. Each section describes the current work and suggests ways to contribute.</p>
         </div>
       </div>
     </div></section>
@@ -75,7 +75,7 @@
 
     <section aria-labelledby="mv-repo" class="site-section"><div class="site-section__inner">
       <h2 id="mv-repo" style="margin:0 0 8px">Where things live</h2>
-      <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Five folders. Two are working software, one holds geometry and print files, one is a specification waiting for a schematic, and one is this site.</p>
+      <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">The main project folders and their contents are listed below.</p>
       <div style="">
         <div class="table-scroll table-scroll--wide" role="region" aria-label="Where things live table" tabindex="0"><table class="table" style="max-width:76ch">
           <thead><tr><th scope="col">Folder</th><th scope="col">Contains</th><th scope="col">State</th></tr></thead>
@@ -97,9 +97,9 @@
           <h2 id="mv-fw" style="margin:0 0 14px">Firmware</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>PlatformIO, the Arduino framework, one ESP32-C3 SuperMini. Clone, <span style="font-family:var(--font-mono);font-size:14px">./flash.sh</span>, and you have a serial prompt in under a minute.</p>
-              <p>The architecture is deliberately dull: one class per peripheral, a single configuration header, and a main loop that never blocks. The interesting part is the head interpolation — it holds a target angle and walks the current angle toward it on a timer, which is the whole reason the movement reads as a character rather than a machine.</p>
-              <p style="margin-bottom:0"><strong style="font-weight:700">Adding a command touches four places:</strong> the parser, the on-device help text, the controller app's cheat sheet, and the protocol documentation. Miss one and someone spends an evening confused.</p>
+              <p>The firmware uses PlatformIO and the Arduino framework, configured for an ESP32-C3 SuperMini. Connect the board over USB and run <span style="font-family:var(--font-mono);font-size:14px">./flash.sh</span> from the firmware directory to build and upload it.</p>
+              <p>The firmware has one class per peripheral and a shared configuration header. Timer-based updates keep movement running alongside Bluetooth and serial input. The head servos move gradually toward each target angle for smoother motion.</p>
+              <p style="margin-bottom:0"><strong style="font-weight:700">Adding a command touches four places:</strong> the parser, the on-device help text, the controller app's cheat sheet, and the protocol documentation. Keep these in sync so the documented commands match the firmware.</p>
             </div>
             <div>
               <p class="eyebrow" style="margin:0 0 8px;">Firmware source</p>
@@ -116,7 +116,8 @@
                   </tbody>
                 </table></div>
               </div>
-              <p style="margin:14px 0 0;font-size:14.5px;color:var(--muted)">Next up: wheel encoders for closed-loop speed, and a time-of-flight sensor driver behind the same one-class-per-peripheral pattern.</p>
+              <span class="tag tag-neutral mono" style="display:table;width:fit-content;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:14px 0 8px">HELP NEEDED</span>
+              <p style="margin:0 0 0;font-size:14.5px;color:var(--muted)">Next up: wheel encoders for closed-loop speed, and a time-of-flight sensor driver behind the same one-class-per-peripheral pattern.</p>
             </div>
           </div>
         </div>
@@ -130,12 +131,12 @@
           <h2 id="mv-sw" style="margin:0 0 14px">Software</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>Two things: the controller app and this website. Both are plain HTML, CSS and JavaScript, served statically, with no build step and no framework. That is a constraint worth defending — it means the app can be served from a phone, a laptop, or a memory stick.</p>
-              <p style="margin-bottom:0">The site is hosted from a subpath on GitHub Pages, so every asset and link path must be relative. An absolute path beginning with a slash is the single most common way a Pages site ships broken.</p>
+              <p>The controller app and this website use plain HTML, CSS, and JavaScript. Both are served as static files, with no framework or build step.</p>
+              <p style="margin-bottom:0">Use relative asset paths and internal links so the site also works when hosted under a subpath. The controller needs HTTPS or localhost for Web Bluetooth.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p class="eyebrow" style="margin:0 0 10px;">Good first tasks</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Good first tasks</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
               <ul style="margin:0;padding-left:18px;font-size:14.5px;line-height:1.75">
                 <li>A keyboard driving mode for the controller — arrow keys to <span style="font-family:var(--font-mono);font-size:13px">A</span>/<span style="font-family:var(--font-mono);font-size:13px">B</span> speeds</li>
                 <li>A connection-state indicator that distinguishes &ldquo;no Bluetooth&rdquo; from &ldquo;not connected&rdquo;</li>
@@ -155,15 +156,15 @@
           <h2 id="mv-mech" style="margin:0 0 14px">Mechanics</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>The CAD model is the master; meshes are derived from it. Never edit a mesh directly — a corrected STL is a dead end, because the next export overwrites it.</p>
-              <p>Part numbering is fixed at 01–08 and is used by the drawings, the tables and eventually the assembly steps. If you add a part, it takes the next number; nothing gets renumbered.</p>
-              <p style="margin-bottom:0">Keep individual files under about fifty megabytes. An oversized mesh is almost always over-tessellated rather than genuinely complex — <span style="font-family:var(--font-mono);font-size:13px">01_body.stl</span> was once a 454 MB export of what is essentially a printed box.</p>
+              <p>Make geometry changes in the CAD model and export updated meshes. Edits made only to an STL will be lost when the mesh is exported again.</p>
+              <p>Parts are numbered 01–09 across the drawings, tables, and mesh files. Give new parts the next available number and keep existing numbers unchanged.</p>
+              <p style="margin-bottom:0">Aim to keep individual mesh files under 50 MB. Check the tessellation settings when exporting large meshes, and preserve enough detail for printing.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p class="eyebrow" style="margin:0 0 10px;">Most valuable thing you could do</p>
-              <h3 style="margin:0 0 10px">Assemble one and draw the steps</h3>
-              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The seventeen steps are written; not one of them has a picture. Build a Marvin, photograph each stage as you go, and the sequence becomes something a stranger can follow without reading. A face-plate mesh, validated print settings and the assembled dimensions are worth almost as much.</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Assembly documentation</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
+              <h3 style="margin:0 0 10px">Photograph your build</h3>
+              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The assembly instructions need photos or drawings for each step. If you build a Marvin, photograph the process and note any unclear instructions. We also need a face-plate mesh, tested print settings, and measurements of the assembled robot.</p>
               <a class="btn btn-primary" href="build.html#assemble" style="text-decoration:none">Read the sequence</a>
             </div>
           </div>
@@ -178,18 +179,18 @@
           <h2 id="mv-el" style="margin:0 0 14px">Electronics</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>This is the largest open invitation in the project, and it is now a well-posed one. Two boards have been specified down to part numbers, I²C addresses and a six-wire harness — and neither has been drawn. <a href="electronics.html#architecture">The specification is in Electronics</a>.</p>
-              <p style="margin-bottom:0">What exists besides that is hand-soldered wiring that works, a pin map, and a known brownout problem: servos and motors drawing together sag the rail enough to reset the microcontroller, which shows up as a Bluetooth disconnect mid-drive. Giving the logic rail its own regulator is half of what the main board is for.</p>
+              <p>The proposed electronics use two boards connected by a six-wire harness. The specification lists components, I²C addresses, and pin assignments; schematics and PCB layouts are still needed. <a href="electronics.html#architecture">The specification is in Electronics</a>.</p>
+              <p style="margin-bottom:0">The working prototype uses hand-soldered modules. Its supply can sag when the servos and motors run together, resetting the microcontroller and interrupting Bluetooth. The proposed board separates the logic and motor supplies; this still needs to be built and tested.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p class="eyebrow" style="margin:0 0 10px;">Wanted, in order</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Electronics tasks</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
               <ol style="margin:0 0 14px;padding-left:20px;font-size:14.5px;line-height:1.75">
                 <li>A KiCad schematic for each board, drawn against the specification</li>
                 <li>A measured current budget — the rails were chosen, not verified</li>
                 <li>A layout for each board that fits inside part 01 and part 05</li>
                 <li>Firmware for the CH32V003, and the I²C register map the ESP32 will talk to</li>
-                <li>One fabricated set, and an honest account of what was wrong with it</li>
+                <li>A fabricated board set, test results, and documented issues</li>
               </ol>
               <a class="btn btn-primary" href="electronics.html#architecture" style="text-decoration:none">Read the specification</a>
             </div>
@@ -199,21 +200,21 @@
     </div></section>
 
     <section id="conventions" aria-labelledby="mv-conv" class="site-section"><div class="site-section__inner">
-      <h2 id="mv-conv" style="margin:0 0 8px">Conventions that actually matter</h2>
-      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">Seven rules. Each one exists because breaking it caused a problem.</p>
+      <h2 id="mv-conv" style="margin:0 0 8px">Project conventions</h2>
+      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">Follow these conventions when making changes.</p>
       <ol style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:0 clamp(24px,4vw,56px)">
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">01</span><span><strong style="font-weight:700">One configuration header.</strong> Every pin and tuning constant lives in <span style="font-family:var(--font-mono);font-size:13px">config.h</span>. Never hard-code a pin inside a driver — this is what makes moving to a different microcontroller a config change rather than a rewrite.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">01</span><span><strong style="font-weight:700">One configuration header.</strong> Every pin and tuning constant lives in <span style="font-family:var(--font-mono);font-size:13px">config.h</span>. Use those definitions in drivers so pin assignments can be updated in one place.</span></li>
         <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">02</span><span><strong style="font-weight:700">The main loop never blocks.</strong> Every periodic behaviour is a timer-based state machine. No <span style="font-family:var(--font-mono);font-size:13px">delay()</span> — it would stall Bluetooth and the console.</span></li>
         <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">03</span><span><strong style="font-weight:700">One class per peripheral</strong>, in its own header and source pair.</span></li>
         <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">04</span><span><strong style="font-weight:700">A new command touches four places.</strong> Parser, on-device help text, the app's cheat sheet, and the protocol documentation.</span></li>
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">05</span><span><strong style="font-weight:700">No build step in the controller app.</strong> No framework either. It is deliberate, so the app can be served from anywhere. Keep it that way.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">05</span><span><strong style="font-weight:700">No build step in the controller app.</strong> Keep it as static HTML, CSS, and JavaScript.</span></li>
         <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">06</span><span><strong style="font-weight:700">CAD is the master; meshes are derived.</strong> Never edit a mesh directly.</span></li>
       </ol>
     </div></section>
 
     <section id="open" aria-labelledby="mv-open" class="site-section"><div class="site-section__inner">
-      <h2 id="mv-open" style="margin:0 0 8px">Open problems</h2>
-      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">Everything the project knows it is missing, with the route that owns it. This table is the honest to-do list.</p>
+      <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><h2 id="mv-open" style="margin:0">Open problems</h2> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
+      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">These tasks are open for contributions. Each is listed with the area of the project it belongs to.</p>
       <div style="">
         <div class="table-scroll table-scroll--wide" role="region" aria-label="Open problems table" tabindex="0"><table class="table">
           <thead><tr><th scope="col">Missing</th><th scope="col">Route</th><th scope="col">Why it matters</th></tr></thead>
@@ -221,11 +222,11 @@
             <tr><td>Schematics and layout for the two boards</td><td style="font-family:var(--font-mono);font-size:12.5px;">Electronics</td><td style="color:var(--muted)">The specification is written; nothing has been drawn</td></tr>
             <tr><td>A measured current budget</td><td style="font-family:var(--font-mono);font-size:12.5px;">Electronics</td><td style="color:var(--muted)">Every rail in the specification was chosen, not verified</td></tr>
             <tr><td>Assembly step drawings</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Seventeen steps, no pictures. Photographs would do</td></tr>
-            <tr><td>A face-plate mesh</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">The one printed part with no file, and the one everybody looks at</td></tr>
-            <tr><td>Validated print settings</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">The sliced projects have never been run on two different machines</td></tr>
-            <tr><td>Assembled dimensions and weight</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Cannot honestly describe the object without them</td></tr>
-            <tr><td>Confirmed track-link count</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Builders are currently guessing how many to print</td></tr>
-            <tr><td>Left/right assignment of motors A and B</td><td style="font-family:var(--font-mono);font-size:12.5px;">Firmware</td><td style="color:var(--muted)">Undefined, so pivots are trial and error</td></tr>
+            <tr><td>A face-plate mesh</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Needed to cover the front of the head</td></tr>
+            <tr><td>Validated print settings</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Confirm the supplied settings on additional printers</td></tr>
+            <tr><td>Assembled dimensions and weight</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Give builders accurate size and weight information</td></tr>
+            <tr><td>Confirmed track-link count</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Establish how many links to print for each track</td></tr>
+            <tr><td>Left/right assignment of motors A and B</td><td style="font-family:var(--font-mono);font-size:12.5px;">Firmware</td><td style="color:var(--muted)">Document which motor channel drives each track</td></tr>
             <tr><td>A CH32V003 driver, and an ESP32-S3 pin profile</td><td style="font-family:var(--font-mono);font-size:12.5px;">Firmware</td><td style="color:var(--muted)">Neither exists; the firmware is C3-only today</td></tr>
           </tbody>
         </table></div>

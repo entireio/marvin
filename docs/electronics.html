@@ -14,7 +14,7 @@
 <link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/css/entire.css">
+<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
 <link rel="stylesheet" href="assets/css/sketch.css">
 <script src="assets/js/site.js" defer></script>
 </head>
@@ -82,7 +82,7 @@
         <div>
           <p class="kicker">Documentation · Electronics</p>
           <h1 id="mv-title" style="margin:0 0 16px">Electronics</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">There are two ways to give Marvin something to think with. One you can solder this weekend from four modules and a reel of wire. The other is two purpose-designed boards that nobody has drawn yet — what follows for those is a specification, not a product.</p>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">The working prototype uses four hand-soldered modules. A proposed two-board design would add displays and sensors, but still needs schematics, layouts, and firmware support.</p>
         </div>
       </div>
     </section>
@@ -93,7 +93,7 @@
         <div>
           <p class="kicker">Start here</p>
           <h2 id="mv-choice" style="margin:0 0 14px">The two paths</h2>
-          <p style="margin:0 0 clamp(24px,3.5vw,40px);max-width:64ch">They share the chassis, the motors, the servos and the firmware. They differ in what sits between the battery and the motors — and in whether you can order it today.</p>
+          <p style="margin:0 0 clamp(24px,3.5vw,40px);max-width:64ch">Both options use the same chassis, motors, and servos. The hand-soldered version can be built with available modules. The two-board version is still in development.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(16px,2.5vw,32px);align-items:start">
 
@@ -107,11 +107,11 @@
               <p style="margin:0 0 14px;font-size:15.5px">Four breakout modules, joined by hand-soldered wire, tucked into the chassis. This is what the prototype in the videos is. It drives, it looks around, and it answers over Bluetooth.</p>
               <dl class="spec">
                 <dt>Parts</dt><dd>ESP32-C3 SuperMini · DRV8833 · lithium charger · 5&nbsp;V step-up</dd>
-                <dt>You need</dt><dd>A soldering iron, an hour, and some patience with 26&nbsp;AWG</dd>
+                <dt>You need</dt><dd>A soldering iron and 26&nbsp;AWG hook-up wire</dd>
                 <dt>Gets you</dt><dd>Drive, head pan and tilt, Bluetooth, demo mode</dd>
                 <dt>Not this</dt><dd>Eyes, distance, cliff detection, IMU, robot-to-robot IR</dd>
               </dl>
-              <p style="margin:16px 0 0"><a href="#soldered">Wiring, module list and the three things that catch people out ↓</a></p>
+              <p style="margin:16px 0 0"><a href="#soldered">Wiring, module list and wiring notes ↓</a></p>
             </div>
 
             <div class="blueprint hatch" style="position:relative;padding:clamp(16px,2.4vw,26px)">
@@ -119,20 +119,21 @@
               <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px">
                 <p class="kicker kicker-a" style="margin:0">Path B</p>
                 <span class="tag tag-neutral mono" style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">Specification only</span>
+                <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span>
               </div>
               <h3 style="margin:0 0 10px">The Marvin PCBs</h3>
-              <p style="margin:0 0 14px;font-size:15.5px">Two boards shaped to the chassis: one in the head, one in the base, joined by a six-wire harness through the neck. <strong style="font-weight:700">They do not exist.</strong> There is no schematic, no layout and no Gerber file — only the specification set out below.</p>
+              <p style="margin:0 0 14px;font-size:15.5px">Two boards shaped to the chassis: one in the head, one in the base, joined by a six-wire harness through the neck. The boards are specified below, but schematics, PCB layouts and manufacturing files still need to be created.</p>
               <dl class="spec">
                 <dt>Parts</dt><dd>ESP32-S3-WROOM-1 main board · CH32V003 base board</dd>
-                <dt>You need</dt><dd>Someone to design them. That could be you.</dd>
+                <dt>You need</dt><dd>Schematics, PCB layouts, and firmware development</dd>
                 <dt>Gets you</dt><dd>Everything on Path A, plus eyes, time-of-flight, IMU, IR and cliff sensing</dd>
-                <dt>Not this</dt><dd>A build you can start this weekend</dd>
+                <dt>Not this</dt><dd>Boards ready to order or assemble</dd>
               </dl>
               <p style="margin:16px 0 0"><a href="#architecture">Read the specification ↓</a> · <a href="contribute.html#electronics">take it on</a></p>
             </div>
           </div>
 
-          <p style="margin:clamp(20px,3vw,30px) 0 0;max-width:70ch;font-size:14.5px;color:var(--muted)">The firmware does not care which one you build. Every pin lives in <span class="mono" style="font-size:13px;color:var(--color-text)">config.h</span>, so moving from the C3 on Path A to the S3 on Path B is a configuration change rather than a rewrite. The <a href="build.html#assemble">assembly sequence</a> is written for both, and switches between them.</p>
+          <p style="margin:clamp(20px,3vw,30px) 0 0;max-width:70ch;font-size:14.5px;color:var(--muted)">The current firmware targets the ESP32-C3 module. The proposed boards need an ESP32-S3 configuration, firmware for the base-board microcontroller, and drivers for the added peripherals. Pin assignments are kept in <span class="mono" style="font-size:13px;color:var(--color-text)">config.h</span>. The <a href="build.html#assemble">assembly sequence</a> is written for both, and switches between them.</p>
         </div>
       </div>
     </section>
@@ -146,7 +147,7 @@
             <span class="tag tag-outline mono" style="font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">As built</span>
           </div>
           <h2 id="mv-sold" style="margin:0 0 14px">Hand-soldered</h2>
-          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Six signal wires, one motor driver, one microcontroller, and a power chain of two more modules. Everything here is a breakout board bought off a marketplace; none of it was chosen against a current budget.</p>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Six signal wires, one motor driver, one microcontroller, and a power chain of two more modules. The modules work in the prototype, but their combined current requirements still need to be measured.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
@@ -155,7 +156,7 @@
                 <div class="table-scroll" role="region" aria-label="Hand-soldered table" tabindex="0"><table class="table">
                   <thead><tr><th scope="col">Module</th><th scope="col">Does</th></tr></thead>
                   <tbody>
-                    <tr><td class="mono" style="font-size:12.5px">ESP32-C3 SuperMini</td><td style="color:var(--muted)">The microcontroller. Any ESP32 with BLE will do.</td></tr>
+                    <tr><td class="mono" style="font-size:12.5px">ESP32-C3 SuperMini</td><td style="color:var(--muted)">The microcontroller used by the current firmware configuration.</td></tr>
                     <tr><td class="mono" style="font-size:12.5px">DRV8833 breakout</td><td style="color:var(--muted)">Dual H-bridge, one channel per track</td></tr>
                     <tr><td class="mono" style="font-size:12.5px">Lithium charger board</td><td style="color:var(--muted)">USB-C in, 4.2&nbsp;V charge for the cell</td></tr>
                     <tr><td class="mono" style="font-size:12.5px">Step-up converter</td><td style="color:var(--muted)">Cell voltage up to 5&nbsp;V, ≥&#8201;1.5&nbsp;A, for logic and servos</td></tr>
@@ -178,13 +179,13 @@
             </div>
 
             <div>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Notes 03.3 — Things that catch people out</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Notes 03.3 — Wiring notes</p>
               <ol style="margin:0;padding:0;list-style:none;border-bottom:1px solid var(--rule)">
                 <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
                   <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;font-variant-numeric:tabular-nums">01</span>
                   <div>
                     <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">Motor B is wired inverted, on purpose</p>
-                    <p style="margin:0;font-size:14.5px;color:var(--muted)">IN3 and IN4 are swapped so that a positive speed on both channels drives forward, without the firmware correcting per side. Wire it the obvious way and one track runs backwards.</p>
+                    <p style="margin:0;font-size:14.5px;color:var(--muted)">IN3 and IN4 are swapped so that a positive speed on both channels drives forward, without the firmware correcting per side. Follow the listed pin assignments to keep the motor directions consistent.</p>
                   </div>
                 </li>
                 <li style="display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(12px,1.6vw,18px);padding:clamp(12px,1.6vw,15px) 0;border-top:1px solid var(--rule)">
@@ -198,7 +199,7 @@
                   <span style="font-family:var(--font-heading);font-weight:600;font-size:17px;line-height:1.24;font-variant-numeric:tabular-nums">03</span>
                   <div>
                     <p style="margin:0 0 5px;font-family:var(--font-heading);font-weight:600;font-size:17.5px;line-height:1.2;letter-spacing:-.005em">A weak battery browns the board out</p>
-                    <p style="margin:0;font-size:14.5px;color:var(--muted)">If Marvin connects over Bluetooth and then drops the moment the motors draw current, the supply is sagging. It is almost never the firmware. This is the single largest reason Path B exists.</p>
+                    <p style="margin:0;font-size:14.5px;color:var(--muted)">If Marvin connects over Bluetooth and then drops the moment the motors draw current, the supply is sagging. Check the battery charge and supply voltage under load.</p>
                   </div>
                 </li>
               </ol>
@@ -244,10 +245,10 @@
     <section aria-labelledby="mv-partb" class="doc-section">
       <div class="blueprint hatch" style="position:relative;padding:clamp(18px,3vw,32px)">
         <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-        <p class="kicker kicker-a">Path B · Specification</p>
+        <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="kicker kicker-a" style="margin:0">Path B · Specification</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
         <h2 id="mv-partb" style="margin:0 0 12px">Everything below is a specification</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(16px,3vw,40px);align-items:start">
-          <p style="margin:0;max-width:60ch">No schematic has been drawn, no board has been laid out, and no prototype has been fabricated. Part numbers, addresses and pin allocations below are the design intent — the thing a schematic would be reviewed against, not a record of something that works.</p>
+          <p style="margin:0;max-width:60ch">No schematic has been drawn, no board has been laid out, and no prototype has been fabricated. The component choices, addresses, and pin assignments below are proposed requirements and still need validation.</p>
           <div>
             <dl class="spec">
               <dt>Status</dt><dd>Specification, Rev.&nbsp;A · nothing fabricated</dd>
@@ -267,13 +268,13 @@
         <div>
           <p class="kicker">Path B · Architecture</p>
           <h2 id="mv-arch" style="margin:0 0 14px">Two boards, six wires</h2>
-          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The chassis decides the architecture. The head has room for a module, a battery and two displays; the base has the motors and a view of the floor; and between them is a joint that rotates, which is the last place you want a loom of analogue sensor lines.</p>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The proposed main board sits in the head with the battery and displays. A second board in the base controls the track motors and reads the floor sensors. A six-wire harness connects the boards through the rotating neck.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(340px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>So the split is by function, not by convenience. The main board in the head runs Wi-Fi and Bluetooth, owns power, and drives the displays and the forward-looking sensors. The base board takes a cheap RISC-V microcontroller and gives it one job: generate motor PWM, watch the floor, and shout if the floor disappears.</p>
-              <p>They talk over I²C, main as master and base as slave, which reduces the joint to six conductors: two for power, one ground, two for the bus and one interrupt. Cliff detection cannot afford to wait for a poll, so it gets that dedicated line.</p>
-              <p style="margin-bottom:0">The consequence worth noticing: the base board is not a dumb motor shield. It keeps the tracks turning at the right rate and stops the robot driving off a table even while the ESP32 is busy with something else.</p>
+              <p>The main board would handle wireless communication, power management, displays, and the forward-facing sensors. The base-board microcontroller would control the motors and monitor the floor sensors.</p>
+              <p>They talk over I²C, main as master and base as slave, which reduces the joint to six conductors: two for power, one ground, two for the bus and one interrupt. The dedicated interrupt line would let the base board report a detected edge without waiting for an I²C poll.</p>
+              <p style="margin-bottom:0">The base board is intended to handle motor control and stop the tracks when it detects an edge. That behavior still needs firmware and testing.</p>
             </div>
             <div>
               <p class="kicker kicker-a" style="margin:0 0 8px">Division of labour</p>
@@ -449,7 +450,7 @@
                   <dt>Head servo</dt><dd>3-pin 2.54&nbsp;mm or JST-XH surface-mount header — <span class="mono">V_BOOST</span>, <span class="mono">GND</span>, <span class="mono">SERVO_PWM1</span></dd>
                 </dl>
               </div>
-              <p style="margin:14px 0 0;font-size:14.5px;color:var(--muted)">The two panels are the eyes. They are the reason the head is the board that carries the processor, rather than the base.</p>
+              <p style="margin:14px 0 0;font-size:14.5px;color:var(--muted)">The two panels are the eyes. The processor and display connectors are located together in the head.</p>
             </div>
           </div>
 
@@ -470,7 +471,7 @@
                 </tbody>
               </table></div>
             </div>
-            <p style="margin:14px 0 0;max-width:64ch;font-size:14.5px;color:var(--muted)">This allocation is for the S3 on Path B, and no firmware profile matches it yet — what ships today is the C3 map of Path A, in the <a href="reference.html#pinmap">current pin map</a>. Pins live in <span class="mono" style="font-size:13px;color:var(--color-text)">config.h</span> rather than in the drivers, which is what makes adding a second profile a configuration change instead of a rewrite.</p>
+            <p style="margin:14px 0 0;max-width:64ch;font-size:14.5px;color:var(--muted)">This allocation is for the S3 on Path B, and no firmware profile matches it yet — what ships today is the C3 map of Path A, in the <a href="reference.html#pinmap">current pin map</a>. Add the S3 pin assignments in <span class="mono" style="font-size:13px;color:var(--color-text)">config.h</span> alongside the required board and driver support.</p>
           </div>
         </div>
       </div>
@@ -482,7 +483,7 @@
         <div>
           <p class="kicker">Path B · Base electronics</p>
           <h2 id="mv-base" style="margin:0 0 14px">Peripheral board — base</h2>
-          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">Motor driving, floor sensing and base actuation, run by a microcontroller that costs less than the connector it plugs into.</p>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The proposed base board uses a CH32V003 microcontroller to control the motors and pan servo and read the floor sensors.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
@@ -515,7 +516,7 @@
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <dl class="spec">
                   <dt>Sensors</dt><dd>4 × <span class="mono">Everlight ITR8307/TR8</span> or <span class="mono">Vishay TCRT5000</span> reflective optical sensors, one at each corner of the base</dd>
-                  <dt>Emitters</dt><dd>Driven from the 3.3&nbsp;V rail through current-limiting resistors, switchable by a single N-FET so an idle robot stops paying for them</dd>
+                  <dt>Emitters</dt><dd>Driven from the 3.3&nbsp;V rail through current-limiting resistors, switchable by a single N-FET to reduce power use while idle</dd>
                   <dt>Receivers</dt><dd>Phototransistor outputs into four dedicated ADC channels on the CH32V003</dd>
                   <dt>Trigger</dt><dd>An internal threshold raises <span class="mono">BASE_INT</span> when a corner sees a void — the edge of a table</dd>
                 </dl>
@@ -523,7 +524,7 @@
               <div class="blueprint" style="position:relative;margin-top:clamp(18px,2.5vw,26px);padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <p class="kicker kicker-a" style="margin:0 0 8px">Why a second microcontroller</p>
-                <p style="margin:0;font-size:14.5px">Because a table edge does not wait for the radio stack. Cliff detection is a hard real-time job with a very short deadline, and giving it its own processor and its own interrupt line means the answer does not depend on what the ESP32 happens to be doing.</p>
+                <p style="margin:0;font-size:14.5px">A separate microcontroller would monitor the floor sensors independently of the ESP32’s wireless tasks. It would stop the motors and notify the ESP32 when a sensor detects an edge. The response time and stopping distance need testing.</p>
               </div>
             </div>
           </div>
@@ -566,7 +567,7 @@
                   <dt>Route</dt><dd>Up through the neck opening, before the neck is bolted down — see <a href="build.html#assemble">the PCB assembly sequence</a></dd>
                 </dl>
               </div>
-              <p style="margin:16px 0 0;max-width:56ch;font-size:14.5px;color:var(--muted)">This is the pre-crimped cable in the bill of materials. It is the one part of Path B you can buy today, because the crimping is the part nobody wants to do by hand.</p>
+              <p style="margin:16px 0 0;max-width:56ch;font-size:14.5px;color:var(--muted)">This is the pre-crimped cable in the bill of materials. Using a pre-crimped cable avoids assembling the small connector contacts by hand.</p>
             </div>
           </div>
         </div>
@@ -579,7 +580,7 @@
         <div>
           <p class="kicker">Path B · Production</p>
           <h2 id="mv-mfg" style="margin:0 0 14px">Manufacturing</h2>
-          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The specification was costed against a turnkey assembler's catalogue, which is why the part choices look conservative. They are: every one of them is a stock part somebody else already places by the reel.</p>
+          <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">The specification proposes components suitable for turnkey PCB assembly. Confirm availability, pricing, and assembly requirements before finalizing the design.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
@@ -588,15 +589,15 @@
                 <dt>Stackup</dt><dd>Both boards 2-layer or 4-layer FR4, 1.6&nbsp;mm, 1&nbsp;oz copper</dd>
                 <dt>Parts</dt><dd>Every component — the ESP32 module, CH32V003, MT3608, SY8089, motor driver, connectors — from an assembler's basic and extended libraries</dd>
                 <dt>Assembly</dt><dd>100&nbsp;% turnkey SMT. Headers and ZIF connectors are specified as surface-mount so there is no hand through-hole work in a 100–1000 unit run</dd>
-                <dt>Supplier</dt><dd>Costed against JLCPCB; nothing here depends on it. Any assembler with an equivalent stock library will do</dd>
+                <dt>Supplier</dt><dd>Confirm component availability and pricing with your PCB assembler before finalizing the layout</dd>
               </dl>
             </div>
             <div>
-              <p style="margin:0 0 12px;max-width:60ch">There is one part of Marvin that no 3D printer and no assembler will make for you, and it is not a board.</p>
+              <p style="margin:0 0 12px;max-width:60ch">The proposed glass face plate would be ordered separately from the printed parts and PCBs.</p>
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <p class="kicker kicker-a" style="margin:0 0 8px">The face</p>
-                <p style="margin:0 0 10px;font-size:14.5px">The front glass is the only part that needs a contract manufacturer: laser-cut, screen-printed, ideally in a toughened glass. Plenty of shops on Alibaba quote both operations together in small runs.</p>
+                <p style="margin:0 0 10px;font-size:14.5px">The proposed front glass would be laser-cut and screen-printed. A specialist supplier would need to confirm the material, dimensions, and minimum order quantity.</p>
                 <p style="margin:0;font-size:14.5px;color:var(--muted)">Until you order one, print the face plate in black PLA. It is the same outline and it hides the same electronics — <a href="build.html#print">see the print section</a>.</p>
               </div>
             </div>
@@ -604,17 +605,17 @@
 
           <div class="blueprint hatch" style="position:relative;margin-top:clamp(24px,3.5vw,40px);padding:clamp(16px,2.4vw,26px)">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <p class="kicker kicker-a">What Path B still needs</p>
-            <h3 style="margin:0 0 12px">In order, and none of it started</h3>
+            <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="kicker kicker-a" style="margin:0">What Path B still needs</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
+            <h3 style="margin:0 0 12px">Development tasks</h3>
             <ol style="margin:0 0 16px;padding-left:20px;font-size:15px;line-height:1.75;max-width:64ch">
               <li>A schematic for each board, drawn against this specification</li>
               <li>A measured current budget — the numbers above are chosen, not verified</li>
               <li>A layout for each board that fits inside part 01 and part 05</li>
               <li>Firmware for the CH32V003, and an I²C register map the ESP32 can talk to</li>
-              <li>One fabricated set, and an honest account of what was wrong with it</li>
+              <li>A fabricated board set, test results, and documented issues</li>
             </ol>
             <div style="display:flex;flex-wrap:wrap;gap:10px">
-              <a class="btn btn-primary" href="contribute.html#electronics" style="text-decoration:none">Take a piece of this</a>
+              <a class="btn btn-primary" href="contribute.html#electronics" style="text-decoration:none">Help with electronics</a>
               <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Open the repository</a>
             </div>
           </div>

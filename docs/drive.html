@@ -14,7 +14,7 @@
 <link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/css/entire.css">
+<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
 <link rel="stylesheet" href="assets/css/sketch.css">
 <script src="assets/js/site.js" defer></script>
 </head>
@@ -79,7 +79,7 @@
         <div>
           <p class="eyebrow" style="margin:0 0 10px;">Documentation · Drive</p>
           <h1 id="mv-title" style="margin:0 0 16px">Drive</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Seven commands, each a letter and a number, over a browser or any Bluetooth terminal. Leave it alone and it explores by itself.</p>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Control Marvin with seven text commands over USB serial or Bluetooth. Use the browser controller for manual driving, or enable demo mode to run a programmed movement sequence.</p>
         </div>
       </div>
     </section>
@@ -89,12 +89,12 @@
         <div>
           <p class="eyebrow" style="margin:0 0 10px;">Setup</p>
           <h2 id="mv-connect" style="margin:0 0 14px">Connect</h2>
-          <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch">The controller is a web page with no build step and no framework, so it can be served from anywhere. It talks to Marvin over Web Bluetooth, which has two hard requirements.</p>
+          <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch">The controller is a static web page that connects to Marvin through Web Bluetooth. It needs a secure context and a browser that supports Web Bluetooth.</p>
 
           <div class="blueprint" style="position:relative;padding:clamp(16px,2.4vw,26px);max-width:74ch;margin-bottom:clamp(20px,3vw,32px)">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
             <p class="eyebrow" style="margin:0 0 8px;">Requirement — a secure context</p>
-            <p style="margin:0 0 14px;font-size:clamp(17px,1.8vw,21px);line-height:1.45">It must be served, not opened. Web Bluetooth exists only over <span style="font-family:var(--font-mono);font-size:.88em">https://</span> or <span style="font-family:var(--font-mono);font-size:.88em">localhost</span>. Double-click the file and the API is undefined — the Scan button does nothing, silently.</p>
+            <p style="margin:0 0 14px;font-size:clamp(17px,1.8vw,21px);line-height:1.45">It must be served, not opened. Web Bluetooth exists only over <span style="font-family:var(--font-mono);font-size:.88em">https://</span> or <span style="font-family:var(--font-mono);font-size:.88em">localhost</span>. Double-click the file and the API is undefined.</p>
             <code style="font-family:var(--font-mono);font-size:13.5px;display:block;white-space:pre;overflow-x:auto;padding-top:12px;border-top:1px solid var(--rule)"><span style="color:var(--muted)">$</span> cd controller &amp;&amp; ./serve.sh
 <span style="color:var(--muted)">→ http://localhost:3000  ·  Scan  ·  choose “Marvin”</span></code>
           </div>
@@ -112,7 +112,7 @@
                   <tr><td>Safari — macOS, iOS</td><td><span class="tag tag-neutral">No</span></td></tr>
                 </tbody>
               </table></div>
-              <p style="margin:12px 0 0;font-size:14.5px;color:var(--muted)">Bluetooth Low Energy allows one client at a time. If Marvin is missing from the picker, something else is already holding the connection — or it is not powered.</p>
+              <p style="margin:12px 0 0;font-size:14.5px;color:var(--muted)">Marvin accepts one Bluetooth client at a time. If it is missing from the picker, check its power and disconnect any other app connected to it.</p>
             </div>
             <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px)">
   <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
@@ -263,15 +263,15 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(16px,2.5vw,32px);margin-top:clamp(24px,3.5vw,40px)">
             <div>
               <h3 style="margin:0 0 6px">Values are clamped, not rejected</h3>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">Ask for <span style="font-family:var(--font-mono);font-size:13px">T200</span> and you get 85° — the mechanical limit — not an error. The protocol assumes you meant &ldquo;as far as it goes&rdquo;.</p>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">Ask for <span style="font-family:var(--font-mono);font-size:13px">T200</span> and you get 85° — the mechanical limit — not an error. The firmware limits out-of-range values to the supported range.</p>
             </div>
             <div>
               <h3 style="margin:0 0 6px">Any movement cancels the demo</h3>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">You never have to switch modes first. Send a command and Marvin stops exploring and does as it is told.</p>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">A manual movement command or the stop command cancels demo mode.</p>
             </div>
             <div>
-              <h3 style="margin:0 0 6px">Any BLE terminal will do</h3>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">Bluetooth uses the Nordic UART Service, so a generic terminal app drives the robot as well as the project's own. <a href="reference.html#ble">The UUIDs are in Reference</a>.</p>
+              <h3 style="margin:0 0 6px">Use a BLE UART terminal</h3>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">Use a terminal app that supports the Nordic UART Service to send commands to Marvin. <a href="reference.html#ble">The UUIDs are in Reference</a>.</p>
             </div>
           </div>
         </div>
@@ -281,11 +281,11 @@
     <section id="demo" aria-labelledby="mv-demo" class="doc-section">
       <div class="section-heading">
         <div>
-          <p class="eyebrow" style="margin:0 0 10px;">Autonomous behaviour</p>
-          <h2 id="mv-demo" style="margin:0 0 14px">What it does when left alone</h2>
+          <p class="eyebrow" style="margin:0 0 10px;">Demo mode</p>
+          <h2 id="mv-demo" style="margin:0 0 14px">Programmed movement</h2>
           <div style="max-width:64ch">
-            <p>Send <span style="font-family:var(--font-mono);font-size:14px">D</span> and Marvin runs a hand-choreographed sequence: arcs, pivots, straight runs, and pauses where the head sweeps as though scanning. The head usually moves before the body turns, which is what makes it read as intent rather than mechanism.</p>
-            <p style="margin-bottom:0">Nothing about it is generated or random. It is a table of movements someone wrote by hand, with asymmetric durations chosen to avoid a metronomic feel. <a href="index.html#mv-s03">The annotated sequence is on the home page</a>.</p>
+            <p>Send <span style="font-family:var(--font-mono);font-size:14px">D</span> and Marvin runs a hand-choreographed sequence: arcs, pivots, straight runs, and pauses where the head sweeps as though scanning. The head usually moves before the body turns.</p>
+            <p style="margin-bottom:0">The sequence is stored in the firmware. Different movement durations and pauses make the motion less repetitive. <a href="index.html#mv-s03">The annotated sequence is on the home page</a>.</p>
           </div>
         </div>
       </div>
@@ -296,14 +296,14 @@
         <div>
           <p class="eyebrow" style="margin:0 0 10px;">If something goes wrong</p>
           <h2 id="mv-trouble" style="margin:0 0 14px">Troubleshooting</h2>
-          <p style="margin:0 0 20px;max-width:64ch">Five symptoms account for almost every report so far.</p>
+          <p style="margin:0 0 20px;max-width:64ch">Start with these checks if you have trouble connecting or driving.</p>
           <div style="max-width:88ch">
             <div class="table-scroll" role="region" aria-label="Troubleshooting table" tabindex="0"><table class="table">
               <thead><tr><th scope="col">Symptom</th><th scope="col">Cause</th></tr></thead>
               <tbody>
                 <tr><td>Scan button does nothing</td><td style="color:var(--muted)">Not a secure context — use <span style="font-family:var(--font-mono);font-size:12.5px">localhost</span>, not <span style="font-family:var(--font-mono);font-size:12.5px">file://</span></td></tr>
                 <tr><td>&ldquo;Web Bluetooth is not supported&rdquo;</td><td style="color:var(--muted)">Firefox or Safari — use Chrome or Edge</td></tr>
-                <tr><td>Marvin not in the device picker</td><td style="color:var(--muted)">Not powered, or already connected elsewhere — BLE allows one client at a time</td></tr>
+                <tr><td>Marvin not in the device picker</td><td style="color:var(--muted)">Not powered, or already connected elsewhere — Marvin accepts one client at a time</td></tr>
                 <tr><td>Connects, then drops immediately</td><td style="color:var(--muted)">Low battery — the microcontroller browns out when the motors draw current</td></tr>
                 <tr><td>Robot lurches on power-up</td><td style="color:var(--muted)">Motor pins floating during boot</td></tr>
               </tbody>

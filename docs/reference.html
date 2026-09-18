@@ -14,7 +14,7 @@
 <link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/css/entire.css">
+<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
 <link rel="stylesheet" href="assets/css/sketch.css">
 <script src="assets/js/site.js" defer></script>
 </head>
@@ -82,7 +82,7 @@
         <div>
           <p class="eyebrow" style="margin:0 0 10px;">Documentation · Reference</p>
           <h1 id="mv-title" style="margin:0 0 16px">Reference</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">The dense material, set as reference rather than narrative. Nothing here is explained twice; the explanations are in Build, Electronics and Drive.</p>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Command syntax, Bluetooth UUIDs, pin assignments, print settings, file formats, and licenses. For step-by-step instructions, see Build, Electronics, and Drive.</p>
         </div>
       </div>
     </section>
@@ -115,7 +115,7 @@
       <div class="section-heading">
         <div>
           <h2 id="mv-bles" style="margin:0 0 10px">Bluetooth service</h2>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">The Nordic UART Service — the de-facto standard for serial over Bluetooth. Any generic BLE terminal can drive the robot, not only the project's own app. Advertised name: <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">Marvin</span>. One client at a time.</p>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Marvin uses the Nordic UART Service. You can send commands with a compatible BLE UART terminal or the controller app. Advertised name: <span style="font-family:var(--font-mono);font-size:14px;color:var(--color-text)">Marvin</span>. One client at a time.</p>
           <div style="max-width:84ch">
             <div class="table-scroll" role="region" aria-label="Bluetooth service table" tabindex="0"><table class="table">
               <thead><tr><th scope="col">UUID</th><th scope="col">Role</th></tr></thead>
@@ -185,13 +185,13 @@
               <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <p class="kicker kicker-a" style="margin:0 0 8px">Numbering</p>
-                <p style="margin:0 0 10px;font-size:14.5px">The numeric prefix is the only thing tying a mesh to its place in the assembly. Add a part and it takes the next number; nothing is renumbered, and nothing is reused.</p>
+                <p style="margin:0 0 10px;font-size:14.5px">Keep part numbers consistent across meshes, drawings, and assembly instructions. Assign new parts the next available number; do not renumber existing parts or reuse numbers.</p>
                 <p style="margin:0;font-size:14.5px;color:var(--muted)">Screws and horns come from the bag taped to each servo, so there is no separate fastener list.</p>
               </div>
               <div class="blueprint hatch" style="position:relative;margin-top:clamp(16px,2.4vw,24px);padding:clamp(14px,2vw,20px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-                <p class="kicker kicker-a" style="margin:0 0 8px">Not settled</p>
-                <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The face plate has no mesh yet, and the track-link count has never been checked against a built robot. Both are open.</p>
+                <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="kicker kicker-a" style="margin:0">Not settled</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
+                <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The face plate needs a printable mesh, and the required track-link count needs to be confirmed on an assembled robot.</p>
                 <a class="btn btn-secondary" href="contribute.html#mechanics" style="text-decoration:none">How to help</a>
               </div>
             </div>
@@ -205,9 +205,9 @@
         <div>
           <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px">
             <h2 id="mv-set" style="margin:0">Print settings</h2>
-            <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">Not validated</span>
+            <span class="tag tag-outline" style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase">Not validated</span> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span>
           </div>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">As set in the sliced projects under <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/3d_print/</span>. Starting points, not measured optima — nobody has yet printed the full set twice on two different machines.</p>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">As set in the sliced projects under <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/3d_print/</span>. Use these as starting settings and adjust them for your printer. Validation on additional printers is still needed.</p>
           <div style="max-width:74ch">
             <div class="table-scroll" role="region" aria-label="Print settings table" tabindex="0"><table class="table">
               <tbody>
@@ -229,7 +229,7 @@
       <div class="section-heading">
         <div>
           <h2 id="mv-files" style="margin:0 0 10px">Files and formats</h2>
-          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Everything under <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/</span>. The CAD is the master and the meshes are derived from it, so a corrected STL is a dead end — the next export overwrites it.</p>
+          <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Everything under <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/</span>. Make geometry changes in the CAD model, then export new meshes. Changes made only to an STL will be lost on the next export.</p>
           <div style="margin-bottom:clamp(18px,2.5vw,26px)">
             <div class="table-scroll table-scroll--wide" role="region" aria-label="Files and formats table" tabindex="0"><table class="table">
               <thead><tr><th scope="col">Path</th><th scope="col">Format</th><th scope="col">For</th></tr></thead>
@@ -246,13 +246,13 @@
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p class="kicker kicker-a" style="margin:0 0 8px">Two things that will waste your afternoon</p>
+              <p class="kicker kicker-a" style="margin:0 0 8px">Before downloading</p>
               <p style="margin:0 0 10px;font-size:14.5px">All of the geometry is tracked through Git LFS. Run <span class="mono" style="font-size:13px">git lfs install</span> before cloning, or every file arrives as a short text pointer.</p>
               <p style="margin:0;font-size:14.5px">Rhino 8 does not read tessellated STEP. Rhino users should take the <span class="mono" style="font-size:13px">.3dm</span>, which is the same geometry.</p>
             </div>
             <div style="max-width:56ch">
               <p style="margin:0 0 10px">The two whole-robot models carry the assembly rather than a single printable part: chassis, head, tracks, motors, boards and displays, all in place.</p>
-              <p style="margin:0;color:var(--muted);font-size:14.5px">They are the reason a board designer can check that a layout fits before anyone fabricates one. Full notes on how they were reduced from the 930 MB working model are in <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/README.md</span>.</p>
+              <p style="margin:0;color:var(--muted);font-size:14.5px">Use the assembly models to check board clearances before fabrication. Full notes on how they were reduced from the 930 MB working model are in <span class="mono" style="font-size:13px;color:var(--color-text)">mechanical/README.md</span>.</p>
             </div>
           </div>
         </div>
@@ -274,8 +274,8 @@
               </table></div>
             </div>
             <div style="max-width:56ch">
-              <p style="margin:0 0 10px">CERN-OHL-S is strongly reciprocal: build and distribute a modified Marvin and you share your design changes too. The code is permissive; the object is copyleft.</p>
-              <p style="margin:0;color:var(--muted);font-size:14.5px">This is the conventional open-hardware split, and it is deliberate. It is also why the CAD master, not just the meshes, lives in the repository.</p>
+              <p style="margin:0 0 10px">CERN-OHL-S is strongly reciprocal: build and distribute a modified Marvin and you share your design changes too.</p>
+              <p style="margin:0;color:var(--muted);font-size:14.5px">The repository includes the editable CAD files as well as the exported meshes.</p>
             </div>
           </div>
         </div>
