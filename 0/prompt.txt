@@ -1,0 +1,77 @@
+commit/push, deploy to Vercel
+
+---
+
+I want the page to look more like an architect sketch, see image. [Image #1] Keep the overall layout, logos, colors, but adopt this style where you can. Iterate with the browser if you need to.
+
+---
+
+[Image #1] You didn't really touch the overall page design, see this corner under hero section. Try again.
+
+---
+
+The outer rails became too dark now. And you keep taking the easy route of just adopting what was already on the page. Be more creative, e.g. add random strokes into some of the rail edges, small background artifacts, sketched numbers, etc. Brainstorm 3 versions and show me screenshots so I can pick the direction better.
+
+---
+
+You messed it up. The horizontal rails no longer go all the way through. And they still have too dark color. You also changed background colors, which I didn't ask you to do. Revert that. No color changes. I like the numbers in the Field notebook, but those should not have a text label and should be correctly numbered from 01 to 06. Then, look again at the picture I already sent you: [Image #1] See how the white wall is not just an empty space, the artist filled it in with strokes. I want that in random corner along the rail lines.
+
+---
+
+Getting there. Add some horizontal lines as well in other locations, for example in the top right inner corner in the section below the menu. Also, the menu items look odd: [Image #1] Bring back the original design for them.
+
+---
+
+Make the horizontal lines longer and add more spacing between them.
+
+---
+
+In Documentation, the footer is missing the horizontal rail line. In Get involved, change Open the repository to Repository. Then take that button design to the repo button on Overview near the bottom, including the label. And modify the Get involved button to look like the Reference button.
+
+---
+
+commit/push
+
+---
+
+Now use the internet to find different electronics part sketches. Under the contents of each section of the web page and add sketches / scribbles in random places.
+
+---
+
+Hm, those are too simple. Also, you added lots of space to the layout instead of putting these into empty spaces. Revert that. Then try again. Ask Claude to judge your work. The page should look very creative, not like AI slop.
+
+---
+
+Claude CLI is now logged in
+
+---
+
+In Documentation, remove the Build Marvin label in the sidebar
+
+---
+
+And the Documentation label as well in the sideb
+
+---
+
+And the Project/Get involved label/link. We have that in the header already.
+
+---
+
+It seems like all tables across pages are scrollable. Why?
+
+---
+
+Fix that then
+
+---
+
+In the Documentation, completely cut the Tokens section under Licensing. That is complete AI bullshit.
+
+---
+
+Back to the sketches. I only see 2, is that right? [Image #1] [Image #2] Why don't you create sketches of those images instead?
+
+---
+
+Move the print plate into the Build One section, top right corner. Decrease the running lenght of the "Nine parts to print" section to make the print plate fit in most desktop browser widths.

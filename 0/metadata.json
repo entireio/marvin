@@ -1,0 +1,136 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M2TC84KA6PZ9BYM4S4DMRETA",
+  "session_id": "01a0aee9-6a1b-7c30-b932-e1d1bbaaaadb",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-18T13:45:50.721193Z",
+  "branch": "ashtom/website-design",
+  "checkpoints_count": 11,
+  "save_step_count": 11,
+  "files_touched": [
+    "docs/README.md",
+    "docs/assets/css/sketch.css",
+    "docs/assets/img/studies/GENERATED.md",
+    "docs/assets/img/studies/print-plate-ink.png",
+    "docs/assets/img/studies/wiring-ink.png",
+    "docs/assets/js/site.js",
+    "docs/build.html",
+    "docs/drive.html",
+    "docs/electronics.html",
+    "docs/index.html",
+    "docs/reference.html"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "5d680c69e10b",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 436979,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 25901312,
+    "output_tokens": 52293,
+    "api_call_count": 228,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 27
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-18T13:45:50.432753Z",
+    "agent_lines": 28,
+    "agent_removed": 25,
+    "human_added": 0,
+    "human_modified": 1,
+    "human_removed": 44,
+    "total_committed": 29,
+    "total_lines_changed": 98,
+    "agent_percentage": 54.08163265306123,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 1,
+      "user_lines_removed": 45,
+      "agent_lines_added": 72,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "docs/README.md": 1
+      },
+      "user_removed_per_file": {
+        "docs/README.md": 8,
+        "docs/assets/css/sketch.css": 37
+      }
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 75,
+      "agent_lines_removed": 4
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 75,
+      "agent_lines_removed": 8
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 75,
+      "agent_lines_removed": 12
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 75,
+      "agent_lines_removed": 20
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 75,
+      "agent_lines_removed": 20
+    },
+    {
+      "checkpoint_number": 9,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 77,
+      "agent_lines_removed": 21
+    },
+    {
+      "checkpoint_number": 10,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 77,
+      "agent_lines_removed": 69
+    },
+    {
+      "checkpoint_number": 11,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 88,
+      "agent_lines_removed": 69
+    },
+    {
+      "checkpoint_number": 12,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 89,
+      "agent_lines_removed": 70
+    }
+  ]
+}
