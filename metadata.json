@@ -1,0 +1,44 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M2T9VWCZ14WK3EQ6BHFE1850",
+  "strategy": "manual-commit",
+  "branch": "ashtom/website-design",
+  "checkpoints_count": 8,
+  "files_touched": [
+    "docs/README.md",
+    "docs/assets/css/sketch.css",
+    "docs/assets/img/rail-shading-1.svg",
+    "docs/assets/img/rail-shading-2.svg",
+    "docs/assets/img/rail-shading-3.svg",
+    "docs/assets/img/rail-shading-4.svg",
+    "docs/assets/img/rail-shading-5.svg",
+    "docs/assets/img/rail-shading-6.svg",
+    "docs/assets/img/rail-shading-horizontal.svg",
+    "docs/assets/img/sketch-frame.svg",
+    "docs/assets/img/sketch-rail.svg",
+    "docs/assets/img/sketch-rule.svg",
+    "docs/build.html",
+    "docs/contribute.html",
+    "docs/drive.html",
+    "docs/electronics.html",
+    "docs/index.html",
+    "docs/reference.html"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 73011,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 7609728,
+    "output_tokens": 18832,
+    "api_call_count": 52,
+    "subagent_tokens_complete": true
+  }
+}
