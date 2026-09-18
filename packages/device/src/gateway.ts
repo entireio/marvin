@@ -92,7 +92,7 @@ export class DeviceGateway {
     }
     if(message.type==='voice_stop'){await this.voice?.stop(c.identity.deviceId);return;}
     if(message.type==='voice_playback_done'){if(c.protocolMinor<6)throw new DomainError('AUDIO_PROTOCOL','Playback acknowledgement was not negotiated.',400);this.voice?.playbackDone(c.identity.deviceId,message.interactionId);return;}
-    if(message.type==='voice_interrupt'){await this.voice?.interrupt(c.identity.deviceId);return;}
+    if(message.type==='voice_interrupt'){await this.voice?.interrupt(c.identity.deviceId,message.reason==='wake'?'wake':'manual');return;}
     if(message.type==='voice_start'){
      if(!c.capabilities.includes('voice'))throw new DomainError('CAPABILITY_UNAVAILABLE','Voice hardware was not negotiated.',409);
      const current=c;

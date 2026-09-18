@@ -4,7 +4,7 @@ export type VoiceView={state:VoiceState;message?:string;interactionId?:string;us
 /** Audio is never broadcast or stored. A fresh socket owns a fresh output route. */
 export class BrowserVoice {
  private socket?:WebSocket;private stream?:MediaStream;private context?:AudioContext;private worklet?:AudioWorkletNode;private source?:MediaStreamAudioSourceNode;
- private sources=new Set<AudioBufferSourceNode>();private next=0;private closed=false;private muted=false;private ready=false;private turn='';private blocked=new Set<string>();private transcript='';private serverState:VoiceState='connecting';private timer?:ReturnType<typeof setTimeout>;
+ private sources=new Set<AudioBufferSourceNode>();private pendingAudio:string[]=[];private next=0;private closed=false;private muted=false;private ready=false;private turn='';private blocked=new Set<string>();private transcript='';private serverState:VoiceState='connecting';private timer?:ReturnType<typeof setTimeout>;private pumpTimer?:ReturnType<typeof setTimeout>;
  constructor(private conversationId:string,private notify:(view:VoiceView)=>void,private refresh:()=>void){}
  private state(state:VoiceState,message?:string){if(!this.closed)this.notify({state,message});}
  async start(){
@@ -21,7 +21,7 @@ export class BrowserVoice {
    const socket=new WebSocket(`${location.protocol==='https:'?'wss:':'ws:'}//${location.host}/api/voice`);this.socket=socket;
    this.timer=setTimeout(()=>this.fail('Voice took too long to connect. Check your connection and retry.'),16000);
    socket.onopen=()=>this.send({type:'start',conversationId:this.conversationId,csrf});
-   socket.onmessage=e=>{try{this.receive(JSON.parse(String(e.data)));}catch{this.fail('Voice received an invalid response. Reconnect to continue.');}};
+   socket.onmessage=e=>{let message:Record<string,any>;try{message=JSON.parse(String(e.data));}catch{this.fail('Voice received an invalid response. Reconnect to continue.');return;}try{this.receive(message);}catch(error){this.fail(`Voice audio could not be played. ${error instanceof Error?error.message:'Reconnect to continue.'}`);}};
    socket.onerror=()=>this.fail('Voice lost its connection. Your conversation is saved.');
    socket.onclose=()=>{if(!this.closed)this.fail('Voice disconnected. Reconnect to continue with the same conversation.');};
   }catch(e){const name=(e as Error).name;this.fail(name==='NotAllowedError'?'Microphone access was not allowed. Enable it in your browser’s site settings, then try again.':name==='NotFoundError'?'No microphone was found. Connect a microphone and try again.':(e as Error).message);}
@@ -32,7 +32,7 @@ export class BrowserVoice {
   if(e.type==='ready'){if(e.sampleRate!==24000)throw new Error('Invalid format');clearTimeout(this.timer);this.ready=true;this.state('listening');}
   if(e.type==='state'){this.serverState=e.state;if(e.state==='hearing')this.flush();this.state(this.muted?'muted':this.sources.size?'speaking':e.state);}
   if(e.type==='turn'){this.turn=e.interactionId;this.transcript='';this.notify({state:this.muted?'muted':'thinking',interactionId:e.interactionId,userText:e.text,assistantText:''});this.refresh();}
-  if(e.type==='audio'&&e.interactionId===this.turn&&!this.blocked.has(this.turn)&&!this.muted)this.play(e.pcm);
+  if(e.type==='audio'&&e.interactionId===this.turn&&!this.blocked.has(this.turn)&&!this.muted)this.queueAudio(e.pcm);
   if(e.type==='flush')this.flush();
   if(e.type==='event'){
    const event=e.event;if(event.interactionId!==this.turn)return;
@@ -44,13 +44,26 @@ export class BrowserVoice {
   if(e.type==='error')this.fail(e.message??'Voice is unavailable.');
   if(e.type==='closed'){const message=String(e.message??'Voice ended.');this.stop();this.notify({state:'closed',message});}
  }
+ private queueAudio(pcm:string){
+  if(typeof pcm!=='string'||pcm.length>24000)throw new Error('Received an oversized audio packet.');
+  // The server normally paces audio, but network delivery can still arrive in bursts.
+  // Keep those bursts out of the AudioContext schedule instead of treating them as a bad response.
+  if(this.pendingAudio.length>=256)throw new Error('Audio arrived faster than this browser can play it.');
+  this.pendingAudio.push(pcm);this.pumpAudio();
+ }
+ private pumpAudio(){
+  clearTimeout(this.pumpTimer);if(this.closed||this.muted||!this.pendingAudio.length)return;
+  const ctx=this.context;if(!ctx||ctx.state==='closed')return;
+  while(this.pendingAudio.length&&this.next-ctx.currentTime<2)this.play(this.pendingAudio.shift()!);
+  if(this.pendingAudio.length){const delay=Math.max(10,(this.next-ctx.currentTime-1.5)*1000);this.pumpTimer=setTimeout(()=>this.pumpAudio(),delay);}
+ }
  private play(pcm:string){
   if(typeof pcm!=='string'||pcm.length>24000)throw new Error('Oversized audio');const raw=atob(pcm);if(raw.length%2)throw new Error('Invalid PCM');const ctx=this.context;if(!ctx||ctx.state==='closed')return;
-  if(this.next-ctx.currentTime>15)throw new Error('Playback queue exceeded');const data=new Float32Array(raw.length/2);for(let i=0;i<data.length;i++){let v=raw.charCodeAt(2*i)|(raw.charCodeAt(2*i+1)<<8);if(v>=32768)v-=65536;data[i]=v/32768;}
-  const buffer=ctx.createBuffer(1,data.length,24000);buffer.copyToChannel(data,0);const source=ctx.createBufferSource();source.buffer=buffer;source.connect(ctx.destination);this.sources.add(source);source.onended=()=>{this.sources.delete(source);source.disconnect();if(!this.sources.size&&!this.closed)this.state(this.muted?'muted':this.serverState==='thinking'?'thinking':'listening');};
+  const data=new Float32Array(raw.length/2);for(let i=0;i<data.length;i++){let v=raw.charCodeAt(2*i)|(raw.charCodeAt(2*i+1)<<8);if(v>=32768)v-=65536;data[i]=v/32768;}
+  const buffer=ctx.createBuffer(1,data.length,24000);buffer.copyToChannel(data,0);const source=ctx.createBufferSource();source.buffer=buffer;source.connect(ctx.destination);this.sources.add(source);source.onended=()=>{this.sources.delete(source);source.disconnect();this.pumpAudio();if(!this.sources.size&&!this.pendingAudio.length&&!this.closed)this.state(this.muted?'muted':this.serverState==='thinking'?'thinking':'listening');};
   const when=Math.max(ctx.currentTime+.015,this.next);source.start(when);this.next=when+buffer.duration;this.state('speaking');
  }
- private flush(){for(const source of this.sources){source.onended=null;try{source.stop();}catch{}source.disconnect();}this.sources.clear();this.next=this.context?.currentTime??0;}
+ private flush(){clearTimeout(this.pumpTimer);this.pendingAudio=[];for(const source of this.sources){source.onended=null;try{source.stop();}catch{}source.disconnect();}this.sources.clear();this.next=this.context?.currentTime??0;}
  interrupt(){if(this.turn){this.blocked.add(this.turn);if(this.blocked.size>500)this.blocked.delete(this.blocked.values().next().value!);}this.flush();this.send({type:'interrupt'});}
  mute(value:boolean){this.muted=value;this.stream?.getAudioTracks().forEach(t=>{t.enabled=!value;});this.worklet?.port.postMessage({muted:value});if(value)this.interrupt();this.send({type:'mute',muted:value});this.state(value?'muted':'listening');}
  stop(){if(this.closed)return;this.send({type:'stop'});this.closed=true;this.ready=false;clearTimeout(this.timer);this.flush();this.worklet?.disconnect();this.source?.disconnect();if(this.worklet)this.worklet.port.onmessage=null;this.stream?.getTracks().forEach(t=>t.stop());void this.context?.close().catch(()=>{});this.socket?.close();this.refresh();}

@@ -104,6 +104,14 @@ config MARVIN_TRACK_BENCH_MODE
         No cliff or pickup sensor is wired yet. Track commands remain disabled
         unless this option is built and the local console arms a short test
         window. Use only on a clear, level floor under supervision.
+
+config MARVIN_AFE_LAYOUT_V2
+    bool "Use the 16 MB AFE v2 partition layout"
+    depends on MARVIN_LOCAL_AFE
+    default n
+    help
+        Select only when partitions-afe-v2.csv is installed. This changes the
+        signed OTA layout identifier and cannot be delivered by normal OTA.
 config MARVIN_HEAD_YAW_CENTER
     int "Head rotation servo center angle"
     range 30 150

@@ -5,6 +5,7 @@
 #error "Signed OTA requires a rollback-enabled bootloader"
 #endif
 #include "body_audio.h"
+#include "motion_controller.h"
 #include "marvin_update_factory.h"
 #include "marvin_update_download.h"
 #include "marvin_update_esp.h"
@@ -14,11 +15,13 @@
 #include "freertos/task.h"
 #include "mbedtls/platform_util.h"
 #include <stdatomic.h>
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
 static atomic_uint requested;
 static atomic_bool busy,cancel_requested;
+static bool bootstrap_failure_reported;
 static marvin_link_snapshot_t snapshot;
 static const char *certificate;
 static int64_t now_ms(void){struct timeval now;gettimeofday(&now,NULL);return (int64_t)now.tv_sec*1000+now.tv_usec/1000;}
@@ -31,11 +34,18 @@ static bool confirm_initial_boot(void){
  const esp_partition_t *running=esp_ota_get_running_partition();if(!running)return false;
  char key[1024];uint8_t manifest[MARVIN_UPDATE_MANIFEST_BYTES];marvin_update_trust_t trust;
 #ifdef CONFIG_MARVIN_LOCAL_AFE
+ #ifdef CONFIG_MARVIN_AFE_LAYOUT_V2
+ const char *layout="afe-v2";
+ #else
  const char *layout="afe-v1";
+ #endif
 #else
  const char *layout="owner-v1";
 #endif
- bool ok=marvin_update_factory_trust(key,sizeof(key),layout,running->size,&trust)&&trust.committed_sequence==0&&marvin_update_factory_bootstrap(manifest)&&marvin_update_esp_bootstrap(true,manifest,sizeof(manifest),&trust);
+ bool factory_ok=marvin_update_factory_trust(key,sizeof(key),layout,running->size,&trust);
+ bool manifest_ok=factory_ok&&marvin_update_factory_bootstrap(manifest);
+ bool ok=manifest_ok&&marvin_update_esp_bootstrap(true,manifest,sizeof(manifest),&trust);
+ if(!ok&&!bootstrap_failure_reported){printf("{\"update\":\"bootstrap_refused\",\"factory\":%s,\"manifest\":%s,\"sequence\":%" PRIu32 "}\n",factory_ok?"true":"false",manifest_ok?"true":"false",trust.committed_sequence);bootstrap_failure_reported=true;}
  mbedtls_platform_zeroize(key,sizeof(key));return ok;
 }
 static void confirm_boot(void){
@@ -69,13 +79,17 @@ static void run(void *unused){
   char public_key[1024];marvin_update_trust_t trust;marvin_link_identity_t identity={0};
   const esp_partition_t *slot=esp_ota_get_next_update_partition(NULL);
 #ifdef CONFIG_MARVIN_LOCAL_AFE
+  #ifdef CONFIG_MARVIN_AFE_LAYOUT_V2
+  const char *layout="afe-v2";
+  #else
   const char *layout="afe-v1";
+  #endif
 #else
   const char *layout="owner-v1";
 #endif
   bool ready=slot&&snapshot(&identity)&&now_ms()<identity.expires_ms&&marvin_device_link_online()&&marvin_update_factory_trust(public_key,sizeof(public_key),layout,slot->size,&trust)&&sequence>trust.committed_sequence;
   if(!ready||cancelled(&identity)){printf("{\"update\":\"preflight_refused\"}\n");mbedtls_platform_zeroize(&identity,sizeof(identity));mbedtls_platform_zeroize(public_key,sizeof(public_key));atomic_store(&busy,false);continue;}
-  printf("{\"update\":\"quiescing\"}\n");bool quiet=marvin_device_link_quiesce()&&marvin_body_quiesce();
+  printf("{\"update\":\"quiescing\"}\n");marvin_motion_idle_enabled(false);bool quiet=marvin_device_link_quiesce()&&marvin_body_quiesce();
   marvin_update_esp_t platform;marvin_update_writer_t writer;
   bool selected=quiet&&!cancelled(&identity)&&marvin_update_esp_writer(&platform,&writer)&&marvin_update_download(identity.origin,identity.credential,certificate,sequence,&trust,writer,cancelled,&identity);
   mbedtls_platform_zeroize(&identity,sizeof(identity));mbedtls_platform_zeroize(public_key,sizeof(public_key));

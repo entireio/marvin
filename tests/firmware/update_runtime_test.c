@@ -21,6 +21,7 @@ uint32_t marvin_body_health_progress(void){return mode==22?0:elapsed+1;}
 bool marvin_update_esp_confirm(bool healthy){assert(healthy);confirmed++;if(mode==24)boot_state=ESP_OTA_IMG_VALID;return mode!=23&&mode!=24;}
 bool marvin_update_factory_trust(char *buffer,size_t capacity,const char *layout,uint32_t bytes,marvin_update_trust_t *trust){assert(capacity==1024&&!strcmp(layout,"afe-v1")&&bytes==partition.size);strcpy(buffer,"public-fixture");*trust=(marvin_update_trust_t){buffer,"waveshare-esp32s3-audio",layout,3,bytes};return mode!=1;}
 bool marvin_device_link_quiesce(void){assert(order==0);order=1;return mode!=3;}
+void marvin_motion_idle_enabled(bool enabled){assert(!enabled);}
 bool marvin_body_quiesce(void){assert(order==1);order=2;return mode!=4;}
 bool marvin_update_esp_writer(marvin_update_esp_t *context,marvin_update_writer_t *writer){(void)context;memset(writer,0,sizeof(*writer));assert(order==2);order=3;return mode!=5;}
 bool marvin_update_download(const char *origin,const char *token,const char *ca,uint32_t sequence,const marvin_update_trust_t *trust,marvin_update_writer_t writer,bool (*cancel)(void*),void *context){(void)writer;assert(order==3&&!strcmp(origin,"https://marvin.test")&&strlen(token)==43&&!strcmp(ca,"fixture-ca")&&sequence==4&&trust->committed_sequence==3);downloads++;if(mode==7)marvin_ota_cancel();return !cancel(context)&&mode!=6;}

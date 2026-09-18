@@ -3,6 +3,7 @@
 #include "body_audio.h"
 #include "pet_controls.h"
 #include "actuators.h"
+#include "motion_controller.h"
 #include "device_identity.h"
 #include "owner_setup.h"
 /* Waveshare ESP32-S3 audio board with wired track and head outputs. */
@@ -252,6 +253,7 @@ static void audio_console(void *unused){
 #endif
 void app_main(void) {
     ESP_ERROR_CHECK(marvin_actuators_init());
+    ESP_ERROR_CHECK(marvin_motion_init());
 #ifdef CONFIG_MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC
     marvin_audio_diagnostic();return;
 #endif

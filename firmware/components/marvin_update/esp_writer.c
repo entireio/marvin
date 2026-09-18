@@ -56,11 +56,11 @@ bool marvin_update_esp_confirm(bool healthy){
  nvs_close(nvs);return ok;
 }
 bool marvin_update_esp_bootstrap(bool healthy,const uint8_t *manifest,size_t bytes,const marvin_update_trust_t *trust){
- if(!healthy||!trust||trust->committed_sequence!=0)return false;
- uint32_t committed;if(!marvin_update_esp_sequence(&committed)||committed)return false;
+ if(!healthy||!trust)return false;
+ uint32_t committed;if(!marvin_update_esp_sequence(&committed)||committed!=trust->committed_sequence)return false;
  const esp_partition_t *running=esp_ota_get_running_partition();esp_ota_img_states_t state;
  if(!running||esp_ota_get_state_partition(running,&state)!=ESP_OK||state!=ESP_OTA_IMG_PENDING_VERIFY||!esp_ota_check_rollback_is_possible())return false;
- marvin_update_image_t image;if(!marvin_update_verify(manifest,bytes,trust,&image)||image.image_bytes>running->size)return false;
+ marvin_update_image_t image;if(!marvin_update_verify(manifest,bytes,trust,&image)||image.sequence<=committed||image.image_bytes>running->size)return false;
  nvs_handle_t nvs;if(nvs_open("marvin_update",NVS_READWRITE,&nvs)!=ESP_OK)return false;
  size_t existing=0;esp_err_t err=nvs_get_blob(nvs,"pending",NULL,&existing);nvs_close(nvs);if(err!=ESP_ERR_NVS_NOT_FOUND)return false;
  /* Verify current flash before creating any durable bootstrap claim. */

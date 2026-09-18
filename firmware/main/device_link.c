@@ -2,6 +2,7 @@
 #include "device_wire.h"
 #include "body_audio.h"
 #include "actuators.h"
+#include "motion_controller.h"
 #include "esp_websocket_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_random.h"
@@ -59,11 +60,11 @@ static bool motion_ledger_ready;
 static char active_motion_id[37];
 static int64_t active_motion_until;
 static bool active_motion_tracks;
-static int head_yaw,head_pitch;
 static unsigned head_signal_state;
 typedef struct {int left,right;uint16_t duration_ms;} motion_step_t;
 static motion_step_t motion_steps[3];
 static unsigned motion_step_count,motion_step_index;
+static void head_signal(unsigned state);
 static int64_t milliseconds(void){struct timeval t;gettimeofday(&t,NULL);return (int64_t)t.tv_sec*1000+t.tv_usec/1000;}
 static void event(void *arg,esp_event_base_t base,int32_t id,void *data){
  (void)arg;(void)base;
@@ -172,9 +173,8 @@ static bool motion_command(esp_websocket_client_handle_t client,const cJSON *m){
  if(!motion_record(id->valuestring,1))return motion_status(client,id->valuestring,"failed","LEDGER_WRITE_FAILED");
  if(tracks){motion_steps[0]=(motion_step_t){left,right,(uint16_t)duration->valuedouble};motion_step_count=1;}
  motion_step_index=0;
- esp_err_t result=head?marvin_head_pose(yaw,pitch):marvin_tracks_set(motion_steps[0].left,motion_steps[0].right,motion_steps[0].duration_ms);
+ esp_err_t result=head?marvin_motion_head_request(yaw,pitch,(uint32_t)duration->valuedouble):marvin_tracks_set(motion_steps[0].left,motion_steps[0].right,motion_steps[0].duration_ms);
  if(result!=ESP_OK){motion_record(id->valuestring,3);return motion_status(client,id->valuestring,"failed",head?"HEAD_UNAVAILABLE":"MOTION_UNSAFE");}
- if(head){head_yaw=yaw;head_pitch=pitch;}
  snprintf(active_motion_id,sizeof(active_motion_id),"%s",id->valuestring);
  active_motion_tracks=!head;active_motion_until=esp_timer_get_time()+(int64_t)(head?duration->valuedouble:motion_steps[0].duration_ms)*1000;
  return motion_status(client,id->valuestring,"accepted",NULL);
@@ -199,6 +199,7 @@ static bool motion_tick(esp_websocket_client_handle_t client){
   }
  }
  char id[37];snprintf(id,sizeof(id),"%s",active_motion_id);active_motion_id[0]=0;active_motion_until=0;
+ head_signal(head_signal_state);
  bool saved=motion_record(id,2);
  return motion_status(client,id,saved?"completed":"failed",saved?NULL:"LEDGER_WRITE_FAILED");
 }
@@ -206,11 +207,7 @@ static void head_signal(unsigned state){
  if(state==0&&head_signal_state==0)return;
  head_signal_state=state;
  if(active_motion_id[0])return;
- int delta=state==1?8:state==2?-5:state==3?3:0;
- int pitch=head_pitch+delta;
- if(pitch>20)pitch=20;
- if(pitch < -20)pitch=-20;
- marvin_head_pose(head_yaw,pitch);
+ marvin_motion_cue(state==1?MARVIN_MOTION_CUE_LISTENING:state==2?MARVIN_MOTION_CUE_THINKING:state==3?MARVIN_MOTION_CUE_SPEAKING:MARVIN_MOTION_CUE_NONE);
 }
 static bool voice_command(esp_websocket_client_handle_t client,const char *type){cJSON *m=cJSON_CreateObject();cJSON_AddStringToObject(m,"type",type);if(!strcmp(type,"voice_start"))cJSON_AddStringToObject(m,"reason",wake_requested?"wake":"button");return send_json(client,m);}
 static void voice_stop_local(void){atomic_store(&uplink_enabled,false);marvin_body_capture(false);marvin_body_audio_flush();voice_pending=voice_active=false;playback_done_id[0]=0;esp_wifi_set_ps(WIFI_PS_MIN_MODEM);}
@@ -309,11 +306,11 @@ static void run(void *unused){
     if(atomic_load(&online)&&playback_done_id[0]&&marvin_body_audio_drained()){cJSON *done=cJSON_CreateObject();cJSON_AddStringToObject(done,"type","voice_playback_done");cJSON_AddStringToObject(done,"interactionId",playback_done_id);playback_done_id[0]=0;if(!send_json(client,done))atomic_store(&failed,true);}
     if(atomic_load(&online)&&marvin_body_audio_available()){
      unsigned request=atomic_exchange(&voice_request,0);
-     if((request==1||request==4)&&!voice_active&&!voice_pending){wake_requested=request==4;voice_pending=true;voice_since=now;marvin_body_capture(true);esp_wifi_set_ps(WIFI_PS_NONE);if(!voice_command(client,"voice_start"))atomic_store(&failed,true);}
+     if((request==1||request==4)&&!voice_active&&!voice_pending){wake_requested=request==4;if(wake_requested)marvin_motion_wake();voice_pending=true;voice_since=now;marvin_body_capture(true);esp_wifi_set_ps(WIFI_PS_NONE);if(!voice_command(client,"voice_start"))atomic_store(&failed,true);}
      unsigned audio_fault=marvin_body_audio_fault();if(audio_fault)printf("{\"audioFault\":%u}\n",audio_fault);
      if(request==2||audio_fault||(voice_pending&&now-voice_since>20000000)||(voice_active&&now-voice_since>900000000)){
       bool existed=voice_active||voice_pending;voice_stop_local();head_signal(0);if(existed&&!voice_command(client,"voice_stop"))atomic_store(&failed,true);
-     }else if((request==3||request==4)&&voice_active){marvin_body_audio_flush();if(!voice_command(client,"voice_interrupt"))atomic_store(&failed,true);}
+     }else if((request==3||request==4)&&voice_active){marvin_body_audio_flush();cJSON *m=cJSON_CreateObject();cJSON_AddStringToObject(m,"type","voice_interrupt");if(request==4)cJSON_AddStringToObject(m,"reason","wake");if(!send_json(client,m))atomic_store(&failed,true);}
 
     }
     atomic_store(&link_stack,uxTaskGetStackHighWaterMark(NULL));
@@ -362,6 +359,7 @@ void marvin_device_voice_start(void){if(atomic_load(&online)&&marvin_body_audio_
 void marvin_device_voice_wake(void){if(atomic_load(&online)&&marvin_body_audio_available()&&!marvin_body_microphone_muted())atomic_store(&voice_request,4);}
 void marvin_device_voice_stop(void){marvin_body_capture(false);marvin_body_audio_flush();atomic_store(&voice_request,2);}
 void marvin_device_voice_interrupt(void){marvin_body_audio_flush();atomic_store(&voice_request,3);}
+void marvin_device_voice_interrupt_wake(void){marvin_body_audio_flush();atomic_store(&voice_request,4);}
 void marvin_device_audio_changed(void){atomic_store(&audio_settings_pending,true);if(marvin_body_microphone_muted())marvin_device_voice_stop();}
 void marvin_device_link_status(void){printf("{\"uploadStackFree\":%u}\n",atomic_load(&upload_stack));printf("{\"uplink\":{\"online\":%s,\"pcmSamples16k\":%u,\"attempts\":%u,\"maxWriteUs\":%u,\"stackFree\":%u}}\n",atomic_load(&online)?"true":"false",atomic_load(&pcm_sent),atomic_load(&send_attempts),atomic_load(&max_write_us),atomic_load(&link_stack));}
 

@@ -12,7 +12,7 @@ export const DeviceControl=z.discriminatedUnion('type',[
  z.object({type:z.literal('sensor'),pickedUp:z.boolean()}).strict(),
  z.object({type:z.literal('voice_start'),reason:z.enum(['wake','button'])}).strict(),
  z.object({type:z.literal('voice_stop')}).strict(),
- z.object({type:z.literal('voice_interrupt')}).strict(),
+ z.object({type:z.literal('voice_interrupt'),reason:z.literal('wake').optional()}).strict(),
  z.object({type:z.literal('audio_settings'),volume:z.number().int().min(0).max(100),muted:z.boolean(),microphoneGainDb:z.number().int().min(0).max(36).multipleOf(6).optional(),allowPlaybackMic:z.boolean().optional(),followupSeconds:z.number().int().min(0).max(30).optional()}).strict(),
  z.object({type:z.literal('voice_playback_done'),interactionId:Id}).strict()
 ]);

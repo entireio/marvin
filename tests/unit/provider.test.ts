@@ -4,11 +4,13 @@ import { OpenAITextProvider,persona,repositoryExplanation,type ModelContext } fr
 const ctx:ModelContext={interaction:{ownerId:'o',conversationId:'c',interactionId:'i',routeId:'r',surface:'web_text',repositoryId:'marvin-firmware',repositoryName:'spidemon / miraloma_robotics',entireState:'fixture',body:{deviceId:'b',status:'online',capabilities:['head']}},summary:'Previously: remember blue.',messages:[{userText:'My color is blue',surface:'web_voice',assistantText:'Saved',status:'completed'}],input:'What changed?'};
 async function listen(server:Server){await new Promise<void>(r=>server.listen(0,'127.0.0.1',r));return `http://127.0.0.1:${(server.address() as {port:number}).port}/v1`;}
 const close=(s:Server)=>new Promise<void>(r=>s.close(()=>r()));
-it('keeps Marvin warm while making humor a sparse accent',()=>{
- expect(persona).toContain('Your baseline is clear, warm, and helpful.');
- expect(persona).toContain('Most responses should contain no joke or comic aside.');
- expect(persona).toContain('never add more than one');
- expect(persona).toContain('do not use humor in consecutive replies');
+it('gives Marvin a helpful, sparse, world-weary voice',()=>{
+ expect(persona).toContain('competent, faintly resigned, and never hostile');
+ expect(persona).toContain('State the useful fact, answer, result, or next action first.');
+ expect(persona).toContain('Wit is scarce');
+ expect(persona).toContain('never use it in consecutive replies');
+ expect(persona).toContain('Be gentle with people.');
+ expect(persona).toContain('Close substantive answers in two beats');
 });
 it('labels the repository by display name and never guesses from an opaque id',()=>{
  expect(repositoryExplanation(ctx.interaction)).toContain('spidemon / miraloma_robotics');

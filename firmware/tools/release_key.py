@@ -22,8 +22,8 @@ def bootstrap_capsule(path: Path, public_pem: bytes) -> bytes:
     if len(data) != 176 or data[:8] != b'MRVOTA01' or any(data[100:112]):
         raise ValueError('Invalid bootstrap capsule')
     board = b'waveshare-esp32s3-audio'.ljust(32, b'\0')
-    layouts = (b'afe-v1'.ljust(16,b'\0'), b'owner-v1'.ljust(16,b'\0'))
-    if data[48:80] != board or data[80:96] not in layouts or not int.from_bytes(data[8:12],'big') or not 1024 <= int.from_bytes(data[12:16],'big') <= 0x1e0000 or int.from_bytes(data[96:100],'big') != 0:
+    layouts = (b'afe-v1'.ljust(16,b'\0'), b'afe-v2'.ljust(16,b'\0'), b'owner-v1'.ljust(16,b'\0'))
+    if data[48:80] != board or data[80:96] not in layouts or not int.from_bytes(data[8:12],'big') or not 1024 <= int.from_bytes(data[12:16],'big') <= 0x300000 or int.from_bytes(data[96:100],'big') != 0:
         raise ValueError('Bootstrap must target this board/layout and initial sequence')
     signature = encode_dss_signature(int.from_bytes(data[112:144],'big'), int.from_bytes(data[144:176],'big'))
     try:

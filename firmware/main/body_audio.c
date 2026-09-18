@@ -20,6 +20,7 @@ static atomic_uint flush_max_us,append_max_us,flush_requests,convert_max_us,writ
 #ifdef CONFIG_MARVIN_LOCAL_AFE
 #include "local_afe.h"
 #include "device_link.h"
+#include "motion_controller.h"
 #include "esp_timer.h"
 #endif
 #define OUTPUT_SAMPLES (24000*8)
@@ -105,8 +106,8 @@ static void capture_task(void *unused){
   int64_t now=esp_timer_get_time();if(atomic_load(&playing))wake_resume_at=now+(atomic_load(&ready_cue_playing)?50000:2000000);
   if(result.wake&&now-last_wake>2000000){last_wake=now;
 #ifndef CONFIG_MARVIN_SILENT_TEST
-   if(atomic_load(&capture_active)&&atomic_load(&playing)){atomic_fetch_add(&local_interrupts,1);marvin_device_voice_interrupt();}
-   else if(!atomic_load(&capture_active)&&!atomic_load(&playing)&&now>=wake_resume_at&&!atomic_load(&microphone_muted)){atomic_fetch_add(&local_wakes,1);if(atomic_load(&wake_activation_enabled))marvin_device_voice_wake();}
+   if(atomic_load(&capture_active)&&atomic_load(&playing)){atomic_fetch_add(&local_interrupts,1);marvin_device_voice_interrupt_wake();}
+   else if(!atomic_load(&capture_active)&&!atomic_load(&playing)&&now>=wake_resume_at&&!atomic_load(&microphone_muted)){atomic_fetch_add(&local_wakes,1);if(atomic_load(&wake_activation_enabled)){marvin_motion_wake();marvin_device_voice_wake();}}
 #endif
   }
   if(!atomic_load(&capture_active)){partial_count=0;marvin_preroll_push(preroll,result.pcm,result.frames);continue;}
@@ -142,8 +143,9 @@ static void capture_task(void *unused){
 #endif
 static void playback_task(void *unused){
  (void)unused;int16_t source[240],samples[160],silence[160]={0};int64_t last_write=0;
- /* 800 Hz at 16 kHz, with a 10 ms fade at both ends. */
- static const int16_t sine[20]={0,1236,2351,3236,3804,4000,3804,3236,2351,1236,0,-1236,-2351,-3236,-3804,-4000,-3804,-3236,-2351,-1236};
+ /* Two short rising notes, each faded in and out to avoid clicks. */
+ static const int16_t low[20]={0,2472,4702,6472,7608,8000,7608,6472,4702,2472,0,-2472,-4702,-6472,-7608,-8000,-7608,-6472,-4702,-2472};
+ static const int16_t high[16]={0,3061,5657,7391,8000,7391,5657,3061,0,-3061,-5657,-7391,-8000,-7391,-5657,-3061};
  for(;;){
   if(park(4))continue;
   if(atomic_load(&flush_requests)){vTaskDelay(1);continue;}
@@ -158,17 +160,22 @@ static void playback_task(void *unused){
    atomic_store(&ready_cue_playing,true);atomic_store(&playing,true);
    bool ok=marvin_audio_mute(false)==ESP_OK;
    for(unsigned lead=0;ok&&lead<5;lead++)ok=marvin_audio_write(silence,160)==ESP_OK;
-   for(unsigned chunk=0;ok&&chunk<12;chunk++){
-    for(unsigned i=0;i<160;i++){
-     unsigned index=chunk*160+i;
-     unsigned fade=160;
-     if(index<160)fade=index;
-     else if(index>1760)fade=1920-index;
-     samples[i]=(int16_t)(sine[index%20]*(int)fade/160);
+   for(unsigned note=0;ok&&note<2;note++){
+    const int16_t *wave=note?high:low;unsigned period=note?16:20;
+    for(unsigned chunk=0;ok&&chunk<8;chunk++){
+     for(unsigned i=0;i<160;i++){
+      unsigned index=chunk*160+i;
+      unsigned fade=160;
+      if(index<160)fade=index;
+      else if(index>1120)fade=1280-index;
+      samples[i]=(int16_t)(wave[index%period]*(int)fade/160);
+     }
+     ok=marvin_audio_write(samples,160)==ESP_OK;
     }
-    ok=marvin_audio_write(samples,160)==ESP_OK;
+    if(note==0)for(unsigned gap=0;ok&&gap<2;gap++)ok=marvin_audio_write(silence,160)==ESP_OK;
    }
-   if(ok)ok=marvin_audio_write(silence,160)==ESP_OK;
+   /* I2S write queues DMA. Clock out its four 10 ms buffers before muting. */
+   for(unsigned tail=0;ok&&tail<6;tail++)ok=marvin_audio_write(silence,160)==ESP_OK;
    if(marvin_audio_mute(true)!=ESP_OK||!ok)atomic_store(&fault,4);
    atomic_store(&playing,false);atomic_store(&ready_cue_playing,false);
   }

@@ -35,7 +35,16 @@ export function registerVoice(app:FastifyInstance,runtime:Runtime,origin:string,
      const ctx={...await runtime.context(ownerId,conversationId,id,routeId),surface:'web_voice' as const};
      if(stale())return;activeId=id;lastId=id;
      await send({type:'turn',interactionId:id,text});if(stale())return;
-     await runtime.start(ctx,text,{provider:connection.forTurn(e.itemId),audio:async pcm=>{if(closed||activeId!==id)return;await send({type:'audio',interactionId:id,pcm});}});
+     let audioDue=0;
+     await runtime.start(ctx,text,{provider:connection.forTurn(e.itemId),audio:async pcm=>{
+      if(closed||activeId!==id)return;
+      // Pace output close to its playback duration. This prevents a fast provider or a
+      // temporarily buffered network path from flooding the browser's AudioContext.
+      const duration=Math.ceil(Buffer.from(pcm,'base64').length/48);
+      const wait=Math.max(0,audioDue-Date.now());audioDue=Math.max(audioDue,Date.now())+duration;
+      if(wait)await new Promise<void>(resolve=>setTimeout(resolve,wait));
+      if(closed||activeId!==id)return;await send({type:'audio',interactionId:id,pcm});
+     }});
      if(stale()){await runtime.cancel(ownerId,id);await runtime.waitTurn(id);}
     }).catch(()=>fault('Voice could not start this response. Stop any other response, then reconnect.'));
    }
