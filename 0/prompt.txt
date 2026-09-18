@@ -75,3 +75,7 @@ Back to the sketches. I only see 2, is that right? [Image #1] [Image #2] Why don
 ---
 
 Move the print plate into the Build One section, top right corner. Decrease the running lenght of the "Nine parts to print" section to make the print plate fit in most desktop browser widths.
+
+---
+
+commit/push
