@@ -11,7 +11,7 @@ The installed dual DC motor module is a **DRV8833** carrier. `EEP` is its active
 | 7 / 6 | IN1 / IN2 | OUT1 left track −, OUT2 left track + |
 | 5 / 4 | IN3 / IN4 | OUT3 right track −, OUT4 right track + |
 | 3 | EEP (DRV8833 nSLEEP) | Low at startup and after stopping |
-| 8 / 9 | Head rotation / tilt servo signal | 50 Hz, 1–2 ms pulses on explicit command |
+| 8 / 9 | Head tilt / rotation servo signal | 50 Hz, 1–2 ms pulses on explicit command |
 
 `actuators.c` configures 20 kHz motor PWM, holds EEP low while idle, raises it only after a bounded track command has set the inputs, and lowers it before clearing them on stop or expiry. Each track segment lasts at most 500 ms. Positive track speed selects IN2/IN4 because the motor positive leads are on OUT2/OUT4. The head outputs start without pulses and are configured only when explicitly commanded. The previous GPIO4/5/6 audio button placeholders are disabled by default.
 

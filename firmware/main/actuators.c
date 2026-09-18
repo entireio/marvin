@@ -20,7 +20,7 @@
  * The pictured IN1..IN4 / EEP / OUT1..OUT4 carrier is a DRV8833 module.
  * EEP is its active-high nSLEEP input, not an enable PWM input. */
 enum { LEFT_IN1=7, LEFT_IN2=6, RIGHT_IN3=5, RIGHT_IN4=4,
-       DRIVER_EEP=3, HEAD_ROTATE=8, HEAD_TILT=9 };
+       DRIVER_EEP=3, HEAD_ROTATE=9, HEAD_TILT=8 };
 _Static_assert(HEAD_ROTATE!=19 && HEAD_ROTATE!=20 && HEAD_TILT!=19 && HEAD_TILT!=20,
                "Servos must not use the ESP32-S3 USB data pins");
 enum { MOTOR_DUTY_MAX=1023, SERVO_PERIOD_US=20000 };

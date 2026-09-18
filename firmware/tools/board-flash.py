@@ -6,7 +6,7 @@ from datetime import datetime,timezone
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--backup',type=Path,required=True)
 p.add_argument('--port',default='/dev/cu.usbmodem1101')
-p.add_argument('--profile',choices=['audio','provisioning','owner','afe','afe-audible'],default='audio')
+p.add_argument('--profile',choices=['audio','provisioning','owner','afe','afe-audible','motion-afe'],default='audio')
 p.add_argument('--factory',type=Path,help='Private generated factory directory, required for provisioning')
 p.add_argument('--reuse-verified-base',action='store_true',help='Verify the unchanged bootloader, partitions, model and factory on the board; write only application and boot selector')
 p.add_argument('--flash',action='store_true',help='Actually install the diagnostic; otherwise show the plan only')
@@ -16,19 +16,21 @@ if not re.fullmatch(r'/dev/cu\.usbmodem[\w.-]+',a.port):p.error('Select the Wave
 manifest=json.loads((a.backup/'manifest.json').read_text());original=a.backup/'original-flash.bin'
 sha=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
 if manifest.get('verifiedBySecondRead') is not True or manifest.get('bytes')!=16777216 or original.stat().st_size!=16777216 or sha(original)!=manifest['sha256']:raise RuntimeError('A verified, intact 16 MB backup is required.')
-config=(root/('firmware/sdkconfig.waveshare'+suffix+'.generated')).read_text()
+config_name='sdkconfig.waveshare-motion.generated' if a.profile=='motion-afe' else 'sdkconfig.waveshare'+suffix+'.generated'
+config=(root/'firmware'/config_name).read_text()
 diagnostic='CONFIG_MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC=y' in config
 if diagnostic!=(a.profile=='audio'):raise RuntimeError('Build does not match selected profile.')
 if a.profile!='audio' and not a.factory:p.error('--factory is required for provisioning')
-if ('CONFIG_MARVIN_OWNER_ENROLLMENT=y' in config)!=(a.profile in ('owner','afe','afe-audible')):raise RuntimeError('Owner authorization does not match the selected profile.')
-if ('CONFIG_MARVIN_LOCAL_AFE=y' in config)!=(a.profile in ('afe','afe-audible')):raise RuntimeError('Local AFE configuration does not match the selected profile.')
-if a.profile=='afe-audible' and ('CONFIG_MARVIN_SILENT_TEST=y' in config or 'CONFIG_MARVIN_SPEAKER_VOLUME=95' not in config):raise RuntimeError('Audible bench profile must have speaker enabled at volume 95.')
+if ('CONFIG_MARVIN_OWNER_ENROLLMENT=y' in config)!=(a.profile in ('owner','afe','afe-audible','motion-afe')):raise RuntimeError('Owner authorization does not match the selected profile.')
+if ('CONFIG_MARVIN_LOCAL_AFE=y' in config)!=(a.profile in ('afe','afe-audible','motion-afe')):raise RuntimeError('Local AFE configuration does not match the selected profile.')
+if a.profile in ('afe-audible','motion-afe') and ('CONFIG_MARVIN_SILENT_TEST=y' in config or 'CONFIG_MARVIN_SPEAKER_VOLUME=95' not in config):raise RuntimeError('Audible bench profile must have speaker enabled at volume 95.')
+if a.profile=='motion-afe' and any('CONFIG_'+option+'=y' not in config for option in ('MARVIN_WAKE_AUTOSTART','MARVIN_MICRO_WAKE_WORD','MARVIN_HEY_MARVIN_WAKE','MARVIN_TRACK_BENCH_MODE')):raise RuntimeError('Motion profile is missing a required wake or track option.')
 args=json.loads((build/'flasher_args.json').read_text())
 expected={'0x0':'bootloader/bootloader.bin','0x8000':'partition_table/partition-table.bin','0x10000':'ota_data_initial.bin','0x20000':'marvin.bin'}
-if a.profile in ('afe','afe-audible'):expected['0x3e0000']='srmodels/srmodels.bin'
+if a.profile in ('afe','afe-audible','motion-afe'):expected['0x3e0000']='srmodels/srmodels.bin'
 if args['flash_files']!=expected or args['flash_settings']!={'flash_mode':'dio','flash_size':'16MB','flash_freq':'80m'}:raise RuntimeError('Unexpected image layout; stop for review.')
 images={offset:{'path':str(build/name),'sha256':sha(build/name),'bytes':(build/name).stat().st_size} for offset,name in expected.items()}
-if a.profile in ('afe','afe-audible') and images['0x3e0000']['bytes']>0x400000:raise RuntimeError('AFE model exceeds its reviewed partition.')
+if a.profile in ('afe','afe-audible','motion-afe') and images['0x3e0000']['bytes']>0x400000:raise RuntimeError('AFE model exceeds its reviewed partition.')
 if a.profile!='audio':
  factory=a.factory/'factory.bin'
  if factory.stat().st_size!=0x6000:raise RuntimeError('Unexpected factory partition size')
