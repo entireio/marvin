@@ -18,6 +18,33 @@
   'use strict';
 
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var pageScroller = null;
+
+  function wireSafariScrollport() {
+    // Desktop Safari clips page decorations at the root rubber-band boundary.
+    // Keep native overflow scrolling, but put the decorative frame outside it.
+    if (navigator.vendor !== 'Apple Computer, Inc.' ||
+        !/Macintosh/.test(navigator.userAgent) ||
+        /CriOS|FxiOS|Edg|Chrome/.test(navigator.userAgent)) return;
+    var previousScroll = window.scrollY;
+    pageScroller = document.createElement('div');
+    pageScroller.className = 'safari-page-scrollport';
+    pageScroller.tabIndex = 0;
+    pageScroller.setAttribute('role', 'region');
+    pageScroller.setAttribute('aria-label', 'Page content');
+    while (document.body.firstChild) pageScroller.appendChild(document.body.firstChild);
+    document.body.appendChild(pageScroller);
+    document.documentElement.classList.add('safari-framed-scroll');
+    pageScroller.scrollTop = previousScroll;
+    // Preserve direct links when the initial fragment was resolved before wrapping.
+    if (location.hash) {
+      var fragment = location.hash.slice(1);
+      try { fragment = decodeURIComponent(fragment); } catch (_) { /* Keep literal malformed fragments. */ }
+      var target = document.getElementById(fragment);
+      if (target) target.scrollIntoView();
+    }
+  }
+
   /* ------------------------------------------------------------------ */
   /* Videos                                                              */
   /* ------------------------------------------------------------------ */
@@ -136,7 +163,7 @@
       window.requestAnimationFrame(update);
     }
 
-    window.addEventListener('scroll', onScroll, { passive: true });
+    (pageScroller || window).addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     // requestAnimationFrame is frozen while the tab is hidden, so the drawing
     // can be left mid-assembly from whenever it was last painted. Re-sync it
@@ -290,7 +317,9 @@
       entries.forEach(function (entry) {
         if (entry.section.getBoundingClientRect().top <= readingEdge + 1) current = entry;
       });
-      if (window.scrollY > 0 && window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2) {
+      var scrollTop = pageScroller ? pageScroller.scrollTop : window.scrollY;
+      var scrollHeight = pageScroller ? pageScroller.scrollHeight : document.documentElement.scrollHeight;
+      if (scrollTop > 0 && scrollTop + window.innerHeight >= scrollHeight - 2) {
         current = entries[entries.length - 1];
       }
       select(current);
@@ -305,7 +334,7 @@
         schedule();
       });
     });
-    window.addEventListener('scroll', schedule, { passive: true });
+    (pageScroller || window).addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
     window.addEventListener('hashchange', schedule);
     window.addEventListener('pageshow', schedule);
@@ -337,6 +366,7 @@
   }
 
   function init() {
+    wireSafariScrollport();
     wireNavigation();
     wireScrollRegions();
     wireSectionNavigation();

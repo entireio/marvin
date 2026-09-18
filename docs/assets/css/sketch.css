@@ -22,18 +22,21 @@
 }
 .doc-section::after { width: calc(100% + 12px); left: -6px; }
 .doc-section:last-child::after { display: none; }
-.site-header__inner::before, .site-section__inner::before,
-.docs-layout::before, .entire-footer::before {
-  content: ''; position: absolute; inset: -10px -7px;
-  background: var(--sketch-ink); opacity: .8; pointer-events: none; z-index: 2;
-  -webkit-mask: url('../img/sketch-rail.svg') left / 14px 100% no-repeat,
-                url('../img/sketch-rail.svg') right / 14px 100% no-repeat;
-  mask: url('../img/sketch-rail.svg') left / 14px 100% no-repeat,
-        url('../img/sketch-rail.svg') right / 14px 100% no-repeat;
+/* One continuous outer frame extends past the viewport during rubber-band scrolling.
+   Fixed positioning keeps the extra paint out of the document's scroll height. */
+body::before {
+  content: ''; position: fixed; top: -100vh; bottom: -100vh;
+  left: max(0px, calc((100% - 1294px) / 2));
+  right: max(0px, calc((100% - 1294px) / 2));
+  background: var(--sketch-ink); opacity: .8;
+  pointer-events: none; z-index: 51;
+  -webkit-mask: url('../img/sketch-rail.svg') left top / 14px 800px repeat-y,
+                url('../img/sketch-rail.svg') right top / 14px 800px repeat-y;
+  mask: url('../img/sketch-rail.svg') left top / 14px 800px repeat-y,
+        url('../img/sketch-rail.svg') right top / 14px 800px repeat-y;
 }
-@media (max-width: 1295px) {
-  .site-header__inner::before, .site-section__inner::before,
-  .docs-layout::before, .entire-footer::before { inset-inline: 0; }
+@media print, (forced-colors: active) {
+  body::before { display: none; }
 }
 .docs-content { position: relative; }
 @media (min-width: 901px) {
@@ -219,3 +222,14 @@
   .margin-study[data-fits] { display: block; }
 }
 @media(forced-colors:active), print { .margin-study, .build-study { display: none; } }
+
+/* Safari's root overscroll clips fixed decorations. Bounce the content in an
+   overflow scrollport instead, leaving the rail layer on the stationary body. */
+html.safari-framed-scroll { height: 100%; overflow: hidden; }
+.safari-framed-scroll body { height: 100%; overflow: hidden; }
+.safari-page-scrollport { height: 100%; overflow: auto; overscroll-behavior-y: contain; }
+.safari-page-scrollport:focus { outline: none; }
+@media print {
+  html.safari-framed-scroll, .safari-framed-scroll body,
+  .safari-page-scrollport { height: auto; overflow: visible; }
+}
