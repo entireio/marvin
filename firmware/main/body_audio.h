@@ -13,6 +13,8 @@ bool marvin_body_audio_append(const uint8_t *frame,size_t length);
 void marvin_body_audio_flush(void);
 unsigned marvin_body_audio_fault(void);
 bool marvin_body_audio_playing(void);
+/* Queue one short local cue after the authenticated backend welcome. */
+bool marvin_body_audio_ready_cue(void);
 
 void marvin_body_audio_status(void);
 
@@ -27,9 +29,9 @@ uint32_t marvin_body_health_progress(void);
 bool marvin_body_adjust_volume(int delta);
 bool marvin_body_set_volume(unsigned volume);
 unsigned marvin_body_volume(void);
-bool marvin_body_set_microphone_muted(bool muted);
-bool marvin_body_microphone_muted(void);
 bool marvin_body_set_microphone_gain(unsigned gain_db);
 unsigned marvin_body_microphone_gain(void);
+bool marvin_body_set_microphone_muted(bool muted);
+bool marvin_body_microphone_muted(void);
 
 void marvin_body_wake_activation(bool enabled);

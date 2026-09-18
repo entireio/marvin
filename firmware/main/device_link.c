@@ -44,6 +44,7 @@ static esp_websocket_client_handle_t uplink_client;
 static atomic_bool uplink_enabled,upload_parked;
 static atomic_uint upload_stack;
 static bool voice_pending,voice_active,wake_requested;
+static bool ready_cued;
 static int64_t voice_since;
 static marvin_wire_t wire;
 static marvin_frame_t frame;
@@ -228,6 +229,7 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
    cJSON_Delete(welcome);
    if(settimeofday(&wall,NULL)!=0)return false;
    atomic_store(&online,true);
+   if(!ready_cued)ready_cued=marvin_body_audio_ready_cue();
   }
   return true;
  }

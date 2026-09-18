@@ -33,6 +33,7 @@ static size_t head,used;
 static uint8_t turn[16];
 static bool has_turn,available;
 static atomic_bool capture_active,playing,quiescing;
+static atomic_bool ready_cue_pending,ready_cue_playing;
 static atomic_bool microphone_muted;
 #ifdef CONFIG_MARVIN_WAKE_AUTOSTART
 static atomic_bool wake_activation_enabled=true;
@@ -99,7 +100,7 @@ static void capture_task(void *unused){
   if(!marvin_afe_fetch(&result)){if(result.fault)atomic_store(&fault,6);vTaskDelay(pdMS_TO_TICKS(10));continue;}
   atomic_fetch_add(&afe_samples,result.frames);
   atomic_store(&capture_stack,uxTaskGetStackHighWaterMark(NULL));
-  int64_t now=esp_timer_get_time();if(atomic_load(&playing))wake_resume_at=now+2000000;
+  int64_t now=esp_timer_get_time();if(atomic_load(&playing))wake_resume_at=now+(atomic_load(&ready_cue_playing)?50000:2000000);
   if(result.wake&&now-last_wake>2000000){last_wake=now;
 #ifndef CONFIG_MARVIN_SILENT_TEST
    if(atomic_load(&capture_active)&&atomic_load(&playing)){atomic_fetch_add(&local_interrupts,1);marvin_device_voice_interrupt();}
@@ -139,6 +140,8 @@ static void capture_task(void *unused){
 #endif
 static void playback_task(void *unused){
  (void)unused;int16_t source[240],samples[160],silence[160]={0};int64_t last_write=0;
+ /* 800 Hz at 16 kHz, with a 10 ms fade at both ends. */
+ static const int16_t sine[20]={0,1236,2351,3236,3804,4000,3804,3236,2351,1236,0,-1236,-2351,-3236,-3804,-4000,-3804,-3236,-2351,-1236};
  for(;;){
   if(park(4))continue;
   if(atomic_load(&flush_requests)){vTaskDelay(1);continue;}
@@ -149,6 +152,24 @@ static void playback_task(void *unused){
   for(size_t i=0;i<n;i++)source[i]=ring[(head+i)%OUTPUT_SAMPLES];
   head=(head+n)%OUTPUT_SAMPLES;used-=n;
   xSemaphoreGive(lock);
+  if(!n&&!atomic_load(&playing)&&atomic_exchange(&ready_cue_pending,false)){
+   atomic_store(&ready_cue_playing,true);atomic_store(&playing,true);
+   bool ok=marvin_audio_mute(false)==ESP_OK;
+   for(unsigned lead=0;ok&&lead<5;lead++)ok=marvin_audio_write(silence,160)==ESP_OK;
+   for(unsigned chunk=0;ok&&chunk<12;chunk++){
+    for(unsigned i=0;i<160;i++){
+     unsigned index=chunk*160+i;
+     unsigned fade=160;
+     if(index<160)fade=index;
+     else if(index>1760)fade=1920-index;
+     samples[i]=(int16_t)(sine[index%20]*(int)fade/160);
+    }
+    ok=marvin_audio_write(samples,160)==ESP_OK;
+   }
+   if(ok)ok=marvin_audio_write(silence,160)==ESP_OK;
+   if(marvin_audio_mute(true)!=ESP_OK||!ok)atomic_store(&fault,4);
+   atomic_store(&playing,false);atomic_store(&ready_cue_playing,false);
+  }
   if(n){
    int64_t began=esp_timer_get_time();size_t frames=marvin_rate_convert(&output_rate,source,n,samples,160);
    unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&convert_max_us))atomic_store(&convert_max_us,elapsed);
@@ -189,6 +210,7 @@ esp_err_t marvin_body_audio_init(void){
  if(nvs_open("pet_audio",NVS_READONLY,&preferences)==ESP_OK){
   uint8_t volume,muted,gain_db;
   if(nvs_get_u8(preferences,"volume",&volume)==ESP_OK&&volume<=100)marvin_audio_set_volume(volume);
+  if(nvs_get_u8(preferences,"mic_gain",&gain_db)==ESP_OK&&gain_db<=36&&gain_db%6==0)marvin_audio_set_microphone_gain(gain_db);
   if(nvs_get_u8(preferences,"mic_muted",&muted)==ESP_OK&&muted<=1)atomic_store(&microphone_muted,muted!=0);
   nvs_close(preferences);
  }
@@ -208,7 +230,6 @@ esp_err_t marvin_body_audio_init(void){
 #endif
  if(xTaskCreatePinnedToCore(playback_task,"body_playback",6144,NULL,7,NULL,1)!=pdPASS)return ESP_ERR_NO_MEM;
  available=true;return ESP_OK;
-  if(nvs_get_u8(preferences,"mic_gain",&gain_db)==ESP_OK&&gain_db<=36&&gain_db%6==0)marvin_audio_set_microphone_gain(gain_db);
 }
 bool marvin_body_audio_available(void){return available&&!atomic_load(&quiescing);}
 void marvin_body_capture(bool active){atomic_store(&capture_active,false);atomic_fetch_add(&capture_generation,1);if(input_queue)xQueueReset(input_queue);atomic_store(&capture_active,active&&!atomic_load(&quiescing)&&!atomic_load(&microphone_muted));}
@@ -224,7 +245,7 @@ void marvin_body_audio_flush(void){
  int64_t began=esp_timer_get_time();atomic_fetch_add(&flush_requests,1);
  /* Same order as playback; receive enqueue never takes the hardware lock. */
  xSemaphoreTake(output_lock,portMAX_DELAY);xSemaphoreTake(lock,portMAX_DELAY);
- used=head=0;has_turn=false;memset(turn,0,sizeof(turn));xSemaphoreGive(lock);
+ used=head=0;has_turn=false;memset(turn,0,sizeof(turn));atomic_store(&ready_cue_pending,false);xSemaphoreGive(lock);
  marvin_rate_init(&output_rate,false);marvin_audio_mute(true);atomic_store(&playing,false);
  xSemaphoreGive(output_lock);atomic_fetch_sub(&flush_requests,1);
  unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&flush_max_us))atomic_store(&flush_max_us,elapsed);
@@ -242,6 +263,14 @@ bool marvin_body_audio_append(const uint8_t *frame,size_t length){
 }
 unsigned marvin_body_audio_fault(void){return atomic_exchange(&fault,0);}
 bool marvin_body_audio_playing(void){return atomic_load(&playing);}
+bool marvin_body_audio_ready_cue(void){
+#ifdef CONFIG_MARVIN_SILENT_TEST
+ return false;
+#else
+ if(!marvin_body_audio_available()||!output_lock||marvin_audio_volume()==0||atomic_load(&microphone_muted))return false;
+ atomic_store(&ready_cue_pending,true);return true;
+#endif
+}
 
 void marvin_body_audio_status(void){printf("{\"speakerVolume\":%u,\"microphoneMuted\":%s}\n",marvin_audio_volume(),atomic_load(&microphone_muted)?"true":"false");printf("{\"playbackTiming\":{\"convertMaxUs\":%u,\"writeMaxUs\":%u}}\n",atomic_load(&convert_max_us),atomic_load(&write_max_us));printf("{\"audioTiming\":{\"flushMaxUs\":%u,\"appendMaxUs\":%u}}\n",atomic_load(&flush_max_us),atomic_load(&append_max_us));printf("{\"audio\":{\"available\":%s,\"silent\":%s,\"captureActive\":%s,\"playing\":%s,\"capturedSamples16k\":%u,\"playedSamples16k\":%u,\"mic1Peak\":%u,\"queuedSamplesPeak\":%u,\"captureStackFree\":%u,\"playbackStackFree\":%u,\"internalFreeBytes\":%u,\"internalLargestBlock\":%u}}\n",available?"true":"false",
 #ifdef CONFIG_MARVIN_SILENT_TEST
@@ -321,6 +350,12 @@ bool marvin_body_set_volume(unsigned volume){
  return ok&&(!changed||save_u8("volume",(uint8_t)volume));
 }
 unsigned marvin_body_volume(void){return marvin_audio_volume();}
+bool marvin_body_set_microphone_gain(unsigned gain_db){
+ if(!output_lock||atomic_load(&quiescing)||gain_db>36||gain_db%6)return false;
+ xSemaphoreTake(output_lock,portMAX_DELAY);bool changed=marvin_audio_microphone_gain()!=gain_db;bool ok=marvin_audio_set_microphone_gain(gain_db)==ESP_OK;xSemaphoreGive(output_lock);
+ return ok&&(!changed||save_u8("mic_gain",(uint8_t)gain_db));
+}
+unsigned marvin_body_microphone_gain(void){return marvin_audio_microphone_gain();}
 bool marvin_body_set_microphone_muted(bool muted){
  bool changed=atomic_load(&microphone_muted)!=muted;atomic_store(&microphone_muted,muted);if(muted)marvin_body_capture(false);
  return !changed||save_u8("mic_muted",muted?1:0);
@@ -331,9 +366,3 @@ void marvin_body_wake_activation(bool enabled){
  atomic_store(&wake_activation_enabled,enabled);
  printf("{\"wakeActivationEnabled\":%s}\n",enabled?"true":"false");
 }
-bool marvin_body_set_microphone_gain(unsigned gain_db){
- if(!output_lock||atomic_load(&quiescing)||gain_db>36||gain_db%6)return false;
- xSemaphoreTake(output_lock,portMAX_DELAY);bool changed=marvin_audio_microphone_gain()!=gain_db;bool ok=marvin_audio_set_microphone_gain(gain_db)==ESP_OK;xSemaphoreGive(output_lock);
- return ok&&(!changed||save_u8("mic_gain",(uint8_t)gain_db));
-}
-unsigned marvin_body_microphone_gain(void){return marvin_audio_microphone_gain();}
