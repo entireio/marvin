@@ -126,8 +126,9 @@
 }
 
 .table th, .table td { position: relative; border-bottom-color: transparent; }
+/* Keep decorative rules inside cells so they do not enlarge scroll regions. */
 .table th::after, .table td::after {
-  content: ''; position: absolute; bottom: -3px; left: 0; right: 0; height: 6px;
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 6px;
   background: var(--sketch-ink); opacity: .45; pointer-events: none;
   -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
   mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
@@ -193,3 +194,28 @@
   -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
   mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
 }
+
+/* Studies occupy only the measured spare height of an existing grid column.
+   Absolute positioning means they never create a row or change section height. */
+.study-host { position: relative; }
+.margin-study {
+  display: none; position: absolute; bottom: 0; pointer-events: none;
+  background: var(--study) center / contain no-repeat;
+  mix-blend-mode: multiply; opacity: .45;
+  width: min(100%, 480px); height: min(var(--study-space), 215px);
+}
+.margin-study--wiring { left: 0; --study: url('../img/studies/wiring-ink.png'); }
+/* The shorter Build one introduction leaves room for the print study. */
+.build-study { display: none; }
+@media(min-width:800px) {
+  .build-study {
+    display: block; position: absolute; right: 32px; top: 24px;
+    width: clamp(140px, 15vw, 185px); aspect-ratio: 1;
+    background: url('../img/studies/print-plate-ink.png') center / contain no-repeat;
+    mix-blend-mode: multiply; opacity: .42; pointer-events: none;
+  }
+}
+@media(min-width:1000px) {
+  .margin-study[data-fits] { display: block; }
+}
+@media(forced-colors:active), print { .margin-study, .build-study { display: none; } }

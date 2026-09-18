@@ -55,8 +55,6 @@
       <details class="docs-menu" open>
         <summary>Documentation <span aria-hidden="true">⌄</span></summary>
         <nav aria-label="Documentation navigation">
-      <a class="docs-sidebar__title" href="build.html">Documentation</a>
-      <p class="docs-sidebar__group">Build Marvin</p>
       <ul>
         <li><a href="build.html">Build</a></li>
         <li><a href="electronics.html">Electronics</a></li>
@@ -74,8 +72,6 @@
           </ul>
         </li>
       </ul>
-      <p class="docs-sidebar__group">Project</p>
-      <ul><li><a href="contribute.html">Get involved</a></li></ul>
         </nav>
       </details>
     </aside>
@@ -286,54 +282,6 @@
       </div>
     </section>
 
-    <section id="tokens" aria-labelledby="mv-tok" class="doc-section">
-      <div class="section-heading">
-        <div>
-          <h2 id="mv-tok" style="margin:0 0 10px">Tokens</h2>
-          <p style="margin:0 0 20px;max-width:64ch;color:var(--muted)">For anyone extending this site or the controller app. Ink on paper, one accent, two type families and a mono for data.</p>
-
-          <div style="margin-bottom:clamp(20px,3vw,32px)">
-            <div class="table-scroll table-scroll--wide" role="region" aria-label="Tokens table" tabindex="0"><table class="table">
-              <thead><tr><th scope="col">Role</th><th scope="col">Light</th><th scope="col">Dark</th><th scope="col">Used for</th></tr></thead>
-              <tbody>
-                <tr><td>Ground</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#f6f6f6;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#F6F6F6</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#161616;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#161616</span></span></td><td style="color:var(--muted)">Page</td></tr>
-                <tr><td>Ink</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#0f0f0f;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#0F0F0F</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#f3f3f3;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#F3F3F3</span></span></td><td style="color:var(--muted)">Body copy, numerals, drawings</td></tr>
-                <tr><td>Accent</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#372aac;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#372AAC</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#7c86ff;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#7C86FF</span></span></td><td style="color:var(--muted)">Part callouts, figure numbers, links</td></tr>
-                <tr><td>Accent, text-safe</td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#372aac;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#372aac</span></span></td><td><span style="display:inline-flex;align-items:center;gap:8px"><span aria-hidden="true" style="width:14px;height:14px;background:#7c86ff;border:1px solid var(--rule-ink)"></span><span style="font-family:var(--font-mono);font-size:12.5px">#7C86FF</span></span></td><td style="color:var(--muted)">Accent at paragraph size</td></tr>
-                <tr><td>Rule</td><td colspan="2" style="font-family:var(--font-mono);font-size:12.5px;color:var(--muted)">black at 10% (light) · white at 10% (dark)</td><td style="color:var(--muted)">Tables, frames, dividers</td></tr>
-              </tbody>
-            </table></div>
-          </div>
-
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(18px,3vw,40px);align-items:start">
-            <div>
-              <p class="eyebrow" style="margin:0 0 8px;">Type</p>
-              <dl style="margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(14px,2vw,24px);font-size:14.5px">
-                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Display</dt>
-                <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)">Entire Headline — page titles and section headings</dd>
-                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Text</dt>
-                <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)">System sans-serif — 16px body text, 24px line height</dd>
-                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0;border-bottom:1px solid var(--rule)">Data</dt>
-                <dd style="margin:0;padding:9px 0;border-bottom:1px solid var(--rule)">Entire Mono 400/700 — pin maps, commands, part numbers, captions</dd>
-                <dt style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:9px 0">Sizes</dt>
-                <dd style="margin:0;padding:9px 0">Headlines: 32px mobile, 40px desktop (48px homepage). Sections: 24/28px. Body: 16/24px. Navigation: 14/20px.</dd>
-              </dl>
-            </div>
-            <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
-              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p class="eyebrow" style="margin:0 0 8px;">Proposal — one palette for the app too</p>
-              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The controller app currently runs a neon-terminal scheme (<span style="font-family:var(--font-mono);font-size:12.5px">#0D0F1A</span> ground, <span style="font-family:var(--font-mono);font-size:12.5px">#00E5A0</span> green). It could take this site's dark variant unchanged and lose nothing: a neutral near-black ground, off-white ink, the indigo accent for live state, and one warm red kept strictly for faults.</p>
-              <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
-                <div><div aria-hidden="true" style="height:38px;background:#161616;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Ground</p></div>
-                <div><div aria-hidden="true" style="height:38px;background:#f3f3f3;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Ink</p></div>
-                <div><div aria-hidden="true" style="height:38px;background:#7c86ff;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Live</p></div>
-                <div><div aria-hidden="true" style="height:38px;background:#c96a4f;border:1px solid var(--rule-ink)"></div><p style="margin:5px 0 0;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.06em;color:var(--muted)">Fault</p></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
     </div>
   </main>
 

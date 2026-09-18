@@ -18,7 +18,7 @@ docs/
 │   ├── css/industry.css  Original component primitives
 │   ├── css/site.css      Diagram motion and assembly path switch
 │   ├── css/entire.css    Entire brand theme, responsive header and footer
-│   ├── css/sketch.css    Pen outlines, paper texture and drawing annotations
+│   ├── css/sketch.css    Pen outlines, corner hatching and drawing annotations
 │   ├── fonts/            Self-hosted Entire Headline and Entire Mono
 │   ├── js/site.js        Responsive menus, scroll hints, videos, assembly
 │   ├── img/              Video posters, adaptive SVG favicon, Apple touch icon
@@ -281,3 +281,10 @@ hand-drawn section numbers run from 01 to 06 and are hidden from assistive
 technology. The anatomy SVG hatches selected faces and applies slight ink
 displacement only to geometry; callout lines and text stay crisp. Existing
 scroll and reduced-motion behavior, photographs and videos are unchanged.
+
+The Overview's margin studies are ink interpretations of the supplied print-plate
+and wiring images (see `assets/img/studies/GENERATED.md`). The printed parts sit in the top-right corner of
+Build one, beside its shorter introduction on desktop. The wiring study occupies existing spare height
+beside the subsystem table; `ResizeObserver` hides it when space is insufficient.
+Both are absolute decorations and introduce no section height or copy spacing.
+The wiring illustration is decorative, not an authoritative electrical schematic.

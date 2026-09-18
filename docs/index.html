@@ -15,8 +15,8 @@
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
 <link rel="stylesheet" href="assets/css/entire.css">
-<link rel="stylesheet" href="assets/css/sketch.css">
-<script src="assets/js/site.js" defer></script>
+<link rel="stylesheet" href="assets/css/sketch.css?v=studies-5">
+<script src="assets/js/site.js?v=studies-5" defer></script>
 </head>
 <body class="home-page">
 <div style="min-height:100vh;background:var(--color-bg)">
@@ -93,11 +93,12 @@
           <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Meet Marvin</p>
           <h2 id="mv-s01" style="margin:0 0 clamp(16px,2vw,24px)">What it is</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
-            <div style="max-width:68ch">
+            <div class="study-host" style="max-width:68ch">
               <p>Marvin drives on two rubber tracks and looks around with a head that pans and tilts on two servos. That is the whole of its body language, and it turns out to be enough.</p>
               <p>It is published as open source hardware: firmware, electronics, mechanical design, and the app you drive it with. The purpose is reproducibility. Anyone with a 3D printer and a soldering iron should be able to build one.</p>
               <p>It is also an early prototype. The drivetrain, the head and the Bluetooth link work today, driven by four breakout modules soldered together by hand. The sensing and the eyes do not exist yet: they belong to a pair of circuit boards that have been specified and not drawn.</p>
               <p style="margin-bottom:0">That is the fork every builder meets. <a href="electronics.html#choice">Solder it yourself and it works this weekend</a>; build the boards and it gains eyes, distance, an IMU and the sense not to drive off a table. The schedule opposite is the honest version, and it doubles as a list of things worth doing.</p>
+              <span class="margin-study margin-study--wiring" aria-hidden="true"></span>
             </div>
             <div>
               <p class="eyebrow" style="margin:0 0 8px;">Subsystem status</p>
@@ -316,6 +317,7 @@
     </div></section>
 
     <section aria-labelledby="mv-s04" class="site-section"><div class="site-section__inner">
+        <span class="build-study" aria-hidden="true"></span>
         <span class="rail-shading-horizontal" aria-hidden="true"></span>
         <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M60 15 L39 17 L35 35 C60 23 65 61 33 60"/></svg></span>
         <span class="rail-shading rail-shading--top" aria-hidden="true"></span>
@@ -323,7 +325,7 @@
         <div>
           <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Start building</p>
           <h2 id="mv-s04" style="margin:0 0 14px">Build one</h2>
-          <p style="margin:0 0 clamp(20px,3vw,34px);max-width:62ch">Nine parts to print, six to buy, and one decision to make before any of it: how you want the electronics.</p>
+          <p style="margin:0 0 clamp(20px,3vw,34px);max-width:36ch">Nine parts to print, six to buy, and one decision to make before any of it: how you want the electronics.</p>
 
           <p class="kicker kicker-a" style="margin:0 0 12px">The decision</p>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:clamp(14px,2.5vw,28px);margin-bottom:clamp(24px,3.5vw,40px)">

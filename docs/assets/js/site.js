@@ -316,6 +316,26 @@
     schedule();
   }
 
+  // Ornament must adapt to spare space, never ask the layout to make room.
+  function wireMarginStudies() {
+    const hosts = [...document.querySelectorAll('.study-host')];
+    if (!hosts.length || !window.ResizeObserver) return;
+    const measure = () => hosts.forEach(host => {
+      const study = host.querySelector('.margin-study');
+      const content = study.previousElementSibling;
+      const spare = host.getBoundingClientRect().bottom - content.getBoundingClientRect().bottom - 28;
+      study.style.setProperty('--study-space', `${Math.max(0, spare)}px`);
+      study.toggleAttribute('data-fits', spare >= 135);
+    });
+    const observer = new ResizeObserver(measure);
+    hosts.forEach(host => {
+      observer.observe(host);
+      observer.observe(host.querySelector('.margin-study').previousElementSibling);
+    });
+    if (document.fonts) document.fonts.ready.then(measure);
+    measure();
+  }
+
   function init() {
     wireNavigation();
     wireScrollRegions();
@@ -324,6 +344,7 @@
     wireVideo('videoRef', 'togglePlay');
     wireVideo('demoRef', 'toggleDemo');
     wireAnatomy();
+    wireMarginStudies();
   }
 
   if (document.readyState === 'loading') {
