@@ -9,7 +9,7 @@
 #include <stdatomic.h>
 
 #ifdef CONFIG_MARVIN_AUDIO_BUTTONS
-#define ACTUATOR_PIN(p) ((p)>=3 && (p)<=7) || (p)==19 || (p)==20
+#define ACTUATOR_PIN(p) ((p)>=3 && (p)<=9)
 #if ACTUATOR_PIN(CONFIG_MARVIN_VOLUME_UP_GPIO) || ACTUATOR_PIN(CONFIG_MARVIN_VOLUME_DOWN_GPIO) || ACTUATOR_PIN(CONFIG_MARVIN_MIC_MUTE_GPIO)
 #error "Audio button GPIO overlaps an actuator GPIO"
 #endif
@@ -20,7 +20,9 @@
  * The pictured IN1..IN4 / EEP / OUT1..OUT4 carrier is a DRV8833 module.
  * EEP is its active-high nSLEEP input, not an enable PWM input. */
 enum { LEFT_IN1=7, LEFT_IN2=6, RIGHT_IN3=5, RIGHT_IN4=4,
-       DRIVER_EEP=3, HEAD_ROTATE=19, HEAD_TILT=20 };
+       DRIVER_EEP=3, HEAD_ROTATE=8, HEAD_TILT=9 };
+_Static_assert(HEAD_ROTATE!=19 && HEAD_ROTATE!=20 && HEAD_TILT!=19 && HEAD_TILT!=20,
+               "Servos must not use the ESP32-S3 USB data pins");
 enum { MOTOR_DUTY_MAX=1023, SERVO_PERIOD_US=20000 };
 static SemaphoreHandle_t actuator_lock;
 static int64_t drive_deadline_us;

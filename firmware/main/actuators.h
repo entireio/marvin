@@ -12,8 +12,7 @@ void marvin_tracks_stop(void);
 esp_err_t marvin_tracks_bench_arm(uint32_t seconds);
 bool marvin_tracks_bench_armed(void);
 
-/* Servo pulses are emitted only after an explicit call. GPIO20 and GPIO19
- * share the board's native USB path, so USB must be disconnected for use. */
+/* Servo pulses are emitted only after an explicit call on GPIO8 and GPIO9. */
 esp_err_t marvin_head_set(uint8_t rotation_degrees, uint8_t tilt_degrees);
 /* Semantic pose relative to the configured servo centers. */
 esp_err_t marvin_head_pose(int yaw_degrees, int pitch_degrees);

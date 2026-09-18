@@ -39,6 +39,9 @@ export const migrations = [
  ,{version:7,statements:[
  `ALTER TABLE body_slots ADD COLUMN greeted_at BIGINT`
  ]}
+ ,{version:8,statements:[
+ `ALTER TABLE owners ADD COLUMN pet_conversation TEXT`
+ ]}
 ];
 export async function migrate(db: Database, target=migrations.at(-1)!.version) {
  await db.transaction(async tx => {

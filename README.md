@@ -20,7 +20,7 @@ For local passphrase authentication, run `npm run password:hash`, set `AUTH_MODE
 
 For local Entire repository access, follow [M4 setup and acceptance status](docs/m4-entire.md). This adapter uses the installed CLI and is not the hosted multi-user integration.
 
-For realtime speech, see [M5 voice setup and acceptance status](docs/m5-voice.md). Audio is backend-mediated and transcripts share the existing conversation. Funded OpenAI text and voice smokes have passed. The standalone Waveshare board runs the16kHz microphone/audio path and sensitivity-first Hey Marvin alpha detector; see [physical audio evidence](docs/m8-audio-runtime.md).
+For realtime speech, see [M5 voice setup and acceptance status](docs/m5-voice.md). Audio is backend-mediated. Browser voice transcripts appear in the open chat. Use the Pet link control beside a conversation to choose where Desktop Pet speech and responses appear; if no conversation is linked on first use, Marvin creates one. Link changes take effect when the Pet starts listening again. Funded OpenAI text and voice smokes have passed. The standalone Waveshare board runs the16kHz microphone/audio path and sensitivity-first Hey Marvin alpha detector; see [physical audio evidence](docs/m8-audio-runtime.md).
 
 ## Verify
 

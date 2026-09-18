@@ -6,13 +6,13 @@ import { Actions,type DeviceCommand,type DeviceCapability } from '../../contract
 /** Executable body simulator. It never accesses microphone, motor or provider APIs. */
 export class DeviceSimulator extends EventEmitter {
  private socket?:WebSocket;private ledger=new Map<string,string>();private timers=new Map<string,ReturnType<typeof setTimeout>>();private seq=0;epoch=0;executions=0;receivedAudioBytes=0;uploadedAudioBytes=0;
- audioSettings:{volume:number;muted:boolean;microphoneGainDb?:number}={volume:60,muted:false};
+ audioSettings:{volume:number;muted:boolean;microphoneGainDb?:number;allowPlaybackMic?:boolean;followupSeconds?:number}={volume:60,muted:false};
  constructor(readonly deviceId:string,readonly bootId=randomUUID(),readonly capabilities:DeviceCapability[]=['eyes','gaze','head','tracks','imu','cliff'],private ledgerFile?:string){super();if(ledgerFile&&existsSync(ledgerFile))this.ledger=new Map(JSON.parse(readFileSync(ledgerFile,'utf8')));}
  private persist(){if(this.ledgerFile){const tmp=this.ledgerFile+'.pending';writeFileSync(tmp,JSON.stringify([...this.ledger]),{mode:0o600});renameSync(tmp,this.ledgerFile);}}
- async connect(url:string,token:string,minor=1){this.seq=0;if(minor>=5&&this.audioSettings.microphoneGainDb===undefined)this.audioSettings.microphoneGainDb=30;const socket=new WebSocket(url,{headers:{authorization:'Bearer '+token}});this.socket=socket;
+ async connect(url:string,token:string,minor=1){this.seq=0;if(minor>=5&&this.audioSettings.microphoneGainDb===undefined)this.audioSettings.microphoneGainDb=30;if(minor>=6){this.audioSettings.allowPlaybackMic??=false;this.audioSettings.followupSeconds??=5;}const socket=new WebSocket(url,{headers:{authorization:'Bearer '+token}});this.socket=socket;
   return new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Simulator handshake timed out')),5000);
    socket.on('open',()=>this.send({type:'hello',protocol:{major:1,minor},deviceId:this.deviceId,bootId:this.bootId,firmware:'simulator-1',capabilities:this.capabilities,...(minor>=4&&this.capabilities.includes('voice')?{audioSettings:this.audioSettings}:{})}));
-   socket.on('message',(raw,binary)=>{if(binary){this.receivedAudioBytes+=raw.toString().length;return;}const event=JSON.parse(raw.toString());if(event.type==='welcome'){this.epoch=event.epoch;clearTimeout(timer);resolve();}if(event.type==='ping')this.send({type:'heartbeat',seq:this.seq++});if(event.type==='audio_settings'){this.audioSettings={volume:event.volume,muted:event.muted,...(event.microphoneGainDb!==undefined?{microphoneGainDb:event.microphoneGainDb}:{})};this.send({type:'audio_settings',...this.audioSettings});}if(event.type==='command')this.command(event);if(event.type==='cancel'){clearTimeout(this.timers.get(event.id));this.timers.delete(event.id);if(this.ledger.has(event.id)){this.ledger.set(event.id,'cancelled');this.persist();this.ack(event.id,'cancelled');}}this.emit('event',event);});
+   socket.on('message',(raw,binary)=>{if(binary){this.receivedAudioBytes+=raw.toString().length;return;}const event=JSON.parse(raw.toString());if(event.type==='welcome'){this.epoch=event.epoch;clearTimeout(timer);resolve();}if(event.type==='ping')this.send({type:'heartbeat',seq:this.seq++});if(event.type==='audio_settings'){this.audioSettings={volume:event.volume,muted:event.muted,...(event.microphoneGainDb!==undefined?{microphoneGainDb:event.microphoneGainDb}:{}),...(event.allowPlaybackMic!==undefined?{allowPlaybackMic:event.allowPlaybackMic}:{}),...(event.followupSeconds!==undefined?{followupSeconds:event.followupSeconds}:{})};this.send({type:'audio_settings',...this.audioSettings});}if(event.type==='command')this.command(event);if(event.type==='cancel'){clearTimeout(this.timers.get(event.id));this.timers.delete(event.id);if(this.ledger.has(event.id)){this.ledger.set(event.id,'cancelled');this.persist();this.ack(event.id,'cancelled');}}this.emit('event',event);});
    socket.on('error',()=>{clearTimeout(timer);reject(new Error('Simulator connection failed'));});socket.on('close',()=>{clearTimeout(timer);this.emit('disconnected');});
   });
  }
@@ -28,7 +28,7 @@ export class DeviceSimulator extends EventEmitter {
   const timer=setTimeout(()=>{this.ledger.set(command.id,'completed');this.persist();this.timers.delete(command.id);this.ack(command.id,'completed');},Number(command.args.durationMs??1));this.timers.set(command.id,timer);
  }
  pickup(pickedUp:boolean){this.send({type:'sensor',pickedUp});}
- setAudioSettings(volume:number,muted:boolean,microphoneGainDb=this.audioSettings.microphoneGainDb){this.audioSettings={volume,muted,...(microphoneGainDb!==undefined?{microphoneGainDb}:{})};this.send({type:'audio_settings',...this.audioSettings});}
+ setAudioSettings(volume:number,muted:boolean,microphoneGainDb=this.audioSettings.microphoneGainDb){this.audioSettings={...this.audioSettings,volume,muted,...(microphoneGainDb!==undefined?{microphoneGainDb}:{})};this.send({type:'audio_settings',...this.audioSettings});}
  disconnect(){this.socket?.terminate();}
  close(){for(const timer of this.timers.values())clearTimeout(timer);this.timers.clear();this.socket?.terminate();}
 }

@@ -31,12 +31,12 @@ it('twenty text–voice–text journeys reconstruct persisted context across fre
  }
  expect(closed).toBe(20);
 });
-it('100 routed voice interactions expose no audio on another browser event route or body channel',async()=>{
+it('100 routed voice interactions share transcript text without exposing audio to another browser or body channel',async()=>{
  const c=await service.store.createConversation(owner);await service.store.reserve(owner,'robot','enrollment',true);await service.store.redeem(owner,'robot','enrollment','Network');const body=await service.store.body(owner);
  const observer=await open('/api/events');observer.ws.send(JSON.stringify({v:1,type:'subscribe',conversationId:c.id,routeId:'other-browser',after:0}));await wait(()=>observer.messages.some(e=>e.type==='subscribed'));
  const voice=await start(c.id);let broadcastAudio=0;const observe=(e:ModelEvent)=>{if(e.type==='audio')broadcastAudio++;};service.runtime.events.on('event',observe);
  for(let n=0;n<100;n++){notify({type:'transcript',itemId:`route-${n}`,text:`Recorded turn ${n}`});await wait(()=>voice.messages.filter(e=>e.type==='event'&&e.event.type==='completed').length===n+1);}
- expect(voice.messages.filter(e=>e.type==='audio')).toHaveLength(400);expect(observer.messages.some(e=>e.type==='audio'||e.type==='delta')).toBe(false);expect(broadcastAudio).toBe(0);expect(await service.store.body(owner)).toEqual(body);
+ expect(voice.messages.filter(e=>e.type==='audio')).toHaveLength(400);expect(observer.messages.some(e=>e.type==='audio')).toBe(false);expect(observer.messages.some(e=>e.type==='delta')).toBe(true);expect(broadcastAudio).toBe(0);expect(await service.store.body(owner)).toEqual(body);
  const replay=await service.store.replay(owner,c.id,voice.messages.find(e=>e.type==='ready').routeId);expect(replay.some(e=>'pcm'in e)).toBe(false);service.runtime.events.off('event',observe);
 });
 it('barge-in fences late audio and preserves partial transcript without blocking the next turn',async()=>{

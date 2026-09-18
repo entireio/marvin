@@ -2,11 +2,11 @@ import { randomUUID, createHash, randomBytes } from 'node:crypto';
 import { DomainError, type Conversation, type Turn, type InteractionContext, type AgentEvent, type RepoCard } from '../../contracts/src/index.js';
 import type { Database, Sql } from './database.js';
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');
-export type Owner = { id: string; name: string; entireState: InteractionContext['entireState']; activeConversation: string | null };
+export type Owner = { id: string; name: string; entireState: InteractionContext['entireState']; activeConversation: string | null; petConversation: string | null };
 type Row = Record<string, any>;
 const conversation = (r: Row): Conversation => ({ id:r.id,title:r.title,repositoryId:r.repository_id,updatedAt:Number(r.updated_at),summary:r.summary,summaryThrough:r.summary_through });
 const turn = (r: Row): Turn => ({ id:r.id,conversationId:r.conversation_id,userText:r.user_text,assistantText:r.assistant_text,status:r.status,surface:r.surface,routeId:r.route_id,createdAt:Number(r.created_at),ordinal:r.ordinal,lastSeq:Number(r.last_seq??0),cards:JSON.parse(r.cards) });
-const owner = (r: Row): Owner => ({ id:r.id,name:r.name,entireState:r.entire_state,activeConversation:r.active_conversation });
+const owner = (r: Row): Owner => ({ id:r.id,name:r.name,entireState:r.entire_state,activeConversation:r.active_conversation,petConversation:r.pet_conversation??null });
 export class Store {
  constructor(public db: Database) {}
  async ensureOwner(issuer: string, subject: string, name: string): Promise<Owner> {
@@ -21,7 +21,7 @@ export class Store {
  }
  async session(token?: string) { if(!token) return null; const r=(await this.db.query<Row>('SELECT * FROM sessions WHERE hash=? AND expires_at>?',[hash(token),Date.now()]))[0]; return r ? {ownerId:r.owner_id as string,csrf:r.csrf as string,authenticatedAt:Number(r.authenticated_at)} : null; }
  async logout(token: string) { await this.db.query('DELETE FROM sessions WHERE hash=?',[hash(token)]); }
- async listConversations(ownerId: string) { return (await this.db.query<Row>('SELECT * FROM conversations WHERE owner_id=? ORDER BY updated_at DESC LIMIT 100',[ownerId])).map(conversation); }
+ async listConversations(ownerId: string) { const recent=(await this.db.query<Row>('SELECT * FROM conversations WHERE owner_id=? ORDER BY updated_at DESC LIMIT 100',[ownerId])).map(conversation),linked=(await this.owner(ownerId)).petConversation;return linked&&!recent.some(c=>c.id===linked)?[await this.getConversation(ownerId,linked),...recent]:recent; }
  async createConversation(ownerId: string) {
   const id=randomUUID(), now=Date.now(); await this.db.transaction(async tx=>{
    await tx.query('INSERT INTO conversations(id,owner_id,title,updated_at) VALUES (?,?,?,?)',[id,ownerId,'New conversation',now]);
@@ -30,6 +30,26 @@ export class Store {
  }
  async getConversation(ownerId: string,id: string,sql: Sql=this.db) { const row=(await sql.query<Row>('SELECT * FROM conversations WHERE id=? AND owner_id=?',[id,ownerId]))[0]; if(!row) throw new DomainError('NOT_FOUND','Conversation not found',404); return conversation(row); }
  async activate(ownerId: string,id: string) { await this.getConversation(ownerId,id); await this.db.query('UPDATE owners SET active_conversation=? WHERE id=?',[id,ownerId]); }
+ async setPetConversation(ownerId:string,id:string|null){
+  await this.db.transaction(async tx=>{
+   await tx.query('UPDATE owners SET created_at=created_at WHERE id=?',[ownerId]);
+   if(id)await this.getConversation(ownerId,id,tx);
+   await tx.query('UPDATE owners SET pet_conversation=? WHERE id=?',[id,ownerId]);
+  });
+  return {conversationId:id};
+ }
+ async resolvePetConversation(ownerId:string){
+  return this.db.transaction(async tx=>{
+   const rows=await tx.query<Row>('UPDATE owners SET created_at=created_at WHERE id=? RETURNING pet_conversation',[ownerId]);
+   if(!rows.length)throw new DomainError('NOT_FOUND','Account not found',404);
+   const linked=rows[0].pet_conversation as string|null;
+   if(linked)return this.getConversation(ownerId,linked,tx);
+   const id=randomUUID(),now=Date.now();
+   await tx.query('INSERT INTO conversations(id,owner_id,title,updated_at) VALUES (?,?,?,?)',[id,ownerId,'Desktop Pet conversation',now]);
+   await tx.query('UPDATE owners SET pet_conversation=? WHERE id=?',[id,ownerId]);
+   return this.getConversation(ownerId,id,tx);
+  });
+ }
  async turns(ownerId: string,id: string) { await this.getConversation(ownerId,id); return (await this.db.query<Row>('SELECT t.*, (SELECT COALESCE(MAX(seq),0) FROM events e WHERE e.interaction_id=t.id) AS last_seq FROM turns t WHERE conversation_id=? ORDER BY ordinal LIMIT 2000',[id])).map(turn); }
  async setRepository(ownerId: string,id: string,repo: string|null) {
   await this.db.transaction(async tx=>{

@@ -89,6 +89,8 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.post('/api/robot/reconciliation/ack',async(req)=>{const b=z.object({deviceId:Id}).strict().parse(req.body),s=await session(req);if(!await store.acknowledgeRevocation(s.ownerId,b.deviceId))throw new DomainError('RECOVERY_NOT_AUTHORIZED','No pending ownership cleanup was found for this account.',403);return {ok:true};});
  app.post('/api/device/enrollment/redeem',{config:{rateLimit:{max:20,timeWindow:'1 minute'}}},async(req)=>requireEnrollment().redeem(req.body));
  app.get('/api/robot/presence',async(req)=>({body:await store.body((await session(req)).ownerId),presence:devices.presence((await session(req)).ownerId)}));
+ app.get('/api/robot/conversation',async(req)=>({conversationId:(await store.owner((await session(req)).ownerId)).petConversation}));
+ app.put('/api/robot/conversation',async(req)=>{const b=z.object({conversationId:Id.nullable()}).strict().parse(req.body),s=await session(req);const result=await store.setPetConversation(s.ownerId,b.conversationId);runtime.events.emit('conversation_link',s.ownerId);return result;});
  app.patch('/api/robot/audio',async(req)=>devices.setAudioSettings((await session(req)).ownerId,PetAudioSettings.parse(req.body)));
  app.get('/api/robot/diagnostics',async(req)=>({diagnostics:devices.diagnostics((await session(req)).ownerId)}));
  app.get('/api/conversations',async(req)=>store.listConversations((await session(req)).ownerId));
@@ -128,9 +130,10 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
    delivery=delivery.then(async()=>{if(closed)return;await session(req);if(closed)return;if(socket.bufferedAmount>262144){closed=true;socket.close(1013,'Reconnect to resume');return;}socket.send(JSON.stringify(data));}).catch(()=>socket.close(4401,'Sign in again')).finally(()=>{queued--;});
   };
   const startTimer=setTimeout(()=>{if(!subscribed)socket.close(4408,'Subscribe after signing in');},15000);
-  const event=(e:AgentEvent,ownerId:string)=>{if(subscribed&&subscribed.ownerId===ownerId&&subscribed.conversationId===e.conversationId&&subscribed.routeId===e.routeId)send(e);};
+  const event=(e:AgentEvent,ownerId:string)=>{if(subscribed&&subscribed.ownerId===ownerId&&subscribed.conversationId===e.conversationId)send(e);};
   const refresh=(id:string,ownerId:string)=>{if(subscribed?.ownerId===ownerId&&subscribed.conversationId===id)send({type:'refresh'});};
-  runtime.events.on('event',event);runtime.events.on('refresh',refresh);
+  const link=(ownerId:string)=>{if(subscribed?.ownerId===ownerId)send({type:'conversation_link'});};
+  runtime.events.on('event',event);runtime.events.on('refresh',refresh);runtime.events.on('conversation_link',link);
   const heartbeat=setInterval(()=>{void session(req).then(()=>send({type:'heartbeat'})).catch(()=>socket.close(4401,'Sign in again'));},5000);
   socket.on('message',data=>{if(closed)return;if(++pending>32){closed=true;socket.close(1013,'Too many pending subscriptions');return;}control=control.then(async()=>{
    if(closed)return;const s=await session(req),message=ClientEvent.parse(JSON.parse(data.toString()));if(message.type==='ping'){send({type:'pong'});return;}
@@ -138,7 +141,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
    for(const e of await store.replay(s.ownerId,message.conversationId,message.routeId,message.after))send(e);
    send({type:'subscribed'});
   }).catch(()=>socket.close(4400,'Invalid or unauthorized subscription')).finally(()=>{pending--;});});
-  socket.on('close',()=>{closed=true;eventConnections--;clearTimeout(startTimer);clearInterval(heartbeat);runtime.events.off('event',event);runtime.events.off('refresh',refresh);});
+  socket.on('close',()=>{closed=true;eventConnections--;clearTimeout(startTimer);clearInterval(heartbeat);runtime.events.off('event',event);runtime.events.off('refresh',refresh);runtime.events.off('conversation_link',link);});
  });
  devices.register(app);
  const voiceProvider=options.voice??(cfg.VOICE_PROVIDER==='openai'?new OpenAIVoiceProvider(cfg.OPENAI_API_KEY!,cfg.OPENAI_REALTIME_MODEL!,cfg.OPENAI_TRANSCRIPTION_MODEL,cfg.OPENAI_VOICE,undefined,undefined,code=>app.log.warn({code},'Voice provider diagnostic')):cfg.VOICE_PROVIDER==='deepgram'?new DeepgramVoiceProvider(cfg.DEEPGRAM_API_KEY!,cfg.DEEPGRAM_STT_MODEL!,cfg.DEEPGRAM_TTS_MODEL!,runtime.provider):undefined);

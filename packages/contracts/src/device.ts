@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { Id } from './index.js';
 export const DeviceCapability=z.enum(['voice','eyes','gaze','head','tracks','motion','imu','cliff','range','bench_tracks']);
 export type DeviceCapability=z.infer<typeof DeviceCapability>;
-export const PetAudioSettings=z.object({volume:z.number().int().min(0).max(100),muted:z.boolean(),microphoneGainDb:z.number().int().min(0).max(36).multipleOf(6).optional()}).strict();
+export const PetAudioSettings=z.object({volume:z.number().int().min(0).max(100),muted:z.boolean(),microphoneGainDb:z.number().int().min(0).max(36).multipleOf(6).optional(),allowPlaybackMic:z.boolean().optional(),followupSeconds:z.number().int().min(0).max(30).optional()}).strict();
 export type PetAudioSettings=z.infer<typeof PetAudioSettings>;
 export const DeviceHello=z.object({type:z.literal('hello'),protocol:z.object({major:z.number().int(),minor:z.number().int()}).strict(),deviceId:Id,bootId:Id,capabilities:z.array(DeviceCapability).max(8),firmware:z.string().max(64),audioInputRate:z.literal(16000).optional(),audioSettings:PetAudioSettings.optional()}).strict();
 export const DeviceControl=z.discriminatedUnion('type',[
@@ -13,7 +13,8 @@ export const DeviceControl=z.discriminatedUnion('type',[
  z.object({type:z.literal('voice_start'),reason:z.enum(['wake','button'])}).strict(),
  z.object({type:z.literal('voice_stop')}).strict(),
  z.object({type:z.literal('voice_interrupt')}).strict(),
- z.object({type:z.literal('audio_settings'),volume:z.number().int().min(0).max(100),muted:z.boolean(),microphoneGainDb:z.number().int().min(0).max(36).multipleOf(6).optional()}).strict()
+ z.object({type:z.literal('audio_settings'),volume:z.number().int().min(0).max(100),muted:z.boolean(),microphoneGainDb:z.number().int().min(0).max(36).multipleOf(6).optional(),allowPlaybackMic:z.boolean().optional(),followupSeconds:z.number().int().min(0).max(30).optional()}).strict(),
+ z.object({type:z.literal('voice_playback_done'),interactionId:Id}).strict()
 ]);
 export const Actions={
  eyes:z.object({expression:z.enum(['neutral','listening','thinking','speaking','concerned','sleeping'])}).strict(),

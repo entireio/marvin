@@ -11,7 +11,7 @@ The installed dual DC motor module is a **DRV8833** carrier. `EEP` is its active
 | 7 / 6 | IN1 / IN2 | OUT1 left track −, OUT2 left track + |
 | 5 / 4 | IN3 / IN4 | OUT3 right track −, OUT4 right track + |
 | 3 | EEP (DRV8833 nSLEEP) | Low at startup and after stopping |
-| 19 / 20 | Head rotation / tilt servo signal | 50 Hz, 1–2 ms pulses on explicit command |
+| 8 / 9 | Head rotation / tilt servo signal | 50 Hz, 1–2 ms pulses on explicit command |
 
 `actuators.c` configures 20 kHz motor PWM, holds EEP low while idle, raises it only after a bounded track command has set the inputs, and lowers it before clearing them on stop or expiry. Each track segment lasts at most 500 ms. Positive track speed selects IN2/IN4 because the motor positive leads are on OUT2/OUT4. The head outputs start without pulses and are configured only when explicitly commanded. The previous GPIO4/5/6 audio button placeholders are disabled by default.
 
@@ -21,7 +21,7 @@ Track motion remains **off by default** because no cliff or pickup sensor is con
 
 **Boot and reset safety requires hardware:** GPIO3 is not driven by firmware until `app_main` runs. On DRV8833 carriers with an EEP pull-up jumper (often marked J1), open that jumper and provide an external pull-down from EEP to ground, for example 10 kΩ, so EEP remains low while the ESP32-S3 is reset, unpowered, flashing, or booting. Verify the actual carrier circuit and measure EEP low through a full power cycle before connecting the tracks. The chip's internal 500 kΩ pull-down is weak; an onboard pull-up can override it. Firmware alone cannot guarantee an idle driver during boot.
 
-GPIO19/20 are also the ESP32-S3 native USB pair on this board. Servo output on those pins takes over that pair; disconnect USB for head movement and use the UART path for diagnostics. GPIO3 is a boot strapping pin: confirm that the EEP pull-down allows normal boot. Power servos and motors from suitable supplies with a common ground; check the carrier's EEP voltage before connecting it directly to the 3.3 V MCU GPIO.
+GPIO19/20 are the ESP32-S3 native USB pair on this board. Do not connect servo signals to them: USB traffic can look like servo pulses and cause random motion. GPIO8/9 are direct MCU pins also routed to the optional screen interface; do not attach a screen that drives those lines at the same time. Add a pull-down to each servo signal so it stays low before firmware configures PWM. GPIO3 is a boot strapping pin: confirm that the EEP pull-down allows normal boot. Power servos and motors from suitable supplies with a common ground; check the carrier's EEP voltage before connecting it directly to the 3.3 V MCU GPIO.
 
 ## Build
 
