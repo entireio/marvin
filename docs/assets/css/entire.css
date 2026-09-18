@@ -248,3 +248,25 @@ main h1, main h2, main h3, main h4 { color: var(--color-text); }
 .contribute-page nav[aria-label="On this page"] a[aria-current="location"] {
   color: var(--color-accent-700); background: var(--color-accent-100);
 }
+
+/* Share the four content rows so wrapped badges and copy cannot stagger the cards. */
+.build-paths {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  column-gap: clamp(14px, 2.5vw, 28px);
+  row-gap: var(--space-2);
+  margin-bottom: clamp(24px, 3.5vw, 40px);
+}
+.build-paths > .card {
+  display: grid;
+  grid-template-rows: subgrid;
+  grid-row: span 4;
+}
+.build-path-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  gap: 8px 12px;
+  min-height: 22px;
+}

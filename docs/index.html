@@ -14,7 +14,7 @@
 <link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
+<link rel="stylesheet" href="assets/css/entire.css?v=card-align-2">
 <link rel="stylesheet" href="assets/css/sketch.css?v=studies-5">
 <script src="assets/js/site.js?v=studies-5" defer></script>
 </head>
@@ -328,17 +328,17 @@
           <p style="margin:0 0 clamp(20px,3vw,34px);max-width:36ch">Nine parts to print, six to buy, and one decision to make before any of it: how you want the electronics.</p>
 
           <p class="kicker kicker-a" style="margin:0 0 12px">The decision</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:clamp(14px,2.5vw,28px);margin-bottom:clamp(24px,3.5vw,40px)">
+          <div class="build-paths">
             <a class="card blueprint" href="electronics.html#soldered" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span class="card-kicker" style="font-family:var(--font-mono)">Path A · Works today</span>
+              <span class="build-path-label"><span class="card-kicker" style="font-family:var(--font-mono)">Path A · Works today</span></span>
               <span class="card-title" style="font-size:22px">Solder it yourself</span>
               <span class="card-body" style="opacity:1;color:var(--muted)">Connect an ESP32-C3 SuperMini, a DRV8833 motor driver, a charger and a step-up converter to control the motors and head servos over Bluetooth.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Wiring diagram</span>
             </a>
             <a class="card blueprint hatch" href="electronics.html#architecture" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><span class="card-kicker" style="margin:0;font-family:var(--font-mono)">Path B · Specification only</span> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></span>
+              <span class="build-path-label"><span class="card-kicker" style="margin:0;font-family:var(--font-mono)">Path B · Specification only</span> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></span>
               <span class="card-title" style="font-size:22px">The Marvin PCBs</span>
               <span class="card-body" style="opacity:1;color:var(--muted)">Two boards, one in the head and one in the base. They add the eyes and the senses — and they have not been designed yet.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Read the specification</span>
