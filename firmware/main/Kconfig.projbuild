@@ -26,6 +26,15 @@ config MARVIN_SIGNED_OTA
     help
         Requires dedicated factory release trust and a rollback-enabled bootloader.
         Local update commands never bypass signed manifest and owner authorization.
+config MARVIN_LOCAL_DEV_MODE
+    bool "Local development firmware"
+    default n
+    depends on MARVIN_OWNER_ENROLLMENT && !MARVIN_SIGNED_OTA
+    help
+        Enables the explicitly separate fast-flash development profile. It keeps
+        encrypted BLE, ticket verification and TLS certificate validation, but
+        cannot include signed OTA/rollback release machinery. Never use this
+        profile for cloud or release acceptance.
 config MARVIN_OTA_TEST_REJECT_BOOT
     bool "TEST ONLY: reject trial-image boot health"
     default n
@@ -97,14 +106,14 @@ config MARVIN_AUDIO_BUTTONS
     help
         The motor wiring occupies the old placeholder GPIO4/5/6 pins.
         Leave disabled until three separate button GPIOs are wired.
-config MARVIN_TRACK_BENCH_MODE
-    bool "Allow locally armed, bounded track tests without cliff sensors"
-    default n
+config MARVIN_BLE_REMOTE
+    bool "Enable offline Samsung Gear VR controller"
+    default y
     help
-        No cliff or pickup sensor is wired yet. Track commands remain disabled
-        unless this option is built and the local console arms a short test
-        window. Use only on a clear, level floor under supervision.
-
+        Connects the Samsung ET-YO324 Gear VR controller via its custom BLE
+        GATT protocol. It is not a generic HID controller despite some retail
+        descriptions. On a fresh flash it opens a 45-second, non-blocking
+        pairing window; later boots reconnect only to the remembered controller.
 config MARVIN_AFE_LAYOUT_V2
     bool "Use the 16 MB AFE v2 partition layout"
     depends on MARVIN_LOCAL_AFE
@@ -122,10 +131,10 @@ config MARVIN_HEAD_PITCH_CENTER
     default 90
 config MARVIN_HEAD_YAW_REVERSE
     bool "Reverse head rotation direction"
-    default n
+    default y
 config MARVIN_HEAD_PITCH_REVERSE
     bool "Reverse head tilt direction"
-    default n
+    default y
 config MARVIN_SILENT_TEST
     bool "Keep the amplifier disabled for unattended tests"
     default n

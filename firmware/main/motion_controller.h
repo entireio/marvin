@@ -14,6 +14,10 @@ typedef enum {
 /* Owns all head trajectories. Calls are non-blocking and bounded. */
 esp_err_t marvin_motion_init(void);
 esp_err_t marvin_motion_head_request(int yaw_degrees, int pitch_degrees, uint32_t duration_ms);
+/* A transport-neutral remote intent. Values are normalized -1000..1000 and
+ * must be renewed; stale input brings the tracks smoothly to rest. */
+esp_err_t marvin_remote_input(int throttle, int turn, int head_yaw, int head_pitch, bool autonomous_head);
+void marvin_remote_stop(void);
 void marvin_motion_cue(marvin_motion_cue_t cue);
 void marvin_motion_wake(void);
 void marvin_motion_idle_enabled(bool enabled);

@@ -2,11 +2,11 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "esp_timer.h"
+#include "nvs.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "sdkconfig.h"
-#include <stdatomic.h>
 
 #ifdef CONFIG_MARVIN_AUDIO_BUTTONS
 #define ACTUATOR_PIN(p) ((p)>=3 && (p)<=9)
@@ -19,17 +19,32 @@
 /* Waveshare ESP32-S3-AUDIO-Board header labels are native ESP32-S3 GPIOs.
  * The pictured IN1..IN4 / EEP / OUT1..OUT4 carrier is a DRV8833 module.
  * EEP is its active-high nSLEEP input, not an enable PWM input. */
-enum { LEFT_IN1=7, LEFT_IN2=6, RIGHT_IN3=5, RIGHT_IN4=4,
+/* The assembled pet has both motor polarities and track sides opposite the
+ * original logical convention. Keep the correction here so motion callers
+ * can continue using positive left/right speeds for forward motion. */
+enum { LEFT_IN1=5, LEFT_IN2=4, RIGHT_IN3=6, RIGHT_IN4=7,
        DRIVER_EEP=3, HEAD_ROTATE=9, HEAD_TILT=8 };
 _Static_assert(HEAD_ROTATE!=19 && HEAD_ROTATE!=20 && HEAD_TILT!=19 && HEAD_TILT!=20,
                "Servos must not use the ESP32-S3 USB data pins");
-enum { MOTOR_DUTY_MAX=1023, SERVO_PERIOD_US=20000 };
+enum { MOTOR_DUTY_MAX=1023, SERVO_PERIOD_US=20000,
+       HEAD_ROTATE_MIN_US=600, HEAD_ROTATE_MAX_US=2400,
+       HEAD_TILT_MIN_US=700, HEAD_TILT_MAX_US=2300 };
 static SemaphoreHandle_t actuator_lock;
 static int64_t drive_deadline_us;
-#ifdef CONFIG_MARVIN_TRACK_BENCH_MODE
-static atomic_uint bench_deadline_ms;
-#endif
 static bool servo_started;
+static nvs_handle_t calibration_nvs;
+typedef struct {uint32_t magic;uint8_t version;marvin_head_calibration_t value;} stored_head_calibration_t;
+enum { HEAD_CALIBRATION_MAGIC=0x4843414c, HEAD_CALIBRATION_VERSION=1 };
+static marvin_head_calibration_t head_calibration={
+    .yaw_center=CONFIG_MARVIN_HEAD_YAW_CENTER,
+    .pitch_center=CONFIG_MARVIN_HEAD_PITCH_CENTER,
+#ifdef CONFIG_MARVIN_HEAD_YAW_REVERSE
+    .yaw_reversed=true,
+#endif
+#ifdef CONFIG_MARVIN_HEAD_PITCH_REVERSE
+    .pitch_reversed=true,
+#endif
+};
 static const int motor_pins[]={LEFT_IN1,LEFT_IN2,RIGHT_IN3,RIGHT_IN4};
 
 static esp_err_t duty(ledc_channel_t channel, uint32_t value){
@@ -48,32 +63,11 @@ void marvin_tracks_stop(void){
     stop_locked();
     xSemaphoreGive(actuator_lock);
 }
-bool marvin_tracks_bench_armed(void){
-#ifdef CONFIG_MARVIN_TRACK_BENCH_MODE
-    uint32_t now=(uint32_t)(esp_timer_get_time()/1000);
-    return actuator_lock && (int32_t)(now-atomic_load(&bench_deadline_ms))<0;
-#else
-    return false;
-#endif
-}
-esp_err_t marvin_tracks_bench_arm(uint32_t seconds){
-#ifdef CONFIG_MARVIN_TRACK_BENCH_MODE
-    if(!actuator_lock || seconds<1 || seconds>120)return ESP_ERR_INVALID_ARG;
-    xSemaphoreTake(actuator_lock,portMAX_DELAY);
-    stop_locked();
-    atomic_store(&bench_deadline_ms,(uint32_t)(esp_timer_get_time()/1000)+seconds*1000);
-    xSemaphoreGive(actuator_lock);
-    return ESP_OK;
-#else
-    (void)seconds;
-    return ESP_ERR_NOT_SUPPORTED;
-#endif
-}
 static void expiry_task(void *unused){
     (void)unused;
     for(;;){
         if(xSemaphoreTake(actuator_lock,pdMS_TO_TICKS(10))==pdTRUE){
-            if(drive_deadline_us && (esp_timer_get_time()>=drive_deadline_us || !marvin_tracks_bench_armed()))stop_locked();
+            if(drive_deadline_us && esp_timer_get_time()>=drive_deadline_us)stop_locked();
             xSemaphoreGive(actuator_lock);
         }
         vTaskDelay(pdMS_TO_TICKS(10));
@@ -97,8 +91,17 @@ esp_err_t marvin_actuators_init(void){
     }
     actuator_lock=xSemaphoreCreateMutex();
     if(!actuator_lock)return ESP_ERR_NO_MEM;
+    esp_err_t calibration_error=nvs_open("head_cal",NVS_READWRITE,&calibration_nvs);
+    if(calibration_error==ESP_OK){
+        stored_head_calibration_t saved;size_t saved_size=sizeof(saved);
+        calibration_error=nvs_get_blob(calibration_nvs,"settings",&saved,&saved_size);
+        if(calibration_error==ESP_OK&&saved_size==sizeof(saved)&&saved.magic==HEAD_CALIBRATION_MAGIC&&saved.version==HEAD_CALIBRATION_VERSION&&saved.value.yaw_center>=60&&saved.value.yaw_center<=120&&saved.value.pitch_center>=60&&saved.value.pitch_center<=120)head_calibration=saved.value;
+        else if(calibration_error!=ESP_ERR_NVS_NOT_FOUND){(void)nvs_erase_key(calibration_nvs,"settings");(void)nvs_commit(calibration_nvs);}
+    }else calibration_nvs=0;
     if(xTaskCreate(expiry_task,"drive_expiry",2048,NULL,5,NULL)!=pdPASS){
         stop_locked();
+        if(calibration_nvs)nvs_close(calibration_nvs);
+        calibration_nvs=0;
         vSemaphoreDelete(actuator_lock);
         actuator_lock=NULL;
         return ESP_ERR_NO_MEM;
@@ -107,14 +110,11 @@ esp_err_t marvin_actuators_init(void){
 }
 esp_err_t marvin_tracks_set(int left_percent,int right_percent,uint32_t duration_ms){
     if(!actuator_lock)return ESP_ERR_INVALID_STATE;
-    if(left_percent < -100 || left_percent > 100 || right_percent < -100 || right_percent > 100 || duration_ms>500)return ESP_ERR_INVALID_ARG;
+    if(left_percent < -100 || left_percent > 100 || right_percent < -100 || right_percent > 100 || duration_ms>30000)return ESP_ERR_INVALID_ARG;
     xSemaphoreTake(actuator_lock,portMAX_DELAY);
     stop_locked();
     if(duration_ms==0 || (left_percent==0 && right_percent==0)){
         xSemaphoreGive(actuator_lock);return ESP_OK;
-    }
-    if(!marvin_tracks_bench_armed()){
-        xSemaphoreGive(actuator_lock);return ESP_ERR_NOT_SUPPORTED;
     }
     /* OUT1/3 are motor minus, OUT2/4 are motor plus: forward is IN2/4 PWM. */
     int speeds[]={left_percent,right_percent};
@@ -156,8 +156,13 @@ esp_err_t marvin_head_set(uint8_t rotation_degrees,uint8_t tilt_degrees){
     }
     if(err==ESP_OK){
         const uint8_t angles[]={rotation_degrees,tilt_degrees};
+        /* The previous 1000..2000 us mapping used only about half of these
+         * SG90-class servos' travel. Keep the 1500 us neutral point, while
+         * calibrating pan to 1.8x and tilt to 1.6x the former pulse travel. */
+        const uint16_t minimum_us[]={HEAD_ROTATE_MIN_US,HEAD_TILT_MIN_US};
+        const uint16_t maximum_us[]={HEAD_ROTATE_MAX_US,HEAD_TILT_MAX_US};
         for(int i=0;i<2 && err==ESP_OK;i++){
-            uint32_t pulse_us=1000+(uint32_t)angles[i]*1000/180;
+            uint32_t pulse_us=minimum_us[i]+(uint32_t)angles[i]*(maximum_us[i]-minimum_us[i])/180;
             err=duty((ledc_channel_t)(4+i),pulse_us*16384/SERVO_PERIOD_US);
         }
     }
@@ -165,14 +170,31 @@ esp_err_t marvin_head_set(uint8_t rotation_degrees,uint8_t tilt_degrees){
     return err;
 }
 esp_err_t marvin_head_pose(int yaw_degrees,int pitch_degrees){
-    if(yaw_degrees < -30 || yaw_degrees > 30 || pitch_degrees < -20 || pitch_degrees > 20)return ESP_ERR_INVALID_ARG;
-    int yaw=CONFIG_MARVIN_HEAD_YAW_CENTER + yaw_degrees;
-    int pitch=CONFIG_MARVIN_HEAD_PITCH_CENTER + pitch_degrees;
-#ifdef CONFIG_MARVIN_HEAD_YAW_REVERSE
-    yaw=CONFIG_MARVIN_HEAD_YAW_CENTER-yaw_degrees;
-#endif
-#ifdef CONFIG_MARVIN_HEAD_PITCH_REVERSE
-    pitch=CONFIG_MARVIN_HEAD_PITCH_CENTER-pitch_degrees;
-#endif
+    /* A 90-degree center leaves ten degrees of servo margin at the remote
+     * controller's full +/-80-degree yaw range. Logical positive yaw means
+     * look right; the assembled linkage requires the configured reversal. */
+    if(yaw_degrees < -80 || yaw_degrees > 80 || pitch_degrees < -45 || pitch_degrees > 45)return ESP_ERR_INVALID_ARG;
+    xSemaphoreTake(actuator_lock,portMAX_DELAY);
+    marvin_head_calibration_t calibration=head_calibration;
+    xSemaphoreGive(actuator_lock);
+    int yaw=calibration.yaw_center+(calibration.yaw_reversed?-yaw_degrees:yaw_degrees);
+    int pitch=calibration.pitch_center+(calibration.pitch_reversed?-pitch_degrees:pitch_degrees);
+    if(yaw<0)yaw=0;else if(yaw>180)yaw=180;
+    if(pitch<0)pitch=0;else if(pitch>180)pitch=180;
     return marvin_head_set((uint8_t)yaw,(uint8_t)pitch);
+}
+void marvin_head_calibration_get(marvin_head_calibration_t *calibration){
+    if(!calibration||!actuator_lock)return;
+    xSemaphoreTake(actuator_lock,portMAX_DELAY);*calibration=head_calibration;xSemaphoreGive(actuator_lock);
+}
+esp_err_t marvin_head_calibration_set(const marvin_head_calibration_t *calibration){
+    if(!actuator_lock||!calibration||calibration->yaw_center<60||calibration->yaw_center>120||calibration->pitch_center<60||calibration->pitch_center>120)return ESP_ERR_INVALID_ARG;
+    if(!calibration_nvs)return ESP_ERR_INVALID_STATE;
+    xSemaphoreTake(actuator_lock,portMAX_DELAY);
+    stored_head_calibration_t saved={.magic=HEAD_CALIBRATION_MAGIC,.version=HEAD_CALIBRATION_VERSION,.value=*calibration};
+    esp_err_t err=nvs_set_blob(calibration_nvs,"settings",&saved,sizeof(saved));
+    if(err==ESP_OK)err=nvs_commit(calibration_nvs);
+    if(err==ESP_OK)head_calibration=*calibration;
+    xSemaphoreGive(actuator_lock);
+    return err;
 }

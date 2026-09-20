@@ -3,6 +3,8 @@
 #include "body_audio.h"
 #include "actuators.h"
 #include "motion_controller.h"
+#include "remote_control.h"
+#include "battery_monitor.h"
 #include "esp_websocket_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_random.h"
@@ -10,6 +12,7 @@
 #include "esp_log.h"
 #include "esp_heap_caps.h"
 #include "esp_wifi.h"
+#include "esp_netif_sntp.h"
 #include "esp_idf_version.h"
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,5,1)
 #error "Review and disable WebSocket cross-origin redirects before upgrading ESP-IDF; device bearer credentials must stay on the pinned origin."
@@ -36,9 +39,9 @@ static marvin_link_snapshot_t read_identity;
 static const char *trusted_ca;
 static atomic_bool connected,failed,online,quiescing,link_parked;
 static atomic_uint voice_request,link_fault,rx_frames,rx_binary,rx_max_us,control_max_us;
-static atomic_bool audio_settings_pending;
+static atomic_bool audio_settings_pending,head_calibration_pending;
 static void fail(unsigned reason){unsigned zero=0;atomic_compare_exchange_strong(&link_fault,&zero,reason);atomic_store(&failed,true);}
-static atomic_uint pcm_sent,max_write_us,send_attempts,link_stack;
+static atomic_uint pcm_sent,max_write_us,send_attempts,link_stack,link_attempts,link_state;
 static int16_t *uplink_pcm;
 static SemaphoreHandle_t uplink_lock;
 static esp_websocket_client_handle_t uplink_client;
@@ -62,10 +65,24 @@ static int64_t active_motion_until;
 static bool active_motion_tracks;
 static unsigned head_signal_state;
 typedef struct {int left,right;uint16_t duration_ms;} motion_step_t;
-static motion_step_t motion_steps[3];
+/* Named motions retain short, re-checked segments. The remote controller has
+ * its own 120 ms watchdog and does not rely on a fixed 500 ms drive limit. */
+enum { MOTION_PWM_PERCENT=100, MOTION_SEGMENT_MS=500, MOTION_SEGMENTS=4 };
+static motion_step_t motion_steps[MOTION_SEGMENTS];
 static unsigned motion_step_count,motion_step_index;
 static void head_signal(unsigned state);
 static int64_t milliseconds(void){struct timeval t;gettimeofday(&t,NULL);return (int64_t)t.tv_sec*1000+t.tv_usec/1000;}
+/* Credentials and TLS validation both require a usable wall clock.  A USB
+ * reset clears the ESP32-S3 clock, so do not wait for the authenticated link
+ * (which itself needs TLS) to supply the first timestamp. */
+static bool sync_clock(void){
+ if(milliseconds()>=1577836800000LL)return true;
+ esp_sntp_config_t config=ESP_NETIF_SNTP_DEFAULT_CONFIG("pool.ntp.org");
+ if(esp_netif_sntp_init(&config)!=ESP_OK)return false;
+ bool synced=esp_netif_sntp_sync_wait(pdMS_TO_TICKS(15000))==ESP_OK;
+ esp_netif_sntp_deinit();
+ return synced&&milliseconds()>=1577836800000LL;
+}
 static void event(void *arg,esp_event_base_t base,int32_t id,void *data){
  (void)arg;(void)base;
  if(id==WEBSOCKET_EVENT_CONNECTED){atomic_store(&connected,true);return;}
@@ -82,14 +99,28 @@ static bool send_json(esp_websocket_client_handle_t client,cJSON *message){
 }
 static cJSON *audio_settings(void){cJSON *settings=cJSON_CreateObject();if(settings){cJSON_AddNumberToObject(settings,"volume",marvin_body_volume());cJSON_AddBoolToObject(settings,"muted",marvin_body_microphone_muted());cJSON_AddNumberToObject(settings,"microphoneGainDb",marvin_body_microphone_gain());cJSON_AddBoolToObject(settings,"allowPlaybackMic",marvin_body_playback_mic());cJSON_AddNumberToObject(settings,"followupSeconds",marvin_body_followup_seconds());}return settings;}
 static bool send_audio_settings(esp_websocket_client_handle_t client){cJSON *message=audio_settings();if(!message)return false;cJSON_AddStringToObject(message,"type","audio_settings");return send_json(client,message);}
+static cJSON *head_calibration(void){marvin_head_calibration_t value;marvin_head_calibration_get(&value);cJSON *settings=cJSON_CreateObject();if(settings){cJSON_AddNumberToObject(settings,"yawCenter",value.yaw_center);cJSON_AddNumberToObject(settings,"pitchCenter",value.pitch_center);cJSON_AddBoolToObject(settings,"yawReversed",value.yaw_reversed);cJSON_AddBoolToObject(settings,"pitchReversed",value.pitch_reversed);}return settings;}
+static bool send_head_calibration(esp_websocket_client_handle_t client){cJSON *message=head_calibration();if(!message)return false;cJSON_AddStringToObject(message,"type","head_calibration");return send_json(client,message);}
+static cJSON *battery_status(void){
+ marvin_battery_status_t value;cJSON *status=cJSON_CreateObject();if(!status)return NULL;
+ if(marvin_battery_monitor_read(&value)&&value.available){cJSON_AddNumberToObject(status,"levelPercent",value.level_percent);cJSON_AddNumberToObject(status,"voltageMv",value.voltage_mv);}
+ else {cJSON_AddNullToObject(status,"levelPercent");cJSON_AddNullToObject(status,"voltageMv");}
+ if(value.available&&value.charging_supported)cJSON_AddBoolToObject(status,"charging",value.charging);else cJSON_AddNullToObject(status,"charging");
+ return status;
+}
+static bool send_battery_status(esp_websocket_client_handle_t client){cJSON *message=battery_status();if(!message)return false;cJSON_AddStringToObject(message,"type","battery_status");return send_json(client,message);}
 static bool hello(esp_websocket_client_handle_t client){
  cJSON *message=cJSON_CreateObject();if(!message)return false;
  cJSON_AddStringToObject(message,"type","hello");cJSON *protocol=cJSON_AddObjectToObject(message,"protocol");cJSON_AddNumberToObject(protocol,"major",1);cJSON_AddNumberToObject(protocol,"minor",MARVIN_DEVICE_PROTOCOL_MINOR);
- cJSON_AddStringToObject(message,"deviceId",identity.device_id);cJSON_AddStringToObject(message,"bootId",boot_id);cJSON *caps=cJSON_AddArrayToObject(message,"capabilities");if(marvin_body_audio_available()){cJSON *settings=audio_settings();if(!settings){cJSON_Delete(message);return false;}cJSON_AddItemToArray(caps,cJSON_CreateString("voice"));cJSON_AddItemToObject(message,"audioSettings",settings);}cJSON_AddItemToArray(caps,cJSON_CreateString("head"));
-#ifdef CONFIG_MARVIN_TRACK_BENCH_MODE
- cJSON_AddItemToArray(caps,cJSON_CreateString("tracks"));cJSON_AddItemToArray(caps,cJSON_CreateString("motion"));cJSON_AddItemToArray(caps,cJSON_CreateString("bench_tracks"));
+ cJSON_AddStringToObject(message,"deviceId",identity.device_id);cJSON_AddStringToObject(message,"bootId",boot_id);cJSON *caps=cJSON_AddArrayToObject(message,"capabilities");if(marvin_body_audio_available()){cJSON *settings=audio_settings();if(!settings){cJSON_Delete(message);return false;}cJSON_AddItemToArray(caps,cJSON_CreateString("voice"));cJSON_AddItemToObject(message,"audioSettings",settings);}cJSON_AddItemToArray(caps,cJSON_CreateString("head"));cJSON *calibration=head_calibration();if(!calibration){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"headCalibration",calibration);cJSON *battery=battery_status();if(!battery){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"batteryStatus",battery);
+ cJSON_AddItemToArray(caps,cJSON_CreateString("tracks"));cJSON_AddItemToArray(caps,cJSON_CreateString("motion"));cJSON_AddItemToArray(caps,cJSON_CreateString("remote"));
+ cJSON_AddNumberToObject(message,"audioInputRate",16000);
+#ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
+ cJSON_AddStringToObject(message,"firmware","marvin-local-dev");
+#else
+ cJSON_AddStringToObject(message,"firmware","marvin-owner-remote-0.4");
 #endif
- cJSON_AddNumberToObject(message,"audioInputRate",16000);cJSON_AddStringToObject(message,"firmware","marvin-owner-motion-0.3");return send_json(client,message);
+ return send_json(client,message);
 }
 static bool uuid(const char *text,uint8_t bytes[16]){
  if(!text||strlen(text)!=36)return false;
@@ -139,34 +170,53 @@ static bool motion_command(esp_websocket_client_handle_t client,const cJSON *m){
  int64_t now_ms=milliseconds();
  if(!whole(deadline,0,4102444800000.0)||deadline->valuedouble<=now_ms||deadline->valuedouble>now_ms+5000)
   return motion_status(client,id->valuestring,"failed","DEADLINE_INVALID");
+ bool tracks=!strcmp(action->valuestring,"tracks"),head=!strcmp(action->valuestring,"head"),preset=!strcmp(action->valuestring,"motion"),remote=!strcmp(action->valuestring,"remote");
+ if(!tracks&&!head&&!preset&&!remote)return motion_status(client,id->valuestring,"failed","CAPABILITY_UNAVAILABLE");
+ /* Remote packets are deliberately not durable motions. They are short-lived
+  * intent samples; the firmware watchdog stops if the stream disappears. */
+ if(remote){
+  const cJSON *throttle=cJSON_GetObjectItemCaseSensitive(args,"throttle"),*turn=cJSON_GetObjectItemCaseSensitive(args,"turn"),*head_yaw=cJSON_GetObjectItemCaseSensitive(args,"headYaw"),*head_pitch=cJSON_GetObjectItemCaseSensitive(args,"headPitch"),*auto_head=cJSON_GetObjectItemCaseSensitive(args,"autonomousHead"),*sequence=cJSON_GetObjectItemCaseSensitive(args,"sequence");
+  if(!cJSON_IsNumber(throttle)||!cJSON_IsNumber(turn)||!cJSON_IsNumber(head_yaw)||!cJSON_IsNumber(head_pitch)||!cJSON_IsBool(auto_head)||!whole(sequence,0,UINT32_MAX)||fabs(throttle->valuedouble)>1||fabs(turn->valuedouble)>1||fabs(head_yaw->valuedouble)>1||fabs(head_pitch->valuedouble)>1)return motion_status(client,id->valuestring,"failed","INVALID_REMOTE_INPUT");
+  /* Taking the remote is an explicit operator takeover of any older queued
+   * body motion; never let two writers fight over the tracks. */
+  if(active_motion_id[0]){if(active_motion_tracks)marvin_tracks_stop();motion_record(active_motion_id,4);active_motion_id[0]=0;active_motion_until=0;}
+  marvin_remote_intent_t input={(int)round(throttle->valuedouble*1000),(int)round(turn->valuedouble*1000),(int)round(head_yaw->valuedouble*1000),(int)round(head_pitch->valuedouble*1000),cJSON_IsTrue(auto_head)};
+  esp_err_t result=marvin_remote_submit(&input);
+  return motion_status(client,id->valuestring,result==ESP_OK?"accepted":"failed",result==ESP_OK?NULL:"MOTION_UNSAFE");
+ }
  motion_entry_t *old=motion_find(id->valuestring);
  if(old)return motion_status(client,id->valuestring,old->state==2?"completed":"failed",old->state==2?NULL:"DUPLICATE_UNCERTAIN");
  if(!motion_ledger_ready||active_motion_id[0])return motion_status(client,id->valuestring,"failed",!motion_ledger_ready?"LEDGER_UNAVAILABLE":"MOTION_BUSY");
- bool tracks=!strcmp(action->valuestring,"tracks"),head=!strcmp(action->valuestring,"head"),preset=!strcmp(action->valuestring,"motion");
- if(!tracks&&!head&&!preset)return motion_status(client,id->valuestring,"failed","CAPABILITY_UNAVAILABLE");
  const cJSON *duration=cJSON_GetObjectItemCaseSensitive(args,"durationMs");
- if(!preset&&!whole(duration,tracks?50:100,tracks?500:3000))return motion_status(client,id->valuestring,"failed","INVALID_MOTION");
+ if(!preset&&!whole(duration,tracks?50:100,tracks?30000:3000))return motion_status(client,id->valuestring,"failed","INVALID_MOTION");
  int left=0,right=0,yaw=0,pitch=0;
  if(tracks){
   const cJSON *l=cJSON_GetObjectItemCaseSensitive(args,"left"),*r=cJSON_GetObjectItemCaseSensitive(args,"right");
   if(!cJSON_IsNumber(l)||!cJSON_IsNumber(r)||!isfinite(l->valuedouble)||!isfinite(r->valuedouble)||fabs(l->valuedouble)>0.3||fabs(r->valuedouble)>0.3)
    return motion_status(client,id->valuestring,"failed","INVALID_MOTION");
   left=(int)round(l->valuedouble*100);right=(int)round(r->valuedouble*100);
-  if(!marvin_tracks_bench_armed())return motion_status(client,id->valuestring,"failed","BENCH_NOT_ARMED");
  }else if(head){
   const cJSON *y=cJSON_GetObjectItemCaseSensitive(args,"yaw"),*p=cJSON_GetObjectItemCaseSensitive(args,"pitch");
-  if(!cJSON_IsNumber(y)||!cJSON_IsNumber(p)||!isfinite(y->valuedouble)||!isfinite(p->valuedouble)||fabs(y->valuedouble)>30||fabs(p->valuedouble)>20)
+  if(!cJSON_IsNumber(y)||!cJSON_IsNumber(p)||!isfinite(y->valuedouble)||!isfinite(p->valuedouble)||fabs(y->valuedouble)>40||fabs(p->valuedouble)>30)
    return motion_status(client,id->valuestring,"failed","INVALID_MOTION");
   yaw=(int)round(y->valuedouble);pitch=(int)round(p->valuedouble);
  }else{
   const cJSON *primitive=cJSON_GetObjectItemCaseSensitive(args,"primitive");
   if(!cJSON_IsString(primitive))return motion_status(client,id->valuestring,"failed","INVALID_MOTION");
-  if(!strcmp(primitive->valuestring,"forward_bit")){motion_steps[0]=(motion_step_t){18,18,350};motion_step_count=1;}
-  else if(!strcmp(primitive->valuestring,"turn_right")){motion_steps[0]=(motion_step_t){20,-20,500};motion_steps[1]=motion_steps[0];motion_step_count=2;}
-  else if(!strcmp(primitive->valuestring,"turn_left")){motion_steps[0]=(motion_step_t){-20,20,500};motion_steps[1]=motion_steps[0];motion_step_count=2;}
+  if(!strcmp(primitive->valuestring,"forward_bit")){
+   /* The 10-bit motor PWM period is 0..1023.  Full power produces duty 1023;
+    * four watchdog-bounded segments keep both motors running forward for
+    * approximately two seconds. */
+   for(unsigned i=0;i<MOTION_SEGMENTS;i++)motion_steps[i]=(motion_step_t){MOTION_PWM_PERCENT,MOTION_PWM_PERCENT,MOTION_SEGMENT_MS};
+   motion_step_count=MOTION_SEGMENTS;
+  }
+  else if(!strcmp(primitive->valuestring,"backward_bit")){for(unsigned i=0;i<MOTION_SEGMENTS;i++)motion_steps[i]=(motion_step_t){-MOTION_PWM_PERCENT,-MOTION_PWM_PERCENT,MOTION_SEGMENT_MS};motion_step_count=MOTION_SEGMENTS;}
+  /* Opposite track directions rotate Marvin about its centre. Bare “turn
+   * around” uses the rightward convention; explicit left/right remain available. */
+  else if(!strcmp(primitive->valuestring,"turn_around")||!strcmp(primitive->valuestring,"turn_right")){for(unsigned i=0;i<MOTION_SEGMENTS;i++)motion_steps[i]=(motion_step_t){MOTION_PWM_PERCENT,-MOTION_PWM_PERCENT,MOTION_SEGMENT_MS};motion_step_count=MOTION_SEGMENTS;}
+  else if(!strcmp(primitive->valuestring,"turn_left")){for(unsigned i=0;i<MOTION_SEGMENTS;i++)motion_steps[i]=(motion_step_t){-MOTION_PWM_PERCENT,MOTION_PWM_PERCENT,MOTION_SEGMENT_MS};motion_step_count=MOTION_SEGMENTS;}
   else if(!strcmp(primitive->valuestring,"move_around")){motion_steps[0]=(motion_step_t){18,18,400};motion_steps[1]=(motion_step_t){18,10,450};motion_steps[2]=(motion_step_t){10,18,450};motion_step_count=3;}
   else return motion_status(client,id->valuestring,"failed","INVALID_MOTION");
-  if(!marvin_tracks_bench_armed())return motion_status(client,id->valuestring,"failed","BENCH_NOT_ARMED");
  }
  /* Commit the command ID before any physical side effect. An uncertain reset
   * causes a duplicate to fail rather than repeat movement. */
@@ -235,6 +285,12 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
  cJSON *m=cJSON_ParseWithOpts(frame.text,NULL,true);const cJSON *type=cJSON_GetObjectItemCaseSensitive(m,"type");
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"command")){bool result=motion_command(client,m);cJSON_Delete(m);return result;}
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"cancel")){bool result=motion_cancel(client,m);cJSON_Delete(m);return result;}
+ if(cJSON_IsString(type)&&!strcmp(type->valuestring,"head_calibration")){
+  const cJSON *yaw=cJSON_GetObjectItemCaseSensitive(m,"yawCenter"),*pitch=cJSON_GetObjectItemCaseSensitive(m,"pitchCenter"),*yaw_reverse=cJSON_GetObjectItemCaseSensitive(m,"yawReversed"),*pitch_reverse=cJSON_GetObjectItemCaseSensitive(m,"pitchReversed");
+  ok=unique_fields(m)&&whole(yaw,60,120)&&whole(pitch,60,120)&&cJSON_IsBool(yaw_reverse)&&cJSON_IsBool(pitch_reverse);
+  if(ok){marvin_head_calibration_t value={(uint8_t)yaw->valueint,(uint8_t)pitch->valueint,cJSON_IsTrue(yaw_reverse),cJSON_IsTrue(pitch_reverse)};ok=marvin_head_calibration_set(&value)==ESP_OK&&marvin_motion_head_request(0,0,500)==ESP_OK;if(ok)atomic_store(&head_calibration_pending,true);}
+  cJSON_Delete(m);return ok;
+ }
  if(!marvin_body_audio_available()){cJSON_Delete(m);return false;}
  if(cJSON_IsString(type)){
   if(!strcmp(type->valuestring,"voice_ready")&&voice_pending){const cJSON *rate=cJSON_GetObjectItemCaseSensitive(m,"sampleRate"),*channels=cJSON_GetObjectItemCaseSensitive(m,"channels"),*format=cJSON_GetObjectItemCaseSensitive(m,"format");const cJSON *input=cJSON_GetObjectItemCaseSensitive(m,"inputSampleRate");ok=cJSON_IsNumber(input)&&input->valuedouble==16000&&cJSON_IsNumber(rate)&&rate->valuedouble==24000&&cJSON_IsNumber(channels)&&channels->valuedouble==1&&cJSON_IsString(format)&&!strcmp(format->valuestring,"s16le");if(ok){voice_pending=false;voice_active=true;voice_since=esp_timer_get_time();atomic_store(&uplink_enabled,true);head_signal(1);printf("{\"voice\":\"listening\"}\n");}}
@@ -262,7 +318,10 @@ static void upload(void *unused){
   if(atomic_load(&uplink_enabled)&&!atomic_load(&failed)&&marvin_body_input_waiting()>=8){
    xSemaphoreTake(uplink_lock,portMAX_DELAY);
    if(uplink_client&&atomic_load(&uplink_enabled)&&!atomic_load(&failed)){
-    size_t n=0;for(int part=0;part<12;part++){size_t count=marvin_body_take_input(uplink_pcm+n,1920-n);if(!count)break;n+=count;}
+    /* Keep individual TLS writes short enough that a jittery AP cannot hold
+     * the control/receive path for half a second.  The capture queue remains
+     * the bounded cushion; this is not a retry or an unbounded spool. */
+    size_t n=0;for(int part=0;part<6;part++){size_t count=marvin_body_take_input(uplink_pcm+n,960-n);if(!count)break;n+=count;}
     if(n&&atomic_load(&uplink_enabled)){
      int64_t began=esp_timer_get_time();atomic_fetch_add(&send_attempts,1);
      int bytes=esp_websocket_client_send_bin(uplink_client,(const char*)uplink_pcm,(int)(n*2),pdMS_TO_TICKS(500));
@@ -281,18 +340,21 @@ static void run(void *unused){
  for(;;){
   if(atomic_load(&quiescing)){atomic_store(&link_parked,true);vTaskDelay(pdMS_TO_TICKS(100));continue;}
   mbedtls_platform_zeroize(&identity,sizeof(identity));
-  if(!read_identity(&identity)||milliseconds()<1577836800000LL||milliseconds()>=identity.expires_ms){vTaskDelay(pdMS_TO_TICKS(1000));continue;}
+  if(!read_identity(&identity)){atomic_store(&link_state,1);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
+  if(!sync_clock()){atomic_store(&link_state,2);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
+  if(milliseconds()>=identity.expires_ms){atomic_store(&link_state,3);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
   char uri[240],headers[128];
-  if(strncmp(identity.origin,"https://",8)||strpbrk(identity.origin+8,"/?#@\r\n")||strpbrk(identity.credential,"\r\n")){vTaskDelay(pdMS_TO_TICKS(1000));continue;}
+  if(strncmp(identity.origin,"https://",8)||strpbrk(identity.origin+8,"/?#@\r\n")||strpbrk(identity.credential,"\r\n")){atomic_store(&link_state,4);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
   snprintf(uri,sizeof(uri),"wss://%.192s/api/device/socket",identity.origin+8);snprintf(headers,sizeof(headers),"Authorization: Bearer %.95s\r\n",identity.credential);
-  atomic_store(&connected,false);atomic_store(&failed,false);atomic_store(&link_fault,0);atomic_store(&online,false);xQueueReset(incoming);marvin_wire_reset(&wire);wire.allow_audio=marvin_body_audio_available();voice_stop_local();atomic_store(&voice_request,0);atomic_store(&audio_settings_pending,false);
+  atomic_fetch_add(&link_attempts,1);atomic_store(&link_state,5);
+  atomic_store(&connected,false);atomic_store(&failed,false);atomic_store(&link_fault,0);atomic_store(&online,false);xQueueReset(incoming);marvin_wire_reset(&wire);wire.allow_audio=marvin_body_audio_available();voice_stop_local();atomic_store(&voice_request,0);atomic_store(&audio_settings_pending,false);atomic_store(&head_calibration_pending,false);
   esp_websocket_client_config_t config={.uri=uri,.headers=headers,.cert_pem=trusted_ca&&trusted_ca[0]?trusted_ca:NULL,.crt_bundle_attach=trusted_ca&&trusted_ca[0]?NULL:esp_crt_bundle_attach,.disable_auto_reconnect=true,.network_timeout_ms=5000,.task_stack=6144,.task_core_id=1,.buffer_size=4096,.tcp_nodelay=marvin_body_audio_available(),.ping_interval_sec=5,.pingpong_timeout_sec=10};
   esp_websocket_client_handle_t client=esp_websocket_client_init(&config);mbedtls_platform_zeroize(headers,sizeof(headers));
   if(client){
    xSemaphoreTake(uplink_lock,portMAX_DELAY);uplink_client=client;xSemaphoreGive(uplink_lock);
    bool started=esp_websocket_register_events(client,WEBSOCKET_EVENT_ANY,event,NULL)==ESP_OK&&esp_websocket_client_start(client)==ESP_OK;
-   if(!started)atomic_store(&failed,true);
-   bool sent=false;uint32_t sequence=0;int64_t began=esp_timer_get_time(),last_received=began,last_sent=began;
+   if(!started){atomic_store(&link_state,6);atomic_store(&failed,true);}
+   bool sent=false;uint32_t sequence=0;int64_t began=esp_timer_get_time(),last_received=began,last_sent=began,last_battery=began;
    while(!atomic_load(&failed)&&!atomic_load(&quiescing)){
     int64_t now=esp_timer_get_time();
     if(!read_identity(&current)||current.epoch!=identity.epoch||strcmp(current.credential,identity.credential)||milliseconds()>=identity.expires_ms){atomic_store(&failed,true);}
@@ -302,7 +364,9 @@ static void run(void *unused){
     if(atomic_load(&online)&&!motion_tick(client))atomic_store(&failed,true);
     if((!atomic_load(&online)&&now-began>10000000)||(atomic_load(&online)&&now-last_received>15000000))atomic_store(&failed,true);
     if(atomic_load(&online)&&now-last_sent>=5000000){cJSON *m=cJSON_CreateObject();cJSON_AddStringToObject(m,"type","heartbeat");cJSON_AddNumberToObject(m,"seq",sequence++);if(!send_json(client,m))atomic_store(&failed,true);last_sent=now;}
+    if(atomic_load(&online)&&now-last_battery>=30000000){if(!send_battery_status(client))atomic_store(&failed,true);last_battery=now;}
     if(atomic_load(&online)&&atomic_exchange(&audio_settings_pending,false)&&!send_audio_settings(client))atomic_store(&failed,true);
+    if(atomic_load(&online)&&atomic_exchange(&head_calibration_pending,false)&&!send_head_calibration(client))atomic_store(&failed,true);
     if(atomic_load(&online)&&playback_done_id[0]&&marvin_body_audio_drained()){cJSON *done=cJSON_CreateObject();cJSON_AddStringToObject(done,"type","voice_playback_done");cJSON_AddStringToObject(done,"interactionId",playback_done_id);playback_done_id[0]=0;if(!send_json(client,done))atomic_store(&failed,true);}
     if(atomic_load(&online)&&marvin_body_audio_available()){
      unsigned request=atomic_exchange(&voice_request,0);
@@ -318,6 +382,8 @@ static void run(void *unused){
     vTaskDelay(pdMS_TO_TICKS(20));
    }
    printf("{\"linkFault\":%u,\"rxFrames\":%u,\"rxBinary\":%u,\"rxMaxUs\":%u,\"controlMaxUs\":%u}\n",atomic_load(&link_fault),atomic_load(&rx_frames),atomic_load(&rx_binary),atomic_load(&rx_max_us),atomic_load(&control_max_us));marvin_tracks_stop();if(active_motion_id[0]){motion_record(active_motion_id,3);active_motion_id[0]=0;}voice_stop_local();head_signal(0);atomic_store(&online,false);xSemaphoreTake(uplink_lock,portMAX_DELAY);uplink_client=NULL;xSemaphoreGive(uplink_lock);if(started)esp_websocket_client_stop(client);esp_websocket_client_destroy(client);
+  }else{
+   atomic_store(&link_state,7);
   }
   mbedtls_platform_zeroize(&identity,sizeof(identity));
   unsigned delay=(1u<<(retry<5?retry:5))*1000+(esp_random()%1000);if(retry<5)retry++;for(unsigned waited=0;waited<delay&&!atomic_load(&quiescing);waited+=100)vTaskDelay(pdMS_TO_TICKS(100));
@@ -325,6 +391,7 @@ static void run(void *unused){
 }
 esp_err_t marvin_device_link_start(marvin_link_snapshot_t snapshot,const char *ca){
  if(incoming||!snapshot)return ESP_ERR_INVALID_STATE;
+ esp_err_t battery_error=marvin_battery_monitor_init();if(battery_error!=ESP_OK)ESP_LOGW("marvin","Battery ADC unavailable: %s",esp_err_to_name(battery_error));
  esp_err_t ledger_error=nvs_open("motion",NVS_READWRITE,&motion_nvs);
  if(ledger_error==ESP_OK){size_t len=sizeof(motion_ledger);ledger_error=nvs_get_blob(motion_nvs,"ledger",&motion_ledger,&len);if(ledger_error==ESP_ERR_NVS_NOT_FOUND){memset(&motion_ledger,0,sizeof(motion_ledger));motion_ledger.magic=0x4d4f544e;motion_ledger_ready=true;}else motion_ledger_ready=ledger_error==ESP_OK&&len==sizeof(motion_ledger)&&motion_ledger.magic==0x4d4f544e;}
  if(!motion_ledger_ready)ESP_LOGE("marvin","Motion ledger unavailable; remote motion disabled");
@@ -356,12 +423,16 @@ esp_err_t marvin_device_link_start(marvin_link_snapshot_t snapshot,const char *c
 bool marvin_device_link_online(void){return atomic_load(&online);}
 
 void marvin_device_voice_start(void){if(atomic_load(&online)&&marvin_body_audio_available()&&!marvin_body_microphone_muted())atomic_store(&voice_request,1);}
-void marvin_device_voice_wake(void){if(atomic_load(&online)&&marvin_body_audio_available()&&!marvin_body_microphone_muted())atomic_store(&voice_request,4);}
+void marvin_device_voice_wake(void){
+ if(atomic_load(&online)&&marvin_body_audio_available()&&!marvin_body_microphone_muted()){
+  atomic_store(&voice_request,4);
+ }
+}
 void marvin_device_voice_stop(void){marvin_body_capture(false);marvin_body_audio_flush();atomic_store(&voice_request,2);}
 void marvin_device_voice_interrupt(void){marvin_body_audio_flush();atomic_store(&voice_request,3);}
 void marvin_device_voice_interrupt_wake(void){marvin_body_audio_flush();atomic_store(&voice_request,4);}
 void marvin_device_audio_changed(void){atomic_store(&audio_settings_pending,true);if(marvin_body_microphone_muted())marvin_device_voice_stop();}
-void marvin_device_link_status(void){printf("{\"uploadStackFree\":%u}\n",atomic_load(&upload_stack));printf("{\"uplink\":{\"online\":%s,\"pcmSamples16k\":%u,\"attempts\":%u,\"maxWriteUs\":%u,\"stackFree\":%u}}\n",atomic_load(&online)?"true":"false",atomic_load(&pcm_sent),atomic_load(&send_attempts),atomic_load(&max_write_us),atomic_load(&link_stack));}
+void marvin_device_link_status(void){printf("{\"uploadStackFree\":%u}\n",atomic_load(&upload_stack));printf("{\"uplink\":{\"online\":%s,\"pcmSamples16k\":%u,\"attempts\":%u,\"maxWriteUs\":%u,\"stackFree\":%u,\"connectionAttempts\":%u,\"state\":%u}}\n",atomic_load(&online)?"true":"false",atomic_load(&pcm_sent),atomic_load(&send_attempts),atomic_load(&max_write_us),atomic_load(&link_stack),atomic_load(&link_attempts),atomic_load(&link_state));}
 
 bool marvin_device_link_quiesce(void){
  if(!incoming)return true;

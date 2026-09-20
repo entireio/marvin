@@ -1,3 +1,1 @@
-# Supervised track testing on the wired DRV8833 carrier.
-# A local console arm is still required before any track command can run.
-CONFIG_MARVIN_TRACK_BENCH_MODE=y
+# Track control on the wired DRV8833 carrier.

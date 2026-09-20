@@ -14,5 +14,8 @@ bool marvin_owner_setup_network(wifi_config_t *committed);
 bool marvin_owner_setup_linked(void);
 marvin_redeem_status_t marvin_owner_setup_redeem(const char *ca);
 bool marvin_owner_setup_cancel(void);
+/* Local-dev USB recovery only: removes the durable owner journal, never the
+ * factory identity or factory trust. The caller must reboot after success. */
+bool marvin_owner_setup_reset_local_development(void);
 bool marvin_owner_setup_submitted(void);
 bool marvin_owner_setup_identity(marvin_link_identity_t *identity);

@@ -35,7 +35,7 @@ bool marvin_ticket_verify(const char *ticket,size_t length,const marvin_ticket_e
  if(!ticket||!e||!out||!e->public_key_pem||!e->issuer||!e->device_id||!e->nonce||!e->operation||length<3||length>4096||memchr(ticket,0,length)||e->challenge_age_ms>=120000||e->now_seconds<1577836800||e->now_seconds>4102444800)return false;
  if(strlen(e->nonce)!=64)return false;
  for(size_t i=0;i<64;i++)if(!((e->nonce[i]>='0'&&e->nonce[i]<='9')||(e->nonce[i]>='a'&&e->nonce[i]<='f')))return false;
- bool claim=!strcmp(e->operation,"claim"),network=!strcmp(e->operation,"network"),reconcile=!strcmp(e->operation,"reconcile");if((!claim&&!network&&!reconcile)||((network||reconcile)&&(!e->owner||!e->epoch)))return false;
+ bool claim=!strcmp(e->operation,"claim"),network=!strcmp(e->operation,"network"),reconcile=!strcmp(e->operation,"reconcile");if((!claim&&!network&&!reconcile)||(network&&(!e->owner||!e->epoch))||(reconcile&&!e->owner))return false;
  const char *first=memchr(ticket,'.',length);if(!first)return false;const char *second=memchr(first+1,'.',length-(size_t)(first+1-ticket));if(!second||memchr(second+1,'.',length-(size_t)(second+1-ticket)))return false;
  cJSON *header=object(ticket,(size_t)(first-ticket)),*body=object(first+1,(size_t)(second-first-1));bool ok=false;
  mbedtls_pk_context key;mbedtls_pk_init(&key);mbedtls_mpi r,s;mbedtls_mpi_init(&r);mbedtls_mpi_init(&s);

@@ -61,12 +61,12 @@ bool marvin_owner_setup_control(uint32_t session,const cJSON *request,cJSON *rep
  }else if(!strcmp(op->valuestring,"ticket_finish")){
   if(verified){cJSON_AddBoolToObject(reply,"verified",true);return true;}
   size_t size=0;const uint8_t *ticket=marvin_transfer_finish(&transfer,session,(uint64_t)(esp_timer_get_time()/1000),&size);struct timeval now;gettimeofday(&now,NULL);
-  marvin_ticket_expectation_t expected={.public_key_pem=public_key,.issuer=issuer,.device_id=marvin_identity_device_id(),.nonce=nonce,.operation=operation,.owner=journal.current.linked?journal.current.owner:NULL,.epoch=journal.current.linked?journal.current.epoch:0,.now_seconds=now.tv_sec,.challenge_age_ms=(uint32_t)((esp_timer_get_time()-challenged_at)/1000)};
+  bool reconcile=!strcmp(operation,"reconcile");marvin_ticket_expectation_t expected={.public_key_pem=public_key,.issuer=issuer,.device_id=marvin_identity_device_id(),.nonce=nonce,.operation=operation,.owner=journal.current.linked?journal.current.owner:NULL,.epoch=journal.current.linked&&!reconcile?journal.current.epoch:0,.now_seconds=now.tv_sec,.challenge_age_ms=(uint32_t)((esp_timer_get_time()-challenged_at)/1000)};
   if(!ticket||memchr(ticket,0,size)||!marvin_ticket_verify((const char*)ticket,size,&expected,&claims))error="TICKET_INVALID";
   else{memcpy(verified_ticket,ticket,size);verified_ticket[size]=0;verified=true;cJSON_AddBoolToObject(reply,"verified",true);}marvin_transfer_clear(&transfer);
  }else if(!strcmp(op->valuestring,"clear_owner")){
   if(!verified||strcmp(operation,"reconcile"))error="OWNER_TICKET_REQUIRED";
-  else if(!marvin_journal_revoke(&journal,claims.owner,claims.epoch))error="OWNERSHIP_STATE";
+  else if(!marvin_journal_revoke(&journal,claims.owner,journal.current.epoch))error="OWNERSHIP_STATE";
   else{atomic_store(&linked_view,false);marvin_owner_setup_disconnected();cJSON_AddBoolToObject(reply,"cleared",true);}
  }else error="UNKNOWN_OPERATION";
  if(error){cJSON_AddStringToObject(reply,"error",error);}
@@ -91,6 +91,16 @@ marvin_redeem_status_t marvin_owner_setup_redeem(const char *ca){
  atomic_store(&linked_view,journal.current.linked);mbedtls_platform_zeroize(&receipt,sizeof(receipt));return result;
 }
 bool marvin_owner_setup_cancel(void){return ready&&marvin_journal_cancel(&journal);}
+bool marvin_owner_setup_reset_local_development(void){
+#ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
+ nvs_handle_t h;if(nvs_open("ownership",NVS_READWRITE,&h)!=ESP_OK)return false;
+ esp_err_t err=nvs_erase_all(h);if(err==ESP_OK)err=nvs_commit(h);nvs_close(h);
+ if(err!=ESP_OK)return false;
+ marvin_owner_setup_disconnected();atomic_store(&linked_view,false);return true;
+#else
+ return false;
+#endif
+}
 
 bool marvin_owner_setup_submitted(void){return ready&&journal.current.pending&&journal.current.submitted;}
 bool marvin_owner_setup_identity(marvin_link_identity_t *identity){

@@ -6,6 +6,7 @@
 #include "motion_controller.h"
 #include "device_identity.h"
 #include "owner_setup.h"
+#include "ble_remote.h"
 /* Waveshare ESP32-S3 audio board with wired track and head outputs. */
 #include <stdlib.h>
 #include <string.h>
@@ -26,6 +27,7 @@
 #include "esp_http_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "protocomm.h"
 #include "protocomm_ble.h"
 #include "protocomm_security2.h"
@@ -56,6 +58,18 @@ static bool setup_clock_seeded;
 static const char *probe_failure="BACKEND_UNREACHABLE";
 static protocomm_security2_params_t security;
 typedef struct { int operation; wifi_config_t candidate; } job_t;
+
+static esp_err_t set_station_hostname(esp_netif_t *station) {
+    uint8_t mac[6];
+    esp_err_t err=esp_wifi_get_mac(WIFI_IF_STA,mac);
+    if(err!=ESP_OK)return err;
+    char hostname[20];
+    int length=snprintf(hostname,sizeof(hostname),"marvin-pet-%02x%02x%02x",mac[3],mac[4],mac[5]);
+    if(length<0||length>=sizeof(hostname))return ESP_ERR_INVALID_SIZE;
+    err=esp_netif_set_hostname(station,hostname);
+    if(err==ESP_OK)ESP_LOGI("marvin","LAN hostname: %s",hostname);
+    return err;
+}
 
 static void state(const char *next, const char *error) {
     xSemaphoreTake(lock, portMAX_DELAY);
@@ -232,7 +246,7 @@ static void ble_lifecycle(void *arg,esp_event_base_t base,int32_t id,void *data)
 #ifdef CONFIG_MARVIN_BODY_AUDIO
 static void audio_console(void *unused){
     (void)unused;setvbuf(stdout,NULL,_IONBF,0);
-    printf("Marvin audio: v starts microphone/provider; x stops and mutes; i interrupts playback. B arms a 120-second supervised track bench window when built. No microphone upload while idle.\n");
+    printf("Marvin audio: v starts microphone/provider; x stops and mutes; i interrupts playback. No microphone upload while idle.\n");
     #ifdef CONFIG_MARVIN_SIGNED_OTA
     bool update_line=false,invalid=false;uint32_t sequence=0;unsigned digits=0;
 #endif
@@ -248,22 +262,35 @@ static void audio_console(void *unused){
       }else if(c=='u'){update_line=true;invalid=false;sequence=digits=0;continue;}
 #endif
       if(c=='x')marvin_ota_cancel();
-      if(c=='w'){marvin_body_wake_activation(false);marvin_device_voice_stop();}else if(c=='W')marvin_body_wake_activation(true);else if(c=='B'){esp_err_t armed=marvin_tracks_bench_arm(120);printf("{\"trackBenchArmed\":%s}\n",armed==ESP_OK?"true":"false");}else if(c=='+')marvin_body_adjust_volume(5);else if(c=='-')marvin_body_adjust_volume(-5);else if(c=='v')marvin_device_voice_start();else if(c=='x')marvin_device_voice_stop();else if(c=='i')marvin_device_voice_interrupt();else if(c=='s'){marvin_body_audio_status();marvin_device_link_status();}else{if(c==EOF)clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));}}
+#ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
+      if(c=='r'){
+        bool reset=owner_mode&&marvin_owner_setup_reset_local_development();
+        printf("{\"localDevelopmentOwnerReset\":%s}\n",reset?"true":"false");
+        if(reset)esp_restart();
+        continue;
+      }
+#endif
+      if(c=='w'){marvin_body_wake_activation(false);marvin_device_voice_stop();}else if(c=='W')marvin_body_wake_activation(true);else if(c=='+')marvin_body_adjust_volume(5);else if(c=='-')marvin_body_adjust_volume(-5);else if(c=='v')marvin_device_voice_start();else if(c=='x')marvin_device_voice_stop();else if(c=='i')marvin_device_voice_interrupt();else if(c=='s'){marvin_body_audio_status();marvin_device_link_status();}else{if(c==EOF)clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));}}
 }
 #endif
 void app_main(void) {
+    /* Never erase NVS automatically on a version/space error. Preserve recovery data. */
+    ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(marvin_actuators_init());
     ESP_ERROR_CHECK(marvin_motion_init());
+#ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
+    ESP_LOGW("marvin","LOCAL DEVELOPMENT FIRMWARE: not a release profile");
+#endif
 #ifdef CONFIG_MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC
     marvin_audio_diagnostic();return;
 #endif
-    /* Never erase NVS automatically on a version/space error. Preserve recovery data. */
-    ESP_ERROR_CHECK(nvs_flash_init());ESP_ERROR_CHECK(esp_netif_init());ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(esp_netif_init());ESP_ERROR_CHECK(esp_event_loop_create_default());
     lock=xSemaphoreCreateMutex();jobs=xQueueCreate(1,sizeof(job_t));events=xEventGroupCreate();assert(lock && jobs && events);
     #ifdef CONFIG_MARVIN_SIGNED_OTA
     ESP_ERROR_CHECK(marvin_ota_start(link_snapshot,probe_ca));
 #endif
-    esp_netif_create_default_wifi_sta();wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT();ESP_ERROR_CHECK(esp_wifi_init(&init));
+    esp_netif_t *station=esp_netif_create_default_wifi_sta();assert(station);wifi_init_config_t init=WIFI_INIT_CONFIG_DEFAULT();ESP_ERROR_CHECK(esp_wifi_init(&init));
+    ESP_ERROR_CHECK(set_station_hostname(station));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT,ESP_EVENT_ANY_ID,wifi_event,NULL));ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT,IP_EVENT_STA_GOT_IP,wifi_event,NULL));
     ESP_ERROR_CHECK(esp_wifi_start());
@@ -291,6 +318,9 @@ void app_main(void) {
     static protocomm_ble_name_uuid_t endpoints[]={{"proto-ver",0xff51},{"prov-session",0xff52},{"marvin-control",0xff53}};
     protocomm_ble_config_t ble={.device_name="Marvin setup",.service_uuid={0xfb,0x34,0x9b,0x5f,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0x50,0xff,0x00,0x00},.nu_lookup_count=3,.nu_lookup=endpoints};
     ESP_ERROR_CHECK(protocomm_ble_start(pc,&ble));
+    /* The remote task waits for this NimBLE host in the background; it never
+     * holds up motors, network setup, or the rest of boot. */
+    ESP_ERROR_CHECK(marvin_ble_remote_start());
     ESP_ERROR_CHECK(protocomm_set_version(pc,"proto-ver",owner_mode?"{\"marvin\":1,\"security\":2,\"patch\":1,\"enrollment\":1,\"reconciliation\":1}":"{\"marvin\":1,\"security\":2,\"patch\":1,\"bench\":true}"));
     ESP_ERROR_CHECK(protocomm_set_security(pc,"prov-session",&protocomm_security2,&security));
     ESP_ERROR_CHECK(protocomm_add_endpoint(pc,"marvin-control",control,NULL));

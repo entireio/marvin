@@ -18,12 +18,14 @@ async def main():
         raise RuntimeError('No Marvin in its five-minute setup window')
     async with BleakClient(device) as client:
         async def exchange(endpoint, data):
+            if isinstance(data, str):
+                data = data.encode('latin-1')
             await client.write_gatt_char(endpoint, data, response=True)
             return bytes(await client.read_gatt_char(endpoint))
         secure = Security2(1, credentials['username'], credentials['password'], False)
         response = None
         while True:
-            message = secure.security_session(response)
+            message = secure.security_session(response.decode('latin-1') if isinstance(response, bytes) else response)
             if message is None:
                 break
             response = await exchange(SESSION, message)
