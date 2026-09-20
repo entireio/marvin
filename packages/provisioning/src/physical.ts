@@ -38,8 +38,16 @@ export class PhysicalRobot implements ProvisioningTransport {
   if(binding){if(!binding.simulated&&binding.device_id===this.deviceId)return false;throw new DomainError('ACTIVE_BINDING','This Desktop Pet is linked to a different account or device record.');}
   if(!this.link.reconciliation)throw new DomainError('FIRMWARE_RECONCILIATION_REQUIRED','Your Desktop Pet was removed from your account, but this firmware cannot clear its previous link automatically. Update or physically reset your Desktop Pet, then start setup again.');
   progress('reconciling');let enrollmentId:string|undefined;
-  try{enrollmentId=await this.authorization('reconcile',signal);const cleared=await this.command({op:'clear_owner'});if(cleared.cleared!==true)throw new DomainError('OWNERSHIP_STATE','Desktop Pet could not clear its previous account link.');await this.server.acknowledge(this.deviceId);return true;}
-  catch(error){if(enrollmentId)await this.server.cancel(enrollmentId).catch(()=>{});throw error;}
+  try{enrollmentId=await this.authorization('reconcile',signal);
+   try{const cleared=await this.command({op:'clear_owner'});if(cleared.cleared!==true)throw new DomainError('OWNERSHIP_STATE','Desktop Pet could not clear its previous account link.');}
+   catch(error){
+    // A completed clear can race with the reply reaching the browser. Continue only
+    // after the pet itself confirms that no local owner remains.
+    if(!(error instanceof DomainError)||error.code!=='OWNERSHIP_STATE')throw error;
+    if((await this.status()).linked)throw error;
+   }
+   await this.server.acknowledge(this.deviceId);return true;
+  }catch(error){if(enrollmentId)await this.server.cancel(enrollmentId).catch(()=>{});throw error;}
  }
  async scan():Promise<ScanResult>{
   this.indices.clear();this.selected.clear();this.hidden.clear();await this.command({op:'clock',utcMs:Date.now()});await this.command({op:'scan'});const deadline=Date.now()+45000;let status;

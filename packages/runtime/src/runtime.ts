@@ -45,7 +45,10 @@ export class Runtime {
     try{
      if(name.startsWith('physical_')){
       if(!this.devices)throw new DomainError('DEVICE_OFFLINE','Device transport is unavailable.',409);
-      const result=await this.devices.dispatch({...fresh,surface:ctx.surface},name.slice(9) as DeviceAction,args,id,['physical_head','physical_motion'].includes(name)?5000:3000);
+      // Firmware treats five seconds as a strict upper bound. Keep motion
+      // commands comfortably inside it so a small clock or transport skew
+      // cannot turn an otherwise valid request into DEADLINE_INVALID.
+      const result=await this.devices.dispatch({...fresh,surface:ctx.surface},name.slice(9) as DeviceAction,args,id,3000);
       controller.signal.addEventListener('abort',()=>{void this.devices?.cancel(ctx.ownerId,fresh.body!.deviceId,id).catch(()=>{});},{once:true});
       await this.store.saveTool(id,ctx.interactionId,name,args,result,result.state);return result;
      }

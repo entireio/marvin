@@ -7,6 +7,15 @@ export const ClientEvent = z.discriminatedUnion('type', [
  z.object({ v: z.literal(1), type: z.literal('subscribe'), conversationId: Id, routeId: Id, after: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).default(0) }).strict(),
  z.object({ v: z.literal(1), type: z.literal('ping') }).strict()
 ]);
+/** Browser-to-server real-time driving intent. This is deliberately a small,
+ * lossy stream: the Pet stops if fresh input ceases, rather than replaying it. */
+export const RemoteIntent = z.object({
+ v:z.literal(1),type:z.literal('intent'),sequence:z.number().int().nonnegative(),
+ throttle:z.number().min(-1).max(1),turn:z.number().min(-1).max(1),
+ headYaw:z.number().min(-1).max(1),headPitch:z.number().min(-1).max(1),
+ autonomousHead:z.boolean()
+}).strict();
+export type RemoteIntent=z.infer<typeof RemoteIntent>;
 export const Evidence=z.object({id:z.string().max(128),label:z.string().max(300),origin:z.enum(['entire','git']),path:z.string().max(300).optional(),lineStart:z.number().int().positive().optional(),lineEnd:z.number().int().positive().optional(),excerpt:z.string().max(8000).optional(),revision:z.string().max(80).optional(),kind:z.string().max(40).optional(),date:z.string().max(80).optional()});
 export type Evidence=z.infer<typeof Evidence>;
 export type Repository={id:string;name:string;description:string;source?:'fixture'|'entire';capabilities?:string[]};

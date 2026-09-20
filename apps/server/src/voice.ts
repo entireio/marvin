@@ -10,7 +10,7 @@ export function registerVoice(app:FastifyInstance,runtime:Runtime,origin:string,
  app.get('/api/voice',{websocket:true},(socket,req)=>{
   if(req.headers.origin!==origin){socket.close(4403,'Invalid origin');return;}
   if(!provider){socket.close(4409,'Voice is not configured');return;}
-  let closed=false,initializing=false,muted=false,ownerId='',conversationId='',activeId='',lastId='',connection:VoiceConnection|undefined,lastActivity=Date.now(),inBytes=0,windowAt=Date.now(),frames=0,queued=0;
+  let closed=false,initializing=false,muted=false,ownerId='',conversationId='',activeId='',lastId='',connection:VoiceConnection|undefined,lastActivity=Date.now(),inBytes=0,windowAt=Date.now(),frames=0,queued=0,inputSequence=-1,inputGaps=0,outputSequence=0,outputFrames=0;
   let inputEpoch=0;
   const routeId=randomUUID(),seen=new Set<string>();let delivery=Promise.resolve(),control=Promise.resolve();
   const authenticated=async()=>{const s=await runtime.store.session(req.cookies.marvin_session);if(!s||ownerId&&s.ownerId!==ownerId)throw new Error('Sign in again');return s;};
@@ -43,7 +43,7 @@ export function registerVoice(app:FastifyInstance,runtime:Runtime,origin:string,
       const duration=Math.ceil(Buffer.from(pcm,'base64').length/48);
       const wait=Math.max(0,audioDue-Date.now());audioDue=Math.max(audioDue,Date.now())+duration;
       if(wait)await new Promise<void>(resolve=>setTimeout(resolve,wait));
-      if(closed||activeId!==id)return;await send({type:'audio',interactionId:id,pcm});
+      if(closed||activeId!==id)return;outputFrames++;await send({type:'audio',interactionId:id,pcm,seq:++outputSequence,sentAt:Date.now()});
      }});
      if(stale()){await runtime.cancel(ownerId,id);await runtime.waitTurn(id);}
     }).catch(()=>fault('Voice could not start this response. Stop any other response, then reconnect.'));
@@ -52,12 +52,22 @@ export function registerVoice(app:FastifyInstance,runtime:Runtime,origin:string,
   const event=(e:AgentEvent,owner:string)=>{if(closed||owner!==ownerId||e.routeId!==routeId||e.conversationId!==conversationId)return;void send({type:'event',event:e});if(['completed','cancelled','error'].includes(e.type)&&e.interactionId===activeId){activeId='';lastActivity=Date.now();void send({type:'state',state:muted?'muted':'listening'});}};
   const refresh=(id:string,owner:string)=>{if(owner===ownerId&&id===conversationId)void send({type:'refresh'});};
   runtime.events.on('event',event);runtime.events.on('refresh',refresh);
-  const heartbeat=setInterval(()=>{if(Date.now()-lastActivity>limits.idleMs){void send({type:'closed',message:'Voice paused after a quiet moment. Reconnect when you’re ready.'}).then(()=>shutdown());return;}void send({type:'heartbeat'});},limits.heartbeatMs);
+  const heartbeat=setInterval(()=>{if(Date.now()-lastActivity>limits.idleMs){void send({type:'closed',message:'Voice paused after a quiet moment. Reconnect when you’re ready.'}).then(()=>shutdown());return;}void send({type:'heartbeat',transport:{inputGaps,outputFrames,queued,socketBufferedAmount:socket.bufferedAmount}});},limits.heartbeatMs);
   const startTimer=setTimeout(()=>{if(!connection)shutdown(4408,'Voice setup timed out');},15000);
   const maxTimer=setTimeout(()=>{void send({type:'closed',message:'Reconnect to start a fresh voice session. Your conversation is saved.'}).then(()=>shutdown());},limits.maxMs);
   socket.on('message',(data,isBinary)=>{
    if(closed)return;const now=Date.now();if(now-windowAt>=1000){windowAt=now;inBytes=0;frames=0;}inBytes+=(data instanceof ArrayBuffer?data.byteLength:Array.isArray(data)?data.reduce((n,b)=>n+b.length,0):data.length);frames++;if(inBytes>100000||frames>120){shutdown(4429,'Audio rate exceeded');return;}
-   if(isBinary){if(!connection||muted)return;const pcm=Buffer.from(data as Buffer);if(!pcm.length||pcm.length>4096||pcm.length%2){shutdown(4400,'Invalid audio frame');return;}
+   if(isBinary){if(!connection||muted)return;let pcm=Buffer.from(data as Buffer);
+    // Protocol v1 accepts raw PCM. Newer browser clients prefix a sequence and
+    // monotonic capture timestamp so loss and local congestion are observable
+    // without retaining audio or changing the provider-facing PCM contract.
+    if(pcm.length>=12&&pcm.subarray(0,4).toString()==='MVB1'){
+     const sequence=pcm.readUInt32BE(4);pcm=pcm.subarray(12);
+     if(inputSequence>=0&&sequence<=inputSequence)return;
+     if(inputSequence>=0&&sequence>inputSequence+1)inputGaps+=sequence-inputSequence-1;
+     inputSequence=sequence;
+    }
+    if(!pcm.length||pcm.length>4096||pcm.length%2){shutdown(4400,'Invalid audio frame');return;}
     // Each audio packet is authenticated before forwarding, with a bounded queue.
     if(++queued>256){shutdown(1013,'Input connection too slow');return;}
     control=control.then(async()=>{await authenticated();if(!closed&&!muted)connection?.append(pcm);}).catch(()=>shutdown(4401,'Voice connection ended')).finally(()=>{queued--;});return;

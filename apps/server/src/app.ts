@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import {FirmwareRelease} from '../../../packages/operations/src/firmware-release.js';
 import {Readable} from 'node:stream';
+import { randomUUID } from 'node:crypto';
 import {AnthropicTextProvider} from '../../../packages/runtime/src/anthropic.js';
 import {exportPage,deleteAccount,purgeExpiredHistory} from '../../../packages/persistence/src/privacy.js';
 import { DeviceVoice } from '../../../packages/device/src/voice.js';
@@ -28,11 +29,12 @@ import type { RepositoryIntegration } from '../../../packages/runtime/src/reposi
 import { authorizeTool } from '../../../packages/runtime/src/policy.js';
 import { FixtureEntire,fixtureRepositories } from '../../../packages/runtime/src/entire.js';
 import { FixtureTextProvider,OpenAITextProvider,type TextProvider } from '../../../packages/runtime/src/provider.js';
-import { SendTurn, ClientEvent, DomainError, Id, RepositorySelection, type AgentEvent } from '../../../packages/contracts/src/index.js';
-import { PetAudioSettings } from '../../../packages/contracts/src/device.js';
+import { SendTurn, ClientEvent, RemoteIntent, DomainError, Id, RepositorySelection, type AgentEvent } from '../../../packages/contracts/src/index.js';
+import { HeadCalibration,PetAudioSettings,PetSpeech } from '../../../packages/contracts/src/device.js';
 import { Identity,verifyPassword,safeReturnTo } from './auth.js';
 import type { Config } from './config.js';
 export async function createApp(cfg:Config,options:{database?:Database;provider?:TextProvider;logger?:boolean;entire?:RepositoryIntegration;voice?:VoiceProvider;voiceLimits?:{idleMs:number;maxMs:number;heartbeatMs:number}}={}){
+ let voiceDiagnostic:string|undefined;
  const firmwareRelease=cfg.FIRMWARE_ROLLOUT_FILE?new FirmwareRelease(cfg.FIRMWARE_ROLLOUT_FILE):undefined;
  const app=Fastify({trustProxy:cfg.TRUST_PROXY_HOPS===1?(_address:string,hop:number)=>hop<1:false,bodyLimit:32768,logger:options.logger?{level:'info',redact:['req.headers.cookie','req.headers.authorization','req.headers["x-csrf-token"]'],serializers:{req:r=>({method:r.method,url:r.url?.split('?')[0],id:r.id}),res:r=>({statusCode:r.statusCode})}}:false,disableRequestLogging:true});
  const db=options.database??(cfg.DATABASE_URL?postgresDatabase(cfg.DATABASE_URL):sqliteDatabase(cfg.SQLITE_PATH));await migrate(db);const store=new Store(db);await store.recoverExpired();
@@ -40,10 +42,18 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  const runtime=new Runtime(store,options.provider??(cfg.MODEL_PROVIDER==='anthropic'?new AnthropicTextProvider(cfg.ANTHROPIC_API_KEY!,cfg.ANTHROPIC_MODEL!):cfg.MODEL_PROVIDER==='openai'?new OpenAITextProvider(cfg.OPENAI_API_KEY!,cfg.OPENAI_MODEL!,undefined,cfg.OPENAI_REPOSITORY_MODEL):new FixtureTextProvider()),new FixtureEntire(),realEntire);
  const devices=new DeviceGateway(new DeviceStore(store));
  const enrollment=cfg.ENROLLMENT_KEYS_FILE?(()=>{const keys=z.object({privateKey:z.string(),receiptKey:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(JSON.parse(readFileSync(cfg.ENROLLMENT_KEYS_FILE,'utf8')));return new EnrollmentService(store,keys.privateKey,Buffer.from(keys.receiptKey,'hex'),cfg.DEVICE_PUBLIC_ORIGIN!);})():undefined;
+ const localDevCard=cfg.LOCAL_DEV_SETUP_CARDS_FILE?(()=>{
+  const card=z.object({deviceId:z.string().regex(/^marvin_[a-f0-9]{32}$/),username:z.string().min(1).max(64),password:z.string().min(8).max(128),security:z.literal(2).optional(),patch:z.literal(1).optional()}).strict(),loaded=z.union([card,z.array(card).length(1)]).parse(JSON.parse(readFileSync(cfg.LOCAL_DEV_SETUP_CARDS_FILE,'utf8')));
+  return Array.isArray(loaded)?loaded[0]!:loaded;
+ })():undefined;
+ if(cfg.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE&&localDevCard){
+  const registered=await enrollment!.registerDevice(readFileSync(cfg.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE,'utf8'));
+  if(registered!==localDevCard.deviceId)throw new Error('LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE does not match LOCAL_DEV_SETUP_CARDS_FILE.');
+ }
  runtime.devices=devices;
  const identity=new Identity(cfg,store), secure=cfg.NODE_ENV==='production'||cfg.APP_ORIGIN.startsWith('https:');
  const cookieOptions={path:'/',httpOnly:true,sameSite:'lax' as const,secure,maxAge:8*60*60};
- await app.register(cookie);await app.register(rateLimit,{max:200,timeWindow:'1 minute',allowList:req=>!req.url.split('?')[0]!.startsWith('/api/')});await app.register(websocket,{options:{maxPayload:16384}});
+ await app.register(cookie);await app.register(rateLimit,{max:200,timeWindow:'1 minute',allowList:req=>{const path=req.url.split('?')[0]!;return !path.startsWith('/api/')||path==='/api/remote';}});await app.register(websocket,{options:{maxPayload:16384}});
  app.setErrorHandler((error,req,reply)=>{
   const e=error as Error & {statusCode?:number};
   const status=e instanceof DomainError?e.status:e instanceof ZodError?400:e.statusCode&&e.statusCode<500?e.statusCode:500;
@@ -69,7 +79,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.get('/api/device/firmware',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization);if(!firmwareRelease?.offeredTo(device.deviceId))return reply.code(204).send();return firmwareRelease.offer();});
  app.get('/api/device/firmware/:sequence/:part',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization),params=z.object({sequence:z.string().regex(/^[1-9][0-9]{0,9}$/),part:z.enum(['manifest','image'])}).parse(req.params);if(!firmwareRelease?.offeredTo(device.deviceId)||String(firmwareRelease.sequence)!==params.sequence)throw new DomainError('NOT_FOUND','Firmware release not available.',404);return reply.type('application/octet-stream').send(firmwareRelease.bytes(params.part));});
 
- app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE,oidcLabel:cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
+ app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE,oidcLabel:cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',deploymentMode:cfg.DEPLOYMENT_MODE,localDevSetupAvailable:!!localDevCard,docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',voiceStatus:voiceDiagnostic==='credit_balance_exhausted'?'billing_required':voiceDiagnostic?'unavailable':'ready',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
  app.get('/api/auth/session',async(req)=>{const s=await store.session(req.cookies.marvin_session);return s?{owner:await store.owner(s.ownerId),csrf:s.csrf}:null;});
  app.post('/api/auth/login',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{
   const body=z.object({password:z.string().max(1024).optional(),returnTo:z.string().max(150).optional()}).strict().parse(req.body);
@@ -81,6 +91,16 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   const s=await store.createSession(o.id);reply.setCookie('marvin_session',s.token,cookieOptions);return {owner:o,csrf:s.csrf,returnTo:safeReturnTo(body.returnTo)};
  });
  app.post('/api/auth/logout',async(req,reply)=>{const s=await session(req);if(req.headers['x-csrf-token']!==s.csrf)throw new DomainError('CSRF_INVALID','Refresh and retry.',403);await store.logout(req.cookies.marvin_session!);reply.clearCookie('marvin_session',{path:'/'});return {ok:true};});
+ app.get('/api/local-dev/setup-card',async(req)=>{
+  /* Chromium may omit Origin on a same-origin GET fetch. Accept only its
+   * same-origin subresource metadata as the equivalent proof; a navigation or
+   * a cross-site fetch still cannot read a developer setup credential. */
+  const sameOriginFetch=req.headers['sec-fetch-site']==='same-origin'&&['cors','same-origin'].includes(req.headers['sec-fetch-mode']??'');
+  if(req.headers.origin!==cfg.APP_ORIGIN&&!sameOriginFetch)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);
+  await session(req);
+  if(cfg.DEPLOYMENT_MODE!=='local-dev'||!localDevCard)throw new DomainError('LOCAL_DEV_SETUP_UNAVAILABLE','Automatic Desktop Pet setup is not enabled on this server.',404);
+  return {card:localDevCard};
+ });
  app.get('/api/auth/start',async(req,reply)=>{if(cfg.AUTH_MODE!=='oidc')throw new DomainError('IDENTITY_UNCONFIGURED','Entire sign-in is not configured. Use the available local sign-in.',409);const query=req.query as Record<string,string>;const flow=await identity.begin(query.returnTo);reply.setCookie('marvin_auth',flow.token,{...cookieOptions,maxAge:300,path:'/api/auth'});return reply.redirect(flow.url);});
  app.get('/api/auth/callback',async(req,reply)=>{reply.clearCookie('marvin_auth',{path:'/api/auth'});try{const callback=new URL(cfg.OIDC_REDIRECT_URI!);callback.search=new URL(req.url,'http://localhost').search;const result=await identity.callback(req.cookies.marvin_auth,callback);const s=await store.createSession(result.owner.id);reply.setCookie('marvin_session',s.token,cookieOptions);return reply.redirect(cfg.APP_ORIGIN+result.returnTo);}catch{return reply.redirect(cfg.APP_ORIGIN+'/login?error=signin_failed');}});
  const requireEnrollment=()=>{if(!enrollment)throw new DomainError('ENROLLMENT_UNAVAILABLE','Device setup is not configured on this server.',503);return enrollment;};
@@ -92,6 +112,16 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.get('/api/robot/conversation',async(req)=>({conversationId:(await store.owner((await session(req)).ownerId)).petConversation}));
  app.put('/api/robot/conversation',async(req)=>{const b=z.object({conversationId:Id.nullable()}).strict().parse(req.body),s=await session(req);const result=await store.setPetConversation(s.ownerId,b.conversationId);runtime.events.emit('conversation_link',s.ownerId);return result;});
  app.patch('/api/robot/audio',async(req)=>devices.setAudioSettings((await session(req)).ownerId,PetAudioSettings.parse(req.body)));
+ app.patch('/api/robot/head-calibration',async(req)=>devices.setHeadCalibration((await session(req)).ownerId,HeadCalibration.parse(req.body)));
+ app.post('/api/robot/speak',{config:{rateLimit:{max:8,timeWindow:'1 minute'}}},async(req)=>{const b=PetSpeech.parse(req.body),s=await session(req);return devices.speak(s.ownerId,b.text);});
+ app.post('/api/robot/control',async(req)=>{
+  const b=z.discriminatedUnion('action',[
+   z.object({action:z.literal('head'),yaw:z.number().min(-40).max(40),pitch:z.number().min(-30).max(30),durationMs:z.number().int().min(100).max(3000)}).strict(),
+   z.object({action:z.literal('tracks'),left:z.number().min(-.3).max(.3),right:z.number().min(-.3).max(.3),durationMs:z.number().int().min(50).max(30000)}).strict(),
+   z.object({action:z.literal('remote'),throttle:z.number().min(-1).max(1),turn:z.number().min(-1).max(1),headYaw:z.number().min(-1).max(1),headPitch:z.number().min(-1).max(1),autonomousHead:z.boolean(),sequence:z.number().int().nonnegative()}).strict()
+  ]).parse(req.body),s=await session(req),id=randomUUID();
+  return devices.dispatchRemote(s.ownerId,b.action,b.action==='head'?{yaw:b.yaw,pitch:b.pitch,durationMs:b.durationMs}:b.action==='tracks'?{left:b.left,right:b.right,durationMs:b.durationMs}:{throttle:b.throttle,turn:b.turn,headYaw:b.headYaw,headPitch:b.headPitch,autonomousHead:b.autonomousHead,sequence:b.sequence},id,b.action==='remote'?1000:b.durationMs+1000);
+ });
  app.get('/api/robot/diagnostics',async(req)=>({diagnostics:devices.diagnostics((await session(req)).ownerId)}));
  app.get('/api/conversations',async(req)=>store.listConversations((await session(req)).ownerId));
  app.post('/api/conversations',async(req)=>{z.object({}).strict().parse(req.body);return store.createConversation((await session(req)).ownerId);});
@@ -119,6 +149,42 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.delete('/api/account',async(req,reply)=>{const s=await session(req);z.object({confirmation:z.literal('DELETE MY ACCOUNT')}).strict().parse(req.body);if(Date.now()-s.authenticatedAt>15*60*1000)throw new DomainError('REAUTH_REQUIRED','Sign in again before deleting your account.',401);const running=await store.db.query<{id:string}>("SELECT id FROM turns WHERE owner_id=? AND status='running'",[s.ownerId]);for(const t of running)await runtime.cancel(s.ownerId,t.id);devices.revoke(s.ownerId);for(const t of running)await runtime.waitTurn(t.id);realEntire?.invalidate(s.ownerId);await deleteAccount(store,s.ownerId);reply.clearCookie('marvin_session',{path:'/'});return {deleted:true,deviceErasureConfirmed:false,backups:'Deletion from backups follows the operator’s documented backup expiration policy.'};});
  app.delete('/api/robot',async(req)=>{const s=await session(req);if(Date.now()-s.authenticatedAt>15*60*1000)throw new DomainError('REAUTH_REQUIRED','Please sign in again before unlinking your Desktop Pet.',401);const result=await store.unlink(s.ownerId);devices.revoke(s.ownerId);return {ok:true,deviceId:result?.deviceId,deviceErasureConfirmed:false};});
  let eventConnections=0;
+ /* A remote-control lease is intentionally separate from the conversation
+    event stream. It prevents an old tab from stopping a newer controller. */
+ const remoteLeases=new Map<string,string>();
+ app.get('/api/remote',{websocket:true},(socket,req)=>{
+  if(req.headers.origin!==cfg.APP_ORIGIN){socket.close(4403,'Invalid origin');return;}
+  let closed=false,ownerId='',deviceId='',lease='',latest:RemoteIntent|undefined,lastSequence=-1,windowStarted=Date.now(),frames=0;
+  const close=(code:number,message:string)=>{if(!closed){closed=true;socket.close(code,message);}};
+  const stop=()=>{
+   if(!ownerId||!deviceId||remoteLeases.get(deviceId)!==lease)return;
+   remoteLeases.delete(deviceId);
+   /* A neutral frame is best effort; the Pet's 250 ms watchdog remains the
+      independent failsafe if the server-to-Pet transport also disappeared. */
+   void devices.dispatchRemote(ownerId,'remote',{throttle:0,turn:0,headYaw:0,headPitch:0,autonomousHead:true,sequence:lastSequence+1},randomUUID(),1000).catch(()=>{});
+  };
+  const initialize=async()=>{
+   const s=await session(req),presence=devices.presence(s.ownerId);
+   if(!presence||!presence.capabilities.includes('remote'))throw new DomainError('REMOTE_UNAVAILABLE','Your Desktop Pet does not support remote control.',409);
+   ownerId=s.ownerId;deviceId=presence.deviceId;lease=randomUUID();remoteLeases.set(deviceId,lease);
+   socket.send(JSON.stringify({type:'ready',lease}));
+  };
+  void initialize().catch(()=>close(4401,'Sign in again'));
+  const flush=setInterval(()=>{
+   const intent=latest;latest=undefined;
+   if(!intent||closed||remoteLeases.get(deviceId)!==lease)return;
+   void devices.dispatchRemote(ownerId,'remote',{throttle:intent.throttle,turn:intent.turn,headYaw:intent.headYaw,headPitch:intent.headPitch,autonomousHead:intent.autonomousHead,sequence:intent.sequence},randomUUID(),1000).catch(error=>{if(error instanceof DomainError)close(4409,error.message);else close(1011,'Remote control failed');});
+  },40);
+  const heartbeat=setInterval(()=>{void session(req).catch(()=>close(4401,'Sign in again'));},5000);
+  socket.on('message',data=>{
+   if(closed||!ownerId)return;
+   const now=Date.now();if(now-windowStarted>=1000){windowStarted=now;frames=0;}
+   if(++frames>30){close(4429,'Remote input rate exceeded');return;}
+   try{const intent=RemoteIntent.parse(JSON.parse(data.toString()));if(intent.sequence<=lastSequence)return;lastSequence=intent.sequence;latest=intent;}catch{close(4400,'Invalid remote input');}
+  });
+  socket.on('error',()=>close(1011,'Remote connection failed'));
+  socket.on('close',()=>{closed=true;clearInterval(flush);clearInterval(heartbeat);stop();});
+ });
  app.get('/api/events',{websocket:true},(socket,req)=>{
   if(req.headers.origin!==cfg.APP_ORIGIN){socket.close(4403,'Invalid origin');return;}
   if(eventConnections>=160){socket.close(1013,'Server busy; reconnect shortly');return;}
@@ -144,7 +210,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   socket.on('close',()=>{closed=true;eventConnections--;clearTimeout(startTimer);clearInterval(heartbeat);runtime.events.off('event',event);runtime.events.off('refresh',refresh);runtime.events.off('conversation_link',link);});
  });
  devices.register(app);
- const voiceProvider=options.voice??(cfg.VOICE_PROVIDER==='openai'?new OpenAIVoiceProvider(cfg.OPENAI_API_KEY!,cfg.OPENAI_REALTIME_MODEL!,cfg.OPENAI_TRANSCRIPTION_MODEL,cfg.OPENAI_VOICE,undefined,undefined,code=>app.log.warn({code},'Voice provider diagnostic')):cfg.VOICE_PROVIDER==='deepgram'?new DeepgramVoiceProvider(cfg.DEEPGRAM_API_KEY!,cfg.DEEPGRAM_STT_MODEL!,cfg.DEEPGRAM_TTS_MODEL!,runtime.provider):undefined);
+ const voiceProvider=options.voice??(cfg.VOICE_PROVIDER==='openai'?new OpenAIVoiceProvider(cfg.OPENAI_API_KEY!,cfg.OPENAI_REALTIME_MODEL!,cfg.OPENAI_TRANSCRIPTION_MODEL,cfg.OPENAI_VOICE,undefined,undefined,code=>{voiceDiagnostic=code;app.log.warn({code},'Voice provider diagnostic');}):cfg.VOICE_PROVIDER==='deepgram'?new DeepgramVoiceProvider(cfg.DEEPGRAM_API_KEY!,cfg.DEEPGRAM_STT_MODEL!,cfg.DEEPGRAM_TTS_MODEL!,runtime.provider):undefined);
  devices.voice=new DeviceVoice(runtime,voiceProvider);
  const voice=registerVoice(app,runtime,cfg.APP_ORIGIN,voiceProvider,options.voiceLimits);
  let retentionAfter='';let retentionWork:Promise<void>|undefined;

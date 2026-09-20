@@ -88,5 +88,17 @@ class Session implements VoiceConnection {
    try{yield* output.read(controller.signal);}finally{clearTimeout(timer);controller.abort();ws.terminate();signal.removeEventListener('abort',abort);controller.signal.removeEventListener('abort',cancel);session.turns.delete(controller);await producer;}
   }};
  }
+ async *speak(text:string,signal:AbortSignal):AsyncIterable<Uint8Array>{
+  if(this.closed)throw new Error('Voice closed');const controller=new AbortController(),output=new Output();const abort=()=>controller.abort();signal.addEventListener('abort',abort,{once:true});if(signal.aborted)abort();
+  const ws=new WebSocket(this.url('/v1/speak',this.synthesisModel),{headers:{Authorization:'Token '+this.key},maxPayload:262144,handshakeTimeout:10000,followRedirects:false});let completed=false;
+  const cancel=()=>{output.fail();ws.terminate();};controller.signal.addEventListener('abort',cancel,{once:true});
+  ws.on('error',()=>output.fail());ws.on('close',()=>{if(!completed)output.fail();});ws.on('message',(raw,binary)=>{if(controller.signal.aborted||this.closed)return;try{
+   if(binary){const pcm=Buffer.from(raw as Buffer);if(pcm.length%2)throw new Error('Invalid PCM');for(let i=0;i<pcm.length;i+=12000)output.push({type:'audio',pcm:pcm.subarray(i,i+12000).toString('base64')});}
+   else{const event=JSON.parse(raw.toString());if(event.type==='Error')throw new Error('Synthesis failed');if(event.type==='Flushed'){completed=true;output.end();}}
+  }catch{output.fail();}});
+  const producer=(async()=>{await new Promise<void>((resolve,reject)=>{const opened=()=>{cleanup();resolve();},failed=()=>{cleanup();reject(new Error('Synthesis unavailable'));},cleanup=()=>{ws.off('open',opened);ws.off('error',failed);ws.off('close',failed);};ws.once('open',opened);ws.once('error',failed);ws.once('close',failed);if(controller.signal.aborted)failed();});if(ws.readyState!==WebSocket.OPEN||ws.bufferedAmount>65536)throw new Error('Synthesis unavailable');ws.send(JSON.stringify({type:'Speak',text}));ws.send(JSON.stringify({type:'Flush'}));})().catch(()=>output.fail());
+  try{for await(const event of output.read(controller.signal)){if(event.type==='audio')yield Buffer.from(event.pcm,'base64');}}
+  finally{controller.abort();ws.terminate();signal.removeEventListener('abort',abort);controller.signal.removeEventListener('abort',cancel);await producer;}
+ }
  close(){if(this.closed)return;this.closed=true;++this.epoch;clearInterval(this.keepalive);this.socket?.terminate();for(const turn of this.turns)turn.abort();for(const p of this.pending)p.fill(0);this.pending=[];this.pendingBytes=0;this.transcript='';this.utterances.clear();}
 }

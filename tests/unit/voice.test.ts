@@ -46,6 +46,14 @@ it('barge-in fences late audio and preserves partial transcript without blocking
 it('muting drops audio; closing voice frees provider resources and ordinary text remains usable',async()=>{
  const c=await service.store.createConversation(owner),voice=await start(c.id);voice.ws.send(Buffer.alloc(960));await wait(()=>inputBytes===960);voice.ws.send(JSON.stringify({v:1,type:'mute',muted:true}));voice.ws.send(Buffer.alloc(960));await wait(()=>voice.messages.some(e=>e.type==='state'&&e.state==='muted'));await new Promise(r=>setTimeout(r,10));expect(inputBytes).toBe(960);voice.ws.send(JSON.stringify({v:1,type:'stop'}));await wait(()=>closed===1);await service.runtime.start(await service.runtime.context(owner,c.id,randomUUID(),'text'),'Hello');await service.runtime.drain();expect((await service.store.turns(owner,c.id))[0].status).toBe('completed');
 });
+it('accepts sequenced browser PCM and counts a discontinuity without forwarding framing bytes',async()=>{
+ const c=await service.store.createConversation(owner),voice=await start(c.id);
+ const frame=(sequence:number,pcm:Buffer)=>{const header=Buffer.alloc(12);header.write('MVB1');header.writeUInt32BE(sequence,4);header.writeUInt32BE(123,8);return Buffer.concat([header,pcm]);};
+ voice.ws.send(frame(4,Buffer.alloc(960)));await wait(()=>inputBytes===960);
+ voice.ws.send(frame(7,Buffer.alloc(960)));await wait(()=>inputBytes===1920);
+ notify({type:'transcript',itemId:'sequenced',text:'Confirm framing.'});await wait(()=>voice.messages.some(e=>e.type==='audio'));
+ expect(voice.messages.some(e=>e.type==='audio'&&typeof e.seq==='number'&&typeof e.sentAt==='number')).toBe(true);
+});
 it('revoked login prevents input forwarding and output audio',async()=>{
  const c=await service.store.createConversation(owner),voice=await start(c.id);await service.store.logout(cookie.split('=')[1]);voice.ws.send(Buffer.alloc(960));await wait(()=>voice.ws.readyState===WebSocket.CLOSED);expect(inputBytes).toBe(0);expect(voice.messages.some(e=>e.type==='audio')).toBe(false);expect(closed).toBe(1);
 });
