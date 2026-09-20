@@ -1,9 +1,9 @@
 import { createRoot } from 'react-dom/client';
-import '@fontsource/barlow/400.css';
-import '@fontsource/barlow/500.css';
-import '@fontsource/barlow/600.css';
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/ibm-plex-mono/400.css';
+import '@fontsource/barlow/latin-400.css';
+import '@fontsource/barlow/latin-500.css';
+import '@fontsource/barlow/latin-600.css';
+import '@fontsource/barlow-condensed/latin-600.css';
+import '@fontsource/ibm-plex-mono/latin-400.css';
 import '../../../packages/design-tokens/tokens.css';
 import './style.css';
 import { App } from './App';
