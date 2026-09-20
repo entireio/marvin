@@ -1,5 +1,11 @@
 # Motion and liveness implementation milestones — 18 September 2026
 
+> **Current-branch note (19 September):** these milestones are an
+> acceptance-oriented sequence, not a claim that the checked-out code still has
+> the former local bench-arm behavior. The active remote path has no app-level
+> movement-arm gate; its remaining protections and open hardware work are in
+> the [current development checkpoint](current-development.md).
+
 This plan implements [the motion architecture](motion-control-plan.md). Milestones are sequential. Record evidence at each gate before installing the next image on the Pet.
 
 ## M0 — Establish a reliable physical baseline

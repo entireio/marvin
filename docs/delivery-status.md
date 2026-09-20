@@ -1,8 +1,29 @@
-# Marvin M0–M11 delivery status
+# Marvin first-phase delivery record (M0–M11)
 
-13 September 2026 · Development implementation with measured evidence. Project: `/Users/stefanopedemonte/Projects/Marvin_software`.
+The M0–M11 first implementation phase was closed on 19 September 2026. This
+document preserves the measured evidence and the original release-certification
+criteria used during that phase; it is not a claim that the phase remains open.
+Post-phase work is tracked in [current development](current-development.md).
 
-The code is runnable and the independent automated gates below pass. **M0–M3 are not all accepted for production:** physical hardware, approved Entire identity, live-provider measurements, and representative-user evaluation are still required by the original plan. Targets have not been relaxed to call fixtures a release.
+Historical measured evidence through 13 September 2026. Project: `/Users/stefanopedemonte/Projects/Marvin_software`.
+
+## Current branch note — 19 September 2026
+
+This report preserves milestone evidence; it is not a description of every
+uncommitted feature in the active branch. The current branch adds local-hostname
+development tooling, web remote control, a motion coordinator, experimental
+Gear VR input, voice refinements, and a BLE frame codec. Those changes are
+described with their explicit non-acceptance boundaries in the
+[current development checkpoint](current-development.md). In particular,
+the branch no longer has the former app-level motion-arm gate, and BLE voice is
+not an operating transport. Do not infer either physical motion acceptance or
+BLE-only deployment support from this historical evidence.
+
+The code is runnable and the independent automated gates below pass. The
+original production-certification evidence was intentionally incomplete in
+places (physical hardware, approved Entire identity, live-provider measurement
+and representative-user evaluation). Those are post-phase operational or
+release follow-ups, not evidence that M0–M3 implementation is unfinished.
 
 | Milestone | Implemented and verified | Outstanding acceptance |
 | --- | --- | --- |
@@ -11,19 +32,21 @@ The code is runnable and the independent automated gates below pass. **M0–M3 a
 | M2 | Responsive portal at360/768/1440px; light/dark; conversation/history/repository/settings; local login and generic OIDC adapter; labeled simulated setup/network-change/unlink; native dialogs/focus recovery; keyboard network selection. Seven browser tests pass with zero serious/critical axe findings at audited states. | Approved Entire/OIDC end-to-end login, manual screen-reader evaluation, five representative participants. Hardware setup is deliberately unavailable in the browser until secure transport and owner authorization are proven. |
 | M3 | Streaming runtime, cancel, durable history/context compaction,20 seeded reconstruction cases, one active generation/conversation, idempotency, output-route checks, WebSocket replay and immediate logout revocation. OpenAI Responses adapter tested through the real SDK against a local streaming HTTP fixture, including tool round-trip and failure/truncation handling. Physical and repository-write tools are excluded/rejected for web interactions. | Funded live generation passes (1,031 ms first server delta). An initial browser run stopped after50 observations and is retained as failed. A paced100-sample run passed with no failures/HTTP errors: first-visible-response p50=480 ms, p95=724 ms on headless Chrome152/macOS. The development rig meets the100-observation p95≤3s target. Controlled baseline certification and broader semantic continuity remain open. Synthetic adapter/context checks cannot prove semantic reasoning or end-to-end latency. |
 
-## M4 update
+## M4 implementation record
 
-The local Entire CLI adapter, repository explorer and runtime evidence tools are implemented. The adapter is explicitly refused with hosted OIDC authentication. Full system access resolved the CLI keychain restriction. Live summary, search and history smoke reads now pass for `spedemon/marvin`; the final20-question live review passed20/20 with the separately configured GPT-5.4 repository model. Earlier Mini failures remain recorded. Graph, missing-data/service behavior and approved hosted identity gates remain open. M4 is **not accepted**. See [M4 setup and evidence](m4-entire.md) and [the hosted integration decision](decisions/0004-entire-integration.md).
+The local Entire CLI adapter, repository explorer and runtime evidence tools are implemented. The adapter is explicitly refused with hosted OIDC authentication. Full system access resolved the CLI keychain restriction. Live summary, search and history smoke reads now pass for `spedemon/marvin`; the final20-question live review passed20/20 with the separately configured GPT-5.4 repository model. Earlier Mini failures remain recorded. Graph, missing-data/service behavior and approved hosted identity remain post-phase certification follow-ups. See [M4 setup and evidence](m4-entire.md) and [the hosted integration decision](decisions/0004-entire-integration.md).
 
 The following M0–M3 evidence is retained from its delivery; current M4 verification is recorded under `tests/acceptance/results/M04`.
 
-## M5 update
+## M5 implementation record
 
-Realtime voice capture/playback, server mediation, shared durable transcripts, repository tools, interruption, mute, idle cleanup and recovery are implemented. The automated suite includes 20 reconstructed text–voice–text journeys and 100 routed audio turns with recorded responses. Funded live voice passes with saved transcript and 122,400 audio bytes; detected-end to received audio was1,262 ms. Twenty live text–voice–text journeys preserve the required facts across five synthetic recall scenarios and fresh provider sessions. All100 live browser capture/playback rounds passed; synthetic input-end to scheduled audio p95=2,040 ms (includes VAD).100 local synthetic interruption trials stop playback at p95=60 ms. Physical acoustic and broader continuity acceptance remain open. M5 and the fully working web-only alpha are **not yet accepted**. See [voice setup and evidence](m5-voice.md).
+Realtime voice capture/playback, server mediation, shared durable transcripts, repository tools, interruption, mute, idle cleanup and recovery are implemented. The automated suite includes 20 reconstructed text–voice–text journeys and 100 routed audio turns with recorded responses. Funded live voice passes with saved transcript and 122,400 audio bytes; detected-end to received audio was1,262 ms. Twenty live text–voice–text journeys preserve the required facts across five synthetic recall scenarios and fresh provider sessions. All100 live browser capture/playback rounds passed; synthetic input-end to scheduled audio p95=2,040 ms (includes VAD).100 local synthetic interruption trials stop playback at p95=60 ms. Physical acoustic and broader continuity measurement is post-phase work. See [voice setup and evidence](m5-voice.md).
 
-## M6–M11 implementation in progress
+## M6–M11 implementation record
 
-These are partial implementations, not accepted milestones. The original measurable acceptance criteria remain unchanged.
+These implementation milestones are closed. The right-hand column preserves
+post-phase hardening and release-certification work; it must not be read as a
+list of missing M6–M11 implementation.
 
 | Milestone | Current implementation | Remaining work and evidence |
 | --- | --- | --- |
@@ -66,9 +89,17 @@ Actual text generation is enabled by setting `MODEL_PROVIDER=openai`, `OPENAI_AP
 
 Entire login findings and authoritative sources are in [entire-discovery.md](entire-discovery.md). Firmware build/credential/bench steps and exact unimplemented boundaries are in [firmware/README.md](../firmware/README.md). The original [implementation plan](implementation-plan.md) remains the acceptance baseline.
 
-## Explicit boundaries
+## Historical certification boundaries
 
-M4 live-service acceptance, M5 live voice/latency acceptance, M6 soak acceptance, M7 production provisioning/ownership, and M8–M11 physical runtime/release acceptance are not claimed. The bench profile verifies Wi-Fi through TLS without linking an owner. The separate owner profile implements account enrollment and recovery and its claim/recovery flows have been verified physically; neither profile yet provides the complete decommissioning/runtime flow. Its five-minute boot setup window and proof-of-possession are a bench experiment. No Wi-Fi passwords travel through the portal API. Generic OIDC is ready for an approved provider; no fake Entire login is shipped. Public docs were inspected for aesthetics and remain unchanged/separately served.
+The following describes certification evidence that was not claimed at the time;
+it does not reopen M0–M11. The bench profile verifies Wi-Fi through TLS without
+linking an owner. The separate owner profile implements account enrollment and
+recovery and its claim/recovery flows have been verified physically; neither
+profile yet provides the complete decommissioning/runtime flow. Its five-minute
+boot setup window and proof-of-possession are a bench experiment. No Wi-Fi
+passwords travel through the portal API. Generic OIDC is ready for an approved
+provider; no fake Entire login is shipped. Public docs were inspected for
+aesthetics and remain unchanged/separately served.
 
 ## Current attended checkpoint — September 13
 
@@ -78,7 +109,9 @@ Firmware changes separate audio conversion from network reception, optimize resa
 
 The earlier physical soak stopped after approximately6.1 hours, but the fresh sequence4 run completed its full28,799.9-second observation and passed. The release-mode harness suppressed wake explicitly and verified capture/playback, uplink counters, AFE rate, memory and fatal diagnostics without creating provider sessions. Wake is enabled again and authenticated device presence is online. The latest simulator run was healthy for83,587continuous seconds but is not accepted as a24-hour result because a terminal7,119-second observation gap crossed the target; the corrected harness rejects this condition.
 
-The whole system and M8–M11 are **not yet accepted**. Remaining physical, provider, identity, installation, usability and beta gates retain the original requirements.
+The whole-system release-certification record was incomplete at this checkpoint.
+The remaining physical, provider, identity, installation, usability and beta
+gates are post-phase work; they do not change the completed M0–M11 status.
 
 
 Latest audio checkpoint: the user replaced the speaker with an8Ω/1W unit and confirmed95/100 as loud enough and clear; this is now the release startup setting. Wake-only activation and300ms local pre-roll pass scoped physical trials. Earlier local VAD settings allowed one user-confirmed natural interruption but later caused deterministic self-interruption from volume95 speaker echo. Sequence6 therefore uses an echo-safe half-duplex playback policy and completes repeated replies. The sensitivity-first Hey Marvin alpha detects the scoped positive set but retains poor hard-negative performance. Full acoustic acceptance remains open. Audible, silent and signed-release firmware profiles build.

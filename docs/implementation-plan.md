@@ -119,6 +119,40 @@ For usability, test five representative first-time participants on supported pla
 
 **Exit gate:** 20 scripted text→voice→text journeys preserve the required references and transcripts after forced session recreation. Barge-in and first-audio latency meet baseline budgets. Permission refusal, device removal, socket loss, idle close, and provider failure return actionable UI with text still available when the backend is healthy. Browser playback stops locally without waiting for provider cancellation. A second browser and a linked simulated robot receive zero unintended audio packets in 100 routed interactions. Leaving voice mode releases the microphone and closes the provider session after the configured grace period. This is the web-only alpha gate.
 
+## M5.1 — Harden server-mediated voice for unstable networks
+
+**Outcome:** web and body voice retain the same mandatory audio boundary: browser or Desktop Pet audio reaches Marvin's server first, and only Marvin's server connects to the speech/LLM provider. A poor client network causes bounded degradation and recovery rather than avoidable gaps or an immediate end to the conversation. This milestone deliberately does **not** introduce direct browser-to-provider voice or WebRTC on the ESP32-S3.
+
+**Architecture:** retain the two mediated media paths:
+
+```text
+browser PCM/secure WSS ─┐
+                        ├─ Marvin voice transport + agent runtime ─ secure WSS ─ provider
+Pet PCM/secure WSS ─────┘
+```
+
+The server remains the sole holder of provider credentials and the sole authority for authentication, session ownership, transcript persistence, conversation context, tool policy/execution, cancellation and output routing. Raw audio is transient: it must never enter durable storage, diagnostic payloads, event replay, or a general broadcast channel.
+
+**Build, in order:**
+
+1. **Measure every hop before tuning.** Add privacy-safe per-session counters and histograms for browser/Pet capture cadence, bytes, queue depth, send duration, socket close code, reconnect attempt/outcome, server event-loop delay, server-to-provider send backlog, provider event timing, output-jitter-buffer depth, audible underflow and interruption-to-silence. Associate records with a random voice-session ID, never audio, transcript text, credentials or provider payloads. Make the browser and firmware expose a compact transport snapshot on terminal failure.
+2. **Separate a logical voice session from its edge socket.** Authenticate once at setup, retain the authenticated owner and route fence in an in-memory, bounded logical session, and revalidate on control/heartbeat boundaries rather than serializing a database session lookup for every 20-ms PCM frame. On an unexpected edge disconnect, retain the logical session and its provider connection for a short, configurable grace period (initial target: 15 seconds). A replacement socket must present a one-time, owner-bound resume secret plus the current session generation. It receives only the current route; stale sockets, frames and output are rejected. Do not persist PCM or replay stale response audio. Expiry, logout, revoke, explicit Stop, an ownership change, or a provider fault immediately destroys the session.
+3. **Treat congestion as real-time loss, not a fatal queue.** Keep strict memory/byte caps, but replace the current “a little over two seconds buffered ends voice” behavior with a bounded latest-audio policy: retain a short, measured input cushion, discard the oldest unsent live frames when it is exceeded, count the discontinuity, and resume at the newest audio. Never allow queued input to grow without limit or delay a spoken turn by many seconds. Prioritize interrupt, stop, mute, heartbeat and output-flush controls over ordinary audio frames.
+4. **Add explicit media sequencing and adaptive playout.** Version the browser and device voice protocols to carry frame sequence numbers, monotonic capture/playout timestamps and loss/gap markers. Browser playback should begin after a small adaptive prebuffer, grow it when jitter/underflow rises, and shrink it only after sustained stability; cancellation must still flush locally immediately. The Pet protocol needs the same sequencing plus device-reported playback-queue depth. Server output pacing must use the measured client queue and a bounded target lead, rather than a fixed lead only. Audio older than the active interaction/generation is discarded at every boundary.
+5. **Harden the Pet's constrained WSS path.** Keep 16-kHz input and server-side resampling. Break long blocking sends into smaller bounded writes, preserve Wi-Fi performance mode only while voice is active, and avoid declaring a session dead from one transient write delay when the socket is still viable. On reconnect, restore control/presence first and attempt the authenticated logical-session resume; otherwise stop locally with a truthful recovery cue. Evaluate a compressed codec only after measuring CPU, RAM, acoustic quality and interruption timing on the actual ESP32-S3; it is a separate compatibility/protocol decision, not an assumed replacement for PCM.
+6. **Make the provider leg observable and recoverable within its limits.** Keep server-to-provider WebSockets. Classify provider transport close, quota/auth failure and server-side backpressure separately from client-edge failures. Reconnect only when no ambiguous active utterance can be safely continued; rebuild a new provider session from Marvin's durable conversation context, never claim that unreceived audio was heard. Do not let a provider retry replay a tool call or a physical action.
+7. **Set deployment and capacity rules.** Configure the TLS proxy/load balancer for WebSocket upgrades, long-lived idle reads, no response buffering, and one consistent application process for each live session (or explicit affinity/shared session routing before horizontal scaling). Alert on close-code spikes, audio underflows, resume failures, provider failures, queue-cap drops and first-audio regression.
+
+**Fault-injection and acceptance gate:** publish the exact emulator/profile and its seed. Test browser and simulated-device sessions with baseline, constrained bandwidth, high latency/jitter, brief total outages, repeated network handoffs and provider disconnects. The profile must include at least a loss/jitter case and a complete 5–15-second edge outage; physical Pet checks must repeat the selected profile over Wi-Fi. Across 100 scripted turns per surface and profile:
+
+- no unbounded queue, crash, cross-route audio delivery, duplicate durable turn, duplicate tool/action, or raw-audio persistence occurs;
+- an interruption flushes already scheduled/queued output locally and does not speak stale audio after reconnect;
+- a recoverable edge outage either resumes the same authenticated logical session within the grace period or leaves a saved, truthful text transcript and actionable reconnect state;
+- metrics identify the failing hop for every terminal failure;
+- report p50/p95 for capture-to-server, server-to-provider, provider-first-audio, client first audible audio, interruption-to-silence, jitter-buffer depth, frame drops and reconnect/resume duration, separately for browser and Pet.
+
+Set product latency targets only after recording this baseline; the hard budget is that resilience work may not regress stable-network p95 first-audible or interruption latency. Promote a candidate only when its unstable-network results are compared with the current implementation using the identical profile and it reduces audible underflows/disconnections without hiding delay in an unbounded buffer.
+
 ## M6 — Prove the device gateway with a simulator
 
 **Outcome:** the backend handles robot presence, voice transport, and asynchronous actions before full hardware is required. Specification §§4, 10, 13–14.

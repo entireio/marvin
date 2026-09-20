@@ -1,6 +1,10 @@
-# Physical onboarding completion plan
+# Physical onboarding design record
 
-14 September 2026.
+14 September 2026. Historical design and remediation record. The stale legacy
+chooser fallback described below was removed on 19 September 2026: a deployment
+without secure provisioning now shows a non-interactive configuration notice
+and never opens Bluetooth. The active secure flow is `PhysicalSetup`; see
+[local development](local-development.md).
 
 ## Target journey
 
@@ -14,9 +18,15 @@
 
 The Bluetooth display name is presentation only. The portal trusts the setup-card identity, the Security 2 proof, the device-signed challenge, and the backend's owner binding.
 
-## Finding behind the current dead end
+## Historical finding behind the former dead end
 
-The portal at `http://127.0.0.1:5173` is a local development preview. Its backend currently reports `hardwareProvisioningAvailable: false`; `HARDWARE_PROVISIONING_ENABLED`, `ENROLLMENT_KEYS_FILE`, and `DEVICE_PUBLIC_ORIGIN` are absent. React therefore loads the legacy `Setup` component. That component discovers the BLE service and then deliberately raises `SECURE_SETUP_PENDING`, producing the M0–M3 message and offering simulation.
+The portal at `http://127.0.0.1:5173` is a local development preview. Its
+backend reports `hardwareProvisioningAvailable: false` when
+`HARDWARE_PROVISIONING_ENABLED`, `ENROLLMENT_KEYS_FILE`, and
+`DEVICE_PUBLIC_ORIGIN` are absent. It now shows an explanatory notice. Before
+the remediation, React loaded a legacy `Setup` component that opened the BLE
+chooser and then deliberately raised `SECURE_SETUP_PENDING`. That component
+and the M0–M3 message are deleted.
 
 Enabling the boolean alone would be incorrect. A physical claim spans the portal database, enrollment signer, robot-reachable HTTPS origin, and redemption endpoint. A loopback-only backend cannot complete that transaction because Marvin cannot reach it and because a second backend would not share the browser owner's binding.
 

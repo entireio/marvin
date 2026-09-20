@@ -1,6 +1,10 @@
 # Marvin software
 
-Private personal portal and backend for Marvin, plus original ESP-IDF firmware for an ESP32-S3-WROOM module and the Waveshare ESP32-S3 audio board. The public robot-building documentation remains a separate application. The repository implements the M0–M11 architecture: portal, persistence, provider and repository adapters, secure provisioning, native device transport, body voice, local Hey Marvin detection, deployment packaging, privacy controls and signed firmware updates. The original release gates still include external identity approval, representative-user studies, unavailable robot peripherals, second-provider credentials, independent installs, sustained soaks and beta operation. See [delivery status](docs/delivery-status.md).
+Private personal portal and backend for Marvin, plus original ESP-IDF firmware for an ESP32-S3-WROOM module and the Waveshare ESP32-S3 audio board. The public robot-building documentation remains a separate application. The M0–M11 first implementation phase is closed: it delivered the portal, persistence, provider and repository adapters, secure provisioning, native device transport, body voice, local Hey Marvin detection, deployment packaging, privacy controls and signed firmware updates. Ongoing work is post-phase operational hardening and new capabilities, including experimental BLE voice transport—not unfinished M0–M11 implementation. See [delivery record](docs/delivery-status.md).
+
+For the active in-progress slice—local hostname deployment, web remote control,
+motion firmware, experimental Gear VR input and the unfinished BLE voice
+transport—start with the [current development checkpoint](docs/current-development.md).
 
 ## Run locally
 
@@ -12,7 +16,7 @@ cp .env.example .env
 npm run dev
 ```
 
-Open **http://127.0.0.1:5173** and select **Enter local preview**. No credentials are needed in the explicitly labeled loopback-only development mode. Conversations persist in `data/marvin.sqlite`. Settings → Connections provides sample repository data. Settings → Your Marvin provides simulated setup, Change Wi-Fi, and Unlink Marvin. The simulation never provisions hardware; its Wi-Fi password stays in transient browser memory.
+Open **http://127.0.0.1:5173** and select **Enter local preview**. No credentials are needed in the explicitly labeled loopback-only development mode. Conversations persist in `data/marvin.sqlite`. Settings → Connections provides sample repository data. Physical Pet setup requires the secure local deployment described in [local development](docs/local-development.md); a preview server never opens Bluetooth or simulates a hardware claim.
 
 To use an actual text model, set `MODEL_PROVIDER=openai`, `OPENAI_API_KEY`, and an explicit supported `OPENAI_MODEL` in `.env`, then restart. The server uses the Responses API with storage disabled and rebuilds context from its own database. No keys are sent to the browser. `npm run smoke:provider` performs one billable adapter smoke request and writes sanitized timing evidence; `MARVIN_SMOKE_SAMPLES=100` opts into 100 requests. Adapter timing is not browser latency acceptance.
 
@@ -44,7 +48,7 @@ SQLite and PostgreSQL run the same persistence contract. `DATABASE_URL` selects 
 
 ## Build and deployment boundaries
 
-`npm run build` builds both server and UI. `npm start` serves them from port 4310; set `APP_ORIGIN=http://127.0.0.1:4310` for a local built preview. Production configuration rejects development sign-in, fixture models, and non-HTTPS origins. Local HTTPS/PostgreSQL packaging, backups, recovery drills, retention/export/delete, rate limits and bounded diagnostics are implemented. Use a TLS reverse proxy with WebSocket support, approved production OIDC, persistent database storage and managed secrets. Run one API process for live stream delivery; a distributed socket broker is outside the current topology.
+`npm run build` builds both server and UI. `npm start` serves them from port 4310; set `APP_ORIGIN=http://127.0.0.1:4310` for a local built preview. Production configuration rejects development sign-in, fixture models, and non-HTTPS origins. For physical local development, use the stable-hostname, persistent-CA and fast-flash workflow in [local development](docs/local-development.md), rather than putting a DHCP address in firmware. Local HTTPS/PostgreSQL packaging, backups, recovery drills, retention/export/delete, rate limits and bounded diagnostics are implemented. Use a TLS reverse proxy with WebSocket support, approved production OIDC, persistent database storage and managed secrets. Run one API process for live stream delivery; a distributed socket broker is outside the current topology.
 
 Sources: `apps/web` React/Vite portal; `apps/server` Fastify API/auth; `packages/contracts` validation; `packages/persistence` migrations/store; `packages/runtime` orchestration/provider/policy; `packages/provisioning` UI transport boundary; `firmware` ESP-IDF implementation. [Firmware build and bench procedure](firmware/README.md).
 

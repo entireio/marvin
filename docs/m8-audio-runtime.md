@@ -1,6 +1,6 @@
 # Physical audio runtime — development evidence
 
-The available hardware is a **standalone Waveshare ESP32-S3 AUDIO board**. It has no attached actuators, display, IR, TOF or IMU. Firmware must not advertise those capabilities. Full physical M8/M9 acceptance remains unavailable on this assembly.
+The available hardware is a **standalone Waveshare ESP32-S3 AUDIO board**. It has no attached actuators, display, IR, TOF or IMU. Firmware must not advertise those capabilities. Broader physical validation on the complete assembly is post-phase work.
 
 The owner runtime now connects the ES7210/ES8311 drivers to authenticated device voice: explicit activation, mono capture, 16-to-24-kHz resampling, bounded WSS upload, per-turn `MVA1` playback routing, 24-to-16-kHz resampling, mute/interrupt and disconnect cleanup. Idle capture does not start a provider session. USB diagnostic controls are `v` (activate), `x` (stop/mute), `i` (interrupt), `s` (numeric status). The current AFE profile includes 300ms local pre-roll; production button behavior still requires verification.
 
@@ -30,7 +30,7 @@ Initial integration exposed internal-RAM pressure when AFE, BLE and TLS started 
 
 The sequence4 release completed an uninterrupted28,799.9-second physical soak. It sustained16,000.18 processed samples/s with no AFE faults, capture, playback, provider uplink or fatal diagnostics; minimum internal free memory was42,771bytes. Wake activation was intentionally suppressed, while the detector still counted10 candidates. Afterward wake activation was restored and the authenticated device link returned online following correction of the local proxy's default TLS name. See `tests/acceptance/results/M08/physical-release-soak-8h.json`.
 
-Remaining gates include the representative production wake/acoustic corpus, instrumented audible-stop latency, supply-power/enclosure-temperature instrumentation, full hardware fixtures and measured safety timing. M8 and M9 are not accepted.
+Post-phase validation includes the representative production wake/acoustic corpus, instrumented audible-stop latency, supply-power/enclosure-temperature instrumentation, full hardware fixtures and measured safety timing. M8 and M9 implementation are complete.
 
 ## Native microphone transport (protocol 1.2)
 

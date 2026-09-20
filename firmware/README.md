@@ -1,5 +1,12 @@
 # ESP32-S3 firmware — bench provisioning and Waveshare diagnostics
 
+For the active local-development, remote-control and BLE-voice work, read the
+[current development checkpoint](../docs/current-development.md) before
+flashing. The Bluetooth voice frame files and the macOS bridge prototype are
+an incomplete codec/relay foundation only: firmware does not yet expose a live
+BLE voice service, and Wi-Fi/WSS remains the Pet's operational server
+transport.
+
 Original ESP-IDF **v5.4.2** C firmware targeting the Waveshare ESP32-S3-AUDIO-Board (`esp32s3`). No previous Arduino/SuperMini board assignments are reused. Conservative baseline: 4 MB flash, no PSRAM required, two 1.875 MB app partitions. Verify the exact carrier, regulator, antenna, USB/UART and peripheral wiring before flashing.
 
 ## Wired actuators
@@ -9,19 +16,39 @@ The installed dual DC motor module is a **DRV8833** carrier. `EEP` is its active
 | ESP32-S3 GPIO | Connection | Output |
 | --- | --- | --- |
 | 7 / 6 | IN1 / IN2 | OUT1 left track −, OUT2 left track + |
-| 5 / 4 | IN3 / IN4 | OUT3 right track −, OUT4 right track + |
+| 4 / 5 | IN3 / IN4 | OUT3 right track −, OUT4 right track + |
 | 3 | EEP (DRV8833 nSLEEP) | Low at startup and after stopping |
 | 8 / 9 | Head tilt / rotation servo signal | 50 Hz, 1–2 ms pulses on explicit command |
 
-`actuators.c` configures 20 kHz motor PWM, holds EEP low while idle, raises it only after a bounded track command has set the inputs, and lowers it before clearing them on stop or expiry. Each track segment lasts at most 500 ms. Positive track speed selects IN2/IN4 because the motor positive leads are on OUT2/OUT4. The head outputs start without pulses and are configured only when explicitly commanded. The previous GPIO4/5/6 audio button placeholders are disabled by default.
+The firmware logical mapping is corrected for the assembled pet: positive left
+speed drives the physical right motor forward, and positive right speed drives
+the physical left motor forward. Logical left uses GPIO5/4 and logical right
+uses GPIO6/7. Both motor input polarities are reversed in the mapping so
+positive speed means forward.
 
-The authenticated body voice link supports `head`, `tracks`, and named `motion` commands with boot ID, epoch, deadline and a write-ahead command ID ledger. Named motions are `forward_bit` (350 ms), `turn_right` and `turn_left` (two 500 ms segments), and `move_around` (a short forward segment and two gentle arcs). These are timed open-loop movements: actual distance and turn angle require physical calibration. Small head tilts mark **listening**, **thinking**, and **speaking** after those states are actually reached; a spoken look direction becomes the new resting pose.
+`actuators.c` configures 20 kHz motor PWM, holds EEP low while idle, raises it only after a bounded track command has set the inputs, and lowers it before clearing them on stop or expiry. Scripted track commands may run for up to 30 seconds; the remote-control loop independently renews a 120 ms watchdog. Positive track speed selects IN2/IN4 because the motor positive leads are on OUT2/OUT4. The head outputs start without pulses and are configured only when explicitly commanded. The previous GPIO4/5/6 audio button placeholders are disabled by default.
 
-Track motion remains **off by default** because no cliff or pickup sensor is connected. For the audible supervised profile, run `firmware/tools/build-waveshare-motion-afe.sh`. It includes the local Hey Marvin wake engine and `CONFIG_MARVIN_TRACK_BENCH_MODE=y`; both must be verified in the generated config before flashing. Send `B` on the local firmware console to arm a 120-second window. The device advertises named motions only in this bench profile, and checks the local arm again before every segment. The window expires automatically, and disconnect, cancel, or a command deadline puts EEP low. Without the bench build and arm, spoken track requests receive a refusal. Never run these tests near an edge.
+The authenticated body voice link supports `head`, `tracks`, and named `motion` commands with boot ID, epoch, deadline and a write-ahead command ID ledger. `forward_bit` and `backward_bit` each run four 500 ms segments at full 1023/1023 PWM, for approximately two seconds. `turn_around`, `turn_right`, and `turn_left` use the same bounded profile with one track forward and the other backward; `move_around` remains a short forward segment and two gentle arcs. These are timed open-loop movements: actual distance and turn angle require physical calibration. Small head tilts mark **listening**, **thinking**, and **speaking** after those states are actually reached; a spoken look direction becomes the new resting pose.
+
+Track motion is compiled in for the wired DRV8833 carrier. For the audible motion profile, run `firmware/tools/build-waveshare-motion-afe.sh`. Remote input expires locally after 250 ms and the motor watchdog is renewed for only 120 ms; disconnect, cancel, or a command deadline puts EEP low. Never run these tests near an edge.
 
 **Boot and reset safety requires hardware:** GPIO3 is not driven by firmware until `app_main` runs. On DRV8833 carriers with an EEP pull-up jumper (often marked J1), open that jumper and provide an external pull-down from EEP to ground, for example 10 kΩ, so EEP remains low while the ESP32-S3 is reset, unpowered, flashing, or booting. Verify the actual carrier circuit and measure EEP low through a full power cycle before connecting the tracks. The chip's internal 500 kΩ pull-down is weak; an onboard pull-up can override it. Firmware alone cannot guarantee an idle driver during boot.
 
 GPIO19/20 are the ESP32-S3 native USB pair on this board. Do not connect servo signals to them: USB traffic can look like servo pulses and cause random motion. GPIO8/9 are direct MCU pins also routed to the optional screen interface; do not attach a screen that drives those lines at the same time. Add a pull-down to each servo signal so it stays low before firmware configures PWM. GPIO3 is a boot strapping pin: confirm that the EEP pull-down allows normal boot. Power servos and motors from suitable supplies with a common ground; check the carrier's EEP voltage before connecting it directly to the 3.3 V MCU GPIO.
+
+## Battery status
+
+The Waveshare revision 1.1 battery divider feeds one third of the cell voltage
+to GPIO1 (`ADC1_CH0`). Firmware uses calibrated ADC1 samples to report battery
+millivolts and an approximate single-cell Li-ion percentage at device-link
+startup and every 30 seconds. Protocol 1.9 carries the reading to the app.
+Voltage is the authoritative value: motor/audio load and charging can move the
+percentage temporarily, and the exact discharge curve depends on the cell.
+
+This board revision does not route USB power or the ETA6098 `STAT` output to
+the ESP32. The protocol therefore reports `charging: null`. The server and UI
+already accept a boolean charging state and display the charging icon when a
+future hardware revision reports `true`.
 
 ## Build
 
@@ -40,6 +67,23 @@ export IDF_TOOLS_PATH="$PWD/work/idf-tools"
 IDF_COMPONENT_MANAGER=0 idf.py -C firmware build
 ```
 
+For the supervised motion image, build and flash in one step with the bundled
+toolchain and the latest verified board backup. The explicit environment flag
+is a final hardware-write confirmation:
+
+```sh
+MARVIN_FLASH=1 firmware/tools/build-and-flash-motion-afe.sh
+```
+
+The script verifies the installed bootloader, partition table, wake model and
+factory data, then flashes only the new application and OTA selector. It aborts
+on any base mismatch and never overwrites factory data. Set
+`MARVIN_PORT`, `MARVIN_BACKUP`, or `MARVIN_FACTORY` to override its detected
+serial port or board inputs.
+
+See [the firmware tool guide](tools/README.md) for profile selection, plan-only
+flashes and the rules for app-only versus base-verifying updates.
+
 Disabling the optional component manager is supported here because dependencies are bundled with ESP-IDF or vendored under `components` with provenance. It avoids process enumeration prohibited by this host's sandbox. No SDK source patches were needed. The original compile is recorded under `tests/acceptance/results/M00`. A Waveshare ESP32-S3-AUDIO-Board is now connected and backed up; both diagnostic and provisioning profiles have been flashed, and encrypted radio scans now pass.
 
 ## Unique setup credentials
@@ -47,8 +91,8 @@ Disabling the optional component manager is supported here because dependencies 
 The firmware fails closed when the dedicated `factory` NVS partition lacks a 16-byte SRP salt and 384-byte verifier. There is no shared/default setup password. Generate a unique credential per module, in an excluded private directory:
 
 ```sh
-python firmware/tools/factory.py --output work/device-001
-python "$IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py" generate work/device-001/factory.csv work/device-001/factory.bin 0x6000
+python3 firmware/tools/factory.py --output work/device-001
+python3 "$IDF_PATH/components/nvs_flash/nvs_partition_generator/nvs_partition_gen.py" generate work/device-001/factory.csv work/device-001/factory.bin 0x6000
 ```
 
 The generator creates private files (0600, directory0700) without printing credentials. Retain the setup secret offline with the physical robot. `factory.bin` belongs at **0x12000** in this partition table. Review the carrier/port and existing flash before using `idf.py -C firmware -p PORT flash` and Espressif's `write_flash 0x12000 work/device-001/factory.bin` command. The guarded board flash helper requires an explicit `--flash`; it never programs security eFuses. Production protected identity, signed firmware and encrypted NVS require M7/M11 design; the bench NVS is not protected against physical flash extraction.
@@ -71,9 +115,9 @@ Encrypted JSON commands (maximum384 bytes):
 The bench client uses Espressif's Security2 implementation and `bleak` in your activated Python environment:
 
 ```sh
-python -m pip install -r firmware/tools/requirements.txt
-python firmware/tools/bench.py --credentials work/device-001/setup-secret.json
-python firmware/tools/bench.py --credentials work/device-001/setup-secret.json --apply
+python3 -m pip install -r firmware/tools/requirements.txt
+python3 firmware/tools/bench.py --credentials work/device-001/setup-secret.json
+python3 firmware/tools/bench.py --credentials work/device-001/setup-secret.json --apply
 ```
 
 It prompts locally for network index/password, never stores the Wi-Fi password, and does not call Marvin's account APIs. Do not turn on verbose security logging. The TypeScript Security2 client has now passed physical radio/network tests below. The standalone Web Bluetooth adapter has operation deadlines, disconnect cleanup and version rejection tests; live browser interoperability and M7 ownership authorization remain required before portal setup is enabled.

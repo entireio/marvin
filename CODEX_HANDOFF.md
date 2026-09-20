@@ -1,9 +1,24 @@
-# Marvin — Codex handoff
+# Marvin — historical Codex handoff
 
-Updated **2026-09-14 23:00 UTC / 16:00 America/Los_Angeles**.
+Updated **2026-09-19**. The detailed checkpoint below was captured on
+**2026-09-14 23:00 UTC / 16:00 America/Los_Angeles** and is retained as a
+historical operational record.
+
+> M0–M11 first-phase implementation closed on 19 September 2026. Older “not
+> accepted” findings below describe historical release-certification evidence,
+> not current milestone status.
 Project root: `/Users/stefanopedemonte/Projects/Marvin_software`.
 
 ## Read this first
+
+For the active working tree, begin with
+[docs/current-development.md](docs/current-development.md). Since this record
+was captured, the branch has gained local-hostname development tooling, web
+remote control, a motion coordinator, experimental Gear VR controller support,
+voice refinements and an incomplete BLE voice transport foundation. The current
+branch deliberately removed the old application-level movement-arm gate; it
+has not completed physical motion acceptance. Treat all below as historical
+unless it agrees with the current checkpoint and source.
 
 Development resumed on the user's instruction. The user explicitly selected a sensitivity-first **Hey Marvin** alpha and accepted poor hard-negative performance for now. Public microWakeWord V1 is selected at cutoff128/window3; the final scoped physical confirmation passed5/5 positives exactly once with zero local faults or microphone upload. Earlier broader tests measured18/20 physical positives with9/20 negative false activations and19/20 direct-host positives with10/20 false activations. This is an alpha decision, not the original acoustic gate. Model redistribution licensing remains unresolved.
 

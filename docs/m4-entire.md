@@ -1,6 +1,9 @@
 # M4 — Entire repository integration
 
-12 September 2026. **Local implementation delivered; M4 acceptance remains open.** The production multi-user integration requires an approved Entire application/API contract. [Architecture decision](decisions/0004-entire-integration.md).
+12 September 2026. **M4 implementation is complete.** Approved hosted
+multi-user identity and broader operational validation are post-phase work.
+The production integration still requires an approved Entire application/API
+contract. [Architecture decision](decisions/0004-entire-integration.md).
 
 ## Local setup
 
@@ -38,7 +41,9 @@ The optional graph route is disabled by default. Its plugin response contract an
 - Real checkpoint/session coverage, graph capability, service expiry/revocation/rate-limit behavior: not accepted from fixtures.
 - Hosted integration: pending approved external authentication and read API contracts, per-user credential lifecycle, tenant isolation and deployment/load verification.
 
-The [original milestone plan](implementation-plan.md) remains the acceptance baseline. M4 cannot be called complete while these gates remain open.
+The [original milestone plan](implementation-plan.md) preserves the original
+release-certification baseline. The remaining gates are post-phase operational
+work; they do not change the completed M4 implementation status.
 
 ## Official references
 
