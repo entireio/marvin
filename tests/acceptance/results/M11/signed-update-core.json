@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "scope": "Host manifest and transfer fixtures; no physical OTA or rollback claim.",
+  "manifestCases": 15,
+  "malformedEnvelopes": 10000,
+  "allTruncationsTested": true,
+  "transferModes": 8,
+  "trialsPerMode": 10,
+  "signingCLI": {
+    "directory": "/Users/stefanopedemonte/Projects/Marvin_software/work/update-signing-smoke/bundle",
+    "sequence": 1,
+    "imageBytes": 1688320,
+    "sha256": "1b9e2e406c90246086adcffad9958753638e16982801b3b989a4ce07247860b1",
+    "published": false
+  }
+}

@@ -1,0 +1,6512 @@
+{
+  "runId": "96243200-3cd5-441e-ba1d-1b13fc5a4de8",
+  "pid": 39480,
+  "status": "finished",
+  "startedAt": "2026-09-13T01:14:53.687Z",
+  "elapsedSeconds": 7200,
+  "targetSeconds": 7200,
+  "failures": [],
+  "requests": 12000,
+  "requestErrors": 0,
+  "errorRatio": 0,
+  "completedTextTurns": 12000,
+  "voiceTurns": 4686,
+  "syntheticInputBytes": 6401529600,
+  "syntheticOutputBytes": 224928000,
+  "deviceUploadedAudioBytes": 0,
+  "httpAcceptanceP95Ms": 1344,
+  "baselineRssBytes": 299270144,
+  "peakRssBytesAfterWarmup": 384188416,
+  "growthRatio": 0.2837512317967809,
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v25.2.1",
+    "cpus": 12,
+    "ramBytes": 34359738368
+  },
+  "scope": "100 authenticated browser event sockets, 100 idle device sockets, 20 voice sockets at synthetic 24kHz PCM; 100 text submissions/minute. Server and load clients share this process. No real providers, microphone, credentials, or repository data. HTTP duration measures request acceptance, not model/audio latency.",
+  "acceptance": "synthetic transport workload passed; M11 real-provider gates remain open",
+  "samples": [
+    {
+      "elapsedSeconds": 0,
+      "rssBytes": 264503296,
+      "heapBytes": 52377168,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.980991
+    },
+    {
+      "elapsedSeconds": 10,
+      "rssBytes": 214089728,
+      "heapBytes": 56651360,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 20,
+      "rssBytes": 226852864,
+      "heapBytes": 59826672,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 30,
+      "rssBytes": 199802880,
+      "heapBytes": 58270200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 40,
+      "rssBytes": 219529216,
+      "heapBytes": 62995424,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 50,
+      "rssBytes": 239730688,
+      "heapBytes": 41406192,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 60,
+      "rssBytes": 281165824,
+      "heapBytes": 42001640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.936447
+    },
+    {
+      "elapsedSeconds": 70,
+      "rssBytes": 241287168,
+      "heapBytes": 57506928,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 80,
+      "rssBytes": 241238016,
+      "heapBytes": 47491952,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 90,
+      "rssBytes": 241876992,
+      "heapBytes": 50602136,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 100,
+      "rssBytes": 223936512,
+      "heapBytes": 59811496,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.167551
+    },
+    {
+      "elapsedSeconds": 110,
+      "rssBytes": 222838784,
+      "heapBytes": 49962240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 120,
+      "rssBytes": 280018944,
+      "heapBytes": 58223504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.495231
+    },
+    {
+      "elapsedSeconds": 130,
+      "rssBytes": 195035136,
+      "heapBytes": 63034456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.413311
+    },
+    {
+      "elapsedSeconds": 140,
+      "rssBytes": 200687616,
+      "heapBytes": 47526072,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 150,
+      "rssBytes": 216055808,
+      "heapBytes": 46231712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 160,
+      "rssBytes": 219693056,
+      "heapBytes": 54707392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 170,
+      "rssBytes": 223674368,
+      "heapBytes": 40857336,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 180,
+      "rssBytes": 282247168,
+      "heapBytes": 61338224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 190,
+      "rssBytes": 302088192,
+      "heapBytes": 45376208,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 200,
+      "rssBytes": 281722880,
+      "heapBytes": 57910240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.134207
+    },
+    {
+      "elapsedSeconds": 210,
+      "rssBytes": 211927040,
+      "heapBytes": 56283656,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 220,
+      "rssBytes": 221986816,
+      "heapBytes": 39231512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 230,
+      "rssBytes": 212893696,
+      "heapBytes": 49845984,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 240,
+      "rssBytes": 293273600,
+      "heapBytes": 42996984,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.838143
+    },
+    {
+      "elapsedSeconds": 250,
+      "rssBytes": 263438336,
+      "heapBytes": 56529704,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 260,
+      "rssBytes": 240631808,
+      "heapBytes": 45560552,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 270,
+      "rssBytes": 221020160,
+      "heapBytes": 43153952,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 280,
+      "rssBytes": 238714880,
+      "heapBytes": 42540856,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 290,
+      "rssBytes": 232505344,
+      "heapBytes": 54829104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 300,
+      "rssBytes": 299270144,
+      "heapBytes": 44252264,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.527999
+    },
+    {
+      "elapsedSeconds": 310,
+      "rssBytes": 273104896,
+      "heapBytes": 48763368,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 320,
+      "rssBytes": 277577728,
+      "heapBytes": 60821016,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 330,
+      "rssBytes": 207011840,
+      "heapBytes": 63693736,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.708223
+    },
+    {
+      "elapsedSeconds": 340,
+      "rssBytes": 219873280,
+      "heapBytes": 58581952,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 350,
+      "rssBytes": 212860928,
+      "heapBytes": 38817632,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 360,
+      "rssBytes": 295272448,
+      "heapBytes": 58792576,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 370,
+      "rssBytes": 270155776,
+      "heapBytes": 62252064,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 380,
+      "rssBytes": 255492096,
+      "heapBytes": 50997896,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 390,
+      "rssBytes": 243286016,
+      "heapBytes": 55278480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 400,
+      "rssBytes": 230031360,
+      "heapBytes": 62991112,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 410,
+      "rssBytes": 226770944,
+      "heapBytes": 49107608,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 420,
+      "rssBytes": 289947648,
+      "heapBytes": 43437488,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.233087
+    },
+    {
+      "elapsedSeconds": 431,
+      "rssBytes": 261799936,
+      "heapBytes": 59147488,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 441,
+      "rssBytes": 267698176,
+      "heapBytes": 44843880,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 451,
+      "rssBytes": 212746240,
+      "heapBytes": 47621336,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 461,
+      "rssBytes": 217415680,
+      "heapBytes": 59125432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 471,
+      "rssBytes": 218152960,
+      "heapBytes": 45764832,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 481,
+      "rssBytes": 300023808,
+      "heapBytes": 68914720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 491,
+      "rssBytes": 293486592,
+      "heapBytes": 61302904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 501,
+      "rssBytes": 292913152,
+      "heapBytes": 40985000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 511,
+      "rssBytes": 288882688,
+      "heapBytes": 45426568,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 521,
+      "rssBytes": 291454976,
+      "heapBytes": 56836288,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.364159
+    },
+    {
+      "elapsedSeconds": 531,
+      "rssBytes": 229687296,
+      "heapBytes": 46751456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 541,
+      "rssBytes": 295501824,
+      "heapBytes": 68724216,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.543231
+    },
+    {
+      "elapsedSeconds": 551,
+      "rssBytes": 288587776,
+      "heapBytes": 39962000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.020095
+    },
+    {
+      "elapsedSeconds": 561,
+      "rssBytes": 219414528,
+      "heapBytes": 51394976,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.069247
+    },
+    {
+      "elapsedSeconds": 571,
+      "rssBytes": 222167040,
+      "heapBytes": 50898392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.052863
+    },
+    {
+      "elapsedSeconds": 581,
+      "rssBytes": 227786752,
+      "heapBytes": 61938224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 591,
+      "rssBytes": 232275968,
+      "heapBytes": 50951208,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 601,
+      "rssBytes": 293486592,
+      "heapBytes": 51199768,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.215551
+    },
+    {
+      "elapsedSeconds": 611,
+      "rssBytes": 293257216,
+      "heapBytes": 62710808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 621,
+      "rssBytes": 266027008,
+      "heapBytes": 49980512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.577151
+    },
+    {
+      "elapsedSeconds": 631,
+      "rssBytes": 212877312,
+      "heapBytes": 51168304,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 641,
+      "rssBytes": 216940544,
+      "heapBytes": 39840152,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 651,
+      "rssBytes": 221151232,
+      "heapBytes": 52546760,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 661,
+      "rssBytes": 290652160,
+      "heapBytes": 51283816,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.969791
+    },
+    {
+      "elapsedSeconds": 671,
+      "rssBytes": 279773184,
+      "heapBytes": 39717184,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 681,
+      "rssBytes": 282001408,
+      "heapBytes": 52435680,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 691,
+      "rssBytes": 278675456,
+      "heapBytes": 51740544,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.085631
+    },
+    {
+      "elapsedSeconds": 701,
+      "rssBytes": 221151232,
+      "heapBytes": 61298144,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 711,
+      "rssBytes": 219496448,
+      "heapBytes": 47567808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 721,
+      "rssBytes": 294420480,
+      "heapBytes": 74047440,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.346047
+    },
+    {
+      "elapsedSeconds": 731,
+      "rssBytes": 294764544,
+      "heapBytes": 61590624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 741,
+      "rssBytes": 297648128,
+      "heapBytes": 51998992,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 751,
+      "rssBytes": 295272448,
+      "heapBytes": 54009432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 761,
+      "rssBytes": 209747968,
+      "heapBytes": 41056456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 771,
+      "rssBytes": 212172800,
+      "heapBytes": 53157760,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 781,
+      "rssBytes": 292241408,
+      "heapBytes": 54205200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.183935
+    },
+    {
+      "elapsedSeconds": 791,
+      "rssBytes": 280182784,
+      "heapBytes": 41095000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 801,
+      "rssBytes": 281264128,
+      "heapBytes": 53561648,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 811,
+      "rssBytes": 282886144,
+      "heapBytes": 57795400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.216703
+    },
+    {
+      "elapsedSeconds": 821,
+      "rssBytes": 202522624,
+      "heapBytes": 44264216,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 831,
+      "rssBytes": 209666048,
+      "heapBytes": 58208280,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 841,
+      "rssBytes": 293388288,
+      "heapBytes": 47338192,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.052287
+    },
+    {
+      "elapsedSeconds": 851,
+      "rssBytes": 272367616,
+      "heapBytes": 61589760,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.839871
+    },
+    {
+      "elapsedSeconds": 861,
+      "rssBytes": 276070400,
+      "heapBytes": 50958816,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 871,
+      "rssBytes": 287244288,
+      "heapBytes": 40147856,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.790143
+    },
+    {
+      "elapsedSeconds": 881,
+      "rssBytes": 288276480,
+      "heapBytes": 52044648,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 891,
+      "rssBytes": 280231936,
+      "heapBytes": 41355360,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.069247
+    },
+    {
+      "elapsedSeconds": 901,
+      "rssBytes": 294830080,
+      "heapBytes": 68104896,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 911,
+      "rssBytes": 290766848,
+      "heapBytes": 56100960,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 921,
+      "rssBytes": 294043648,
+      "heapBytes": 45128672,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 931,
+      "rssBytes": 229916672,
+      "heapBytes": 59919808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.446079
+    },
+    {
+      "elapsedSeconds": 941,
+      "rssBytes": 230129664,
+      "heapBytes": 61949528,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 951,
+      "rssBytes": 232996864,
+      "heapBytes": 48541640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 961,
+      "rssBytes": 302759936,
+      "heapBytes": 44781480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 971,
+      "rssBytes": 284344320,
+      "heapBytes": 55247848,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 981,
+      "rssBytes": 286736384,
+      "heapBytes": 66088304,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.282239
+    },
+    {
+      "elapsedSeconds": 991,
+      "rssBytes": 289472512,
+      "heapBytes": 68753272,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 1001,
+      "rssBytes": 290324480,
+      "heapBytes": 47785856,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 1011,
+      "rssBytes": 285016064,
+      "heapBytes": 57756264,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 1021,
+      "rssBytes": 293076992,
+      "heapBytes": 60338200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.577151
+    },
+    {
+      "elapsedSeconds": 1031,
+      "rssBytes": 285163520,
+      "heapBytes": 45080416,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.839871
+    },
+    {
+      "elapsedSeconds": 1041,
+      "rssBytes": 281067520,
+      "heapBytes": 57680944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1051,
+      "rssBytes": 290390016,
+      "heapBytes": 77666984,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 1061,
+      "rssBytes": 208257024,
+      "heapBytes": 48282096,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.265855
+    },
+    {
+      "elapsedSeconds": 1071,
+      "rssBytes": 216891392,
+      "heapBytes": 56662752,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1081,
+      "rssBytes": 300072960,
+      "heapBytes": 50834568,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.330815
+    },
+    {
+      "elapsedSeconds": 1091,
+      "rssBytes": 274743296,
+      "heapBytes": 58044496,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1101,
+      "rssBytes": 279347200,
+      "heapBytes": 46151312,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1111,
+      "rssBytes": 285786112,
+      "heapBytes": 43463688,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 1121,
+      "rssBytes": 288931840,
+      "heapBytes": 54625128,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 1131,
+      "rssBytes": 218890240,
+      "heapBytes": 43615224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1141,
+      "rssBytes": 305299456,
+      "heapBytes": 75434728,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.446079
+    },
+    {
+      "elapsedSeconds": 1151,
+      "rssBytes": 296910848,
+      "heapBytes": 55482200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.085631
+    },
+    {
+      "elapsedSeconds": 1161,
+      "rssBytes": 300056576,
+      "heapBytes": 68441024,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 1171,
+      "rssBytes": 300613632,
+      "heapBytes": 70210480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.823487
+    },
+    {
+      "elapsedSeconds": 1181,
+      "rssBytes": 299319296,
+      "heapBytes": 46792632,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1191,
+      "rssBytes": 212008960,
+      "heapBytes": 60108048,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 1201,
+      "rssBytes": 290029568,
+      "heapBytes": 64775800,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 1211,
+      "rssBytes": 270204928,
+      "heapBytes": 42767664,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 1221,
+      "rssBytes": 274530304,
+      "heapBytes": 54789240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1231,
+      "rssBytes": 205864960,
+      "heapBytes": 60377248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 1241,
+      "rssBytes": 214827008,
+      "heapBytes": 43069224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1251,
+      "rssBytes": 218365952,
+      "heapBytes": 55385552,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1261,
+      "rssBytes": 286162944,
+      "heapBytes": 59384168,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 1271,
+      "rssBytes": 189284352,
+      "heapBytes": 60740872,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 1281,
+      "rssBytes": 201211904,
+      "heapBytes": 49357272,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 1291,
+      "rssBytes": 202719232,
+      "heapBytes": 46250928,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 1301,
+      "rssBytes": 193740800,
+      "heapBytes": 56734448,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.347775
+    },
+    {
+      "elapsedSeconds": 1311,
+      "rssBytes": 198606848,
+      "heapBytes": 45576936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 1321,
+      "rssBytes": 294453248,
+      "heapBytes": 78928328,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.460159
+    },
+    {
+      "elapsedSeconds": 1331,
+      "rssBytes": 191873024,
+      "heapBytes": 58118784,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1341,
+      "rssBytes": 214548480,
+      "heapBytes": 39723904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 1351,
+      "rssBytes": 216711168,
+      "heapBytes": 69261600,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1361,
+      "rssBytes": 206962688,
+      "heapBytes": 46055904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.429695
+    },
+    {
+      "elapsedSeconds": 1371,
+      "rssBytes": 206585856,
+      "heapBytes": 58752888,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 1381,
+      "rssBytes": 289374208,
+      "heapBytes": 63653160,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.347775
+    },
+    {
+      "elapsedSeconds": 1391,
+      "rssBytes": 265830400,
+      "heapBytes": 42924544,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1401,
+      "rssBytes": 202326016,
+      "heapBytes": 54868104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 1411,
+      "rssBytes": 196329472,
+      "heapBytes": 60043696,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1421,
+      "rssBytes": 213024768,
+      "heapBytes": 44877624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1431,
+      "rssBytes": 209797120,
+      "heapBytes": 57228112,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1441,
+      "rssBytes": 300892160,
+      "heapBytes": 65540328,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 28.868607
+    },
+    {
+      "elapsedSeconds": 1452,
+      "rssBytes": 278921216,
+      "heapBytes": 41895576,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1462,
+      "rssBytes": 210944000,
+      "heapBytes": 53293880,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1472,
+      "rssBytes": 217137152,
+      "heapBytes": 56794400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 1482,
+      "rssBytes": 222707712,
+      "heapBytes": 43998192,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1492,
+      "rssBytes": 221577216,
+      "heapBytes": 56045864,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1502,
+      "rssBytes": 295829504,
+      "heapBytes": 64783440,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.609343
+    },
+    {
+      "elapsedSeconds": 1512,
+      "rssBytes": 270270464,
+      "heapBytes": 43576024,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 1522,
+      "rssBytes": 205635584,
+      "heapBytes": 54785520,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 1532,
+      "rssBytes": 217333760,
+      "heapBytes": 57526992,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 1542,
+      "rssBytes": 221970432,
+      "heapBytes": 44180344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 1552,
+      "rssBytes": 222429184,
+      "heapBytes": 55647384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 1562,
+      "rssBytes": 298434560,
+      "heapBytes": 68666440,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1572,
+      "rssBytes": 285474816,
+      "heapBytes": 46032912,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 1582,
+      "rssBytes": 287735808,
+      "heapBytes": 57716608,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.839871
+    },
+    {
+      "elapsedSeconds": 1592,
+      "rssBytes": 285425664,
+      "heapBytes": 62873104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1602,
+      "rssBytes": 288735232,
+      "heapBytes": 46309896,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 1612,
+      "rssBytes": 289619968,
+      "heapBytes": 58914832,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1622,
+      "rssBytes": 290422784,
+      "heapBytes": 69428352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.707647
+    },
+    {
+      "elapsedSeconds": 1632,
+      "rssBytes": 279052288,
+      "heapBytes": 44390480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1642,
+      "rssBytes": 283836416,
+      "heapBytes": 56181936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1652,
+      "rssBytes": 294305792,
+      "heapBytes": 57873712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1662,
+      "rssBytes": 216580096,
+      "heapBytes": 44991936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1672,
+      "rssBytes": 221364224,
+      "heapBytes": 56632056,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1682,
+      "rssBytes": 303939584,
+      "heapBytes": 58108848,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.560767
+    },
+    {
+      "elapsedSeconds": 1692,
+      "rssBytes": 305414144,
+      "heapBytes": 60713400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.249471
+    },
+    {
+      "elapsedSeconds": 1702,
+      "rssBytes": 275824640,
+      "heapBytes": 49792504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.216703
+    },
+    {
+      "elapsedSeconds": 1712,
+      "rssBytes": 279347200,
+      "heapBytes": 51111376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.724607
+    },
+    {
+      "elapsedSeconds": 1722,
+      "rssBytes": 285327360,
+      "heapBytes": 48550736,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 1732,
+      "rssBytes": 285573120,
+      "heapBytes": 39698728,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 1742,
+      "rssBytes": 304365568,
+      "heapBytes": 79142192,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 1752,
+      "rssBytes": 302989312,
+      "heapBytes": 57768336,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1762,
+      "rssBytes": 300023808,
+      "heapBytes": 46325832,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1772,
+      "rssBytes": 305332224,
+      "heapBytes": 41536312,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.823487
+    },
+    {
+      "elapsedSeconds": 1782,
+      "rssBytes": 304283648,
+      "heapBytes": 52493712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 1792,
+      "rssBytes": 301858816,
+      "heapBytes": 40485384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1802,
+      "rssBytes": 308740096,
+      "heapBytes": 81925240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 1812,
+      "rssBytes": 307347456,
+      "heapBytes": 58850352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.118399
+    },
+    {
+      "elapsedSeconds": 1822,
+      "rssBytes": 306200576,
+      "heapBytes": 48745760,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1832,
+      "rssBytes": 299761664,
+      "heapBytes": 78640344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 1842,
+      "rssBytes": 238354432,
+      "heapBytes": 49831744,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1852,
+      "rssBytes": 225656832,
+      "heapBytes": 60505624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1862,
+      "rssBytes": 305659904,
+      "heapBytes": 80230984,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.429695
+    },
+    {
+      "elapsedSeconds": 1872,
+      "rssBytes": 313016320,
+      "heapBytes": 42325312,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.331391
+    },
+    {
+      "elapsedSeconds": 1882,
+      "rssBytes": 282296320,
+      "heapBytes": 53879232,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1892,
+      "rssBytes": 289652736,
+      "heapBytes": 57788160,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.134783
+    },
+    {
+      "elapsedSeconds": 1902,
+      "rssBytes": 290799616,
+      "heapBytes": 42477576,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1912,
+      "rssBytes": 291225600,
+      "heapBytes": 53585136,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1922,
+      "rssBytes": 293093376,
+      "heapBytes": 67525432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.364159
+    },
+    {
+      "elapsedSeconds": 1932,
+      "rssBytes": 298254336,
+      "heapBytes": 43251200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.118399
+    },
+    {
+      "elapsedSeconds": 1942,
+      "rssBytes": 292749312,
+      "heapBytes": 53900240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 1952,
+      "rssBytes": 291766272,
+      "heapBytes": 56834784,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.167551
+    },
+    {
+      "elapsedSeconds": 1962,
+      "rssBytes": 286801920,
+      "heapBytes": 43555696,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 1972,
+      "rssBytes": 285360128,
+      "heapBytes": 54363992,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 1982,
+      "rssBytes": 299679744,
+      "heapBytes": 68102656,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 1992,
+      "rssBytes": 300236800,
+      "heapBytes": 41781552,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2002,
+      "rssBytes": 285032448,
+      "heapBytes": 52669120,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 2012,
+      "rssBytes": 294371328,
+      "heapBytes": 54516320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2022,
+      "rssBytes": 297254912,
+      "heapBytes": 41784064,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2032,
+      "rssBytes": 295927808,
+      "heapBytes": 53002312,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2042,
+      "rssBytes": 307953664,
+      "heapBytes": 77668632,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2052,
+      "rssBytes": 285163520,
+      "heapBytes": 43162480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 2062,
+      "rssBytes": 288686080,
+      "heapBytes": 54410344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.807103
+    },
+    {
+      "elapsedSeconds": 2072,
+      "rssBytes": 297140224,
+      "heapBytes": 57552216,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.279359
+    },
+    {
+      "elapsedSeconds": 2082,
+      "rssBytes": 298532864,
+      "heapBytes": 44364848,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2092,
+      "rssBytes": 298827776,
+      "heapBytes": 55171400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.298623
+    },
+    {
+      "elapsedSeconds": 2102,
+      "rssBytes": 307527680,
+      "heapBytes": 71105472,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.446079
+    },
+    {
+      "elapsedSeconds": 2112,
+      "rssBytes": 309936128,
+      "heapBytes": 41236256,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2122,
+      "rssBytes": 291700736,
+      "heapBytes": 51752824,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.478847
+    },
+    {
+      "elapsedSeconds": 2132,
+      "rssBytes": 207060992,
+      "heapBytes": 53174192,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.429695
+    },
+    {
+      "elapsedSeconds": 2142,
+      "rssBytes": 225640448,
+      "heapBytes": 40788288,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2152,
+      "rssBytes": 229883904,
+      "heapBytes": 50990136,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2162,
+      "rssBytes": 318750720,
+      "heapBytes": 46362600,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 2172,
+      "rssBytes": 313573376,
+      "heapBytes": 50256216,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2182,
+      "rssBytes": 311394304,
+      "heapBytes": 41246760,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.052863
+    },
+    {
+      "elapsedSeconds": 2192,
+      "rssBytes": 311296000,
+      "heapBytes": 72628304,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.183935
+    },
+    {
+      "elapsedSeconds": 2202,
+      "rssBytes": 310149120,
+      "heapBytes": 48914976,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2212,
+      "rssBytes": 307675136,
+      "heapBytes": 40063176,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.347775
+    },
+    {
+      "elapsedSeconds": 2222,
+      "rssBytes": 311721984,
+      "heapBytes": 85581248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.033599
+    },
+    {
+      "elapsedSeconds": 2232,
+      "rssBytes": 309379072,
+      "heapBytes": 47886200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2242,
+      "rssBytes": 308330496,
+      "heapBytes": 59421616,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2252,
+      "rssBytes": 292290560,
+      "heapBytes": 66808504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2262,
+      "rssBytes": 294502400,
+      "heapBytes": 48187728,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.167551
+    },
+    {
+      "elapsedSeconds": 2272,
+      "rssBytes": 295092224,
+      "heapBytes": 59790336,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2282,
+      "rssBytes": 311263232,
+      "heapBytes": 84921496,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 31.571967
+    },
+    {
+      "elapsedSeconds": 2292,
+      "rssBytes": 312688640,
+      "heapBytes": 43704800,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2302,
+      "rssBytes": 295600128,
+      "heapBytes": 55103880,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2312,
+      "rssBytes": 298434560,
+      "heapBytes": 58802704,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2322,
+      "rssBytes": 301187072,
+      "heapBytes": 43707848,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2332,
+      "rssBytes": 299171840,
+      "heapBytes": 54625504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2342,
+      "rssBytes": 298663936,
+      "heapBytes": 71459592,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.001407
+    },
+    {
+      "elapsedSeconds": 2352,
+      "rssBytes": 301268992,
+      "heapBytes": 58282832,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2362,
+      "rssBytes": 295223296,
+      "heapBytes": 58573944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2372,
+      "rssBytes": 212582400,
+      "heapBytes": 63555552,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.574847
+    },
+    {
+      "elapsedSeconds": 2382,
+      "rssBytes": 222642176,
+      "heapBytes": 48999208,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2392,
+      "rssBytes": 223428608,
+      "heapBytes": 39523352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2402,
+      "rssBytes": 301481984,
+      "heapBytes": 87524744,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.364159
+    },
+    {
+      "elapsedSeconds": 2412,
+      "rssBytes": 298745856,
+      "heapBytes": 43307432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2422,
+      "rssBytes": 286113792,
+      "heapBytes": 48864560,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2432,
+      "rssBytes": 224641024,
+      "heapBytes": 50664200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2443,
+      "rssBytes": 226820096,
+      "heapBytes": 39548376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 2453,
+      "rssBytes": 228376576,
+      "heapBytes": 49623936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2463,
+      "rssBytes": 311590912,
+      "heapBytes": 51468944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.052863
+    },
+    {
+      "elapsedSeconds": 2473,
+      "rssBytes": 311558144,
+      "heapBytes": 41978232,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 2483,
+      "rssBytes": 310509568,
+      "heapBytes": 49952624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 2493,
+      "rssBytes": 314343424,
+      "heapBytes": 45195720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 2503,
+      "rssBytes": 308576256,
+      "heapBytes": 55776256,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2513,
+      "rssBytes": 312016896,
+      "heapBytes": 46657544,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2523,
+      "rssBytes": 304889856,
+      "heapBytes": 87827352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.049983
+    },
+    {
+      "elapsedSeconds": 2533,
+      "rssBytes": 307019776,
+      "heapBytes": 43672984,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 2543,
+      "rssBytes": 308379648,
+      "heapBytes": 41107504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2553,
+      "rssBytes": 311623680,
+      "heapBytes": 68138712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2563,
+      "rssBytes": 260980736,
+      "heapBytes": 47585448,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 2573,
+      "rssBytes": 239730688,
+      "heapBytes": 57516224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2583,
+      "rssBytes": 306544640,
+      "heapBytes": 81981968,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.478271
+    },
+    {
+      "elapsedSeconds": 2593,
+      "rssBytes": 290996224,
+      "heapBytes": 40122344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2603,
+      "rssBytes": 284459008,
+      "heapBytes": 50789520,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 2613,
+      "rssBytes": 289669120,
+      "heapBytes": 48393752,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2623,
+      "rssBytes": 292470784,
+      "heapBytes": 59374008,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2633,
+      "rssBytes": 297074688,
+      "heapBytes": 46589992,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2643,
+      "rssBytes": 321191936,
+      "heapBytes": 43219392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 2653,
+      "rssBytes": 308707328,
+      "heapBytes": 52193280,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2663,
+      "rssBytes": 298729472,
+      "heapBytes": 40911256,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 2673,
+      "rssBytes": 233144320,
+      "heapBytes": 40773216,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2683,
+      "rssBytes": 221052928,
+      "heapBytes": 50995816,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2693,
+      "rssBytes": 227229696,
+      "heapBytes": 41524896,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 2703,
+      "rssBytes": 315867136,
+      "heapBytes": 45864320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.298623
+    },
+    {
+      "elapsedSeconds": 2713,
+      "rssBytes": 305135616,
+      "heapBytes": 42142904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2723,
+      "rssBytes": 303054848,
+      "heapBytes": 52061136,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 2733,
+      "rssBytes": 224116736,
+      "heapBytes": 50113000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.200319
+    },
+    {
+      "elapsedSeconds": 2743,
+      "rssBytes": 227753984,
+      "heapBytes": 40793016,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2753,
+      "rssBytes": 227229696,
+      "heapBytes": 51917600,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2763,
+      "rssBytes": 318996480,
+      "heapBytes": 47272224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2773,
+      "rssBytes": 323272704,
+      "heapBytes": 74649392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2783,
+      "rssBytes": 340475904,
+      "heapBytes": 55211232,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2793,
+      "rssBytes": 361381888,
+      "heapBytes": 59606480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2803,
+      "rssBytes": 350420992,
+      "heapBytes": 55674376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2813,
+      "rssBytes": 181256192,
+      "heapBytes": 56598808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2823,
+      "rssBytes": 299843584,
+      "heapBytes": 82313360,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.068671
+    },
+    {
+      "elapsedSeconds": 2833,
+      "rssBytes": 293011456,
+      "heapBytes": 41746896,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 2843,
+      "rssBytes": 296419328,
+      "heapBytes": 52113328,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2853,
+      "rssBytes": 230735872,
+      "heapBytes": 53999888,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2863,
+      "rssBytes": 217006080,
+      "heapBytes": 43553240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 2873,
+      "rssBytes": 210550784,
+      "heapBytes": 53926392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 2883,
+      "rssBytes": 308215808,
+      "heapBytes": 51303152,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 2893,
+      "rssBytes": 310034432,
+      "heapBytes": 78883152,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 2903,
+      "rssBytes": 330022912,
+      "heapBytes": 59508384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 2913,
+      "rssBytes": 309248000,
+      "heapBytes": 63647464,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 2923,
+      "rssBytes": 316850176,
+      "heapBytes": 51997336,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2933,
+      "rssBytes": 308658176,
+      "heapBytes": 39508168,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 2943,
+      "rssBytes": 309444608,
+      "heapBytes": 91881216,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.495231
+    },
+    {
+      "elapsedSeconds": 2953,
+      "rssBytes": 278298624,
+      "heapBytes": 51708904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 2963,
+      "rssBytes": 196853760,
+      "heapBytes": 40125808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 2973,
+      "rssBytes": 227655680,
+      "heapBytes": 56929736,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 2983,
+      "rssBytes": 230375424,
+      "heapBytes": 58179424,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 2993,
+      "rssBytes": 227246080,
+      "heapBytes": 46599512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 3003,
+      "rssBytes": 313851904,
+      "heapBytes": 48177128,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.247167
+    },
+    {
+      "elapsedSeconds": 3013,
+      "rssBytes": 309755904,
+      "heapBytes": 43762920,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 3023,
+      "rssBytes": 292225024,
+      "heapBytes": 51872056,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 3033,
+      "rssBytes": 220938240,
+      "heapBytes": 48978024,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 3043,
+      "rssBytes": 225722368,
+      "heapBytes": 57892048,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 3053,
+      "rssBytes": 235028480,
+      "heapBytes": 44823952,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 3063,
+      "rssBytes": 309510144,
+      "heapBytes": 43851144,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 34.209791
+    },
+    {
+      "elapsedSeconds": 3073,
+      "rssBytes": 314277888,
+      "heapBytes": 49652048,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 3083,
+      "rssBytes": 305676288,
+      "heapBytes": 57749872,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 3093,
+      "rssBytes": 312410112,
+      "heapBytes": 49202832,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.003135
+    },
+    {
+      "elapsedSeconds": 3103,
+      "rssBytes": 313638912,
+      "heapBytes": 58211960,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3113,
+      "rssBytes": 209534976,
+      "heapBytes": 46798456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.134207
+    },
+    {
+      "elapsedSeconds": 3123,
+      "rssBytes": 308019200,
+      "heapBytes": 53025072,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 31.539199
+    },
+    {
+      "elapsedSeconds": 3133,
+      "rssBytes": 303120384,
+      "heapBytes": 44262728,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3143,
+      "rssBytes": 201719808,
+      "heapBytes": 50117976,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.839295
+    },
+    {
+      "elapsedSeconds": 3153,
+      "rssBytes": 232783872,
+      "heapBytes": 48325552,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 3163,
+      "rssBytes": 239075328,
+      "heapBytes": 53924624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.052287
+    },
+    {
+      "elapsedSeconds": 3173,
+      "rssBytes": 212271104,
+      "heapBytes": 40055840,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 3183,
+      "rssBytes": 301449216,
+      "heapBytes": 79056184,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 31.277055
+    },
+    {
+      "elapsedSeconds": 3193,
+      "rssBytes": 296697856,
+      "heapBytes": 50792576,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 3203,
+      "rssBytes": 298680320,
+      "heapBytes": 56647424,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 3213,
+      "rssBytes": 245039104,
+      "heapBytes": 55899888,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 3223,
+      "rssBytes": 218431488,
+      "heapBytes": 41736536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 3233,
+      "rssBytes": 223313920,
+      "heapBytes": 45945752,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3243,
+      "rssBytes": 307609600,
+      "heapBytes": 42289336,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.952255
+    },
+    {
+      "elapsedSeconds": 3253,
+      "rssBytes": 301776896,
+      "heapBytes": 51562344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 3263,
+      "rssBytes": 301858816,
+      "heapBytes": 59325520,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 3273,
+      "rssBytes": 303005696,
+      "heapBytes": 54914432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.625727
+    },
+    {
+      "elapsedSeconds": 3283,
+      "rssBytes": 234373120,
+      "heapBytes": 40893512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 3293,
+      "rssBytes": 229015552,
+      "heapBytes": 48710904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3304,
+      "rssBytes": 309198848,
+      "heapBytes": 54122912,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.688959
+    },
+    {
+      "elapsedSeconds": 3314,
+      "rssBytes": 294764544,
+      "heapBytes": 46177720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3324,
+      "rssBytes": 285900800,
+      "heapBytes": 54262632,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 3334,
+      "rssBytes": 220643328,
+      "heapBytes": 51295744,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 3344,
+      "rssBytes": 225443840,
+      "heapBytes": 58653440,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 3354,
+      "rssBytes": 227196928,
+      "heapBytes": 45862520,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 3364,
+      "rssBytes": 291897344,
+      "heapBytes": 78807296,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 3374,
+      "rssBytes": 289341440,
+      "heapBytes": 58536120,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.003135
+    },
+    {
+      "elapsedSeconds": 3384,
+      "rssBytes": 291897344,
+      "heapBytes": 39586984,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.134207
+    },
+    {
+      "elapsedSeconds": 3394,
+      "rssBytes": 292864000,
+      "heapBytes": 62391640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.248895
+    },
+    {
+      "elapsedSeconds": 3404,
+      "rssBytes": 292356096,
+      "heapBytes": 46354928,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 3414,
+      "rssBytes": 284901376,
+      "heapBytes": 55544968,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 3424,
+      "rssBytes": 300662784,
+      "heapBytes": 80269248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 3434,
+      "rssBytes": 250396672,
+      "heapBytes": 56028376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 3444,
+      "rssBytes": 296009728,
+      "heapBytes": 59450520,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 3454,
+      "rssBytes": 244744192,
+      "heapBytes": 46529816,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.347199
+    },
+    {
+      "elapsedSeconds": 3464,
+      "rssBytes": 255033344,
+      "heapBytes": 52041256,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 3474,
+      "rssBytes": 259047424,
+      "heapBytes": 57236376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 3484,
+      "rssBytes": 288145408,
+      "heapBytes": 57532344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.477119
+    },
+    {
+      "elapsedSeconds": 3494,
+      "rssBytes": 299679744,
+      "heapBytes": 60586440,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 3504,
+      "rssBytes": 305545216,
+      "heapBytes": 60125016,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.117823
+    },
+    {
+      "elapsedSeconds": 3514,
+      "rssBytes": 308609024,
+      "heapBytes": 57350640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 3524,
+      "rssBytes": 307183616,
+      "heapBytes": 44662072,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 3534,
+      "rssBytes": 301907968,
+      "heapBytes": 53136688,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3544,
+      "rssBytes": 317784064,
+      "heapBytes": 51947248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.986175
+    },
+    {
+      "elapsedSeconds": 3554,
+      "rssBytes": 325910528,
+      "heapBytes": 79449704,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 3564,
+      "rssBytes": 322387968,
+      "heapBytes": 60355664,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 3574,
+      "rssBytes": 308068352,
+      "heapBytes": 66279904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 3584,
+      "rssBytes": 331677696,
+      "heapBytes": 46822624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 3594,
+      "rssBytes": 312049664,
+      "heapBytes": 55105712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 3604,
+      "rssBytes": 309182464,
+      "heapBytes": 51917912,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.903103
+    },
+    {
+      "elapsedSeconds": 3614,
+      "rssBytes": 307970048,
+      "heapBytes": 79816008,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 3624,
+      "rssBytes": 210894848,
+      "heapBytes": 60749944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.151167
+    },
+    {
+      "elapsedSeconds": 3634,
+      "rssBytes": 296714240,
+      "heapBytes": 66780264,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.003135
+    },
+    {
+      "elapsedSeconds": 3644,
+      "rssBytes": 326828032,
+      "heapBytes": 53415096,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 3654,
+      "rssBytes": 219594752,
+      "heapBytes": 56862448,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 3664,
+      "rssBytes": 294961152,
+      "heapBytes": 47435712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.134207
+    },
+    {
+      "elapsedSeconds": 3674,
+      "rssBytes": 293961728,
+      "heapBytes": 50397848,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 3684,
+      "rssBytes": 297025536,
+      "heapBytes": 61384928,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.839871
+    },
+    {
+      "elapsedSeconds": 3694,
+      "rssBytes": 293781504,
+      "heapBytes": 62666400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 3704,
+      "rssBytes": 215482368,
+      "heapBytes": 50566904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 3714,
+      "rssBytes": 218562560,
+      "heapBytes": 40274536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 3724,
+      "rssBytes": 301891584,
+      "heapBytes": 95450040,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 3734,
+      "rssBytes": 305135616,
+      "heapBytes": 50540272,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 3744,
+      "rssBytes": 314966016,
+      "heapBytes": 59995624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 3754,
+      "rssBytes": 317030400,
+      "heapBytes": 58433720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.052863
+    },
+    {
+      "elapsedSeconds": 3764,
+      "rssBytes": 297615360,
+      "heapBytes": 48675696,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 3774,
+      "rssBytes": 297549824,
+      "heapBytes": 59738480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 3784,
+      "rssBytes": 309100544,
+      "heapBytes": 83572000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.181055
+    },
+    {
+      "elapsedSeconds": 3794,
+      "rssBytes": 314949632,
+      "heapBytes": 48576968,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 3804,
+      "rssBytes": 315654144,
+      "heapBytes": 53241872,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 3814,
+      "rssBytes": 316833792,
+      "heapBytes": 50079640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.298623
+    },
+    {
+      "elapsedSeconds": 3824,
+      "rssBytes": 318832640,
+      "heapBytes": 59113768,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 3834,
+      "rssBytes": 317292544,
+      "heapBytes": 49777624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 3844,
+      "rssBytes": 330874880,
+      "heapBytes": 43451352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.150015
+    },
+    {
+      "elapsedSeconds": 3854,
+      "rssBytes": 331120640,
+      "heapBytes": 50847544,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 3864,
+      "rssBytes": 331628544,
+      "heapBytes": 59726648,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 3874,
+      "rssBytes": 258408448,
+      "heapBytes": 61649176,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.069247
+    },
+    {
+      "elapsedSeconds": 3884,
+      "rssBytes": 261963776,
+      "heapBytes": 49213432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 3894,
+      "rssBytes": 256737280,
+      "heapBytes": 58565224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 3904,
+      "rssBytes": 306708480,
+      "heapBytes": 51401808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 101.253119
+    },
+    {
+      "elapsedSeconds": 3914,
+      "rssBytes": 327630848,
+      "heapBytes": 76546848,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3924,
+      "rssBytes": 320520192,
+      "heapBytes": 50144608,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.429119
+    },
+    {
+      "elapsedSeconds": 3934,
+      "rssBytes": 243138560,
+      "heapBytes": 44039032,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.511039
+    },
+    {
+      "elapsedSeconds": 3944,
+      "rssBytes": 235913216,
+      "heapBytes": 48326968,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 3954,
+      "rssBytes": 234225664,
+      "heapBytes": 54205104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.560191
+    },
+    {
+      "elapsedSeconds": 3964,
+      "rssBytes": 306020352,
+      "heapBytes": 44591456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.329087
+    },
+    {
+      "elapsedSeconds": 3974,
+      "rssBytes": 306053120,
+      "heapBytes": 42657448,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.035903
+    },
+    {
+      "elapsedSeconds": 3984,
+      "rssBytes": 309788672,
+      "heapBytes": 57408160,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 3994,
+      "rssBytes": 308019200,
+      "heapBytes": 50935728,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 4004,
+      "rssBytes": 310296576,
+      "heapBytes": 53059936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 4014,
+      "rssBytes": 310919168,
+      "heapBytes": 57565720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.101439
+    },
+    {
+      "elapsedSeconds": 4024,
+      "rssBytes": 319373312,
+      "heapBytes": 51067696,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 31.047679
+    },
+    {
+      "elapsedSeconds": 4034,
+      "rssBytes": 307052544,
+      "heapBytes": 53319840,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 4044,
+      "rssBytes": 309870592,
+      "heapBytes": 57111416,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 4054,
+      "rssBytes": 310984704,
+      "heapBytes": 52096416,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.527999
+    },
+    {
+      "elapsedSeconds": 4064,
+      "rssBytes": 307052544,
+      "heapBytes": 60280672,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 4074,
+      "rssBytes": 236224512,
+      "heapBytes": 49702504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 4084,
+      "rssBytes": 312737792,
+      "heapBytes": 44990352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 28.852223
+    },
+    {
+      "elapsedSeconds": 4094,
+      "rssBytes": 299024384,
+      "heapBytes": 55145504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4104,
+      "rssBytes": 303218688,
+      "heapBytes": 42839048,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4114,
+      "rssBytes": 254279680,
+      "heapBytes": 56983240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 4124,
+      "rssBytes": 231702528,
+      "heapBytes": 44854856,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4134,
+      "rssBytes": 235028480,
+      "heapBytes": 54665144,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 4144,
+      "rssBytes": 310984704,
+      "heapBytes": 68897904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.165823
+    },
+    {
+      "elapsedSeconds": 4154,
+      "rssBytes": 307789824,
+      "heapBytes": 51960432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 4164,
+      "rssBytes": 307134464,
+      "heapBytes": 41905808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4174,
+      "rssBytes": 309149696,
+      "heapBytes": 63495736,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.233087
+    },
+    {
+      "elapsedSeconds": 4184,
+      "rssBytes": 310902784,
+      "heapBytes": 52011576,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 4194,
+      "rssBytes": 303644672,
+      "heapBytes": 40264512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 4204,
+      "rssBytes": 312999936,
+      "heapBytes": 43956608,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.642687
+    },
+    {
+      "elapsedSeconds": 4214,
+      "rssBytes": 305348608,
+      "heapBytes": 54348792,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 4224,
+      "rssBytes": 210108416,
+      "heapBytes": 42037512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4234,
+      "rssBytes": 224247808,
+      "heapBytes": 41115608,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.233087
+    },
+    {
+      "elapsedSeconds": 4244,
+      "rssBytes": 226951168,
+      "heapBytes": 52396960,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.347775
+    },
+    {
+      "elapsedSeconds": 4254,
+      "rssBytes": 228409344,
+      "heapBytes": 41106392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 4264,
+      "rssBytes": 313032704,
+      "heapBytes": 53223320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 4274,
+      "rssBytes": 314867712,
+      "heapBytes": 50765648,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.200319
+    },
+    {
+      "elapsedSeconds": 4285,
+      "rssBytes": 311148544,
+      "heapBytes": 60998624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 4295,
+      "rssBytes": 315129856,
+      "heapBytes": 51516600,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 4305,
+      "rssBytes": 317734912,
+      "heapBytes": 62297232,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 4315,
+      "rssBytes": 255279104,
+      "heapBytes": 51904864,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 4325,
+      "rssBytes": 309051392,
+      "heapBytes": 51935880,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.739839
+    },
+    {
+      "elapsedSeconds": 4335,
+      "rssBytes": 304185344,
+      "heapBytes": 40215928,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4345,
+      "rssBytes": 294535168,
+      "heapBytes": 51008208,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 4355,
+      "rssBytes": 230785024,
+      "heapBytes": 48011944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.872639
+    },
+    {
+      "elapsedSeconds": 4365,
+      "rssBytes": 235192320,
+      "heapBytes": 59284064,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 4375,
+      "rssBytes": 211402752,
+      "heapBytes": 49667024,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 4385,
+      "rssBytes": 308461568,
+      "heapBytes": 42646712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.576575
+    },
+    {
+      "elapsedSeconds": 4395,
+      "rssBytes": 297861120,
+      "heapBytes": 54670856,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 4405,
+      "rssBytes": 302530560,
+      "heapBytes": 42929520,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 4415,
+      "rssBytes": 304660480,
+      "heapBytes": 42574536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.675455
+    },
+    {
+      "elapsedSeconds": 4425,
+      "rssBytes": 305299456,
+      "heapBytes": 54891768,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 4435,
+      "rssBytes": 205553664,
+      "heapBytes": 45613080,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4445,
+      "rssBytes": 308183040,
+      "heapBytes": 43148320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.510463
+    },
+    {
+      "elapsedSeconds": 4455,
+      "rssBytes": 308117504,
+      "heapBytes": 54510352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.823487
+    },
+    {
+      "elapsedSeconds": 4465,
+      "rssBytes": 309460992,
+      "heapBytes": 60740712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 4475,
+      "rssBytes": 311951360,
+      "heapBytes": 60994104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.805375
+    },
+    {
+      "elapsedSeconds": 4485,
+      "rssBytes": 311427072,
+      "heapBytes": 49479112,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.921791
+    },
+    {
+      "elapsedSeconds": 4495,
+      "rssBytes": 253329408,
+      "heapBytes": 57464360,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 4505,
+      "rssBytes": 322371584,
+      "heapBytes": 42991656,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.980991
+    },
+    {
+      "elapsedSeconds": 4515,
+      "rssBytes": 310116352,
+      "heapBytes": 50553264,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.363583
+    },
+    {
+      "elapsedSeconds": 4525,
+      "rssBytes": 285507584,
+      "heapBytes": 48696344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 4535,
+      "rssBytes": 225427456,
+      "heapBytes": 41559096,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.838143
+    },
+    {
+      "elapsedSeconds": 4545,
+      "rssBytes": 228327424,
+      "heapBytes": 51755240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 4555,
+      "rssBytes": 222314496,
+      "heapBytes": 59875664,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.052287
+    },
+    {
+      "elapsedSeconds": 4565,
+      "rssBytes": 328646656,
+      "heapBytes": 45196192,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 30.392319
+    },
+    {
+      "elapsedSeconds": 4575,
+      "rssBytes": 318341120,
+      "heapBytes": 43253720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 4585,
+      "rssBytes": 315998208,
+      "heapBytes": 51331240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.248895
+    },
+    {
+      "elapsedSeconds": 4595,
+      "rssBytes": 315998208,
+      "heapBytes": 42267736,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.265279
+    },
+    {
+      "elapsedSeconds": 4605,
+      "rssBytes": 316178432,
+      "heapBytes": 50741248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.117823
+    },
+    {
+      "elapsedSeconds": 4615,
+      "rssBytes": 147636224,
+      "heapBytes": 58120448,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 4625,
+      "rssBytes": 314982400,
+      "heapBytes": 46766960,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 30.441471
+    },
+    {
+      "elapsedSeconds": 4635,
+      "rssBytes": 318062592,
+      "heapBytes": 55433336,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.265279
+    },
+    {
+      "elapsedSeconds": 4645,
+      "rssBytes": 312492032,
+      "heapBytes": 48956232,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 4655,
+      "rssBytes": 312475648,
+      "heapBytes": 46907888,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.264703
+    },
+    {
+      "elapsedSeconds": 4665,
+      "rssBytes": 312442880,
+      "heapBytes": 55882088,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.298047
+    },
+    {
+      "elapsedSeconds": 4675,
+      "rssBytes": 226787328,
+      "heapBytes": 40398288,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 4685,
+      "rssBytes": 326582272,
+      "heapBytes": 60015152,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 31.522815
+    },
+    {
+      "elapsedSeconds": 4695,
+      "rssBytes": 333463552,
+      "heapBytes": 86059200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 4705,
+      "rssBytes": 332103680,
+      "heapBytes": 66596448,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 4715,
+      "rssBytes": 355827712,
+      "heapBytes": 74053056,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.790143
+    },
+    {
+      "elapsedSeconds": 4725,
+      "rssBytes": 370556928,
+      "heapBytes": 54170384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.216703
+    },
+    {
+      "elapsedSeconds": 4735,
+      "rssBytes": 250429440,
+      "heapBytes": 60532016,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 4745,
+      "rssBytes": 315932672,
+      "heapBytes": 54376304,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 28.082175
+    },
+    {
+      "elapsedSeconds": 4755,
+      "rssBytes": 313819136,
+      "heapBytes": 52106736,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4765,
+      "rssBytes": 318046208,
+      "heapBytes": 58282480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4775,
+      "rssBytes": 318291968,
+      "heapBytes": 54305784,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.020095
+    },
+    {
+      "elapsedSeconds": 4785,
+      "rssBytes": 320454656,
+      "heapBytes": 61153304,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 4795,
+      "rssBytes": 195854336,
+      "heapBytes": 50566640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.298623
+    },
+    {
+      "elapsedSeconds": 4805,
+      "rssBytes": 303087616,
+      "heapBytes": 98511536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 28.852223
+    },
+    {
+      "elapsedSeconds": 4815,
+      "rssBytes": 308183040,
+      "heapBytes": 62219040,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.047103
+    },
+    {
+      "elapsedSeconds": 4825,
+      "rssBytes": 292339712,
+      "heapBytes": 52567112,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.576575
+    },
+    {
+      "elapsedSeconds": 4835,
+      "rssBytes": 224362496,
+      "heapBytes": 45987480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 45.678591
+    },
+    {
+      "elapsedSeconds": 4845,
+      "rssBytes": 134037504,
+      "heapBytes": 53950312,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 43.974655
+    },
+    {
+      "elapsedSeconds": 4855,
+      "rssBytes": 205733888,
+      "heapBytes": 61175512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.954559
+    },
+    {
+      "elapsedSeconds": 4865,
+      "rssBytes": 324894720,
+      "heapBytes": 61236712,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.214975
+    },
+    {
+      "elapsedSeconds": 4875,
+      "rssBytes": 308527104,
+      "heapBytes": 60450584,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 4885,
+      "rssBytes": 313851904,
+      "heapBytes": 40864120,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.938175
+    },
+    {
+      "elapsedSeconds": 4895,
+      "rssBytes": 312803328,
+      "heapBytes": 65935168,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 28.327935
+    },
+    {
+      "elapsedSeconds": 4905,
+      "rssBytes": 309329920,
+      "heapBytes": 50822008,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 4915,
+      "rssBytes": 304857088,
+      "heapBytes": 60212400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.134783
+    },
+    {
+      "elapsedSeconds": 4925,
+      "rssBytes": 324452352,
+      "heapBytes": 52748104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.559039
+    },
+    {
+      "elapsedSeconds": 4935,
+      "rssBytes": 313098240,
+      "heapBytes": 60578104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.102015
+    },
+    {
+      "elapsedSeconds": 4945,
+      "rssBytes": 307871744,
+      "heapBytes": 42216360,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 4955,
+      "rssBytes": 306479104,
+      "heapBytes": 64295888,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.608191
+    },
+    {
+      "elapsedSeconds": 4965,
+      "rssBytes": 296550400,
+      "heapBytes": 47051600,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.200319
+    },
+    {
+      "elapsedSeconds": 4975,
+      "rssBytes": 295469056,
+      "heapBytes": 59079000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.856255
+    },
+    {
+      "elapsedSeconds": 4985,
+      "rssBytes": 320176128,
+      "heapBytes": 58129120,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.329663
+    },
+    {
+      "elapsedSeconds": 4995,
+      "rssBytes": 320995328,
+      "heapBytes": 52912088,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.495231
+    },
+    {
+      "elapsedSeconds": 5005,
+      "rssBytes": 308068352,
+      "heapBytes": 61051096,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.889023
+    },
+    {
+      "elapsedSeconds": 5015,
+      "rssBytes": 306823168,
+      "heapBytes": 63400256,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 29.884415
+    },
+    {
+      "elapsedSeconds": 5025,
+      "rssBytes": 306167808,
+      "heapBytes": 49736704,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.003711
+    },
+    {
+      "elapsedSeconds": 5035,
+      "rssBytes": 303169536,
+      "heapBytes": 60908200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.970943
+    },
+    {
+      "elapsedSeconds": 5045,
+      "rssBytes": 331874304,
+      "heapBytes": 41325384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.115519
+    },
+    {
+      "elapsedSeconds": 5055,
+      "rssBytes": 332529664,
+      "heapBytes": 53101792,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.134783
+    },
+    {
+      "elapsedSeconds": 5065,
+      "rssBytes": 333332480,
+      "heapBytes": 58509384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.987327
+    },
+    {
+      "elapsedSeconds": 5075,
+      "rssBytes": 334102528,
+      "heapBytes": 53705208,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.429695
+    },
+    {
+      "elapsedSeconds": 5085,
+      "rssBytes": 308953088,
+      "heapBytes": 55061760,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 5095,
+      "rssBytes": 296517632,
+      "heapBytes": 51625536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 21.905407
+    },
+    {
+      "elapsedSeconds": 5105,
+      "rssBytes": 321863680,
+      "heapBytes": 51358840,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.773759
+    },
+    {
+      "elapsedSeconds": 5115,
+      "rssBytes": 321568768,
+      "heapBytes": 59200624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.577151
+    },
+    {
+      "elapsedSeconds": 5125,
+      "rssBytes": 225509376,
+      "heapBytes": 41568056,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 5135,
+      "rssBytes": 243220480,
+      "heapBytes": 58442624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5145,
+      "rssBytes": 242368512,
+      "heapBytes": 63903400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 5155,
+      "rssBytes": 228753408,
+      "heapBytes": 44976272,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.839295
+    },
+    {
+      "elapsedSeconds": 5165,
+      "rssBytes": 311721984,
+      "heapBytes": 58502576,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.674879
+    },
+    {
+      "elapsedSeconds": 5175,
+      "rssBytes": 303415296,
+      "heapBytes": 49368008,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5185,
+      "rssBytes": 301449216,
+      "heapBytes": 57852968,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5195,
+      "rssBytes": 300875776,
+      "heapBytes": 55159088,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5205,
+      "rssBytes": 301563904,
+      "heapBytes": 61923328,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.003135
+    },
+    {
+      "elapsedSeconds": 5215,
+      "rssBytes": 289964032,
+      "heapBytes": 48575496,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5225,
+      "rssBytes": 310738944,
+      "heapBytes": 55331224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.428543
+    },
+    {
+      "elapsedSeconds": 5235,
+      "rssBytes": 292978688,
+      "heapBytes": 54727248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5245,
+      "rssBytes": 301219840,
+      "heapBytes": 54566360,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 5255,
+      "rssBytes": 307036160,
+      "heapBytes": 49219016,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.445503
+    },
+    {
+      "elapsedSeconds": 5265,
+      "rssBytes": 307462144,
+      "heapBytes": 56233184,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.314431
+    },
+    {
+      "elapsedSeconds": 5275,
+      "rssBytes": 262684672,
+      "heapBytes": 41664224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5285,
+      "rssBytes": 319668224,
+      "heapBytes": 58386768,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.230207
+    },
+    {
+      "elapsedSeconds": 5295,
+      "rssBytes": 333250560,
+      "heapBytes": 83143456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.265279
+    },
+    {
+      "elapsedSeconds": 5305,
+      "rssBytes": 342228992,
+      "heapBytes": 61280624,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.248895
+    },
+    {
+      "elapsedSeconds": 5315,
+      "rssBytes": 345194496,
+      "heapBytes": 41704160,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5325,
+      "rssBytes": 341819392,
+      "heapBytes": 51020248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 5335,
+      "rssBytes": 310312960,
+      "heapBytes": 59435368,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5345,
+      "rssBytes": 336527360,
+      "heapBytes": 43680528,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 29.999103
+    },
+    {
+      "elapsedSeconds": 5355,
+      "rssBytes": 307494912,
+      "heapBytes": 43197240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5365,
+      "rssBytes": 300384256,
+      "heapBytes": 54314464,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 5375,
+      "rssBytes": 305496064,
+      "heapBytes": 53886408,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5385,
+      "rssBytes": 308232192,
+      "heapBytes": 39726904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5396,
+      "rssBytes": 250839040,
+      "heapBytes": 50850496,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 5406,
+      "rssBytes": 316194816,
+      "heapBytes": 47949392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.511039
+    },
+    {
+      "elapsedSeconds": 5416,
+      "rssBytes": 295976960,
+      "heapBytes": 55405440,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5426,
+      "rssBytes": 281722880,
+      "heapBytes": 62627144,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.068671
+    },
+    {
+      "elapsedSeconds": 5436,
+      "rssBytes": 221167616,
+      "heapBytes": 62759560,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5446,
+      "rssBytes": 227901440,
+      "heapBytes": 40956936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5456,
+      "rssBytes": 224051200,
+      "heapBytes": 47711136,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5466,
+      "rssBytes": 306806784,
+      "heapBytes": 56734504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 35.192831
+    },
+    {
+      "elapsedSeconds": 5476,
+      "rssBytes": 299499520,
+      "heapBytes": 52156880,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5486,
+      "rssBytes": 302252032,
+      "heapBytes": 60721488,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 5496,
+      "rssBytes": 304676864,
+      "heapBytes": 55734536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.444927
+    },
+    {
+      "elapsedSeconds": 5506,
+      "rssBytes": 305643520,
+      "heapBytes": 62830248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.117823
+    },
+    {
+      "elapsedSeconds": 5516,
+      "rssBytes": 291045376,
+      "heapBytes": 44512280,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 5526,
+      "rssBytes": 317145088,
+      "heapBytes": 67996592,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 36.765695
+    },
+    {
+      "elapsedSeconds": 5536,
+      "rssBytes": 332185600,
+      "heapBytes": 93789184,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.035903
+    },
+    {
+      "elapsedSeconds": 5546,
+      "rssBytes": 353206272,
+      "heapBytes": 71881944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.347199
+    },
+    {
+      "elapsedSeconds": 5556,
+      "rssBytes": 343490560,
+      "heapBytes": 44675384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.116095
+    },
+    {
+      "elapsedSeconds": 5566,
+      "rssBytes": 336003072,
+      "heapBytes": 55464376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5576,
+      "rssBytes": 212500480,
+      "heapBytes": 63023248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.740415
+    },
+    {
+      "elapsedSeconds": 5586,
+      "rssBytes": 297713664,
+      "heapBytes": 50703080,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 30.048255
+    },
+    {
+      "elapsedSeconds": 5596,
+      "rssBytes": 300613632,
+      "heapBytes": 50574416,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 5606,
+      "rssBytes": 302907392,
+      "heapBytes": 57278376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5616,
+      "rssBytes": 311951360,
+      "heapBytes": 43431576,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.346623
+    },
+    {
+      "elapsedSeconds": 5626,
+      "rssBytes": 312918016,
+      "heapBytes": 54737608,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5636,
+      "rssBytes": 297238528,
+      "heapBytes": 61527944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5646,
+      "rssBytes": 311672832,
+      "heapBytes": 58242152,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 30.015487
+    },
+    {
+      "elapsedSeconds": 5656,
+      "rssBytes": 306413568,
+      "heapBytes": 53981072,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 5666,
+      "rssBytes": 307314688,
+      "heapBytes": 59738376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.543807
+    },
+    {
+      "elapsedSeconds": 5676,
+      "rssBytes": 313376768,
+      "heapBytes": 53528680,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.084479
+    },
+    {
+      "elapsedSeconds": 5686,
+      "rssBytes": 206766080,
+      "heapBytes": 60801152,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.298047
+    },
+    {
+      "elapsedSeconds": 5696,
+      "rssBytes": 202555392,
+      "heapBytes": 46499456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 5706,
+      "rssBytes": 306184192,
+      "heapBytes": 70527440,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.166399
+    },
+    {
+      "elapsedSeconds": 5716,
+      "rssBytes": 308133888,
+      "heapBytes": 97523200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.494655
+    },
+    {
+      "elapsedSeconds": 5726,
+      "rssBytes": 181862400,
+      "heapBytes": 76329304,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 5736,
+      "rssBytes": 276627456,
+      "heapBytes": 47515232,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.920063
+    },
+    {
+      "elapsedSeconds": 5746,
+      "rssBytes": 271990784,
+      "heapBytes": 56130136,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.265279
+    },
+    {
+      "elapsedSeconds": 5756,
+      "rssBytes": 128811008,
+      "heapBytes": 54153160,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.724031
+    },
+    {
+      "elapsedSeconds": 5766,
+      "rssBytes": 299974656,
+      "heapBytes": 52780224,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 28.606463
+    },
+    {
+      "elapsedSeconds": 5776,
+      "rssBytes": 296648704,
+      "heapBytes": 61736488,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.052287
+    },
+    {
+      "elapsedSeconds": 5786,
+      "rssBytes": 295927808,
+      "heapBytes": 43031312,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5796,
+      "rssBytes": 296550400,
+      "heapBytes": 65847016,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.543807
+    },
+    {
+      "elapsedSeconds": 5806,
+      "rssBytes": 297877504,
+      "heapBytes": 48673520,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5816,
+      "rssBytes": 195952640,
+      "heapBytes": 58403840,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.429119
+    },
+    {
+      "elapsedSeconds": 5826,
+      "rssBytes": 308314112,
+      "heapBytes": 56026456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 29.376511
+    },
+    {
+      "elapsedSeconds": 5836,
+      "rssBytes": 292159488,
+      "heapBytes": 61759248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 5846,
+      "rssBytes": 294354944,
+      "heapBytes": 47601776,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 5856,
+      "rssBytes": 294354944,
+      "heapBytes": 41257344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.297471
+    },
+    {
+      "elapsedSeconds": 5866,
+      "rssBytes": 254443520,
+      "heapBytes": 51834280,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 5876,
+      "rssBytes": 198672384,
+      "heapBytes": 61012352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.150591
+    },
+    {
+      "elapsedSeconds": 5886,
+      "rssBytes": 317472768,
+      "heapBytes": 62296776,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.281663
+    },
+    {
+      "elapsedSeconds": 5896,
+      "rssBytes": 321306624,
+      "heapBytes": 87297800,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.592959
+    },
+    {
+      "elapsedSeconds": 5906,
+      "rssBytes": 346144768,
+      "heapBytes": 65202424,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.166975
+    },
+    {
+      "elapsedSeconds": 5916,
+      "rssBytes": 367034368,
+      "heapBytes": 72471456,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.494655
+    },
+    {
+      "elapsedSeconds": 5926,
+      "rssBytes": 380944384,
+      "heapBytes": 98475464,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 5936,
+      "rssBytes": 282050560,
+      "heapBytes": 76391552,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 5946,
+      "rssBytes": 384188416,
+      "heapBytes": 120080528,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 25.083903
+    },
+    {
+      "elapsedSeconds": 5956,
+      "rssBytes": 375275520,
+      "heapBytes": 39981496,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 5966,
+      "rssBytes": 354615296,
+      "heapBytes": 65278968,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 5976,
+      "rssBytes": 332611584,
+      "heapBytes": 55605832,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.003135
+    },
+    {
+      "elapsedSeconds": 5986,
+      "rssBytes": 310525952,
+      "heapBytes": 40282960,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.003135
+    },
+    {
+      "elapsedSeconds": 5996,
+      "rssBytes": 215285760,
+      "heapBytes": 48044512,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.839295
+    },
+    {
+      "elapsedSeconds": 6006,
+      "rssBytes": 302202880,
+      "heapBytes": 63139392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.636927
+    },
+    {
+      "elapsedSeconds": 6016,
+      "rssBytes": 296878080,
+      "heapBytes": 45718304,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 6026,
+      "rssBytes": 199835648,
+      "heapBytes": 56262392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6036,
+      "rssBytes": 227606528,
+      "heapBytes": 49275208,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.264703
+    },
+    {
+      "elapsedSeconds": 6046,
+      "rssBytes": 229277696,
+      "heapBytes": 59615496,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6056,
+      "rssBytes": 213450752,
+      "heapBytes": 44954864,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.199743
+    },
+    {
+      "elapsedSeconds": 6066,
+      "rssBytes": 306692096,
+      "heapBytes": 56110016,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 33.079295
+    },
+    {
+      "elapsedSeconds": 6076,
+      "rssBytes": 298516480,
+      "heapBytes": 53861000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 6086,
+      "rssBytes": 301367296,
+      "heapBytes": 61596896,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 6096,
+      "rssBytes": 245055488,
+      "heapBytes": 50044504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.231935
+    },
+    {
+      "elapsedSeconds": 6106,
+      "rssBytes": 226426880,
+      "heapBytes": 57533320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 6116,
+      "rssBytes": 172654592,
+      "heapBytes": 42772320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 6126,
+      "rssBytes": 304807936,
+      "heapBytes": 66455600,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 6136,
+      "rssBytes": 293044224,
+      "heapBytes": 91846936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6146,
+      "rssBytes": 322420736,
+      "heapBytes": 46529200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 6156,
+      "rssBytes": 324927488,
+      "heapBytes": 43249680,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.298047
+    },
+    {
+      "elapsedSeconds": 6166,
+      "rssBytes": 322945024,
+      "heapBytes": 53375000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.576575
+    },
+    {
+      "elapsedSeconds": 6176,
+      "rssBytes": 180076544,
+      "heapBytes": 62387288,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6186,
+      "rssBytes": 318439424,
+      "heapBytes": 57193728,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.522239
+    },
+    {
+      "elapsedSeconds": 6196,
+      "rssBytes": 310722560,
+      "heapBytes": 51934400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 6206,
+      "rssBytes": 309444608,
+      "heapBytes": 59245272,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6216,
+      "rssBytes": 312950784,
+      "heapBytes": 55496688,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.576575
+    },
+    {
+      "elapsedSeconds": 6226,
+      "rssBytes": 312950784,
+      "heapBytes": 40714432,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 6236,
+      "rssBytes": 181813248,
+      "heapBytes": 47801184,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.101439
+    },
+    {
+      "elapsedSeconds": 6246,
+      "rssBytes": 300187648,
+      "heapBytes": 62413816,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 29.540351
+    },
+    {
+      "elapsedSeconds": 6256,
+      "rssBytes": 297598976,
+      "heapBytes": 44937072,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 6266,
+      "rssBytes": 295452672,
+      "heapBytes": 51004736,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.199743
+    },
+    {
+      "elapsedSeconds": 6276,
+      "rssBytes": 298221568,
+      "heapBytes": 65347216,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.407551
+    },
+    {
+      "elapsedSeconds": 6286,
+      "rssBytes": 298434560,
+      "heapBytes": 48835696,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.314431
+    },
+    {
+      "elapsedSeconds": 6296,
+      "rssBytes": 174145536,
+      "heapBytes": 59568008,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 6306,
+      "rssBytes": 316080128,
+      "heapBytes": 50124888,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.295743
+    },
+    {
+      "elapsedSeconds": 6316,
+      "rssBytes": 310476800,
+      "heapBytes": 49957448,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6326,
+      "rssBytes": 284196864,
+      "heapBytes": 56429104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6336,
+      "rssBytes": 229539840,
+      "heapBytes": 43007776,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.658495
+    },
+    {
+      "elapsedSeconds": 6346,
+      "rssBytes": 231587840,
+      "heapBytes": 52091960,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 6356,
+      "rssBytes": 223576064,
+      "heapBytes": 60487808,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.805951
+    },
+    {
+      "elapsedSeconds": 6366,
+      "rssBytes": 310624256,
+      "heapBytes": 56715504,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 38.764543
+    },
+    {
+      "elapsedSeconds": 6377,
+      "rssBytes": 303333376,
+      "heapBytes": 58247696,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.347199
+    },
+    {
+      "elapsedSeconds": 6387,
+      "rssBytes": 308920320,
+      "heapBytes": 42265392,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 6397,
+      "rssBytes": 312115200,
+      "heapBytes": 62246944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.358399
+    },
+    {
+      "elapsedSeconds": 6407,
+      "rssBytes": 313442304,
+      "heapBytes": 43635200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 6417,
+      "rssBytes": 198279168,
+      "heapBytes": 52939656,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.117823
+    },
+    {
+      "elapsedSeconds": 6427,
+      "rssBytes": 306937856,
+      "heapBytes": 49695720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 37.945343
+    },
+    {
+      "elapsedSeconds": 6437,
+      "rssBytes": 305971200,
+      "heapBytes": 58435536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 6447,
+      "rssBytes": 300105728,
+      "heapBytes": 60381080,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.003135
+    },
+    {
+      "elapsedSeconds": 6457,
+      "rssBytes": 304513024,
+      "heapBytes": 55142256,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.034175
+    },
+    {
+      "elapsedSeconds": 6467,
+      "rssBytes": 305152000,
+      "heapBytes": 40050120,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6477,
+      "rssBytes": 206209024,
+      "heapBytes": 45315352,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 6487,
+      "rssBytes": 317652992,
+      "heapBytes": 67469408,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 40.697855
+    },
+    {
+      "elapsedSeconds": 6497,
+      "rssBytes": 335396864,
+      "heapBytes": 92237488,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6507,
+      "rssBytes": 348389376,
+      "heapBytes": 69850696,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.592959
+    },
+    {
+      "elapsedSeconds": 6517,
+      "rssBytes": 343064576,
+      "heapBytes": 42333944,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 30.064639
+    },
+    {
+      "elapsedSeconds": 6527,
+      "rssBytes": 337297408,
+      "heapBytes": 50473992,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 6537,
+      "rssBytes": 187826176,
+      "heapBytes": 60709936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6547,
+      "rssBytes": 301072384,
+      "heapBytes": 55946008,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.066943
+    },
+    {
+      "elapsedSeconds": 6557,
+      "rssBytes": 303742976,
+      "heapBytes": 53078616,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.052287
+    },
+    {
+      "elapsedSeconds": 6567,
+      "rssBytes": 303087616,
+      "heapBytes": 51873424,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 6577,
+      "rssBytes": 307986432,
+      "heapBytes": 41901000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 6587,
+      "rssBytes": 308510720,
+      "heapBytes": 50039752,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 6597,
+      "rssBytes": 197378048,
+      "heapBytes": 60281872,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.412735
+    },
+    {
+      "elapsedSeconds": 6607,
+      "rssBytes": 310689792,
+      "heapBytes": 60145112,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.820607
+    },
+    {
+      "elapsedSeconds": 6617,
+      "rssBytes": 295026688,
+      "heapBytes": 65102536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.543807
+    },
+    {
+      "elapsedSeconds": 6627,
+      "rssBytes": 201932800,
+      "heapBytes": 46267376,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.904255
+    },
+    {
+      "elapsedSeconds": 6637,
+      "rssBytes": 226852864,
+      "heapBytes": 63112464,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.674879
+    },
+    {
+      "elapsedSeconds": 6647,
+      "rssBytes": 235094016,
+      "heapBytes": 43873800,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 6657,
+      "rssBytes": 182616064,
+      "heapBytes": 42670656,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6667,
+      "rssBytes": 308920320,
+      "heapBytes": 50115064,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 28.065791
+    },
+    {
+      "elapsedSeconds": 6677,
+      "rssBytes": 300597248,
+      "heapBytes": 54099536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6687,
+      "rssBytes": 304627712,
+      "heapBytes": 56709168,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.363583
+    },
+    {
+      "elapsedSeconds": 6697,
+      "rssBytes": 232439808,
+      "heapBytes": 47353952,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.756799
+    },
+    {
+      "elapsedSeconds": 6707,
+      "rssBytes": 234176512,
+      "heapBytes": 54552688,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.117823
+    },
+    {
+      "elapsedSeconds": 6717,
+      "rssBytes": 184778752,
+      "heapBytes": 60348136,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 6727,
+      "rssBytes": 306118656,
+      "heapBytes": 45164192,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.379391
+    },
+    {
+      "elapsedSeconds": 6737,
+      "rssBytes": 308428800,
+      "heapBytes": 51193680,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 6747,
+      "rssBytes": 303661056,
+      "heapBytes": 60657320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6757,
+      "rssBytes": 304775168,
+      "heapBytes": 52110104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.232511
+    },
+    {
+      "elapsedSeconds": 6767,
+      "rssBytes": 305479680,
+      "heapBytes": 62470936,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 6777,
+      "rssBytes": 273907712,
+      "heapBytes": 44810256,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.773183
+    },
+    {
+      "elapsedSeconds": 6787,
+      "rssBytes": 326221824,
+      "heapBytes": 60569320,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 32.571391
+    },
+    {
+      "elapsedSeconds": 6797,
+      "rssBytes": 319488000,
+      "heapBytes": 48678720,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 6807,
+      "rssBytes": 319291392,
+      "heapBytes": 56421640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 6817,
+      "rssBytes": 315621376,
+      "heapBytes": 50822656,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.199743
+    },
+    {
+      "elapsedSeconds": 6827,
+      "rssBytes": 217038848,
+      "heapBytes": 60090904,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.888447
+    },
+    {
+      "elapsedSeconds": 6837,
+      "rssBytes": 184565760,
+      "heapBytes": 44126400,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 6847,
+      "rssBytes": 312803328,
+      "heapBytes": 62066296,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.574847
+    },
+    {
+      "elapsedSeconds": 6857,
+      "rssBytes": 306872320,
+      "heapBytes": 47449248,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.953407
+    },
+    {
+      "elapsedSeconds": 6867,
+      "rssBytes": 309968896,
+      "heapBytes": 53045040,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 6877,
+      "rssBytes": 307838976,
+      "heapBytes": 46704384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.642111
+    },
+    {
+      "elapsedSeconds": 6887,
+      "rssBytes": 206422016,
+      "heapBytes": 55962088,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 6897,
+      "rssBytes": 202768384,
+      "heapBytes": 40240344,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.855679
+    },
+    {
+      "elapsedSeconds": 6907,
+      "rssBytes": 313409536,
+      "heapBytes": 62106112,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 6917,
+      "rssBytes": 324616192,
+      "heapBytes": 43412560,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6927,
+      "rssBytes": 221708288,
+      "heapBytes": 45967680,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6937,
+      "rssBytes": 227885056,
+      "heapBytes": 42364000,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.688959
+    },
+    {
+      "elapsedSeconds": 6947,
+      "rssBytes": 230375424,
+      "heapBytes": 47626032,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.937599
+    },
+    {
+      "elapsedSeconds": 6957,
+      "rssBytes": 219922432,
+      "heapBytes": 50078200,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 6967,
+      "rssBytes": 299139072,
+      "heapBytes": 67379424,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.525695
+    },
+    {
+      "elapsedSeconds": 6977,
+      "rssBytes": 303448064,
+      "heapBytes": 44033064,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 6987,
+      "rssBytes": 290832384,
+      "heapBytes": 48987584,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 6997,
+      "rssBytes": 227983360,
+      "heapBytes": 45543288,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 24.936447
+    },
+    {
+      "elapsedSeconds": 7007,
+      "rssBytes": 230752256,
+      "heapBytes": 53237672,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.970367
+    },
+    {
+      "elapsedSeconds": 7017,
+      "rssBytes": 195018752,
+      "heapBytes": 40883848,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 7027,
+      "rssBytes": 322011136,
+      "heapBytes": 47683992,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 27.639807
+    },
+    {
+      "elapsedSeconds": 7037,
+      "rssBytes": 310738944,
+      "heapBytes": 51201784,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.953983
+    },
+    {
+      "elapsedSeconds": 7047,
+      "rssBytes": 309084160,
+      "heapBytes": 61824568,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 7057,
+      "rssBytes": 230785024,
+      "heapBytes": 53299240,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.216127
+    },
+    {
+      "elapsedSeconds": 7067,
+      "rssBytes": 224690176,
+      "heapBytes": 49778840,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 7077,
+      "rssBytes": 191414272,
+      "heapBytes": 58826728,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.019519
+    },
+    {
+      "elapsedSeconds": 7087,
+      "rssBytes": 315424768,
+      "heapBytes": 43794384,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 30.326783
+    },
+    {
+      "elapsedSeconds": 7097,
+      "rssBytes": 300449792,
+      "heapBytes": 50095648,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.527423
+    },
+    {
+      "elapsedSeconds": 7107,
+      "rssBytes": 299515904,
+      "heapBytes": 56457640,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.872063
+    },
+    {
+      "elapsedSeconds": 7117,
+      "rssBytes": 299925504,
+      "heapBytes": 43033864,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 26.279935
+    },
+    {
+      "elapsedSeconds": 7127,
+      "rssBytes": 211533824,
+      "heapBytes": 49803104,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.576575
+    },
+    {
+      "elapsedSeconds": 7137,
+      "rssBytes": 183468032,
+      "heapBytes": 58716312,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    },
+    {
+      "elapsedSeconds": 7147,
+      "rssBytes": 295059456,
+      "heapBytes": 57485656,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.232511
+    },
+    {
+      "elapsedSeconds": 7157,
+      "rssBytes": 303628288,
+      "heapBytes": 62927472,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.822911
+    },
+    {
+      "elapsedSeconds": 7167,
+      "rssBytes": 300269568,
+      "heapBytes": 68634264,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.921215
+    },
+    {
+      "elapsedSeconds": 7177,
+      "rssBytes": 235175936,
+      "heapBytes": 49066536,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 23.068671
+    },
+    {
+      "elapsedSeconds": 7187,
+      "rssBytes": 224116736,
+      "heapBytes": 60517480,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.986751
+    },
+    {
+      "elapsedSeconds": 7197,
+      "rssBytes": 195428352,
+      "heapBytes": 58679160,
+      "deviceConnections": 100,
+      "browserConnections": 120,
+      "providerSessions": 20,
+      "eventLoopP99Ms": 22.904831
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+# Fast iteration profile. Security2, owner tickets and TLS are still enabled;
+# signed OTA and release rollback are deliberately absent.
+CONFIG_MARVIN_OWNER_ENROLLMENT=y
+CONFIG_MARVIN_BODY_AUDIO=y
+# Local development must exercise the real Pet interaction path.  Keep the
+# quick-flash/unsigned-OTA policy, but include the local AFE and audible wake.
+CONFIG_MARVIN_LOCAL_AFE=y
+# CONFIG_MARVIN_SILENT_TEST is not set
+CONFIG_MARVIN_MICRO_WAKE_WORD=y
+CONFIG_MARVIN_WAKE_AUTOSTART=y
+CONFIG_MARVIN_HEY_MARVIN_WAKE=y
+CONFIG_MARVIN_CONNECTION_EYES_ANIMATION=y
+# CONFIG_MARVIN_CONNECTION_TONE is not set
+CONFIG_MARVIN_LOCAL_DEV_MODE=y
+CONFIG_LWIP_DNS_SUPPORT_MDNS_QUERIES=y
+CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
+CONFIG_ESP_WS_CLIENT_SEPARATE_TX_LOCK=y
+# Security2 and the combined owner/audio callbacks exceed NimBLE's default
+# 4 KB host task stack during the first encrypted GATT exchange.
+CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE=8192

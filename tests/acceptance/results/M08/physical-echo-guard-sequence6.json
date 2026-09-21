@@ -1,0 +1,36 @@
+{
+  "completedAt": "2026-09-14T14:41:15Z",
+  "passed": true,
+  "release": {
+    "sequence": 6,
+    "sourceCommit": "183eb17",
+    "applicationSha256": "8a5fcb0326f29af469cea9cb05428eb0f2dfcbf1a7ac3844e38403a473cba18f",
+    "signedSelectionAndBootHealthSeconds": 35.223,
+    "independentResetBootHealthSeconds": 13.427,
+    "fallbackSequence": 5
+  },
+  "trigger": "At speaker volume 95, playback echo caused four local interruptions and repeatedly cancelled the response within its opening words.",
+  "fix": "While physical playback is active and for its 300 ms acoustic tail, microphone output remains local and is not admitted to the device uplink or interruption VAD.",
+  "trials": [
+    {
+      "prompt": "Hey Marvin, what can you do?",
+      "wakeDetections": 1,
+      "localInterrupts": 0,
+      "playedSamples16k": 245600,
+      "persistedTurnStatus": "completed",
+      "persistedAssistantCharacters": 264
+    },
+    {
+      "prompt": "Hey Marvin, what can you do?",
+      "wakeDetections": 1,
+      "localInterrupts": 0,
+      "playedSamples16k": 247200,
+      "echoSuppressedSamples16k": 252416,
+      "persistedTurnStatus": "completed",
+      "persistedAssistantCharacters": 263
+    }
+  ],
+  "fatalDiagnostics": [],
+  "limitation": "Physical speaker playback is intentionally half-duplex. Spoken barge-in during playback is deferred until measured echo-resistant admission is available; explicit transport interruption remains available.",
+  "scope": "Two generated acoustic repetitions through the computer speaker, board microphones, live provider, physical board speaker and durable isolated backend. Raw audio, transcripts, credentials and network names are not retained here."
+}

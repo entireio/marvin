@@ -1,0 +1,15 @@
+{
+  "scope": "Local backend and device-credential API fixtures; no activated rollout or physical installation",
+  "checks": [
+    "signed bundle validation",
+    "bounded image read",
+    "public key only",
+    "immutable release bytes",
+    "explicit device targeting",
+    "wrong version rejection",
+    "browser-origin rejection",
+    "unlink revokes downloads"
+  ],
+  "passed": true,
+  "physicalOtaPassed": false
+}

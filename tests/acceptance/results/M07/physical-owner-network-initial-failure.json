@@ -1,0 +1,8 @@
+{
+  "passed": false,
+  "operation": "network",
+  "stage": "connecting_wifi",
+  "error": "BLE transport lost before completion confirmation",
+  "recoveryFinding": "After restart, setup could already be durably complete, but resume rejected idle status with NO_PENDING_SETUP. Fixed with robot-saved network and server binding verification; physical recheck pending.",
+  "originalLog": "work/board/owner-live-change.log"
+}

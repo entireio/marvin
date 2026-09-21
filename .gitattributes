@@ -45,6 +45,12 @@ apps/build-docs/**/*.mp4  -filter -diff -merge -text
 apps/build-docs/**/*.mov  -filter -diff -merge -text
 apps/build-docs/**/*.pdf  -filter -diff -merge -text
 
+# Application and test screenshots ship directly from the repository too.
+apps/web/**/*.png          -filter -diff -merge -text
+apps/web/**/*.jpg          -filter -diff -merge -text
+apps/web/**/*.mp4          -filter -diff -merge -text
+tests/acceptance/**/*.png  -filter -diff -merge -text
+
 # ---------------------------------------------------------------------------
 # Line endings
 # ---------------------------------------------------------------------------

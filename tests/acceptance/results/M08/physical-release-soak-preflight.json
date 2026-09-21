@@ -1,0 +1,28 @@
+{
+  "recordedAt": "2026-09-13T21:39:00Z",
+  "scope": "One-minute physical sequence4 release-runtime preflight with wake activation explicitly suppressed",
+  "durationSeconds": 59.94,
+  "audio": {
+    "available": true,
+    "captureActive": false,
+    "playing": false,
+    "minimumInternalFreeBytes": 46339
+  },
+  "afe": {
+    "processedSamplesPerSecondAfterWarmup": 15986.14,
+    "wakeDetections": 0,
+    "feedFaults": 0,
+    "wakeActivationDisabled": true
+  },
+  "uplink": {
+    "pcmSamplesDelta": 0,
+    "attemptsDelta": 0
+  },
+  "fatalDiagnostics": [],
+  "passed": true,
+  "limitations": [
+    "This is a short preflight for the active eight-hour soak, not the eight-hour acceptance result.",
+    "Wake activation was intentionally suppressed to avoid false-positive provider sessions.",
+    "No acoustic stimulus, supply-power instrumentation or enclosure-temperature measurement was used."
+  ]
+}

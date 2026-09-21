@@ -1,35 +1,16 @@
-# What reaches the image build: server/, docs/ and controller/, nothing else.
-#
-# For a Cloud Run deploy the upload is already narrowed by .gcloudignore, so
-# this file earns its keep on a local `docker build .` — without it the build
-# context would include the 3.2 GB of CAD and STLs in mechanical/.
-#
-# Listed as plain exclusions rather than an allowlist ("*" plus re-inclusions)
-# because exclusions behave the same in every Docker version and need no
-# reasoning about which parent directory was excluded first.
-
-.git/
-.github/
-firmware/
-mechanical/
-electronics/
-
-# Deployment tooling and repository documentation are not part of the running
-# site. Anchored at the context root, so docs/README.md — which is served with
-# the rest of the site — is untouched.
-deploy_google_cloud.sh
-deploy_google_cloud.env
-deploy_google_cloud.env.example
-README.md
-CONTRIBUTING.md
-LICENSE
-LICENSE-hardware
-
-# Tests run before deployment, not inside the image.
-server/**/*_test.go
-server/*_test.go
-server/README.md
-controller/README.md
-controller/serve.sh
-
-.DS_Store
+.git
+.env
+.env.*
+node_modules
+work
+data
+dist
+build-*
+firmware
+hardware
+apps/build-docs
+tests/acceptance
+*.docx
+*.bin
+*.pem
+*.key

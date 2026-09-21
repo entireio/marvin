@@ -1,0 +1,30 @@
+{
+  "recordedAt": "2026-09-13T20:29:02Z",
+  "scope": "First rollback-capable signed installation on the physical Waveshare ESP32-S3 audio board",
+  "boardSnapshot": {
+    "bytes": 16777216,
+    "sha256": "c98dddb21a97b0bf158eb511992491a04ace71d84ffaa110fe0f43366b8a62b5",
+    "verifiedBySecondRead": true
+  },
+  "releaseSequence": 1,
+  "priorApplicationSha256": "89a2656f435e4a18e4c3a92d9727dc0d2b648864edb738e4d0581142a19b6fbc",
+  "candidateApplicationSha256": "dfa26b770fb9d064e17e061f77455dc191182d4674407bc0e9ae96af64431c03",
+  "preservedModelPartitionSha256": "897012bb872f5c7a0fef11a01e6944aeaa4de49f355f2c6ecb18fa1d3f395a52",
+  "checks": {
+    "esptoolWriteAndVerifySucceeded": true,
+    "priorSlotMarkedValid": true,
+    "candidateSlotMarkedNew": true,
+    "bootConfirmed": true,
+    "deviceOnline": true,
+    "audioAvailable": true,
+    "afeProcessedSamples16k": 94720,
+    "crashObserved": false,
+    "bootConfirmationElapsedMs": 12863,
+    "efusesChanged": false
+  },
+  "passed": true,
+  "limitations": [
+    "This proves one preserving bootstrap and healthy confirmation, not the ten injected rollback trials.",
+    "Secure boot and flash encryption remain disabled on this development board."
+  ]
+}

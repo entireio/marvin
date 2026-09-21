@@ -1,290 +1,55 @@
-# Marvin
+# Marvin software
 
-**An open source, 3D-printable, tracked robot built around the ESP32.**
+Private personal portal and backend for Marvin, plus original ESP-IDF firmware for an ESP32-S3-WROOM module and the Waveshare ESP32-S3 audio board. The public robot-building documentation remains a separate application. The M0–M11 first implementation phase is closed: it delivered the portal, persistence, provider and repository adapters, secure provisioning, native device transport, body voice, local Hey Marvin detection, deployment packaging, privacy controls and signed firmware updates. Ongoing work is post-phase operational hardening and new capabilities, including experimental BLE voice transport—not unfinished M0–M11 implementation. See [delivery record](docs/delivery-status.md).
 
-Marvin is a small tank-tracked robot with an expressive two-axis head. It is
-designed to be reproducible by anyone with a 3D printer and a soldering iron:
-every part of the robot — firmware, electronics, mechanics, and the software you
-drive it with — lives in this repository under an open licence.
+For the active in-progress slice—local hostname deployment, web remote control,
+motion firmware, experimental Gear VR input and the unfinished BLE voice
+transport—start with the [current development checkpoint](docs/current-development.md).
 
-> **Project status: early prototype.** The drivetrain, head, and Bluetooth
-> control link work today. Sensing, the custom PCB, and the eye displays are in
-> progress. Interfaces will change without notice until the first tagged release.
+## Run locally
 
----
+Use Node **22.16.0** (or compatible >=22.13) and npm **11.6.4**. Dependencies are locked.
 
-## Contents
-
-- [What Marvin does](#what-marvin-does)
-- [Repository map](#repository-map)
-- [Quick start](#quick-start)
-- [Hardware overview](#hardware-overview)
-- [Control protocol](#control-protocol)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [Licence](#licence)
-
----
-
-## What Marvin does
-
-| Subsystem | Status | Notes |
-| --- | --- | --- |
-| **Drivetrain** — two DC motors, tank tracks | ✅ Working | DRV8833 dual H-bridge, PWM speed control |
-| **Head** — 2-axis pan/tilt | ✅ Working | Two SG90-class servos, smoothed motion |
-| **Connectivity** — Bluetooth Low Energy | ✅ Working | Nordic UART Service, browser-controllable |
-| **Demo mode** — autonomous exploration loop | ✅ Working | Scripted state machine, see `firmware/src/demo.cpp` |
-| **Voice** — ask a question, get an answer | ✅ Working | Both boards: microphone, speaker, Wi-Fi, a backend |
-| **Wake word** — "Hey Marvin" | 🚧 In progress | S3 only, eventually. Start a conversation from the controller meanwhile |
-| **Gestures** — the nod that says "I'm listening" | ✅ Working | `firmware/src/gestures.cpp` |
-| **Odometry** — wheel encoders | 🚧 Planned | For closed-loop speed and distance |
-| **Distance sensing** — time-of-flight | 🚧 Planned | Obstacle avoidance |
-| **Social sensing** — infrared | 🚧 Planned | Marvin-to-Marvin detection and interaction |
-| **Expression** — two round displays as eyes | 🚧 Planned | |
-| **Talking over Marvin** | 🚧 Planned | Needs acoustic echo cancellation |
-| **Intents** — "take a note", "turn around" | 🚧 Planned | The backend harness has the seam for it |
-| **Custom PCB** | 🚧 Planned | Replaces the current breakout-board wiring |
-
----
-
-## Repository map
-
-```
-marvin/
-├── firmware/       C++ firmware for the on-board ESP32 (PlatformIO / Arduino)
-├── controller/     Web Bluetooth app for driving the robot from a browser
-├── electronics/    Schematics, PCB layout, BOM, power and battery design
-├── mechanical/     CAD source and printable STLs for the chassis
-├── docs/           Source for the project website (GitHub Pages)
-├── server/         The backend: the robot's endpoint, the controller, the website
-└── README.md       You are here
+```sh
+npm ci
+cp .env.example .env
+npm run dev
 ```
 
-Each folder has its own `README.md` with build instructions and conventions.
-Start there before changing anything inside it.
+Open **http://127.0.0.1:5173** and select **Enter local preview**. No credentials are needed in the explicitly labeled loopback-only development mode. Conversations persist in `data/marvin.sqlite`. Settings → Connections provides sample repository data. Physical Pet setup requires the secure local deployment described in [local development](docs/local-development.md); a preview server never opens Bluetooth or simulates a hardware claim.
 
-| Folder | Read this first | Toolchain |
-| --- | --- | --- |
-| [`firmware/`](firmware/README.md) | Pin map, build and flash, adding a command | PlatformIO |
-| [`controller/`](controller/README.md) | Setting a robot up, browser support | Any static file server |
-| [`electronics/`](electronics/README.md) | Board plan, power budget, BOM format | KiCad (planned) |
-| [`mechanical/`](mechanical/README.md) | Part list, print settings, large-file policy | Rhino 3D, any slicer |
-| [`docs/`](docs/README.md) | Website plan and deployment | Any static file server |
-| [`server/`](server/README.md) | Voice architecture, providers, config | Go, Cloud Run or ECS |
+To use an actual text model, set `MODEL_PROVIDER=openai`, `OPENAI_API_KEY`, and an explicit supported `OPENAI_MODEL` in `.env`, then restart. The server uses the Responses API with storage disabled and rebuilds context from its own database. No keys are sent to the browser. `npm run smoke:provider` performs one billable adapter smoke request and writes sanitized timing evidence; `MARVIN_SMOKE_SAMPLES=100` opts into 100 requests. Adapter timing is not browser latency acceptance.
 
-> **Note on naming:** `controller/` is the app you *set up and drive the robot
-> with*. `docs/` is the *project website*. `server/` serves both, and is also
-> what the robot itself connects to when it talks.
+For local passphrase authentication, run `npm run password:hash`, set `AUTH_MODE=local`, and put the generated value in `LOCAL_PASSWORD_HASH`. This is a single-owner local deployment. Hosted multi-user authentication uses `AUTH_MODE=oidc` with an **approved** issuer/client registration. Generic OIDC authorization-code flow includes PKCE, state, nonce, and issuer/subject identity. Entire's CLI tokens are not used as web login assertions. [Entire discovery](docs/entire-discovery.md) records the unresolved external contract.
 
----
+For local Entire repository access, follow [M4 setup and acceptance status](docs/m4-entire.md). This adapter uses the installed CLI and is not the hosted multi-user integration.
 
-## Quick start
+For realtime speech, see [M5 voice setup and acceptance status](docs/m5-voice.md). Audio is backend-mediated. Browser voice transcripts appear in the open chat. Use the Pet link control beside a conversation to choose where Desktop Pet speech and responses appear; if no conversation is linked on first use, Marvin creates one. Link changes take effect when the Pet starts listening again. Funded OpenAI text and voice smokes have passed. The standalone Waveshare board runs the16kHz microphone/audio path and sensitivity-first Hey Marvin alpha detector; see [physical audio evidence](docs/m8-audio-runtime.md).
 
-### 1. Flash the firmware
+## Verify
 
-Requires [PlatformIO](https://platformio.org/install/cli).
-
-```bash
-cd firmware && ./flash.sh
+```sh
+npm run check
+npx playwright install chromium
+npm run test:e2e
 ```
 
-Then open a serial monitor at **115200 baud** (`pio device monitor`) — you should
-get a `Marvin>` prompt.
+Browser tests use a separate `work/e2e.sqlite` when starting their own server. Stop the development server before running them to avoid reusing your preview database. They exercise real UI behavior with explicit model/robot fixtures. On restricted macOS hosts where Chromium cannot launch, use the matching official Playwright Linux image; test evidence here was collected that way.
 
-### 2. Drive it from a browser
+For PostgreSQL, supply a **disposable** test database:
 
-Requires Chrome or Edge (Web Bluetooth is not available in Firefox or Safari).
-
-```bash
-cd controller && ./serve.sh
+```sh
+docker run --rm --name marvin-test-db -e POSTGRES_USER=marvin_test -e POSTGRES_PASSWORD=test-only -e POSTGRES_DB=marvin_test -p 127.0.0.1:15439:5432 postgres:17.6
+# In another terminal:
+TEST_DATABASE_URL=postgresql://marvin_test:test-only@127.0.0.1:15439/marvin_test npm run test:postgres
 ```
 
-Open <http://localhost:3000>, click **Scan**, and pick `Marvin` from the device
-picker. Web Bluetooth requires either `localhost` or HTTPS — this is why a file
-opened directly with `file://` will not work.
+SQLite and PostgreSQL run the same persistence contract. `DATABASE_URL` selects PostgreSQL for the application. Transactions and constraints enforce one generation per conversation, one reserved/linked robot per owner, and one owner per device. Owner-bound physical enrollment and Wi-Fi provisioning are implemented and have passed same-AP board trials; broader browser/platform/location acceptance remains open.
 
-### 3. Give it a voice
+## Build and deployment boundaries
 
-Needs the S3 build, a microphone and a speaker
-([`electronics/README.md`](electronics/README.md)), and a backend for the robot
-to talk to.
+`npm run build` builds both server and UI. `npm start` serves them from port 4310; set `APP_ORIGIN=http://127.0.0.1:4310` for a local built preview. Production configuration rejects development sign-in, fixture models, and non-HTTPS origins. For physical local development, use the stable-hostname, persistent-CA and fast-flash workflow in [local development](docs/local-development.md), rather than putting a DHCP address in firmware. Local HTTPS/PostgreSQL packaging, backups, recovery drills, retention/export/delete, rate limits and bounded diagnostics are implemented. Use a TLS reverse proxy with WebSocket support, approved production OIDC, persistent database storage and managed secrets. Run one API process for live stream delivery; a distributed socket broker is outside the current topology.
 
-**On your own machine, with Marvin on the same Wi-Fi** — no cloud account, no
-GitHub OAuth app, no certificate:
+Sources: `apps/web` React/Vite portal; `apps/server` Fastify API/auth; `packages/contracts` validation; `packages/persistence` migrations/store; `packages/runtime` orchestration/provider/policy; `packages/provisioning` UI transport boundary; `firmware` ESP-IDF implementation. [Firmware build and bench procedure](firmware/README.md).
 
-```bash
-export OPENAI_API_KEY=sk-...     # or GEMINI_API_KEY
-./run_local.sh
-```
-
-Then open <http://localhost:8080/app/> and follow **Setup**. It prints the
-address to give the robot — your machine's LAN address, which the setup form
-fills in for you.
-
-Open it at **`localhost`, not your LAN address**. Web Bluetooth only runs in a
-secure context, which means HTTPS or localhost, and Scan fails anywhere else.
-That is a browser rule, not something this project can work around.
-
-**In the cloud**, when you want it to work from outside the house:
-
-```bash
-./deploy_google_cloud.sh --set-openai-key    # or ./deploy_aws.sh
-```
-
-Either way, **Setup** writes the Wi-Fi credentials and a device token to the
-robot over an encrypted Bluetooth link. Power-cycle it, and ask it something.
-
-### 4. Print the chassis
-
-STLs are in [`mechanical/stl/`](mechanical/stl). See
-[`mechanical/README.md`](mechanical/README.md) for the part list, orientation,
-and print settings.
-
----
-
-## Hardware overview
-
-### Two builds
-
-| | ESP32-C3 SuperMini | ESP32-S3 SuperMini |
-| --- | --- | --- |
-| PlatformIO environment | `esp32c3-supermini` | `esp32s3-supermini` |
-| Drive, head, BLE, demo | ✅ | ✅ |
-| Voice | ✅ | ✅ |
-| Wake word | — push-to-talk | planned |
-| Talking over a reply | — | planned |
-| Module | 4 MB flash, no PSRAM | ESP32-S3FH4R2: 4 MB flash, 2 MB PSRAM |
-
-**Both boards hold a conversation.** What the C3 cannot do is listen for its own
-name — no PSRAM and no vector unit means nowhere to run a keyword model — so on
-that board you press **Start listening** in the web controller instead. The S3
-is where "Hey Marvin" and talking over a reply will land; both need the PSRAM.
-Nothing else differs.
-
-| | |
-| --- | --- |
-| **Framework** | Arduino, on ESP-IDF 5.x via the pioarduino platform |
-| **Motor driver** | DRV8833 dual H-bridge |
-| **Servos** | 2 × SG90-class (pan + tilt) |
-| **Radio** | On-chip BLE via NimBLE; Wi-Fi on the S3 |
-| **Microphone** | INMP441, I²S |
-| **Amplifier** | MAX98357A, I²S — sharing one peripheral with the microphone |
-
-### Pin assignment
-
-The single source of truth is [`firmware/src/boards/`](firmware/src/boards) —
-change pins there, never inline in the drivers. Full wiring, including the parts
-that are not pin numbers, is in
-[`electronics/README.md`](electronics/README.md).
-
-| Function | C3 | S3 |
-| --- | --- | --- |
-| Servo — tilt | 1 | 1 |
-| Servo — pan/rotation | 4 | 2 |
-| Motor A — IN1 / IN2 | 5 / 6 | 4 / 5 |
-| Motor B — IN3 / IN4 | 20 / 10 | 6 / 7 |
-| I²S BCLK / WS | 3 / 0 | 15 / 16 |
-| I²S data in / out | 21 / 7 | 17 / 18 |
-| Amplifier enable | — (see below) | 21 |
-
-The C3 has no pin left for the amplifier's enable input: the only candidate is
-GPIO 2, which must read HIGH at reset or the chip will not boot. Leave it
-unconnected there and accept a little idle hiss — a robot that will not start is
-the worse problem. [`electronics/README.md`](electronics/README.md) has the
-wiring if you want it anyway.
-
-Motor B's inputs are wired inverted on both boards, so a positive speed on both
-channels drives forward without per-side sign correction in the firmware.
-
-Motor pins are driven LOW at the very start of `setup()`, before anything else,
-so the tracks do not lurch while the GPIOs are still floating at boot. Keep it
-that way when you add peripherals.
-
----
-
-## Control protocol
-
-Marvin speaks one simple line-based text protocol over **both** the USB serial
-port and BLE. The BLE transport is the Nordic UART Service (NUS), the de-facto
-standard for serial-over-Bluetooth:
-
-| UUID | Role |
-| --- | --- |
-| `6E400001-B5A3-F393-E0A9-E50E24DCCA9E` | Service |
-| `6E400002-…` | RX — client writes commands here |
-| `6E400003-…` | TX — robot notifies responses here |
-| `6E400004-…` | Provisioning — scan, Wi-Fi and the backend token, encrypted link only |
-
-Commands are case-insensitive, one per line:
-
-| Command | Range | Meaning |
-| --- | --- | --- |
-| `R<angle>` | 0–180 | Set head rotation (pan), e.g. `R90` |
-| `T<angle>` | 30–85 | Set head tilt, e.g. `T45` |
-| `M<speed>` | −255–255 | Both motors, e.g. `M128` |
-| `A<speed>` | −255–255 | Motor A only |
-| `B<speed>` | −255–255 | Motor B only |
-| `G<name>` | — | Play a gesture: `wake_ack`, `nod`, `shake`, `centre` |
-| `S` | — | Stop all motors |
-| `D` | — | Toggle demo mode |
-| `W` | — | Toggle listening. `W1` starts, `W0` stops and asks for the reply |
-| `L` | — | Microphone-to-speaker loopback (voice builds) |
-| `?` | — | Network, backend and voice status (voice builds) |
-
-Any movement command automatically cancels demo mode. Angles and speeds are
-clamped to the limits in `config.h` rather than rejected.
-
-Responses are ANSI-coloured on serial and stripped to plain text for BLE — see
-`respond()` in [`firmware/src/main.cpp`](firmware/src/main.cpp). If you add a
-command, add it in `processCommand()` and it works over both transports for
-free; then update the help text in `main.cpp`, the cheat sheet in
-`controller/index.html`, and the table above.
-
----
-
-## Roadmap
-
-1. **"Hey Marvin" on the robot** — the conversation path works today on both
-   boards, started from the controller. What is missing is a wake word model
-   small enough for the S3 and free to train.
-2. **Talking over Marvin** — acoustic echo cancellation, so the microphone can
-   stay open while the speaker is playing.
-3. **Intents** — "take a note", "turn around". The backend already has the seam:
-   a handler declares a tool, the model calls it, the handler acts.
-4. **Custom PCB** — collapse the breakout-board wiring into one board with
-   proper power distribution and a battery charger.
-5. **Closed-loop drive** — wheel encoders for straight lines and known distances.
-6. **Sensing** — time-of-flight for obstacles, IR for spotting other Marvins.
-7. **Eyes** — two round displays and an expression system.
-
----
-
-## Contributing
-
-Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the
-development setup, coding conventions, and the large-binary-file policy (this
-repository uses Git LFS for CAD).
-
-The short version:
-
-```bash
-git clone https://github.com/spedemon/marvin.git
-cd marvin
-git lfs install && git lfs pull
-```
-
----
-
-## Licence
-
-Marvin is dual-licensed, which is normal for open hardware:
-
-- **Software** — `firmware/`, `controller/`, `server/`, `docs/` — under the
-  [MIT Licence](LICENSE).
-- **Hardware** — `electronics/`, `mechanical/` — under the
-  [CERN Open Hardware Licence v2, Strongly Reciprocal](LICENSE-hardware)
-  (CERN-OHL-S-2.0). If you make and distribute a modified Marvin, share your
-  design changes too.
-
-See [LICENSE](LICENSE) and [LICENSE-hardware](LICENSE-hardware) for the full
-terms.
+CI defines software, PostgreSQL, browser and firmware builds. It has not been run on a remote CI service in this task. Never commit `.env`, databases, factory secrets, SDK/toolchain downloads, or raw credential-bearing diagnostics.

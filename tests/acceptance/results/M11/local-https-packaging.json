@@ -1,0 +1,10 @@
+{
+  "at": "2026-09-13T00:36:13.513Z",
+  "tlsVerified": true,
+  "httpsHealth": true,
+  "passwordLogin": true,
+  "secureHttpOnlyCookie": true,
+  "websocketUpgrade": true,
+  "logoutRevoked": true,
+  "providerRequests": 0
+}

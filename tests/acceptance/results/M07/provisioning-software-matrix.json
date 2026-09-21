@@ -1,0 +1,37 @@
+{
+  "recordedAt": "2026-09-14T04:25:08Z",
+  "scope": "Provisioning software and firmware-build matrix while the physical board remained reserved by its uninterrupted release soak",
+  "implemented": [
+    "robot-originated network list with forged host-only selections rejected",
+    "equivalent SSID/security AP records merged while retaining the strongest robot record",
+    "incompatible security retained as non-selectable and results sorted by signal",
+    "scan selections older than 30 seconds rejected before ticket or password transfer",
+    "explicit hidden WPA2 network with 1-32-byte SSID validation",
+    "password delivered only after signed owner ticket verification and only over Security2",
+    "Bluetooth loss, timeout, binding uncertainty, clock, TLS, transport and backend failures classified as resumable",
+    "confirmed network rollback releases an unused enrollment reservation for immediate retry",
+    "claim and network-change owner/device/epoch constraints, replay rejection and unlink races",
+    "durable staged/submitted/completed journal recovery across modeled restarts and ambiguous writes"
+  ],
+  "verification": {
+    "focusedTypeScriptTests": 30,
+    "fullTypeScriptTests": 160,
+    "typecheck": "passed",
+    "productionBuild": "passed",
+    "browserTests": 14,
+    "firmwareTicketVectors": 27,
+    "firmwareIdentitySuite": "passed",
+    "firmwareJournalAndEnrollmentSuites": "passed",
+    "espIdfVersion": "5.4.2",
+    "signedReleaseProfileBuild": "passed",
+    "applicationBytes": 1918192,
+    "applicationSlotFreeBytes": 47888
+  },
+  "passed": true,
+  "limitations": [
+    "This is software, host-fixture and compile evidence; it is not the original full physical M7 exit gate.",
+    "Direct Chrome-to-board Web Bluetooth remains unverified.",
+    "A second physical access point, arbitrary physical power cuts, full reset and representative-user trials remain unavailable or deferred.",
+    "The revised firmware was compiled but not flashed while the eight-hour physical soak owned the board."
+  ]
+}

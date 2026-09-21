@@ -1,0 +1,79 @@
+{
+  "at": "2026-09-13T01:17:56.385779+00:00",
+  "trials": [
+    {
+      "trial": 1,
+      "passed": true,
+      "totalElapsedMs": 22897,
+      "applyElapsedMs": 4890,
+      "networkConnected": true
+    },
+    {
+      "trial": 2,
+      "passed": true,
+      "totalElapsedMs": 19158,
+      "applyElapsedMs": 4895,
+      "networkConnected": true
+    },
+    {
+      "trial": 3,
+      "passed": true,
+      "totalElapsedMs": 18917,
+      "applyElapsedMs": 3724,
+      "networkConnected": true
+    },
+    {
+      "trial": 4,
+      "passed": true,
+      "totalElapsedMs": 20003,
+      "applyElapsedMs": 4862,
+      "networkConnected": true
+    },
+    {
+      "trial": 5,
+      "passed": true,
+      "totalElapsedMs": 19075,
+      "applyElapsedMs": 3690,
+      "networkConnected": true
+    },
+    {
+      "trial": 6,
+      "passed": true,
+      "totalElapsedMs": 17202,
+      "applyElapsedMs": 3722,
+      "networkConnected": true
+    },
+    {
+      "trial": 7,
+      "passed": true,
+      "totalElapsedMs": 18038,
+      "applyElapsedMs": 3720,
+      "networkConnected": true
+    },
+    {
+      "trial": 8,
+      "passed": true,
+      "totalElapsedMs": 19434,
+      "applyElapsedMs": 4862,
+      "networkConnected": true
+    },
+    {
+      "trial": 9,
+      "passed": true,
+      "totalElapsedMs": 18230,
+      "applyElapsedMs": 4831,
+      "networkConnected": true
+    },
+    {
+      "trial": 10,
+      "passed": true,
+      "totalElapsedMs": 20634,
+      "applyElapsedMs": 4832,
+      "networkConnected": true
+    }
+  ],
+  "complete": true,
+  "passed": true,
+  "firmwareSha256": "68a29dced68fbe9e5464275e62b06b7406d8a0c5648392689bb0695085a61228",
+  "scope": "Real Security2 identity proof, robot radio scan, Wi-Fi apply, certificate-validated LAN HTTPS probe and persistence across resets. Same test AP; no owner enrollment or different-location network test."
+}

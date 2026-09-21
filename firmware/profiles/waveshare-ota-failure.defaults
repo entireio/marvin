@@ -1,0 +1,4 @@
+# Guarded hardware-in-loop rollback fixture. This image must never be released.
+CONFIG_MARVIN_OTA_TEST_REJECT_BOOT=y
+CONFIG_MARVIN_SILENT_TEST=y
+# CONFIG_MARVIN_WAKE_AUTOSTART is not set

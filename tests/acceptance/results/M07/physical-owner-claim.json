@@ -1,0 +1,12 @@
+{
+  "at": "2026-09-13T06:55:03.817Z",
+  "passed": true,
+  "operation": "claim",
+  "ownerPreserved": null,
+  "elapsedMs": 22393,
+  "scope": "Physical Security2 BLE, robot scan, signed account ticket, on-device verification, Wi-Fi and TLS device redemption on the isolated LAN test backend. No speech or native device socket claim.",
+  "firmware": {
+    "bytes": 1234576,
+    "sha256": "94fcf8993ea8784a034e992ade6919f55bf51156c02ac92870bf887193fcd18e"
+  }
+}

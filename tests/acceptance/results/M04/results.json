@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-12",
+  "milestone": "M4",
+  "acceptance": "pending",
+  "implementation": "local CLI adapter",
+  "cliVersion": "0.10.6",
+  "check": {
+    "testsPassed": 59,
+    "typecheck": "passed",
+    "build": "passed"
+  },
+  "live": {
+    "status": "not verified",
+    "observed": "CLI auth status reports Not logged in after user confirmed browser sign-in",
+    "repository": null
+  },
+  "semanticGoldenQuestions": "not run",
+  "graphPluginLive": "not verified",
+  "hostedIntegration": "approved contract required",
+  "sourceSha256": {
+    "apps/server/src/app.ts": "e70af437f2868fe3ef5ac56d77188dac166fd9a73deb19f7df08cee1603e4719",
+    "apps/server/src/config.ts": "001417728406e621ea878e6558b9462bebcf2feb9823b146eb9c2e021d099a86",
+    "apps/web/src/App.tsx": "24605eed0881a240a7328e2d9680003247a046ca368269cdf0d7c4e8efea5b86",
+    "apps/web/src/RepositoryCard.tsx": "a08907f3b0efaf76bd7fe49eea0e590a22083ec1f2b1e8e2c09638cff448e065",
+    "apps/web/src/RepositoryPanel.tsx": "54b496d7657fd4735e7a8cf4f84c712fee746ed30f8ad09c0e6e33d26e42af98",
+    "apps/web/src/style.css": "1b20c012cc5284504ea73cf03f49971d87426091adb67fcde0c1e4e193b2e1b5",
+    "packages/contracts/src/index.ts": "3ee4f48eb8a83b8cf649f36c3089c727321416e694de03ea9733eff4a83e093d",
+    "packages/runtime/src/entire-cli.ts": "2f01b0ff8f6fe713f3f7e2308378baaf8f5eaa98940822c37b96dc222902dc29",
+    "packages/runtime/src/repository-integration.ts": "30c55de4e574819c9fb77100fc3de0c59df7cc0db8d992e40a5131f708740346",
+    "packages/runtime/src/policy.ts": "a57152097352073696bdc8b7c6df1c5b1ace54108bc9de37a8b6ee0984021162",
+    "packages/runtime/src/provider.ts": "370748bc3b54bca85bb2c0339124f12e5bfee8402e7e1b0335d261f19c1533a5",
+    "packages/runtime/src/runtime.ts": "a6910a558e9988160902c9f6114bf4243ee9d12574b36a7a87b6f216f5e48a38",
+    "tests/unit/entire.test.ts": "87fe6ac961f6a0aa3fb38bda93bf00858fece66da8684f36061ba5a6f65eb480",
+    "tests/unit/repository-api.test.ts": "5d7bc2816b11f429bdb7bb6aae6de49fa3c95a032efc1a9824e354095908b980",
+    "tests/e2e/portal.spec.ts": "8ee8dadbc3bbc6229a4a16f4fe418e0ac8d88c258b8cdf1d9646cef2893edbc7"
+  },
+  "browser": {
+    "testsPassed": 8,
+    "seriousOrCriticalAxeViolations": 0,
+    "mode": "recorded service responses; isolated Playwright 1.63 Linux container"
+  }
+}

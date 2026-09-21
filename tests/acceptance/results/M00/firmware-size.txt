@@ -1,0 +1,161 @@
+Executing action: size
+Running make in directory /Users/stefanopedemonte/Projects/Marvin_software/firmware/build
+Executing "make -j 14 all"...
+[  1%] Built target custom_bundle
+[  1%] Built target memory.ld
+[  1%] Built target blank_ota_data
+[  1%] Built target sections.ld.in
+[  1%] Built target partition_table_bin
+[  1%] Built target _project_elf_src
+[  1%] Performing build step for 'bootloader'
+[  2%] Built target __idf_esp_https_ota
+[  2%] Built target __idf_esp_http_server
+[  1%] Built target _project_elf_src
+[  4%] Built target __idf_log
+[  3%] Built target __idf_esp_http_client
+[ 15%] Built target __idf_esp_rom
+[  4%] Built target __idf_tcp_transport
+[ 17%] Built target __idf_esp_common
+[  5%] Built target __idf_esp_adc
+[ 26%] Built target __idf_esp_hw_support
+[  6%] Built target __idf_esp-tls
+[ 28%] Built target __idf_esp_system
+[  6%] Built target __idf_http_parser
+[ 36%] Built target __idf_efuse
+[  7%] Built target __idf_esp_gdbstub
+[ 56%] Built target __idf_bootloader_support
+[  8%] Built target __idf_esp_wifi
+[ 58%] Built target __idf_esp_bootloader_format
+[  9%] Built target __idf_esp_coex
+[ 60%] Built target __idf_spi_flash
+[ 67%] Built target __idf_hal
+[ 69%] Built target __idf_micro-ecc
+[ 17%] Built target __idf_wpa_supplicant
+[ 91%] Built target __idf_soc
+[ 18%] Built target __idf_esp_netif
+[ 94%] Built target __idf_xtensa
+[ 96%] Built target __idf_main
+[ 98%] Built target bootloader.elf
+[100%] Built target gen_project_binary
+[ 26%] Built target __idf_lwip
+[ 26%] Built target __idf_vfs
+Bootloader binary size 0x51c0 bytes. 0x2e40 bytes (36%) free.
+[ 26%] Built target __idf_esp_vfs_console
+[100%] Built target bootloader_check_size
+[ 27%] Built target __idf_esp_phy
+[100%] Built target app
+[ 27%] No install step for 'bootloader'
+[ 28%] Built target __idf_driver
+[ 28%] Completed 'bootloader'
+[ 28%] Built target bootloader
+[ 28%] Built target __idf_esp_driver_usb_serial_jtag
+[ 28%] Built target __idf_esp_driver_ledc
+[ 28%] Built target __idf_esp_driver_i2c
+[ 29%] Built target __idf_esp_driver_sdm
+[ 29%] Built target __idf_esp_driver_tsens
+[ 29%] Built target __idf_esp_driver_rmt
+[ 29%] Built target __idf_esp_driver_sdspi
+[ 29%] Built target __idf_esp_driver_sdmmc
+[ 30%] Built target __idf_sdmmc
+[ 31%] Built target __idf_esp_driver_i2s
+[ 32%] Built target __idf_esp_driver_mcpwm
+[ 33%] Built target __idf_esp_driver_spi
+[ 33%] Built target __idf_esp_driver_pcnt
+[ 34%] Built target __idf_nvs_flash
+[ 34%] Built target __idf_esp_event
+[ 34%] Built target __idf_esp_driver_uart
+[ 34%] Built target __idf_esp_ringbuf
+[ 34%] Built target __idf_esp_driver_gptimer
+[ 35%] Built target __idf_esp_timer
+[ 35%] Built target __idf_cxx
+[ 36%] Built target __idf_pthread
+[ 38%] Built target __idf_newlib
+[ 39%] Built target __idf_freertos
+[ 43%] Built target __idf_esp_hw_support
+[ 44%] Built target __idf_esp_security
+[ 46%] Built target __idf_soc
+[ 47%] Built target __idf_heap
+[ 48%] Built target __idf_log
+[ 53%] Built target __idf_hal
+[ 54%] Built target __idf_esp_rom
+[ 54%] Built target __idf_esp_common
+[ 57%] Built target __idf_esp_system
+[ 59%] Built target __idf_spi_flash
+[ 59%] Built target __idf_esp_mm
+[ 61%] Built target __idf_bootloader_support
+[ 62%] Built target __idf_efuse
+[ 62%] Built target __idf_esp_partition
+[ 62%] Built target __idf_app_update
+[ 62%] Built target __idf_esp_bootloader_format
+[ 62%] Built target __idf_esp_app_format
+[ 64%] Built target mbedtls
+[ 65%] Built target mbedx509
+[ 74%] Built target mbedcrypto
+[ 74%] Built target p256m
+[ 75%] Built target everest
+[ 76%] Built target __idf_mbedtls
+[ 76%] Built target __idf_esp_pm
+[ 77%] Built target __idf_esp_driver_gpio
+[ 77%] Built target __idf_xtensa
+[ 77%] Built target __idf_esp_driver_cam
+[ 77%] Built target __idf_protobuf-c
+[ 77%] Built target __idf_esp_https_server
+[ 78%] Built target __idf_esp_eth
+[ 78%] Built target __idf_app_trace
+[ 78%] Built target __idf_nvs_sec_provider
+[ 78%] Built target __idf_json
+[ 78%] Built target __idf_mqtt
+[ 80%] Built target __idf_unity
+[ 81%] Built target __idf_console
+[ 82%] Built target __idf_wear_levelling
+[ 83%] Built target __idf_espcoredump
+[ 84%] Built target __idf_esp_lcd
+[ 85%] Built target __idf_perfmon
+[ 85%] Built target __idf_rt
+[ 85%] Built target __idf_spiffs
+[ 85%] Built target __idf_touch_element
+[ 86%] Built target __idf_usb
+[ 86%] Built target __idf_cmock
+[ 87%] Built target __idf_fatfs
+[ 96%] Built target __idf_bt
+[ 96%] Built target __idf_esp_hid
+[ 97%] Built target __idf_protocomm
+[100%] Built target __idf_esp_local_ctrl
+[100%] Built target __idf_wifi_provisioning
+[100%] Built target __idf_main
+[100%] Built target __ldgen_output_sections.ld
+[100%] Built target marvin.elf
+[100%] Built target gen_project_binary
+marvin.bin binary size 0x124e40 bytes. Smallest app partition is 0x1e0000 bytes. 0xbb1c0 bytes (39%) free.
+[100%] Built target app_check_size
+[100%] Built target app
+Running make in directory /Users/stefanopedemonte/Projects/Marvin_software/firmware/build
+Executing "make -j 14 size"...
+                           Memory Type Usage Summary
+┏━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃ Memory            ┃              ┃          ┃                ┃               ┃
+┃ Type/Section      ┃ Used [bytes] ┃ Used [%] ┃ Remain [bytes] ┃ Total [bytes] ┃
+┡━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│ Flash Code        │       851726 │          │                │               │
+│    .text          │       851726 │          │                │               │
+│ Flash Data        │       220472 │          │                │               │
+│    .rodata        │       220216 │          │                │               │
+│    .appdesc       │          256 │          │                │               │
+│ DIRAM             │       138723 │    40.59 │         203037 │        341760 │
+│    .text          │        90815 │    26.57 │                │               │
+│    .bss           │        27776 │     8.13 │                │               │
+│    .data          │        20132 │     5.89 │                │               │
+│ IRAM              │        16383 │    99.99 │              1 │         16384 │
+│    .text          │        15356 │    93.73 │                │               │
+│    .vectors       │         1027 │     6.27 │                │               │
+│ RTC FAST          │           52 │     0.63 │           8140 │          8192 │
+│    .force_fast    │           28 │     0.34 │                │               │
+│    .rtc_reserved  │           24 │     0.29 │                │               │
+└───────────────────┴──────────────┴──────────┴────────────────┴───────────────┘
+Total image size: 1199556 bytes (.bin may be padded larger)
+Note: The reported total sizes may be smaller than those in the technical
+reference manual due to reserved memory and application configuration. The total
+flash size available for the application is not included by default, as it
+cannot be reliably determined due to the presence of other data like the
+bootloader, partition table, and application partition size.
+Built target size

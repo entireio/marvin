@@ -1,0 +1,10 @@
+{
+  "unitTestsTotal": 35,
+  "contextAssemblyScenarios": 20,
+  "providerSDK": "openai7.15.0",
+  "providerTransport": "local HTTP SSE fixture",
+  "liveProviderTested": false,
+  "endToEndLatencyMeasured": false,
+  "toolPolicy": "web text/voice physical tools and repository writes rejected",
+  "webSocket": "real local TCP, initiating route only, reconnect reconstruction, logout revocation"
+}

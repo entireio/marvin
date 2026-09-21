@@ -1,0 +1,13 @@
+{
+  "at": "2026-09-13T06:59:50.149Z",
+  "passed": true,
+  "operation": "resume",
+  "ownerPreserved": null,
+  "elapsedMs": 2453,
+  "scope": "Physical post-update/reboot recovery: saved Wi-Fi and linked owner confirmed without a new ticket, password or redemption.",
+  "limitations": [
+    "Same access point used for reprovisioning; different-location/AP isolation not tested.",
+    "BLE bridge with shared TypeScript provisioning client; native browser UI not yet verified."
+  ],
+  "flash": "2026-09-13T06:59:32.561136+00:00"
+}

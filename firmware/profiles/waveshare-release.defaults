@@ -1,0 +1,6 @@
+# Release-candidate profile: normal audible behavior plus signed OTA and rollback.
+CONFIG_MARVIN_SIGNED_OTA=y
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
+# CONFIG_MARVIN_SILENT_TEST is not set
+CONFIG_MARVIN_SPEAKER_VOLUME=95
+CONFIG_MARVIN_WAKE_AUTOSTART=y

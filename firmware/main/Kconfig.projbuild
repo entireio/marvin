@@ -1,0 +1,181 @@
+menu "Marvin"
+config MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC
+    bool "Waveshare Audio Board local diagnostic only"
+    default n
+    help
+        Disables all networking and provisioning. USB commands enable bounded
+        local speaker and microphone tests. Actuator outputs stay disabled.
+config MARVIN_OWNER_ENROLLMENT
+    bool "Require owner-authorized setup with durable enrollment recovery"
+    default n
+    help
+        Requires enroll_iss and enroll_pub in factory NVS. Missing trust or a
+        corrupt journal disables setup. The bench profile keeps this off.
+config MARVIN_BODY_AUDIO
+    select ESP_WS_CLIENT_SEPARATE_TX_LOCK
+    bool "Waveshare runtime audio with explicit local activation"
+    default n
+    depends on MARVIN_OWNER_ENROLLMENT
+    help
+        Enables codec drivers and bounded streaming. Voice starts only from an
+        explicit local command; wake word and AEC require separate validation.
+config MARVIN_SIGNED_OTA
+    bool "Enable explicitly requested signed application updates"
+    default n
+    depends on MARVIN_OWNER_ENROLLMENT && MARVIN_BODY_AUDIO
+    help
+        Requires dedicated factory release trust and a rollback-enabled bootloader.
+        Local update commands never bypass signed manifest and owner authorization.
+config MARVIN_LOCAL_DEV_MODE
+    bool "Local development firmware"
+    default n
+    depends on MARVIN_OWNER_ENROLLMENT && !MARVIN_SIGNED_OTA
+    help
+        Enables the explicitly separate fast-flash development profile. It keeps
+        encrypted BLE, ticket verification and TLS certificate validation, but
+        cannot include signed OTA/rollback release machinery. Never use this
+        profile for cloud or release acceptance.
+config MARVIN_OTA_TEST_REJECT_BOOT
+    bool "TEST ONLY: reject trial-image boot health"
+    default n
+    depends on MARVIN_SIGNED_OTA
+    help
+        Forces a signed trial image to miss its health window so a guarded bench
+        test can verify bootloader rollback. Never enable in a release profile.
+config MARVIN_MICROPHONE_GAIN_DB
+    int "Microphone analog gain in dB"
+    range 0 36
+    default 30
+config MARVIN_WAKE_AUTOSTART
+    bool "Arm automatic voice activation at boot"
+    depends on MARVIN_LOCAL_AFE
+    default n
+    help
+        Enable only after the selected wake model passes acoustic acceptance.
+        Bench trials can explicitly arm activation through the diagnostic console.
+
+config MARVIN_MICRO_WAKE_WORD
+    bool "Evaluate dedicated Hey Marvin microWakeWord"
+    depends on MARVIN_LOCAL_AFE
+    default n
+
+config MARVIN_WAKE_WINDOW
+    int "Hey Marvin sliding probability window"
+    depends on MARVIN_MICRO_WAKE_WORD
+    range 1 8
+    default 3
+
+config MARVIN_WAKE_PROBABILITY_CUTOFF
+    int "Hey Marvin probability cutoff (0-255 quantization)"
+    depends on MARVIN_MICRO_WAKE_WORD
+    range 64 250
+    default 174
+
+config MARVIN_HEY_MARVIN_WAKE
+    bool "Experimental on-device Hey Marvin phrase detector"
+    depends on MARVIN_LOCAL_AFE && (MARVIN_MICRO_WAKE_WORD || SR_MN_EN_MULTINET6_QUANT)
+    default y
+    help
+        Uses the dedicated evaluation model or a competing English phrase graph.
+        Must pass continuous
+        false-activation, CPU and acoustic tests before release acceptance.
+
+config MARVIN_SPEAKER_VOLUME
+    int "Speaker codec volume (0–100)"
+    range 0 100
+    default 60
+    help
+        Independent of the computer volume. Audible bench tests use 95 for the user-provided 8-ohm speaker.
+config MARVIN_VOLUME_UP_GPIO
+    int "Volume-up button GPIO"
+    range 0 48
+    default 17
+config MARVIN_VOLUME_DOWN_GPIO
+    int "Volume-down button GPIO"
+    range 0 48
+    default 18
+config MARVIN_MIC_MUTE_GPIO
+    int "Microphone mute-toggle button GPIO"
+    range 0 48
+    default 21
+    help
+        Placeholder active-low button assignments. Enable buttons only after wiring them.
+config MARVIN_AUDIO_BUTTONS
+    bool "Enable wired volume and microphone buttons"
+    default n
+    help
+        The motor wiring occupies the old placeholder GPIO4/5/6 pins.
+        Leave disabled until three separate button GPIOs are wired.
+config MARVIN_BLE_REMOTE
+    bool "Enable offline Samsung Gear VR controller"
+    default y
+    help
+        Connects the Samsung ET-YO324 Gear VR controller via its custom BLE
+        GATT protocol. It is not a generic HID controller despite some retail
+        descriptions. On a fresh flash it opens a 45-second, non-blocking
+        pairing window; later boots reconnect only to the remembered controller.
+config MARVIN_AFE_LAYOUT_V2
+    bool "Use the 16 MB AFE v2 partition layout"
+    depends on MARVIN_LOCAL_AFE
+    default n
+    help
+        Select only when partitions-afe-v2.csv is installed. This changes the
+        signed OTA layout identifier and cannot be delivered by normal OTA.
+config MARVIN_AFE_LAYOUT_V3
+    bool "Use the 16 MB AFE v3 partition layout"
+    depends on MARVIN_LOCAL_AFE && !MARVIN_AFE_LAYOUT_V2
+    default n
+    help
+        Select only when partitions-afe-v3.csv is installed. This provides two
+        4 MiB OTA slots and retains a 4 MiB wake-model partition. It changes
+        the signed OTA layout identifier and requires a guarded migration.
+config MARVIN_HEAD_YAW_CENTER
+    int "Head rotation servo center angle"
+    range 30 150
+    default 90
+config MARVIN_HEAD_PITCH_CENTER
+    int "Head tilt servo center angle"
+    range 30 150
+    default 90
+config MARVIN_HEAD_YAW_REVERSE
+    bool "Reverse head rotation direction"
+    default y
+config MARVIN_HEAD_PITCH_REVERSE
+    bool "Reverse head tilt direction"
+    default y
+config MARVIN_EYES
+    bool "Enable dual SSD1306 animated eyes"
+    default y
+    help
+        Probes landscape 128x64 SSD1306 displays at 7-bit addresses 0x3C
+        and 0x3D on the shared GPIO11/GPIO10 I2C bus. Missing displays do
+        not prevent Marvin from booting.
+config MARVIN_CONNECTION_EYES_ANIMATION
+    bool "Animate Marvin when connecting"
+    default y
+    depends on MARVIN_EYES
+    help
+        Shows sleeping traces during boot, wakes after acquiring a network
+        address, and performs a randomized head, body, and eye choreography
+        after the authenticated server connection. Returns the eyes to sleep
+        after Wi-Fi disconnects.
+config MARVIN_CONNECTION_TONE
+    bool "Play the ready tone after the authenticated device connection"
+    default n
+    depends on MARVIN_BODY_AUDIO
+    help
+        Keeps the existing two-note ready cue available, but disabled by
+        default now that the eyes provide the connection feedback.
+config MARVIN_SILENT_TEST
+    bool "Keep the amplifier disabled for unattended tests"
+    default n
+    help
+        Forces the physical speaker amplifier off even when audio playback is
+        requested. Digital playback tests do not prove acoustic output.
+config MARVIN_PROBE_URL
+    string "Fixed HTTPS backend health URL for bench network verification"
+    default ""
+    help
+        Set to your reachable Marvin /api/health HTTPS URL. Empty disables
+        candidate application. It must not be localhost. Enrollment is M7.
+endmenu

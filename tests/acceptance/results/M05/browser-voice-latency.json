@@ -1,0 +1,1012 @@
+{
+  "at": "2026-09-13T02:16:51.987Z",
+  "model": "gpt-realtime-2.1",
+  "target": 100,
+  "results": [
+    {
+      "sample": 1,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 20,
+      "inputEnd": 3240.108333309491,
+      "firstPlayback": 5028.899999976158,
+      "inputEndToScheduledPlaybackMs": 1788.791666666667
+    },
+    {
+      "sample": 2,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 23,
+      "inputEnd": 3009.508333345254,
+      "firstPlayback": 4486.100000023842,
+      "inputEndToScheduledPlaybackMs": 1476.591666678588
+    },
+    {
+      "sample": 3,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3005.908333321412,
+      "firstPlayback": 4929.800000011921,
+      "inputEndToScheduledPlaybackMs": 1923.8916666905088
+    },
+    {
+      "sample": 4,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3002.908333321412,
+      "firstPlayback": 4637.400000035763,
+      "inputEndToScheduledPlaybackMs": 1634.4916667143507
+    },
+    {
+      "sample": 5,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3008.108333369096,
+      "firstPlayback": 4881.100000023842,
+      "inputEndToScheduledPlaybackMs": 1872.991666654746
+    },
+    {
+      "sample": 6,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 16,
+      "inputEnd": 3005.208333333333,
+      "firstPlayback": 4921.300000011921,
+      "inputEndToScheduledPlaybackMs": 1916.091666678588
+    },
+    {
+      "sample": 7,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3000.8083332975702,
+      "firstPlayback": 4761.599999964237,
+      "inputEndToScheduledPlaybackMs": 1760.791666666667
+    },
+    {
+      "sample": 8,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3006.508333345254,
+      "firstPlayback": 5022.5,
+      "inputEndToScheduledPlaybackMs": 2015.991666654746
+    },
+    {
+      "sample": 9,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 12,
+      "inputEnd": 3000.608333309491,
+      "firstPlayback": 4776.300000011921,
+      "inputEndToScheduledPlaybackMs": 1775.6916667024298
+    },
+    {
+      "sample": 10,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 2989.208333333333,
+      "firstPlayback": 4516.300000011921,
+      "inputEndToScheduledPlaybackMs": 1527.091666678588
+    },
+    {
+      "sample": 11,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3003.5083332856493,
+      "firstPlayback": 4883,
+      "inputEndToScheduledPlaybackMs": 1879.4916667143507
+    },
+    {
+      "sample": 12,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3008.608333309491,
+      "firstPlayback": 4939.300000011921,
+      "inputEndToScheduledPlaybackMs": 1930.6916667024298
+    },
+    {
+      "sample": 13,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3003.9083333810167,
+      "firstPlayback": 4654.400000035763,
+      "inputEndToScheduledPlaybackMs": 1650.491666654746
+    },
+    {
+      "sample": 14,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3004.208333333333,
+      "firstPlayback": 4621.800000011921,
+      "inputEndToScheduledPlaybackMs": 1617.591666678588
+    },
+    {
+      "sample": 15,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3004.408333321412,
+      "firstPlayback": 4826.599999964237,
+      "inputEndToScheduledPlaybackMs": 1822.191666642825
+    },
+    {
+      "sample": 16,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3001.808333357175,
+      "firstPlayback": 4623.199999988079,
+      "inputEndToScheduledPlaybackMs": 1621.3916666309042
+    },
+    {
+      "sample": 17,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 18,
+      "inputEnd": 3003.608333369096,
+      "firstPlayback": 4708.699999988079,
+      "inputEndToScheduledPlaybackMs": 1705.0916666189833
+    },
+    {
+      "sample": 18,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3005.408333321412,
+      "firstPlayback": 4808.699999988079,
+      "inputEndToScheduledPlaybackMs": 1803.291666666667
+    },
+    {
+      "sample": 19,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 14,
+      "inputEnd": 3008.608333309491,
+      "firstPlayback": 4518.199999988079,
+      "inputEndToScheduledPlaybackMs": 1509.591666678588
+    },
+    {
+      "sample": 20,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3009.0083332856493,
+      "firstPlayback": 4431.099999964237,
+      "inputEndToScheduledPlaybackMs": 1422.091666678588
+    },
+    {
+      "sample": 21,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 14,
+      "inputEnd": 3010.908333321412,
+      "firstPlayback": 4763.399999976158,
+      "inputEndToScheduledPlaybackMs": 1752.491666654746
+    },
+    {
+      "sample": 22,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 22,
+      "inputEnd": 3011.5083332856493,
+      "firstPlayback": 4882.199999988079,
+      "inputEndToScheduledPlaybackMs": 1870.6916667024298
+    },
+    {
+      "sample": 23,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3001.3083332975702,
+      "firstPlayback": 4917.399999976158,
+      "inputEndToScheduledPlaybackMs": 1916.091666678588
+    },
+    {
+      "sample": 24,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 2995.108333309491,
+      "firstPlayback": 5039.399999976158,
+      "inputEndToScheduledPlaybackMs": 2044.291666666667
+    },
+    {
+      "sample": 25,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 20,
+      "inputEnd": 3006.508333345254,
+      "firstPlayback": 4550.399999976158,
+      "inputEndToScheduledPlaybackMs": 1543.8916666309042
+    },
+    {
+      "sample": 26,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 23,
+      "inputEnd": 3004.508333345254,
+      "firstPlayback": 4690.600000023842,
+      "inputEndToScheduledPlaybackMs": 1686.091666678588
+    },
+    {
+      "sample": 27,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 27,
+      "inputEnd": 3017.408333321412,
+      "firstPlayback": 4674.5,
+      "inputEndToScheduledPlaybackMs": 1657.091666678588
+    },
+    {
+      "sample": 28,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 18,
+      "inputEnd": 3001.008333345254,
+      "firstPlayback": 4750.5,
+      "inputEndToScheduledPlaybackMs": 1749.491666654746
+    },
+    {
+      "sample": 29,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 2999.008333345254,
+      "firstPlayback": 4736.899999976158,
+      "inputEndToScheduledPlaybackMs": 1737.8916666309042
+    },
+    {
+      "sample": 30,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3006.908333321412,
+      "firstPlayback": 4487.800000011921,
+      "inputEndToScheduledPlaybackMs": 1480.8916666905088
+    },
+    {
+      "sample": 31,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 14,
+      "inputEnd": 3005.608333309491,
+      "firstPlayback": 4817.600000023842,
+      "inputEndToScheduledPlaybackMs": 1811.9916667143507
+    },
+    {
+      "sample": 32,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 16,
+      "inputEnd": 3016.808333357175,
+      "firstPlayback": 4906,
+      "inputEndToScheduledPlaybackMs": 1889.191666642825
+    },
+    {
+      "sample": 33,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 24,
+      "inputEnd": 3010.208333333333,
+      "firstPlayback": 4505.299999952316,
+      "inputEndToScheduledPlaybackMs": 1495.0916666189833
+    },
+    {
+      "sample": 34,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 27,
+      "inputEnd": 3014.108333309491,
+      "firstPlayback": 4869.299999952316,
+      "inputEndToScheduledPlaybackMs": 1855.191666642825
+    },
+    {
+      "sample": 35,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3016.208333333333,
+      "firstPlayback": 5210.600000023842,
+      "inputEndToScheduledPlaybackMs": 2194.391666690509
+    },
+    {
+      "sample": 36,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3020.708333333333,
+      "firstPlayback": 4904,
+      "inputEndToScheduledPlaybackMs": 1883.291666666667
+    },
+    {
+      "sample": 37,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 2999.408333321412,
+      "firstPlayback": 4777.199999988079,
+      "inputEndToScheduledPlaybackMs": 1777.791666666667
+    },
+    {
+      "sample": 38,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3010.208333333333,
+      "firstPlayback": 4556.199999988079,
+      "inputEndToScheduledPlaybackMs": 1545.991666654746
+    },
+    {
+      "sample": 39,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3008.008333345254,
+      "firstPlayback": 4583.800000011921,
+      "inputEndToScheduledPlaybackMs": 1575.791666666667
+    },
+    {
+      "sample": 40,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 14,
+      "inputEnd": 3012.608333369096,
+      "firstPlayback": 4846.900000035763,
+      "inputEndToScheduledPlaybackMs": 1834.291666666667
+    },
+    {
+      "sample": 41,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 20,
+      "inputEnd": 3008.708333333333,
+      "firstPlayback": 4703.600000023842,
+      "inputEndToScheduledPlaybackMs": 1694.8916666905088
+    },
+    {
+      "sample": 42,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 14,
+      "inputEnd": 3003.108333309491,
+      "firstPlayback": 4785.899999976158,
+      "inputEndToScheduledPlaybackMs": 1782.791666666667
+    },
+    {
+      "sample": 43,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 14,
+      "inputEnd": 3006.308333357175,
+      "firstPlayback": 4671.400000035763,
+      "inputEndToScheduledPlaybackMs": 1665.091666678588
+    },
+    {
+      "sample": 44,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 16,
+      "inputEnd": 3026.908333321412,
+      "firstPlayback": 4877.899999976158,
+      "inputEndToScheduledPlaybackMs": 1850.991666654746
+    },
+    {
+      "sample": 45,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3003.708333333333,
+      "firstPlayback": 4894.100000023842,
+      "inputEndToScheduledPlaybackMs": 1890.3916666905088
+    },
+    {
+      "sample": 46,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3020.3083332975702,
+      "firstPlayback": 5217.199999988079,
+      "inputEndToScheduledPlaybackMs": 2196.891666690509
+    },
+    {
+      "sample": 47,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 20,
+      "inputEnd": 3000.508333345254,
+      "firstPlayback": 4698.699999988079,
+      "inputEndToScheduledPlaybackMs": 1698.191666642825
+    },
+    {
+      "sample": 48,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3005.608333369096,
+      "firstPlayback": 4635.600000023842,
+      "inputEndToScheduledPlaybackMs": 1629.991666654746
+    },
+    {
+      "sample": 49,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3008.308333357175,
+      "firstPlayback": 4562.600000023842,
+      "inputEndToScheduledPlaybackMs": 1554.291666666667
+    },
+    {
+      "sample": 50,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3012.108333369096,
+      "firstPlayback": 4641.900000035763,
+      "inputEndToScheduledPlaybackMs": 1629.791666666667
+    },
+    {
+      "sample": 51,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 16,
+      "inputEnd": 3006.408333321412,
+      "firstPlayback": 4538,
+      "inputEndToScheduledPlaybackMs": 1531.591666678588
+    },
+    {
+      "sample": 52,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3003.208333333333,
+      "firstPlayback": 4784.199999988079,
+      "inputEndToScheduledPlaybackMs": 1780.991666654746
+    },
+    {
+      "sample": 53,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 20,
+      "inputEnd": 3006.308333357175,
+      "firstPlayback": 4818.899999976158,
+      "inputEndToScheduledPlaybackMs": 1812.5916666189833
+    },
+    {
+      "sample": 54,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3023.9083333810167,
+      "firstPlayback": 4788.200000047684,
+      "inputEndToScheduledPlaybackMs": 1764.291666666667
+    },
+    {
+      "sample": 55,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3005.408333321412,
+      "firstPlayback": 4793.399999976158,
+      "inputEndToScheduledPlaybackMs": 1787.991666654746
+    },
+    {
+      "sample": 56,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3023.708333333333,
+      "firstPlayback": 4648.300000011921,
+      "inputEndToScheduledPlaybackMs": 1624.591666678588
+    },
+    {
+      "sample": 57,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3019.008333345254,
+      "firstPlayback": 4560.699999988079,
+      "inputEndToScheduledPlaybackMs": 1541.691666642825
+    },
+    {
+      "sample": 58,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3066.3083332975702,
+      "firstPlayback": 4759.199999988079,
+      "inputEndToScheduledPlaybackMs": 1692.8916666905088
+    },
+    {
+      "sample": 59,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3001.908333321412,
+      "firstPlayback": 4847.199999988079,
+      "inputEndToScheduledPlaybackMs": 1845.291666666667
+    },
+    {
+      "sample": 60,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3006.608333309491,
+      "firstPlayback": 4635.899999976158,
+      "inputEndToScheduledPlaybackMs": 1629.291666666667
+    },
+    {
+      "sample": 61,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3008.108333369096,
+      "firstPlayback": 4923,
+      "inputEndToScheduledPlaybackMs": 1914.8916666309042
+    },
+    {
+      "sample": 62,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3010.708333333333,
+      "firstPlayback": 4612.199999988079,
+      "inputEndToScheduledPlaybackMs": 1601.491666654746
+    },
+    {
+      "sample": 63,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 18,
+      "inputEnd": 3016.008333345254,
+      "firstPlayback": 4775.199999988079,
+      "inputEndToScheduledPlaybackMs": 1759.191666642825
+    },
+    {
+      "sample": 64,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3004.008333345254,
+      "firstPlayback": 4624.300000011921,
+      "inputEndToScheduledPlaybackMs": 1620.291666666667
+    },
+    {
+      "sample": 65,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3021.608333309491,
+      "firstPlayback": 4708.699999988079,
+      "inputEndToScheduledPlaybackMs": 1687.091666678588
+    },
+    {
+      "sample": 66,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3012.408333321412,
+      "firstPlayback": 4633.300000011921,
+      "inputEndToScheduledPlaybackMs": 1620.8916666905088
+    },
+    {
+      "sample": 67,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 23,
+      "inputEnd": 3015.708333333333,
+      "firstPlayback": 4771.399999976158,
+      "inputEndToScheduledPlaybackMs": 1755.691666642825
+    },
+    {
+      "sample": 68,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 18,
+      "inputEnd": 3003.908333321412,
+      "firstPlayback": 4671.899999976158,
+      "inputEndToScheduledPlaybackMs": 1667.991666654746
+    },
+    {
+      "sample": 69,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3003.808333357175,
+      "firstPlayback": 4483.400000035763,
+      "inputEndToScheduledPlaybackMs": 1479.591666678588
+    },
+    {
+      "sample": 70,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3017.608333369096,
+      "firstPlayback": 4823.600000023842,
+      "inputEndToScheduledPlaybackMs": 1805.991666654746
+    },
+    {
+      "sample": 71,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3002.708333333333,
+      "firstPlayback": 4700.600000023842,
+      "inputEndToScheduledPlaybackMs": 1697.8916666905088
+    },
+    {
+      "sample": 72,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3005.008333345254,
+      "firstPlayback": 4813.900000035763,
+      "inputEndToScheduledPlaybackMs": 1808.8916666905088
+    },
+    {
+      "sample": 73,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3020.008333345254,
+      "firstPlayback": 4847,
+      "inputEndToScheduledPlaybackMs": 1826.991666654746
+    },
+    {
+      "sample": 74,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3019.808333357175,
+      "firstPlayback": 5032.400000035763,
+      "inputEndToScheduledPlaybackMs": 2012.591666678588
+    },
+    {
+      "sample": 75,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 20,
+      "inputEnd": 3005.908333321412,
+      "firstPlayback": 4430.100000023842,
+      "inputEndToScheduledPlaybackMs": 1424.1916667024298
+    },
+    {
+      "sample": 76,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 18,
+      "inputEnd": 3002.008333345254,
+      "firstPlayback": 4808.800000011921,
+      "inputEndToScheduledPlaybackMs": 1806.791666666667
+    },
+    {
+      "sample": 77,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 2993.108333369096,
+      "firstPlayback": 4517.700000047684,
+      "inputEndToScheduledPlaybackMs": 1524.591666678588
+    },
+    {
+      "sample": 78,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3014.108333369096,
+      "firstPlayback": 4674.900000035763,
+      "inputEndToScheduledPlaybackMs": 1660.791666666667
+    },
+    {
+      "sample": 79,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 22,
+      "inputEnd": 2999.108333309491,
+      "firstPlayback": 4768.100000023842,
+      "inputEndToScheduledPlaybackMs": 1768.9916667143507
+    },
+    {
+      "sample": 80,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 22,
+      "inputEnd": 3001.908333321412,
+      "firstPlayback": 4730.899999976158,
+      "inputEndToScheduledPlaybackMs": 1728.991666654746
+    },
+    {
+      "sample": 81,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 21,
+      "inputEnd": 3002.608333309491,
+      "firstPlayback": 4379.399999976158,
+      "inputEndToScheduledPlaybackMs": 1376.791666666667
+    },
+    {
+      "sample": 82,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 24,
+      "inputEnd": 3000.308333357175,
+      "firstPlayback": 4372,
+      "inputEndToScheduledPlaybackMs": 1371.691666642825
+    },
+    {
+      "sample": 83,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 2998.608333309491,
+      "firstPlayback": 5697.5,
+      "inputEndToScheduledPlaybackMs": 2698.891666690509
+    },
+    {
+      "sample": 84,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 14,
+      "inputEnd": 2998.008333345254,
+      "firstPlayback": 4670.599999964237,
+      "inputEndToScheduledPlaybackMs": 1672.5916666189833
+    },
+    {
+      "sample": 85,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3002.408333321412,
+      "firstPlayback": 4736.699999988079,
+      "inputEndToScheduledPlaybackMs": 1734.291666666667
+    },
+    {
+      "sample": 86,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3005.808333357175,
+      "firstPlayback": 4601.100000023842,
+      "inputEndToScheduledPlaybackMs": 1595.291666666667
+    },
+    {
+      "sample": 87,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3003.708333333333,
+      "firstPlayback": 4857.699999988079,
+      "inputEndToScheduledPlaybackMs": 1853.991666654746
+    },
+    {
+      "sample": 88,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3020.208333333333,
+      "firstPlayback": 4644,
+      "inputEndToScheduledPlaybackMs": 1623.791666666667
+    },
+    {
+      "sample": 89,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 17,
+      "inputEnd": 3017.0083332856493,
+      "firstPlayback": 4960.799999952316,
+      "inputEndToScheduledPlaybackMs": 1943.791666666667
+    },
+    {
+      "sample": 90,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 27,
+      "inputEnd": 3014.408333321412,
+      "firstPlayback": 4693.199999988079,
+      "inputEndToScheduledPlaybackMs": 1678.791666666667
+    },
+    {
+      "sample": 91,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 3011.408333321412,
+      "firstPlayback": 4679.699999988079,
+      "inputEndToScheduledPlaybackMs": 1668.291666666667
+    },
+    {
+      "sample": 92,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3005.9083333810167,
+      "firstPlayback": 4564.200000047684,
+      "inputEndToScheduledPlaybackMs": 1558.291666666667
+    },
+    {
+      "sample": 93,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 15,
+      "inputEnd": 2998.608333369096,
+      "firstPlayback": 5038.900000035763,
+      "inputEndToScheduledPlaybackMs": 2040.291666666667
+    },
+    {
+      "sample": 94,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 16,
+      "inputEnd": 3020.8083332975702,
+      "firstPlayback": 4730.699999988079,
+      "inputEndToScheduledPlaybackMs": 1709.8916666905088
+    },
+    {
+      "sample": 95,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 22,
+      "inputEnd": 3007.608333309491,
+      "firstPlayback": 4636.600000023842,
+      "inputEndToScheduledPlaybackMs": 1628.9916667143507
+    },
+    {
+      "sample": 96,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 13,
+      "inputEnd": 3019.608333309491,
+      "firstPlayback": 5375.300000011921,
+      "inputEndToScheduledPlaybackMs": 2355.6916667024298
+    },
+    {
+      "sample": 97,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 18,
+      "inputEnd": 3025.8083332975702,
+      "firstPlayback": 4670.399999976158,
+      "inputEndToScheduledPlaybackMs": 1644.591666678588
+    },
+    {
+      "sample": 98,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3002.3083332975702,
+      "firstPlayback": 4815.199999988079,
+      "inputEndToScheduledPlaybackMs": 1812.8916666905088
+    },
+    {
+      "sample": 99,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 22,
+      "inputEnd": 3014.608333309491,
+      "firstPlayback": 4466.799999952316,
+      "inputEndToScheduledPlaybackMs": 1452.191666642825
+    },
+    {
+      "sample": 100,
+      "passed": true,
+      "captures": 1,
+      "stops": 1,
+      "playbackStarts": 19,
+      "inputEnd": 3018.0083332856493,
+      "firstPlayback": 4765.699999988079,
+      "inputEndToScheduledPlaybackMs": 1747.6916667024298
+    }
+  ],
+  "fatal": null,
+  "scope": "Generated PCM feeds a synthetic getUserMedia stream through the real browser capture AudioWorklet, backend, live provider and browser playback. Input-end to scheduled Web Audio output includes VAD. No room microphone or physical speaker/acoustic measurement.",
+  "p50Ms": 1728.991666654746,
+  "p95Ms": 2040.291666666667,
+  "failures": 0
+}

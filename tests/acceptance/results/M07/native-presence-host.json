@@ -1,0 +1,29 @@
+{
+  "scope": "Owner firmware presence implementation and host protocol checks",
+  "sources": {
+    "firmware/main/device_link.c": "c5052af2c0216ea31acd460042a3638540f590b425f721a732348b36e4837838",
+    "firmware/main/device_wire.c": "dd6fe333565d2b460b43fc537b225edbebd1910ce08e82805c0741caaf463513",
+    "firmware/main/device_wire.h": "15d3c28caac3c6265b4be3cf666216cd72f88207e46f842cd88bcef446cd58be",
+    "firmware/main/owner_setup.c": "18f329f332758955c731774fea4f802c56388c1d46b7031069daf9771c054f53",
+    "firmware/main/marvin.c": "6a48983abd2a1eba47c21c64df56695e6c89215b243173095dd1768d365bccb8"
+  },
+  "hostFramingPassed": true,
+  "targetBuildPassed": true,
+  "physicalVerified": false,
+  "capabilities": [],
+  "limits": {
+    "frameBytes": 2048,
+    "queueMessages": 8,
+    "heartbeatMs": 5000,
+    "serverSilenceMs": 15000
+  },
+  "remaining": [
+    "physical TLS/claim/presence/reconnect",
+    "credential renewal",
+    "body audio and physical drivers"
+  ],
+  "image": {
+    "bytes": 1234576,
+    "sha256": "94fcf8993ea8784a034e992ade6919f55bf51156c02ac92870bf887193fcd18e"
+  }
+}

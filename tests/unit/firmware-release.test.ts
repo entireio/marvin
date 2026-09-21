@@ -1,0 +1,22 @@
+import {it,expect} from 'vitest';
+import {generateKeyPairSync,createHash,sign,randomUUID} from 'node:crypto';
+import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {FirmwareRelease} from '../../packages/operations/src/firmware-release.js';
+import {createApp} from '../../apps/server/src/app.js';
+import {config} from '../../apps/server/src/config.js';
+import {sqliteDatabase} from '../../packages/persistence/src/database.js';
+function fixture(layout='afe-v1'){const directory=mkdtempSync(join(tmpdir(),'marvin-release-')),device=randomUUID(),keys=generateKeyPairSync('ec',{namedCurve:'prime256v1'}),image=Buffer.alloc(1024);image[0]=0xe9;image.writeUInt16LE(9,12);const payload=Buffer.alloc(112);payload.write('MRVOTA01');payload.writeUInt32BE(2,8);payload.writeUInt32BE(image.length,12);createHash('sha256').update(image).digest().copy(payload,16);payload.write('waveshare-esp32s3-audio',48);payload.write(layout,80);const manifest=Buffer.concat([payload,sign('sha256',payload,{key:keys.privateKey,dsaEncoding:'ieee-p1363'})]);writeFileSync(join(directory,'manifest.bin'),manifest);writeFileSync(join(directory,'image.bin'),image);writeFileSync(join(directory,'public.pem'),keys.publicKey.export({type:'spki',format:'pem'}));const file=join(directory,'rollout.json');writeFileSync(file,JSON.stringify({publicKeyFile:join(directory,'public.pem'),bundleDirectory:directory,deviceIds:[device]}));return {directory,device,image,manifest,file,close:()=>rmSync(directory,{recursive:true,force:true})};}
+it('loads only a verified explicit release and keeps immutable bytes',()=>{const f=fixture();try{const r=new FirmwareRelease(f.file);expect(r.offeredTo(f.device)).toBe(true);expect(r.offeredTo('other')).toBe(false);expect(r.offer()).toMatchObject({sequence:2,layout:'afe-v1',imageBytes:1024});r.bytes('image').fill(0);writeFileSync(join(f.directory,'image.bin'),Buffer.alloc(1024));expect(r.bytes('image')).toEqual(f.image);expect(()=>new FirmwareRelease(f.file)).toThrow();}finally{f.close();}});
+it('accepts the distinct 4 MiB afe-v3 release layout',()=>{const f=fixture('afe-v3');try{expect(new FirmwareRelease(f.file).offer()).toMatchObject({sequence:2,layout:'afe-v3',imageBytes:1024});}finally{f.close();}});
+it('rejects tampered signatures, oversized images and non-public keys',()=>{const f=fixture();try{f.manifest[175]^=1;writeFileSync(join(f.directory,'manifest.bin'),f.manifest);expect(()=>new FirmwareRelease(f.file)).toThrow();f.manifest[175]^=1;writeFileSync(join(f.directory,'manifest.bin'),f.manifest);writeFileSync(join(f.directory,'image.bin'),Buffer.alloc(0x1e0001));expect(()=>new FirmwareRelease(f.file)).toThrow();writeFileSync(join(f.directory,'public.pem'),'-----BEGIN PRIVATE KEY-----');expect(()=>new FirmwareRelease(f.file)).toThrow(/public/);}finally{f.close();}});
+it('authorizes exact device rollout and refuses stale credentials after unlink',async()=>{const f=fixture(),service=await createApp(config({NODE_ENV:'test',FIRMWARE_ROLLOUT_FILE:f.file}),{database:sqliteDatabase()});
+ async function device(id:string){const owner=(await service.store.ensureOwner('test',randomUUID(),'Owner')).id,enrollment=randomUUID();await service.store.reserve(owner,id,enrollment);await service.store.redeem(owner,id,enrollment,'Home');return {owner,token:await service.devices.persistence.issue(owner,id)};}
+ try{const target=await device(f.device),other=await device(randomUUID()),get=(path:string,token?:string,extra={})=>service.app.inject({method:'GET',url:path,headers:{...(token?{authorization:'Bearer '+token}:{}),...extra}});
+ expect((await get('/api/device/firmware')).statusCode).toBe(401);expect((await get('/api/device/firmware',other.token)).statusCode).toBe(204);
+ expect((await get('/api/device/firmware',target.token)).json()).toMatchObject({sequence:2});expect((await get('/api/device/firmware/2/manifest',target.token)).rawPayload).toEqual(f.manifest);expect((await get('/api/device/firmware/2/image',target.token)).rawPayload).toEqual(f.image);
+ expect((await get('/api/device/firmware/1/image',target.token)).statusCode).toBe(404);expect((await get('/api/device/firmware/2/image',other.token)).statusCode).toBe(404);expect((await get('/api/device/firmware',target.token,{origin:'http://127.0.0.1:5173'})).statusCode).toBe(403);
+ await service.store.unlink(target.owner);expect((await get('/api/device/firmware/2/image',target.token)).statusCode).toBe(401);
+ }finally{await service.app.close();f.close();}
+});

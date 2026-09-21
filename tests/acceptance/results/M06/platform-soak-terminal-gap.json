@@ -1,0 +1,21 @@
+{
+  "accepted": false,
+  "targetSeconds": 86400,
+  "reportedElapsedSeconds": 90706,
+  "observationSpanSeconds": 83587,
+  "sampleCount": 8335,
+  "maximumInRunObservationGapSeconds": 11,
+  "finalObservationGapSeconds": 7119,
+  "devices": 10,
+  "actions": 13900,
+  "failuresDuringObservedWindow": [],
+  "connectionSampleFailures": 0,
+  "uploadedAudioBytes": 0,
+  "firstWindowMedianRssBytes": 73932800,
+  "lastWindowMedianRssBytes": 65495040,
+  "windowGrowthRatio": -0.11412742382271468,
+  "memorySlopeRatioPerHour": -0.012891259485766257,
+  "reason": "The original harness marked the run passed from wall-clock duration, but the final observation preceded process completion by 7,119 seconds. Only 83,587 seconds of continuous samples were collected, so this is not accepted as a 24-hour observation.",
+  "remediation": "The harness now rejects any observation gap over 30 seconds, including the terminal interval.",
+  "scope": "Sanitized post-run validation of the ten-device local simulator soak. No credentials, conversation content, raw logs, or database data are retained here."
+}

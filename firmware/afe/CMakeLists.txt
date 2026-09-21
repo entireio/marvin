@@ -1,0 +1,8 @@
+set(afe_sources "local_afe.c")
+if(CONFIG_MARVIN_MICRO_WAKE_WORD)
+    list(APPEND afe_sources "micro_wake.cpp")
+    idf_component_register(SRCS ${afe_sources} INCLUDE_DIRS "." REQUIRES espressif__esp-sr PRIV_REQUIRES esp_timer espressif__esp-tflite-micro esphome__esp-micro-speech-features EMBED_FILES "hey_marvin.tflite")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE TF_LITE_STATIC_MEMORY TF_LITE_DISABLE_X86_NEON ESP_NN)
+else()
+    idf_component_register(SRCS ${afe_sources} INCLUDE_DIRS "." REQUIRES espressif__esp-sr PRIV_REQUIRES esp_timer)
+endif()

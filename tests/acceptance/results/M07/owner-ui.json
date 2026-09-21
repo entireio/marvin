@@ -1,0 +1,27 @@
+{
+  "at": "2026-09-13T02:50:21.423Z",
+  "results": [
+    {
+      "width": 360,
+      "seriousAccessibilityIssues": [],
+      "overflow": false,
+      "invalidCodeRecovery": true,
+      "escapeReturnsToChat": true
+    },
+    {
+      "width": 768,
+      "seriousAccessibilityIssues": [],
+      "overflow": false,
+      "invalidCodeRecovery": true,
+      "escapeReturnsToChat": true
+    },
+    {
+      "width": 1440,
+      "seriousAccessibilityIssues": [],
+      "overflow": false,
+      "invalidCodeRecovery": true,
+      "escapeReturnsToChat": true
+    }
+  ],
+  "scope": "Real owner setup entry and error UI in headless Chrome; explicit Bluetooth chooser fixture and server feature flag interception. No hardware or Wi-Fi credentials used."
+}

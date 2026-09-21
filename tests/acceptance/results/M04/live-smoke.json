@@ -1,0 +1,23 @@
+{
+  "at": "2026-09-13T00:19:11.005Z",
+  "repositoryCount": 1,
+  "checks": [
+    {
+      "operation": "repository_summary",
+      "passed": true,
+      "count": 10
+    },
+    {
+      "operation": "repository_search",
+      "passed": true,
+      "count": 10
+    },
+    {
+      "operation": "repository_history",
+      "passed": true,
+      "count": 0
+    }
+  ],
+  "live": true,
+  "note": "No repository contents or credentials retained. This smoke check does not establish the20-question semantic acceptance gate."
+}

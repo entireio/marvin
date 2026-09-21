@@ -1,0 +1,13 @@
+{
+  "at": "2026-09-13T07:00:24.343Z",
+  "passed": true,
+  "operation": "network",
+  "ownerPreserved": true,
+  "elapsedMs": 18262,
+  "scope": "Physical Security2 BLE, robot scan, signed account ticket, on-device verification, Wi-Fi and TLS device redemption on the isolated LAN test backend. No speech or native device socket claim.",
+  "limitations": [
+    "Same access point used for reprovisioning; different-location/AP isolation not tested.",
+    "BLE bridge with shared TypeScript provisioning client; native browser UI not yet verified."
+  ],
+  "flash": "2026-09-13T06:59:32.561136+00:00"
+}

@@ -1,0 +1,4 @@
+import { defineConfig } from '@playwright/test';
+import { resolve } from 'node:path';
+process.env.PLAYWRIGHT_BROWSERS_PATH??=resolve('work/browsers');
+export default defineConfig({testDir:'tests/e2e',timeout:30000,fullyParallel:false,workers:1,retries:0,reporter:[['list'],['html',{outputFolder:'work/playwright-report',open:'never'}]],outputDir:'work/playwright-results',use:{channel:process.env.PLAYWRIGHT_CHANNEL,baseURL:'http://127.0.0.1:4512',headless:true,trace:'retain-on-failure',screenshot:'only-on-failure'},webServer:{command:'npm run build && node dist/apps/server/src/main.js',url:'http://127.0.0.1:4512',reuseExistingServer:false,timeout:60000,env:{HOST:'127.0.0.1',PORT:'4512',SQLITE_PATH:process.env.E2E_DATABASE_PATH??'./work/e2e-isolated.sqlite',AUTH_MODE:'development',MODEL_PROVIDER:'fixture',VOICE_PROVIDER:'disabled',ENTIRE_CLI_PATH:'',ENTIRE_BINDINGS_FILE:'',APP_ORIGIN:'http://127.0.0.1:4512'}}});

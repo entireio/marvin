@@ -1,0 +1,154 @@
+{
+  "at": "2026-09-13T02:10:38.965Z",
+  "textModel": "gpt-5.4-mini-2026-03-17",
+  "voiceModel": "gpt-realtime-2.1",
+  "results": [
+    {
+      "case": 1,
+      "scenario": 1,
+      "passed": true,
+      "error": null,
+      "audioBytes": 120000
+    },
+    {
+      "case": 2,
+      "scenario": 2,
+      "passed": true,
+      "error": null,
+      "audioBytes": 55200
+    },
+    {
+      "case": 3,
+      "scenario": 3,
+      "passed": true,
+      "error": null,
+      "audioBytes": 93600
+    },
+    {
+      "case": 4,
+      "scenario": 4,
+      "passed": true,
+      "error": null,
+      "audioBytes": 93600
+    },
+    {
+      "case": 5,
+      "scenario": 5,
+      "passed": true,
+      "error": null,
+      "audioBytes": 103200
+    },
+    {
+      "case": 6,
+      "scenario": 1,
+      "passed": true,
+      "error": null,
+      "audioBytes": 129600
+    },
+    {
+      "case": 7,
+      "scenario": 2,
+      "passed": true,
+      "error": null,
+      "audioBytes": 115200
+    },
+    {
+      "case": 8,
+      "scenario": 3,
+      "passed": true,
+      "error": null,
+      "audioBytes": 98400
+    },
+    {
+      "case": 9,
+      "scenario": 4,
+      "passed": true,
+      "error": null,
+      "audioBytes": 98400
+    },
+    {
+      "case": 10,
+      "scenario": 5,
+      "passed": true,
+      "error": null,
+      "audioBytes": 103200
+    },
+    {
+      "case": 11,
+      "scenario": 1,
+      "passed": true,
+      "error": null,
+      "audioBytes": 124800
+    },
+    {
+      "case": 12,
+      "scenario": 2,
+      "passed": true,
+      "error": null,
+      "audioBytes": 93600
+    },
+    {
+      "case": 13,
+      "scenario": 3,
+      "passed": true,
+      "error": null,
+      "audioBytes": 100800
+    },
+    {
+      "case": 14,
+      "scenario": 4,
+      "passed": true,
+      "error": null,
+      "audioBytes": 96000
+    },
+    {
+      "case": 15,
+      "scenario": 5,
+      "passed": true,
+      "error": null,
+      "audioBytes": 108000
+    },
+    {
+      "case": 16,
+      "scenario": 1,
+      "passed": true,
+      "error": null,
+      "audioBytes": 120000
+    },
+    {
+      "case": 17,
+      "scenario": 2,
+      "passed": true,
+      "error": null,
+      "audioBytes": 88800
+    },
+    {
+      "case": 18,
+      "scenario": 3,
+      "passed": true,
+      "error": null,
+      "audioBytes": 103200
+    },
+    {
+      "case": 19,
+      "scenario": 4,
+      "passed": true,
+      "error": null,
+      "audioBytes": 86400
+    },
+    {
+      "case": 20,
+      "scenario": 5,
+      "passed": true,
+      "error": null,
+      "audioBytes": 153600
+    }
+  ],
+  "scope": "20 live text\u2013voice\u2013text journeys, five synthetic factual recall scenarios repeated across fresh owners/conversations/provider sessions. No room audio. Substring recall checks require answer review; this does not establish compaction, repository changes, interruption or acoustic latency acceptance.",
+  "manualReview": {
+    "reviewer": "Codex",
+    "recallPassed": 20,
+    "transcriptsPreserved": 20,
+    "notes": "Reviewed all20 journeys after adding source-surface metadata to canonical context. Both transitions retain the expected fact. Earlier unnecessary audio-capability disclaimers are absent in this run. Five scenarios repeated four times; this is not acoustic or broader repository/compaction acceptance."
+  }
+}

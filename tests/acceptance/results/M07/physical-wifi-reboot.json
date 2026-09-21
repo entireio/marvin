@@ -1,0 +1,7 @@
+{
+  "at": "2026-09-13T01:17:43.116Z",
+  "passed": true,
+  "hasSavedNetwork": true,
+  "networkConnected": true,
+  "note": "Saved network reconnected after board reset; no credentials reapplied."
+}

@@ -1,0 +1,15 @@
+{
+  "scope": "Real coordinator with simulated task/platform boundaries; no physical timing or OTA trials",
+  "updateTrials": 90,
+  "bootCases": [
+    "stable confirmation",
+    "presence unavailable",
+    "audio unavailable",
+    "AFE stalled",
+    "confirmation refused",
+    "valid-image reconciliation"
+  ],
+  "passed": true,
+  "fallbackGuard": "Running image must be recorded VALID before an update writer is provided",
+  "physicalOtaPassed": false
+}

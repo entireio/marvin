@@ -1,0 +1,30 @@
+{
+  "runId": "1256f2b0-253e-4846-9f9a-b3a94ddaa83a",
+  "pid": 38454,
+  "status": "finished",
+  "startedAt": "2026-09-13T01:12:11.878Z",
+  "elapsedSeconds": 60,
+  "targetSeconds": 60,
+  "failures": [],
+  "requests": 100,
+  "requestErrors": 0,
+  "errorRatio": 0,
+  "completedTextTurns": 100,
+  "voiceTurns": 40,
+  "syntheticInputBytes": 54892800,
+  "syntheticOutputBytes": 1920000,
+  "deviceUploadedAudioBytes": 0,
+  "httpAcceptanceP95Ms": 430,
+  "baselineRssBytes": null,
+  "peakRssBytesAfterWarmup": null,
+  "growthRatio": null,
+  "host": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "v25.2.1",
+    "cpus": 12,
+    "ramBytes": 34359738368
+  },
+  "scope": "100 authenticated browser event sockets, 100 idle device sockets, 20 voice sockets at synthetic 24kHz PCM; 100 text submissions/minute. Server and load clients share this process. No real providers, microphone, credentials, or repository data. HTTP duration measures request acceptance, not model/audio latency.",
+  "acceptance": "not accepted"
+}

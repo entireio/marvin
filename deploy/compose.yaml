@@ -1,0 +1,67 @@
+name: marvin
+services:
+  marvin:
+    image: marvin-local:development
+    build:
+      context: ..
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    tmpfs: ["/tmp:size=32m,noexec,nosuid"]
+    env_file:
+      - path: ${MARVIN_ENV_FILE:?Set MARVIN_ENV_FILE to an absolute private environment file}
+        format: raw
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4310
+      TRUST_PROXY_HOPS: 1
+      SQLITE_PATH: /data/marvin.sqlite
+      APP_ORIGIN: ${APP_ORIGIN:?Set an HTTPS origin with port 8443}
+      # This Compose stack is the local-development deployment.  Keep secure
+      # enrollment on by default; an operator may still explicitly override
+      # any value for an isolated or production-like deployment.
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-local-dev}
+      HARDWARE_PROVISIONING_ENABLED: ${HARDWARE_PROVISIONING_ENABLED:-true}
+      ENROLLMENT_KEYS_FILE: ${ENROLLMENT_KEYS_FILE:-/private/owner-deployment-keys.json}
+      DEVICE_PUBLIC_ORIGIN: ${DEVICE_PUBLIC_ORIGIN:-${APP_ORIGIN:?Set an HTTPS origin with port 8443}}
+    volumes:
+      - marvin_data:/data
+      # Local-only private deployment inputs (enrollment keys and optional
+      # developer setup card). Mount only the narrow private-input directory;
+      # never mount the project root.
+      - ${MARVIN_PRIVATE_DIR:?Set MARVIN_PRIVATE_DIR to the private deployment-input directory}:/private:ro
+    stop_grace_period: 30s
+    mem_limit: 1g
+    pids_limit: 128
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      APP_ORIGIN: ${APP_ORIGIN:?Set an HTTPS origin with port 8443}
+      MARVIN_TLS_NAME: ${MARVIN_TLS_NAME:?Set MARVIN_TLS_NAME to the APP_ORIGIN hostname or IP}
+    ports:
+      - "${MARVIN_BIND_IP:-127.0.0.1}:8443:8443"
+    volumes:
+      - ./Caddyfile.local:/etc/caddy/Caddyfile:ro
+      # Set MARVIN_TLS_DATA_DIR to an absolute private host directory for a
+      # durable local CA. Leaving it unset retains the existing named volume.
+      - ${MARVIN_TLS_DATA_DIR:-tls_data}:/data
+      - tls_config:/config
+    tmpfs: ["/tmp:size=16m,noexec,nosuid"]
+    depends_on:
+      marvin:
+        condition: service_healthy
+    mem_limit: 128m
+    pids_limit: 64
+volumes:
+  marvin_data:
+  tls_data:
+  tls_config:

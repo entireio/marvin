@@ -1,0 +1,28 @@
+{
+  "at": "2026-09-13T03:11:58.204Z",
+  "runDirectory": "work/m4/golden/live-1789269102490",
+  "sourceHash": "a0f972bec44a42459553022e288f8f9926057da6d21613cb775704707a846a3d",
+  "model": "gpt-5.4-mini-2026-03-17",
+  "repository": "spedemon/marvin",
+  "live": true,
+  "results": [
+    {
+      "case": 16,
+      "path": "firmware/src/config.h",
+      "revision": "6c608c2a05121be52ed34118b14ed918313cd34b",
+      "retrievalPassed": true,
+      "liveAttempted": true,
+      "modelError": false,
+      "answerReceived": true,
+      "manualSemanticReviewRequired": true
+    }
+  ],
+  "acceptance": "Retrieval conformance only until all live answers receive independent semantic/citation review; missing-data, graph and service capability gates are separate.",
+  "semanticReview": {
+    "case": 16,
+    "passed": true,
+    "method": "Manually checked retrieved config default, constructor initializer and command path against committed source. No unsupported state inference.",
+    "priorFailureRetained": "live-golden-review.json",
+    "scope": "Targeted retest only; full 20-case regression remains separate."
+  }
+}

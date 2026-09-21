@@ -1,0 +1,72 @@
+{
+  "trials": [
+    {
+      "trial": 1,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 10370
+    },
+    {
+      "trial": 2,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 10654
+    },
+    {
+      "trial": 3,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 10460
+    },
+    {
+      "trial": 4,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 10525
+    },
+    {
+      "trial": 5,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 11083
+    },
+    {
+      "trial": 6,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 10687
+    },
+    {
+      "trial": 7,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 10716
+    },
+    {
+      "trial": 8,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 10343
+    },
+    {
+      "trial": 9,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 11519
+    },
+    {
+      "trial": 10,
+      "kind": "secure-radio-scan",
+      "passed": true,
+      "elapsedMs": 13385
+    },
+    {
+      "trial": 11,
+      "kind": "wrong-setup-secret",
+      "passed": true,
+      "elapsedMs": 3259
+    }
+  ],
+  "complete": true,
+  "scope": "Encrypted scan and identity only; no Wi-Fi apply or account claim"
+}
