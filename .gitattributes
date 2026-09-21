@@ -38,11 +38,12 @@
 # Scope this to the patterns that actually match an LFS rule. A blanket
 # `docs/** -filter -diff -merge` also unsets `diff`, which makes Git treat the
 # site's HTML, CSS and JS as binary and stop showing their changes.
-docs/**/*.png  -filter -diff -merge -text
-docs/**/*.jpg  -filter -diff -merge -text
-docs/**/*.webp -filter -diff -merge -text
-docs/**/*.mp4  -filter -diff -merge -text
-docs/**/*.pdf  -filter -diff -merge -text
+apps/build-docs/**/*.png  -filter -diff -merge -text
+apps/build-docs/**/*.jpg  -filter -diff -merge -text
+apps/build-docs/**/*.webp -filter -diff -merge -text
+apps/build-docs/**/*.mp4  -filter -diff -merge -text
+apps/build-docs/**/*.mov  -filter -diff -merge -text
+apps/build-docs/**/*.pdf  -filter -diff -merge -text
 
 # ---------------------------------------------------------------------------
 # Line endings
@@ -59,5 +60,5 @@ docs/**/*.pdf  -filter -diff -merge -text
 # ---------------------------------------------------------------------------
 # GitHub language statistics
 # ---------------------------------------------------------------------------
-mechanical/*   linguist-documentation
-docs/*         linguist-documentation
+hardware/mechanical/* linguist-documentation
+apps/build-docs/*     linguist-documentation
