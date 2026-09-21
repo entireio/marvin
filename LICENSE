@@ -27,15 +27,18 @@ SCOPE
 
 This MIT Licence covers the SOFTWARE portions of the Marvin project:
 
-    firmware/       ESP32 firmware
-    controller/     Web Bluetooth control app
-    docs/           Project website
+    apps/            Agent web application, server, and build website
+    packages/        Shared application and device packages
+    firmware/        ESP32 firmware
+    docs/            Engineering and operational documentation
+    scripts/         Development and operations tooling
+    tests/           Test code and recorded software evidence
 
 The HARDWARE portions of this project — the mechanical design and the
 electronics — are licensed separately under the CERN Open Hardware Licence
 Version 2, Strongly Reciprocal (CERN-OHL-S-2.0):
 
-    mechanical/     CAD sources and printable meshes
-    electronics/    Schematics, PCB layout, and bill of materials
+    hardware/mechanical/     CAD sources and printable meshes
+    hardware/electronics/    Schematics, PCB layout, and bill of materials
 
 See LICENSE-hardware for the full text of that licence.

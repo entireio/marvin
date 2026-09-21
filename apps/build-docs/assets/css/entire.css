@@ -270,3 +270,18 @@ main h1, main h2, main h3, main h4 { color: var(--color-text); }
   gap: 8px 12px;
   min-height: 22px;
 }
+.version-notice {
+  margin: 0;
+  padding: 0.65rem max(1rem, calc((100vw - 1280px) / 2 + 1rem));
+  border-bottom: 1px solid var(--rule-ink);
+  background: var(--color-accent-100);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.version-notice a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}

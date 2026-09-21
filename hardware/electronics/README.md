@@ -1,17 +1,19 @@
-# Marvin — Electronics
+# Marvin — Electronics and Pet v1 wiring
 
 Schematics, PCB layout, bill of materials, and power system design.
 
-> **Status: not started.** This folder is scaffolding for work in progress. The
-> current prototype is wired from off-the-shelf breakout boards on protoboard —
-> the intent is to collapse that into a single custom PCB.
+> **Version and status:** this wiring reference describes the original
+> SuperMini/Arduino Pet v1. The active pet uses the Waveshare
+> ESP32-S3-AUDIO-Board and the pin map in
+> [`../../firmware/README.md`](../../firmware/README.md). The custom PCB folders
+> below are scaffolding; no KiCad schematic, layout, or PCB BOM is present yet.
 
 ---
 
 ## Folder layout
 
 ```
-electronics/
+hardware/electronics/
 ├── schematics/    KiCad schematic sources (.kicad_sch)
 ├── pcb/           KiCad layout, footprints, and the board project (.kicad_pcb, .kicad_pro)
 ├── power/         Battery selection, charging circuit, power budget
@@ -24,9 +26,8 @@ electronics/
 
 ## Current prototype wiring
 
-Until the PCB exists, this is the reference wiring. It matches the pin maps in
-[`firmware/src/boards/`](../firmware/src/boards), which are the authority — if
-these ever disagree, the headers are right.
+This section is the historical Pet v1 reference wiring. It matches the firmware
+preserved by the `pet-v1-final` tag, not the active ESP-IDF firmware.
 
 **Both boards do voice.** What the C3 cannot do is listen for its own name: it
 has no PSRAM and no vector unit, so there is nowhere to run a keyword model, and
@@ -57,7 +58,7 @@ mid-mute when the board resets would leave you with a robot that will not start.
 A robot that hisses quietly when idle is a much smaller problem. If the hiss
 does bother you, wire SD to GPIO 2 **with a 10 kΩ pull-up to 3V3**, which holds
 the strapping requirement through a reset, and uncomment `PIN_AMP_SD` in
-[`firmware/src/boards/pins_esp32c3_supermini.h`](../firmware/src/boards/pins_esp32c3_supermini.h).
+  the Pet v1 board profile preserved by the `pet-v1-final` tag.
 
 ### ESP32-S3 SuperMini
 
@@ -189,7 +190,8 @@ Keep a separate row per distinct part, and put the reference designators
 schematic automatically.
 
 The mechanical BOM — fasteners, bearings, motors, printed parts — belongs in
-[`mechanical/`](../mechanical), not here. This file covers the PCB only.
+[`hardware/mechanical/`](../mechanical/README.md), not here. This file covers
+the PCB only.
 
 ---
 
@@ -203,7 +205,7 @@ The mechanical BOM — fasteners, bearings, motors, printed parts — belongs in
   instead — they are build output, and regenerating them from the layout is one
   menu click.
 - Datasheets go in `datasheets/` and are tracked through Git LFS (`*.pdf` is
-  already configured in [`.gitattributes`](../.gitattributes)). Only add ones
+  already configured in [`.gitattributes`](../../.gitattributes)). Only add ones
   that are genuinely hard to find; link to the manufacturer otherwise.
 
 ---
@@ -211,5 +213,5 @@ The mechanical BOM — fasteners, bearings, motors, printed parts — belongs in
 ## Licence
 
 Everything in this folder is licensed under the
-[CERN Open Hardware Licence v2, Strongly Reciprocal](../LICENSE-hardware) —
+[CERN Open Hardware Licence v2, Strongly Reciprocal](../../LICENSE-hardware) —
 not the MIT licence that covers the project's software.

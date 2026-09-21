@@ -1,146 +1,74 @@
 # Contributing to Marvin
 
-Thanks for your interest. Marvin is an early-stage open hardware project, so
-the most useful contributions right now are build reports, pin-map corrections,
-and anything that makes the robot easier for the next person to reproduce.
+Marvin combines web software, cloud services, embedded firmware, and open
+hardware. Read the README nearest the subsystem you intend to change, and keep
+one authoritative implementation of every protocol or hardware target.
 
----
+## Setup
 
-## Before you start
+Install Git LFS before cloning so CAD and mesh pointers are resolved:
 
-Read the [`README.md`](README.md) in the folder you intend to change. Each
-subsystem has its own toolchain and conventions, and they are documented
-locally rather than all in one place.
-
----
-
-## Setting up
-
-This repository uses **Git LFS** for CAD and mesh files. Install it *before*
-cloning, or you will get small text pointer files instead of real geometry:
-
-```bash
+```sh
 git lfs install
 git clone https://github.com/spedemon/marvin.git
+cd marvin
+npm ci
 ```
 
-Already cloned without LFS? Recover with:
+Use Node 22.16.0 or compatible >=22.13 and npm 11.6.4 for the agent. Current
+firmware uses ESP-IDF 5.4.2; it does not use the retired Pet v1 PlatformIO
+target. Hardware contributors need Rhino or another STEP-capable CAD tool for
+mechanics and KiCad 8 or later for electronics.
 
-```bash
-git lfs install && git lfs pull
+## Before opening a pull request
+
+Run the checks relevant to the change:
+
+```sh
+npm run check
+npm run test:e2e
+idf.py -C firmware build
 ```
 
-Per-subsystem toolchains:
+Browser tests require Playwright Chromium. Firmware changes should name the
+exact board/profile tested and distinguish compilation, host tests, and
+physical evidence. Never claim physical acceptance from a build alone.
 
-| Working on | You need |
-| --- | --- |
-| `firmware/` | [PlatformIO Core](https://platformio.org/install/cli) |
-| `controller/` | Node.js (only for `npx serve`) and Chrome or Edge |
-| `electronics/` | KiCad 8 or later |
-| `mechanical/` | Rhino 3D for sources; any slicer for the STLs |
-| `docs/` | To be decided — see `docs/README.md` |
+## Repository conventions
 
----
+- `apps/server`, `apps/web`, `packages`, and `firmware` are the active product.
+- `apps/build-docs` is dependency-free static HTML/CSS/JavaScript. Keep asset
+  paths relative and update shared navigation consistently across its pages.
+- Pet v1 documentation must remain clearly labelled; do not mix its SuperMini
+  pin map or Arduino commands with the current Waveshare/ESP-IDF firmware.
+- `hardware/mechanical` and `hardware/electronics` are hardware source. Commit
+  editable source and reviewable interchange formats, not generated tool
+  caches, Gerbers, or machine-specific G-code.
+- Binary CAD and meshes use Git LFS. Website media and application screenshots
+  are deliberately exempt because they must be served directly from Git.
+- Never commit `.env`, credentials, factory data, enrollment/release private
+  keys, databases, raw audio, SDK downloads, or generated firmware images.
 
-## Large files: the rules
+The full-resolution `hardware/mechanical/src/marvin_design.3dm` is intentionally
+ignored because it exceeds hosting limits. Do not force-add it. Use the reduced
+`marvin_design_v3_hq.3dm` as the tracked editable model.
 
-A hardware repository dies quickly if raw CAD exports go into Git history. Two
-rules keep clones fast:
+## Commits and reviews
 
-1. **Anything binary and re-exportable goes through Git LFS.** The patterns are
-   already set up in [`.gitattributes`](.gitattributes) — `*.stl`, `*.3dm`,
-   `*.step`, `*.pdf`, images. You do not need to do anything special; just
-   commit normally with LFS installed.
+Use an imperative subject with a useful subsystem prefix, for example:
 
-2. **Nothing over ~50 MB goes in the repository at all.** GitHub hard-rejects
-   any single file above 100 MB, and LFS bandwidth on the free tier is shared
-   by everyone who clones. Before committing a mesh, check its size:
+- `firmware: clamp track commands at the safety boundary`
+- `web: explain pet reconnection state`
+- `docs: correct the Pet v1 wiring diagram`
+- `mechanical: add the revised neck STEP export`
 
-   ```bash
-   ls -lh mechanical/stl/
-   ```
+Keep logical changes reviewable and include tests or evidence proportional to
+risk. Changes to device messages should update the shared contract, server,
+simulator, firmware, and tests together.
 
-   If a mesh is enormous, it is almost always over-tessellated rather than
-   genuinely complex. Re-export it with a coarser tolerance — a chassis part
-   rarely needs more than a few hundred thousand triangles, and no slicer
-   benefits from more.
+## Licensing
 
-Two files currently exceed these limits and are distributed out-of-band. They
-are listed in [`.gitignore`](.gitignore) with an explanation, and
-[`mechanical/README.md`](mechanical/README.md) says where to get them.
-
----
-
-## Coding conventions
-
-### Firmware (`firmware/`)
-
-- **Pin numbers live in `src/boards/`, one header per board; every other tuning
-  constant lives in `src/config.h`.** Never hard-code a GPIO or a magic angle
-  inside a driver. A new board is a header there plus an `[env:…]` block in
-  `platformio.ini`, and no driver change.
-- One class per peripheral, in its own `.h`/`.cpp` pair (`motor`, `head_servos`,
-  `ble_serial`, `demo`, `audio_io`). Follow that shape when adding hardware.
-- **Voice code is guarded by `MARVIN_VOICE`** and only compiles on the S3. Check
-  that the C3 environment still builds — `pio run` builds both, which is the
-  point.
-- **Work that has a deadline goes on its own task; work that moves a servo goes
-  in `loop()`.** Audio capture cannot miss a 20 ms frame, and the network task
-  cannot be allowed to drive a servo from under the main loop. Messages from the
-  backend cross that line through a queue.
-- `loop()` must stay non-blocking. Use millis-based state machines — look at
-  `Demo::update()` and `HeadServos::update()` for the pattern. No `delay()` in
-  the main loop.
-- Drive motor pins LOW at the top of `setup()`, before anything else. Floating
-  GPIOs at boot make the robot lurch.
-- 4-space indent, `camelCase` methods, `_underscorePrefixed` private members.
-
-### Adding a command
-
-Commands are parsed in one place, `processCommand()` in `src/main.cpp`, and are
-shared by the serial and BLE transports. To add one, update:
-
-1. `processCommand()` in `firmware/src/main.cpp` — the parsing
-2. The help block in `setup()` in the same file
-3. The cheat sheet in `controller/index.html`
-4. The protocol table in the root [`README.md`](README.md)
-
-A command that the backend should also be able to send needs nothing extra: an
-`act` message carrying `cmd` goes through this same `processCommand()`.
-
-Use `respond()` / `respondf()` rather than `Serial.print()` so the output
-reaches BLE clients too, with ANSI colour codes stripped automatically.
-
-### Controller (`controller/`)
-
-Plain HTML, CSS, and JavaScript — no build step and no framework, deliberately,
-so the app can be served from anywhere. Keep it that way. Web Bluetooth logic
-stays inside the `BleConnection` class; UI code should not touch
-`navigator.bluetooth` directly.
-
-### Electronics (`electronics/`)
-
-KiCad project files are text and diff reasonably. Commit the schematic, layout,
-and project files; let `.gitignore` drop the caches and autosaves. Generated
-Gerbers belong in a release, not in the tree.
-
----
-
-## Commits and pull requests
-
-- Prefix the subject with the subsystem: `firmware:`, `controller:`,
-  `electronics:`, `mechanical:`, `docs:`.
-- Write in the imperative: `firmware: clamp tilt to mechanical limits`.
-- One logical change per pull request.
-- If you changed firmware, say in the PR description **which board you tested
-  on** and what you observed. There is no CI or hardware-in-the-loop testing
-  yet, so your report is the only evidence a change works.
-
----
-
-## Licensing of contributions
-
-By contributing you agree that your work is licensed under the project's
-licences: [MIT](LICENSE) for software (`firmware/`, `controller/`, `docs/`) and
-[CERN-OHL-S-2.0](LICENSE-hardware) for hardware (`electronics/`,
-`mechanical/`).
+By contributing, you agree that software, firmware, and documentation are
+provided under the [MIT License](LICENSE), while hardware design contributions
+under `hardware/` are provided under
+[CERN-OHL-S-2.0](LICENSE-hardware). Preserve third-party notices.

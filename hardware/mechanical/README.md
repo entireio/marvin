@@ -3,7 +3,7 @@
 CAD sources and printable meshes for Marvin's chassis, tracks, and head.
 
 ```
-mechanical/
+hardware/mechanical/
 ├── src/        CAD models (Rhino 3D, .3dm)
 ├── step/       Whole-robot STEP, for other CAD packages
 ├── stl/        Meshes exported for printing
@@ -96,7 +96,7 @@ One file exceeds what GitHub will accept and is **not in this repository**:
 | --- | --- | --- |
 | `src/marvin_design.3dm` | 2.7 GB | Over GitHub's 100 MB file limit, and over Git LFS's 2 GB per-file cap |
 
-It is listed in [`.gitignore`](../.gitignore). To get it, ask for a copy — or,
+It is listed in [`.gitignore`](../../.gitignore). To get it, ask for a copy — or,
 better, help fix the underlying problem.
 
 **The problem was tessellation, not complexity.** `01_body.stl` used to be a
@@ -130,16 +130,15 @@ Already cloned? `git lfs install && git lfs pull`.
   model back to 142 MB in one open-and-save. Use `SaveSmall` when committing.
 - Keep the numeric prefixes and update the table above when parts are added,
   renamed, or renumbered.
-- Servo travel limits in
-  [`firmware/src/config.h`](../firmware/src/config.h) (`SERVO_TILT_MIN` 30°,
-  `SERVO_TILT_MAX` 85°) exist to protect the neck from hitting its mechanical
-  stops. If the head geometry changes, update those constants in the same pull
-  request.
+- Servo travel limits in the current
+  [`firmware/`](../../firmware/README.md) protect the neck from hitting its
+  mechanical stops. If the head geometry changes, update and physically verify
+  those limits in the same pull request.
 
 ---
 
 ## Licence
 
 Everything in this folder is licensed under the
-[CERN Open Hardware Licence v2, Strongly Reciprocal](../LICENSE-hardware) —
+[CERN Open Hardware Licence v2, Strongly Reciprocal](../../LICENSE-hardware) —
 not the MIT licence that covers the project's software.

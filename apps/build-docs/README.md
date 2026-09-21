@@ -1,13 +1,19 @@
-# Marvin — Project website
+# Marvin — Pet v1 build website
 
-The public Marvin website. It has three visitor-facing destinations: a
+The public Marvin build website. It has three visitor-facing destinations: a
 long-scroll overview, a documentation area, and a page for people who want to
 get involved. The site is plain HTML, CSS and JavaScript, with no build step and
-no framework — the same constraint the controller app is built under, so it
-can be served from anywhere.
+no framework, so it can be served from anywhere.
+
+> **Hardware version:** the assembly, wiring, pin map, and flashing instructions
+> in this website describe the original SuperMini/Arduino **Pet v1**. The active
+> agent-integrated pet uses the Waveshare ESP32-S3-AUDIO-Board and the ESP-IDF
+> firmware in [`../../firmware/`](../../firmware/README.md). Never apply the Pet
+> v1 pin map to the current board. Mechanical files remain useful across both
+> generations where the physical part has not changed.
 
 ```
-docs/
+apps/build-docs/
 ├── index.html            Overview — the long-scroll introduction
 ├── build.html            Documentation / Build — parts, print, assemble, flash
 ├── electronics.html      Documentation / Electronics — soldered path and PCB spec
@@ -35,7 +41,7 @@ docs/
 Any static file server. For example:
 
 ```bash
-cd docs && python3 -m http.server 4173
+cd apps/build-docs && python3 -m http.server 4173
 ```
 
 Then open <http://127.0.0.1:4173>. Opening `index.html` as a `file://` URL
@@ -65,8 +71,8 @@ status link opens the live status page. The header and footer are static HTML
 on each of the six pages, so they work with JavaScript disabled. Keep those
 shared sections in sync when editing.
 
-To publish, serve `docs/` with any static host (for GitHub Pages, select the
-branch and `/docs` folder). Asset links remain relative for project subpaths.
+To publish, serve `apps/build-docs/` with any static host. Asset links remain
+relative so the same files work at a domain root or project subpath.
 
 ## Where this came from
 
@@ -97,9 +103,9 @@ hand-edits.
   common way a GitHub Pages site ships broken.
 - **Nothing the site loads may go through Git LFS.** GitHub Pages does not
   resolve LFS pointers — an LFS-tracked image arrives as a ~130-byte text file
-  and the page breaks silently. [`.gitattributes`](../.gitattributes) exempts
+  and the page breaks silently. [`.gitattributes`](../../.gitattributes) exempts
   the site's media patterns from LFS for exactly this reason; do not undo it.
-  Scope any such rule to the media extensions — a blanket `docs/**` override
+  Scope any such rule to the media extensions — a blanket directory override
   also unsets `diff`, which makes Git treat the HTML, CSS and JS as binary.
 - **Take colours, fonts and spacing from the design-system variables**
   (`var(--color-*)`, `var(--font-*)`, `var(--space-*)`) rather than hard-coding
@@ -239,37 +245,16 @@ Never hard-code a step number, in the markup or in prose that refers to one.
 
 ## Deployment
 
-There are two ways to publish this folder, for the two stages the project is
-passing through.
-
-### While the site is still private — Cloud Run
-
-A GitHub Pages site is **publicly reachable by anyone with the URL**, even when
-the repository itself is private, and restricting who can view one requires
-GitHub Enterprise Cloud. So until the project is ready to be public, the site is
-served instead by [`server/`](../server/README.md) — the same files, behind a
-GitHub sign-in, on Google Cloud Run:
-
-```bash
-./deploy_google_cloud.sh --help
-```
-
-Only the GitHub accounts you name can read it. See
-[`server/README.md`](../server/README.md) for the settings and how the sign-in
-works.
-
-### Once the site is public — GitHub Pages
-
-**Settings → Pages → Source: Deploy from a branch → `main` / `/docs`**. Nothing
-in this folder needs to change to move between the two: the relative-path rule
-below is what lets the same files work at a project subpath (`/marvin/`) on
-Pages and at the domain root on Cloud Run.
+Build `Dockerfile.docs` from the repository root for the independent Cloud Run
+documentation service. The static site and authenticated agent deliberately
+ship as separate services even though their source lives in one repository.
+The same folder can also be published with any static host.
 
 ---
 
 ## Licence
 
-The website source is covered by the project's [MIT Licence](../LICENSE).
+The website source is covered by the project's [MIT Licence](../../LICENSE).
 
 ## Architectural sketch treatment
 
