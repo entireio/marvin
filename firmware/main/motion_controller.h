@@ -19,6 +19,11 @@ esp_err_t marvin_motion_head_request(int yaw_degrees, int pitch_degrees, uint32_
 esp_err_t marvin_remote_input(int throttle, int turn, int head_yaw, int head_pitch, bool autonomous_head);
 void marvin_remote_stop(void);
 void marvin_motion_cue(marvin_motion_cue_t cue);
+/* Feed the current speaker envelope (0..1000). Speech motion remains
+ * transport-neutral: audio supplies energy, motion decides how to perform it. */
+void marvin_motion_voice_level(unsigned level);
+/* Starts or cancels the randomized authenticated-connection performance. */
+void marvin_motion_connection(bool connected);
 void marvin_motion_wake(void);
 void marvin_motion_idle_enabled(bool enabled);
 void marvin_motion_stop(void);

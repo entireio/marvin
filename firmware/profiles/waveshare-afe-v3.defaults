@@ -1,0 +1,3 @@
+# Installed only through the guarded layout migration tool.
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions-afe-v3.csv"
+CONFIG_MARVIN_AFE_LAYOUT_V3=y

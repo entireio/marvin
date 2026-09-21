@@ -70,6 +70,13 @@ compatibility.
 | Production-like local service | `docker compose -f deploy/compose.yaml up -d --build` | Requires private `MARVIN_ENV_FILE`, reachable HTTPS hostname and trusted Caddy public root. |
 | Stable local hardware demo | [local development](local-development.md) | Use `marvin.local`; never bake a DHCP IP into firmware or factory NVS. |
 | Fast local firmware iteration | `sh firmware/tools/build-waveshare-local-dev.sh` then guarded `board-flash.py --profile local-dev --app-only ... --flash` | App-only writes are local-dev only and cannot bootstrap signed OTA. |
+
+The active hardware layout is `afe-v3`: two 4 MiB OTA application slots at
+`0x20000` and `0x420000`, plus the 4 MiB wake-model partition at `0x820000`.
+The current firmware leaves about 54% of each application slot free, and the
+layout keeps 3.875 MiB at the end of flash unallocated for future eye assets,
+diagnostics, or another reviewed data partition. Builds enforce at least 10%
+application-slot headroom.
 | Audible motion image | `sh firmware/tools/build-waveshare-motion-afe.sh` | Enables AFE/wake/motion profile. Use the guarded full flash procedure in the firmware guide, not app-only flashing. `MARVIN_FLASH=1` is required by its build-and-flash wrapper. |
 
 Configuration is validated in `apps/server/src/config.ts`. In particular,

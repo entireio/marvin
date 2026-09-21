@@ -34,7 +34,9 @@ static bool confirm_initial_boot(void){
  const esp_partition_t *running=esp_ota_get_running_partition();if(!running)return false;
  char key[1024];uint8_t manifest[MARVIN_UPDATE_MANIFEST_BYTES];marvin_update_trust_t trust;
 #ifdef CONFIG_MARVIN_LOCAL_AFE
- #ifdef CONFIG_MARVIN_AFE_LAYOUT_V2
+ #ifdef CONFIG_MARVIN_AFE_LAYOUT_V3
+ const char *layout="afe-v3";
+ #elif defined(CONFIG_MARVIN_AFE_LAYOUT_V2)
  const char *layout="afe-v2";
  #else
  const char *layout="afe-v1";
@@ -79,7 +81,9 @@ static void run(void *unused){
   char public_key[1024];marvin_update_trust_t trust;marvin_link_identity_t identity={0};
   const esp_partition_t *slot=esp_ota_get_next_update_partition(NULL);
 #ifdef CONFIG_MARVIN_LOCAL_AFE
-  #ifdef CONFIG_MARVIN_AFE_LAYOUT_V2
+  #ifdef CONFIG_MARVIN_AFE_LAYOUT_V3
+  const char *layout="afe-v3";
+  #elif defined(CONFIG_MARVIN_AFE_LAYOUT_V2)
   const char *layout="afe-v2";
   #else
   const char *layout="afe-v1";

@@ -121,6 +121,14 @@ config MARVIN_AFE_LAYOUT_V2
     help
         Select only when partitions-afe-v2.csv is installed. This changes the
         signed OTA layout identifier and cannot be delivered by normal OTA.
+config MARVIN_AFE_LAYOUT_V3
+    bool "Use the 16 MB AFE v3 partition layout"
+    depends on MARVIN_LOCAL_AFE && !MARVIN_AFE_LAYOUT_V2
+    default n
+    help
+        Select only when partitions-afe-v3.csv is installed. This provides two
+        4 MiB OTA slots and retains a 4 MiB wake-model partition. It changes
+        the signed OTA layout identifier and requires a guarded migration.
 config MARVIN_HEAD_YAW_CENTER
     int "Head rotation servo center angle"
     range 30 150
@@ -135,6 +143,29 @@ config MARVIN_HEAD_YAW_REVERSE
 config MARVIN_HEAD_PITCH_REVERSE
     bool "Reverse head tilt direction"
     default y
+config MARVIN_EYES
+    bool "Enable dual SSD1306 animated eyes"
+    default y
+    help
+        Probes landscape 128x64 SSD1306 displays at 7-bit addresses 0x3C
+        and 0x3D on the shared GPIO11/GPIO10 I2C bus. Missing displays do
+        not prevent Marvin from booting.
+config MARVIN_CONNECTION_EYES_ANIMATION
+    bool "Animate Marvin when connecting"
+    default y
+    depends on MARVIN_EYES
+    help
+        Shows sleeping traces during boot, wakes after acquiring a network
+        address, and performs a randomized head, body, and eye choreography
+        after the authenticated server connection. Returns the eyes to sleep
+        after Wi-Fi disconnects.
+config MARVIN_CONNECTION_TONE
+    bool "Play the ready tone after the authenticated device connection"
+    default n
+    depends on MARVIN_BODY_AUDIO
+    help
+        Keeps the existing two-note ready cue available, but disabled by
+        default now that the eyes provide the connection feedback.
 config MARVIN_SILENT_TEST
     bool "Keep the amplifier disabled for unattended tests"
     default n

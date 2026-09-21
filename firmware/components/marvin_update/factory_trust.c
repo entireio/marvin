@@ -8,7 +8,7 @@ bool marvin_update_factory_trust(char *buffer,size_t capacity,const char *layout
  if(trust)memset(trust,0,sizeof(*trust));
  if(!buffer||capacity<2||capacity>1024||!trust)return false;
  memset(buffer,0,capacity);
- if(!layout||((!strcmp(layout,"afe-v2"))?slot_bytes!=0x300000:((strcmp(layout,"afe-v1")&&strcmp(layout,"owner-v1"))||slot_bytes!=0x1e0000)))return false;
+ if(!layout||((!strcmp(layout,"afe-v3"))?slot_bytes!=0x400000:((!strcmp(layout,"afe-v2"))?slot_bytes!=0x300000:((strcmp(layout,"afe-v1")&&strcmp(layout,"owner-v1"))||slot_bytes!=0x1e0000))))return false;
  nvs_handle_t nvs;if(nvs_open_from_partition("factory","identity",NVS_READONLY,&nvs)!=ESP_OK)return false;
  size_t size=capacity;bool ok=nvs_get_blob(nvs,"release_pub",buffer,&size)==ESP_OK;nvs_close(nvs);
  ok=ok&&size>1&&size<=capacity&&buffer[size-1]==0&&!memchr(buffer,0,size-1);

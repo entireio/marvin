@@ -4,6 +4,8 @@
 #include "pet_controls.h"
 #include "actuators.h"
 #include "motion_controller.h"
+#include "eyes.h"
+#include "battery_monitor.h"
 #include "device_identity.h"
 #include "owner_setup.h"
 #include "ble_remote.h"
@@ -58,6 +60,11 @@ static bool setup_clock_seeded;
 static const char *probe_failure="BACKEND_UNREACHABLE";
 static protocomm_security2_params_t security;
 typedef struct { int operation; wifi_config_t candidate; } job_t;
+#ifdef CONFIG_MARVIN_CONNECTION_EYES_ANIMATION
+static const bool connection_eye_animation=true;
+#else
+static const bool connection_eye_animation=false;
+#endif
 
 static esp_err_t set_station_hostname(esp_netif_t *station) {
     uint8_t mac[6];
@@ -78,8 +85,8 @@ static void state(const char *next, const char *error) {
     xSemaphoreGive(lock);
 }
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
-    if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) xEventGroupSetBits(events,IP_READY);
-    if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) xEventGroupClearBits(events,IP_READY);
+    if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) {xEventGroupSetBits(events,IP_READY);marvin_eyes_connection(true,connection_eye_animation);}
+    if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {xEventGroupClearBits(events,IP_READY);marvin_eyes_connection(false,connection_eye_animation);}
 }
 static bool connect_config(const wifi_config_t *config) {
     esp_wifi_disconnect();
@@ -284,6 +291,13 @@ void app_main(void) {
 #ifdef CONFIG_MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC
     marvin_audio_diagnostic();return;
 #endif
+#ifdef CONFIG_MARVIN_EYES
+    /* Put a recognizable face on the display before network and BLE setup. */
+    esp_err_t battery_result=marvin_battery_monitor_init();
+    if(battery_result!=ESP_OK)ESP_LOGW("marvin","Battery indicator unavailable: %s",esp_err_to_name(battery_result));
+    esp_err_t eyes_result=marvin_eyes_init();
+    if(eyes_result!=ESP_OK)ESP_LOGW("marvin","Eye displays unavailable; continuing without eyes: %s",esp_err_to_name(eyes_result));
+#endif
     ESP_ERROR_CHECK(esp_netif_init());ESP_ERROR_CHECK(esp_event_loop_create_default());
     lock=xSemaphoreCreateMutex();jobs=xQueueCreate(1,sizeof(job_t));events=xEventGroupCreate();assert(lock && jobs && events);
     #ifdef CONFIG_MARVIN_SIGNED_OTA
@@ -317,6 +331,10 @@ void app_main(void) {
     protocomm_t *pc=protocomm_new();assert(pc);
     static protocomm_ble_name_uuid_t endpoints[]={{"proto-ver",0xff51},{"prov-session",0xff52},{"marvin-control",0xff53}};
     protocomm_ble_config_t ble={.device_name="Marvin setup",.service_uuid={0xfb,0x34,0x9b,0x5f,0x80,0x00,0x00,0x80,0x00,0x10,0x00,0x00,0x50,0xff,0x00,0x00},.nu_lookup_count=3,.nu_lookup=endpoints};
+#ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
+    const char *identity=marvin_identity_device_id();
+    if(identity&&strlen(identity)==39)snprintf(ble.device_name,sizeof(ble.device_name),"Marvin setup %.12s",identity+27);
+#endif
     ESP_ERROR_CHECK(protocomm_ble_start(pc,&ble));
     /* The remote task waits for this NimBLE host in the background; it never
      * holds up motors, network setup, or the rest of boot. */

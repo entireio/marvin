@@ -44,10 +44,12 @@ if a.profile in ('afe-audible','motion-afe') and ('CONFIG_MARVIN_SILENT_TEST=y' 
 if a.profile=='motion-afe' and any('CONFIG_'+option+'=y' not in config for option in ('MARVIN_WAKE_AUTOSTART','MARVIN_MICRO_WAKE_WORD','MARVIN_HEY_MARVIN_WAKE')):raise RuntimeError('Motion profile is missing a required wake option.')
 args=json.loads((build/'flasher_args.json').read_text())
 expected={'0x0':'bootloader/bootloader.bin','0x8000':'partition_table/partition-table.bin','0x10000':'ota_data_initial.bin','0x20000':'marvin.bin'}
-if afe_profile:expected['0x3e0000']='srmodels/srmodels.bin'
+afe_v3='CONFIG_MARVIN_AFE_LAYOUT_V3=y' in config
+model_offset='0x820000' if afe_v3 else '0x3e0000'
+if afe_profile:expected[model_offset]='srmodels/srmodels.bin'
 if args['flash_files']!=expected or args['flash_settings']!={'flash_mode':'dio','flash_size':'16MB','flash_freq':'80m'}:raise RuntimeError('Unexpected image layout; stop for review.')
 images={offset:{'path':str(build/name),'sha256':sha(build/name),'bytes':(build/name).stat().st_size} for offset,name in expected.items()}
-if afe_profile and images['0x3e0000']['bytes']>0x400000:raise RuntimeError('AFE model exceeds its reviewed partition.')
+if afe_profile and images[model_offset]['bytes']>0x400000:raise RuntimeError('AFE model exceeds its reviewed partition.')
 if a.profile!='audio' and not a.app_only:
  factory=a.factory/'factory.bin'
  if factory.stat().st_size!=0x6000:raise RuntimeError('Unexpected factory partition size')
@@ -88,7 +90,7 @@ if a.app_only:
   if sha(Path(current_table.name))!=images['0x8000']['sha256']:
    raise RuntimeError('Installed partition table does not match local-dev AFE layout. Run a full local-dev install; app-only will not orphan the wake model.')
  # Application-only iterations must also retain the exact reviewed wake model.
- subprocess.run(base+['verify_flash','0x3e0000',images['0x3e0000']['path']],check=True,timeout=180)
+ subprocess.run(base+['verify_flash',model_offset,images[model_offset]['path']],check=True,timeout=180)
 command=base+['write_flash']+args['write_flash_args']
 for offset,image in images.items():
  if a.app_only:

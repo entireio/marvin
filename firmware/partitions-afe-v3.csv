@@ -1,0 +1,9 @@
+# 16 MB Waveshare AFE layout. Two 4 MiB OTA slots leave 3.875 MiB
+# unallocated after the wake model for future eye assets or diagnostics.
+nvs,data,nvs,0x9000,0x6000
+phy_init,data,phy,0xf000,0x1000
+otadata,data,ota,0x10000,0x2000
+factory,data,nvs,0x12000,0x6000
+ota_0,app,ota_0,0x20000,0x400000
+ota_1,app,ota_1,0x420000,0x400000
+model,data,spiffs,0x820000,0x400000

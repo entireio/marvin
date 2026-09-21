@@ -1,4 +1,6 @@
 #include "body_audio.h"
+#include "eyes.h"
+#include "motion_controller.h"
 #include "board_audio.h"
 #include "audio_rate.h"
 #include "audio_preroll.h"
@@ -141,6 +143,17 @@ static void capture_task(void *unused){
  }
 }
 #endif
+static unsigned speech_level(const int16_t *samples,size_t count){
+ unsigned long long total=0;
+ for(size_t i=0;i<count;i++)total+=(unsigned)(samples[i]<0?-(int)samples[i]:samples[i]);
+ if(!count)return 0;
+ unsigned average=(unsigned)(total/count);
+ /* Ignore the codec floor, then saturate around ordinary synthetic speech.
+  * Average magnitude follows phrases more steadily than sample peaks. */
+ if(average<180)return 0;
+ unsigned level=(average-180)*1000/5200;
+ return level>1000?1000:level;
+}
 static void playback_task(void *unused){
  (void)unused;int16_t source[240],samples[160],silence[160]={0};int64_t last_write=0;
  /* Two short rising notes, each faded in and out to avoid clicks. */
@@ -194,11 +207,12 @@ static void playback_task(void *unused){
       atomic_fetch_add(&playback_leadin_samples,160);
      }
     }
+    marvin_motion_voice_level(speech_level(samples,frames));
     began=esp_timer_get_time();if(marvin_audio_write(samples,frames)!=ESP_OK)atomic_store(&fault,4);
     else {atomic_fetch_add(&played_samples,frames);last_write=esp_timer_get_time();}
     elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&write_max_us))atomic_store(&write_max_us,elapsed);
    }
-  }else if(atomic_load(&playing)&&esp_timer_get_time()-last_write>=60000){marvin_audio_mute(true);atomic_store(&playing,false);}
+  }else if(atomic_load(&playing)&&esp_timer_get_time()-last_write>=60000){marvin_audio_mute(true);atomic_store(&playing,false);marvin_motion_voice_level(0);}
   xSemaphoreGive(output_lock);
   memset(source,0,sizeof(source));memset(samples,0,sizeof(samples));
   /* DMA supplies the playback clock. A10ms task delay would insert gaps. */
@@ -258,6 +272,7 @@ void marvin_body_audio_flush(void){
  xSemaphoreTake(output_lock,portMAX_DELAY);xSemaphoreTake(lock,portMAX_DELAY);
  used=head=0;has_turn=false;memset(turn,0,sizeof(turn));atomic_store(&ready_cue_pending,false);xSemaphoreGive(lock);
  marvin_rate_init(&output_rate,false);marvin_audio_mute(true);atomic_store(&playing,false);
+ marvin_motion_voice_level(0);
  xSemaphoreGive(output_lock);atomic_fetch_sub(&flush_requests,1);
  unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&flush_max_us))atomic_store(&flush_max_us,elapsed);
 }
@@ -359,7 +374,9 @@ static bool save_u8(const char *key,uint8_t value){
 bool marvin_body_set_volume(unsigned volume){
  if(!output_lock||atomic_load(&quiescing)||volume>100)return false;
  xSemaphoreTake(output_lock,portMAX_DELAY);bool changed=marvin_audio_volume()!=volume;bool ok=marvin_audio_set_volume(volume)==ESP_OK;xSemaphoreGive(output_lock);
- return ok&&(!changed||save_u8("volume",(uint8_t)volume));
+ if(!ok)return false;
+ if(changed)marvin_eyes_volume(volume);
+ return !changed||save_u8("volume",(uint8_t)volume);
 }
 unsigned marvin_body_volume(void){return marvin_audio_volume();}
 bool marvin_body_set_microphone_gain(unsigned gain_db){

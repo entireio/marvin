@@ -14,6 +14,7 @@ private toolchain under `work/`; none is a general-purpose flasher.
 | Fast local-dev application update | Add `--app-only --flash` to the local-dev flash command | Application only |
 | Install an audible motion image | `MARVIN_FLASH=1 sh firmware/tools/build-and-flash-motion-afe.sh` | OTA metadata and application only |
 | Capture a new board backup | `python3 firmware/tools/board-backup.py --port PORT` | No |
+| Migrate an AFE v1 development board to 4 MiB slots | `python3 firmware/tools/migrate-afe-v3-local-dev.py ...` | Model, application, partition table |
 | Run the diagnostic console | `python3 firmware/tools/board-monitor.py --port PORT` | No |
 
 Build helpers regenerate their profile configuration. They do not flash. A
@@ -39,6 +40,11 @@ motion safety.
    wake model and factory partition against the reviewed build. It writes only
    OTA metadata and the application. A mismatch stops the operation; it does
    not overwrite the factory partition to make the check pass.
+
+The daily local-development build uses the `afe-v3` 16 MB layout: two 4 MiB
+OTA slots followed by the existing 4 MiB wake-model partition. Its build fails
+if less than 10% of an application slot remains. Layout migration is separate
+from app-only flashing and requires a fresh double-read backup.
 
 The `build-and-flash-motion-afe.sh` wrapper adds a second explicit guard:
 `MARVIN_FLASH=1`. It discovers the newest private backup/factory directories

@@ -1,4 +1,5 @@
 #include "board_audio.h"
+#include "board_i2c.h"
 #include "sdkconfig.h"
 #if defined(CONFIG_MARVIN_WAVESHARE_AUDIO_DIAGNOSTIC) || defined(CONFIG_MARVIN_BODY_AUDIO)
 #include <stdio.h>
@@ -13,12 +14,12 @@
 #include "esp_codec_dev_defaults.h"
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
+#include "esp_check.h"
 #include "freertos/queue.h"
 #include <stdatomic.h>
 
 /* Waveshare schematic revision 1.1. GPIO19/20 are the native USB pair;
  * head PWM uses GPIO8/9 instead, leaving USB available during movement. */
-static i2c_master_bus_handle_t bus;
 static i2c_master_dev_handle_t expander;
 static i2s_chan_handle_t tx,rx;
 static esp_codec_dev_handle_t input,output;
@@ -77,8 +78,8 @@ static esp_err_t pa(bool enabled) {
     return i2c_master_transmit(expander,data,sizeof(data),100);
 }
 static esp_err_t init(void) {
-    i2c_master_bus_config_t bc={.i2c_port=0,.sda_io_num=11,.scl_io_num=10,.clk_source=I2C_CLK_SRC_DEFAULT,.glitch_ignore_cnt=7};
-    ESP_ERROR_CHECK(i2c_new_master_bus(&bc,&bus));
+    ESP_RETURN_ON_ERROR(marvin_board_i2c_init(),"marvin_audio","initialize shared I2C bus");
+    i2c_master_bus_handle_t bus=marvin_board_i2c_bus();
     const uint8_t expected[]={0x18,0x40,0x20};
     for(size_t i=0;i<sizeof(expected);i++) {
         esp_err_t e=ESP_FAIL;
