@@ -3,7 +3,14 @@ import {Security2} from './security2.js';
 import {PROVISIONING_SERVICE,provisioningSupport} from './index.js';
 export interface GattCharacteristic {writeValueWithResponse(value:Uint8Array<ArrayBuffer>):Promise<void>;readValue():Promise<DataView>;}
 export interface GattServer {connected:boolean;connect():Promise<GattServer>;disconnect():void;getPrimaryService(uuid:string):Promise<{getCharacteristic(uuid:string):Promise<GattCharacteristic>}>;}
-export interface BluetoothDevice {gatt?:GattServer;addEventListener(type:'gattserverdisconnected',listener:()=>void):void;removeEventListener(type:'gattserverdisconnected',listener:()=>void):void;}
+export interface BluetoothDevice {name?:string;gatt?:GattServer;addEventListener(type:'gattserverdisconnected',listener:()=>void):void;removeEventListener(type:'gattserverdisconnected',listener:()=>void):void;}
+const LOCAL_DEVICE_NAME=/^Marvin setup ([a-f0-9]{12})$/i;
+/** Uses the BLE display name only to select a candidate local credential.
+ * Security2 still proves that credential before setup data is exchanged. */
+export function localDeviceIdFromBluetoothName(name:string|undefined,deviceIds:string[]){
+ const suffix=name?.match(LOCAL_DEVICE_NAME)?.[1]?.toLowerCase();if(!suffix)return null;
+ const matches=deviceIds.filter(id=>id.toLowerCase().endsWith(suffix));return matches.length===1?matches[0]!:null;
+}
 export function bluetoothError(error:unknown){
  if(error instanceof DOMException&&(error.name==='NotFoundError'||/cancelled|canceled/i.test(error.message)))return new DomainError('BLUETOOTH_CANCELLED','');
  if(error instanceof DomainError)return error;

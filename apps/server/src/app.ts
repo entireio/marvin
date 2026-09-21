@@ -10,6 +10,7 @@ import { DeviceGateway } from '../../../packages/device/src/gateway.js';
 import { registerVoice } from './voice.js';
 import {DeepgramVoiceProvider} from '../../../packages/runtime/src/deepgram-voice.js';
 import { OpenAIVoiceProvider } from '../../../packages/runtime/src/openai-voice.js';
+import { RoboticVoiceProvider } from '../../../packages/runtime/src/robot-voice.js';
 import type { VoiceProvider } from '../../../packages/runtime/src/voice.js';
 import cookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
@@ -30,7 +31,7 @@ import { authorizeTool } from '../../../packages/runtime/src/policy.js';
 import { FixtureEntire,fixtureRepositories } from '../../../packages/runtime/src/entire.js';
 import { FixtureTextProvider,OpenAITextProvider,type TextProvider } from '../../../packages/runtime/src/provider.js';
 import { SendTurn, ClientEvent, RemoteIntent, DomainError, Id, RepositorySelection, type AgentEvent } from '../../../packages/contracts/src/index.js';
-import { HeadCalibration,PetAudioSettings,PetSpeech } from '../../../packages/contracts/src/device.js';
+import { HeadCalibration,PetAudioSettings,PetEyeSettings,PetSpeech } from '../../../packages/contracts/src/device.js';
 import { Identity,verifyPassword,safeReturnTo } from './auth.js';
 import type { Config } from './config.js';
 export async function createApp(cfg:Config,options:{database?:Database;provider?:TextProvider;logger?:boolean;entire?:RepositoryIntegration;voice?:VoiceProvider;voiceLimits?:{idleMs:number;maxMs:number;heartbeatMs:number}}={}){
@@ -46,10 +47,16 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   const card=z.object({deviceId:z.string().regex(/^marvin_[a-f0-9]{32}$/),username:z.string().min(1).max(64),password:z.string().min(8).max(128),security:z.literal(2).optional(),patch:z.literal(1).optional()}).strict(),loaded=z.union([card,z.array(card).length(1)]).parse(JSON.parse(readFileSync(cfg.LOCAL_DEV_SETUP_CARDS_FILE,'utf8')));
   return Array.isArray(loaded)?loaded[0]!:loaded;
  })():undefined;
+ const localDevPets=cfg.LOCAL_DEV_PETS_FILE?(()=>{
+  const card=z.object({deviceId:z.string().regex(/^marvin_[a-f0-9]{32}$/),username:z.string().min(1).max(64),password:z.string().min(8).max(128),security:z.literal(2).optional(),patch:z.literal(1).optional()}).strict(),entry=z.object({label:z.string().min(1).max(64),cardFile:z.string().startsWith('/'),devicePublicKeyFile:z.string().startsWith('/')}).strict(),entries=z.array(entry).min(1).max(8).parse(JSON.parse(readFileSync(cfg.LOCAL_DEV_PETS_FILE,'utf8'))),pets=entries.map(item=>({...item,card:card.parse(JSON.parse(readFileSync(item.cardFile,'utf8')))}));
+  if(new Set(pets.map(pet=>pet.card.deviceId)).size!==pets.length)throw new Error('LOCAL_DEV_PETS_FILE contains duplicate device identities.');
+  return pets;
+ })():[];
  if(cfg.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE&&localDevCard){
   const registered=await enrollment!.registerDevice(readFileSync(cfg.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE,'utf8'));
   if(registered!==localDevCard.deviceId)throw new Error('LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE does not match LOCAL_DEV_SETUP_CARDS_FILE.');
  }
+ for(const pet of localDevPets){const registered=await enrollment!.registerDevice(readFileSync(pet.devicePublicKeyFile,'utf8'));if(registered!==pet.card.deviceId)throw new Error('A LOCAL_DEV_PETS_FILE public key does not match its setup card.');}
  runtime.devices=devices;
  const identity=new Identity(cfg,store), secure=cfg.NODE_ENV==='production'||cfg.APP_ORIGIN.startsWith('https:');
  const cookieOptions={path:'/',httpOnly:true,sameSite:'lax' as const,secure,maxAge:8*60*60};
@@ -79,7 +86,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.get('/api/device/firmware',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization);if(!firmwareRelease?.offeredTo(device.deviceId))return reply.code(204).send();return firmwareRelease.offer();});
  app.get('/api/device/firmware/:sequence/:part',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization),params=z.object({sequence:z.string().regex(/^[1-9][0-9]{0,9}$/),part:z.enum(['manifest','image'])}).parse(req.params);if(!firmwareRelease?.offeredTo(device.deviceId)||String(firmwareRelease.sequence)!==params.sequence)throw new DomainError('NOT_FOUND','Firmware release not available.',404);return reply.type('application/octet-stream').send(firmwareRelease.bytes(params.part));});
 
- app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE,oidcLabel:cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',deploymentMode:cfg.DEPLOYMENT_MODE,localDevSetupAvailable:!!localDevCard,docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',voiceStatus:voiceDiagnostic==='credit_balance_exhausted'?'billing_required':voiceDiagnostic?'unavailable':'ready',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
+ app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE,oidcLabel:cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',deploymentMode:cfg.DEPLOYMENT_MODE,localDevSetupAvailable:!!localDevCard||localDevPets.length>0,docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',voiceStatus:voiceDiagnostic==='credit_balance_exhausted'?'billing_required':voiceDiagnostic?'unavailable':'ready',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
  app.get('/api/auth/session',async(req)=>{const s=await store.session(req.cookies.marvin_session);return s?{owner:await store.owner(s.ownerId),csrf:s.csrf}:null;});
  app.post('/api/auth/login',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{
   const body=z.object({password:z.string().max(1024).optional(),returnTo:z.string().max(150).optional()}).strict().parse(req.body);
@@ -98,9 +105,11 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   const sameOriginFetch=req.headers['sec-fetch-site']==='same-origin'&&['cors','same-origin'].includes(req.headers['sec-fetch-mode']??'');
   if(req.headers.origin!==cfg.APP_ORIGIN&&!sameOriginFetch)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);
   await session(req);
-  if(cfg.DEPLOYMENT_MODE!=='local-dev'||!localDevCard)throw new DomainError('LOCAL_DEV_SETUP_UNAVAILABLE','Automatic Desktop Pet setup is not enabled on this server.',404);
+  if(cfg.DEPLOYMENT_MODE!=='local-dev'||!localDevCard)throw new DomainError('LOCAL_DEV_SETUP_UNAVAILABLE','Automatic single-Pet setup is not enabled on this server.',404);
   return {card:localDevCard};
  });
+ app.get('/api/local-dev/setup-pets',async(req)=>{const sameOriginFetch=req.headers['sec-fetch-site']==='same-origin'&&['cors','same-origin'].includes(req.headers['sec-fetch-mode']??'');if(req.headers.origin!==cfg.APP_ORIGIN&&!sameOriginFetch)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);await session(req);if(cfg.DEPLOYMENT_MODE!=='local-dev'||!localDevPets.length)throw new DomainError('LOCAL_DEV_SETUP_UNAVAILABLE','Automatic multi-Pet setup is not enabled on this server.',404);return {pets:localDevPets.map(pet=>({deviceId:pet.card.deviceId,label:pet.label}))};});
+ app.get('/api/local-dev/setup-card/:deviceId',async(req)=>{const sameOriginFetch=req.headers['sec-fetch-site']==='same-origin'&&['cors','same-origin'].includes(req.headers['sec-fetch-mode']??'');if(req.headers.origin!==cfg.APP_ORIGIN&&!sameOriginFetch)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);await session(req);const {deviceId}=z.object({deviceId:Id}).parse(req.params),pet=localDevPets.find(item=>item.card.deviceId===deviceId);if(cfg.DEPLOYMENT_MODE!=='local-dev'||!pet)throw new DomainError('LOCAL_DEV_SETUP_UNAVAILABLE','That Desktop Pet is not enabled for automatic setup.',404);return {card:pet.card};});
  app.get('/api/auth/start',async(req,reply)=>{if(cfg.AUTH_MODE!=='oidc')throw new DomainError('IDENTITY_UNCONFIGURED','Entire sign-in is not configured. Use the available local sign-in.',409);const query=req.query as Record<string,string>;const flow=await identity.begin(query.returnTo);reply.setCookie('marvin_auth',flow.token,{...cookieOptions,maxAge:300,path:'/api/auth'});return reply.redirect(flow.url);});
  app.get('/api/auth/callback',async(req,reply)=>{reply.clearCookie('marvin_auth',{path:'/api/auth'});try{const callback=new URL(cfg.OIDC_REDIRECT_URI!);callback.search=new URL(req.url,'http://localhost').search;const result=await identity.callback(req.cookies.marvin_auth,callback);const s=await store.createSession(result.owner.id);reply.setCookie('marvin_session',s.token,cookieOptions);return reply.redirect(cfg.APP_ORIGIN+result.returnTo);}catch{return reply.redirect(cfg.APP_ORIGIN+'/login?error=signin_failed');}});
  const requireEnrollment=()=>{if(!enrollment)throw new DomainError('ENROLLMENT_UNAVAILABLE','Device setup is not configured on this server.',503);return enrollment;};
@@ -113,6 +122,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.put('/api/robot/conversation',async(req)=>{const b=z.object({conversationId:Id.nullable()}).strict().parse(req.body),s=await session(req);const result=await store.setPetConversation(s.ownerId,b.conversationId);runtime.events.emit('conversation_link',s.ownerId);return result;});
  app.patch('/api/robot/audio',async(req)=>devices.setAudioSettings((await session(req)).ownerId,PetAudioSettings.parse(req.body)));
  app.patch('/api/robot/head-calibration',async(req)=>devices.setHeadCalibration((await session(req)).ownerId,HeadCalibration.parse(req.body)));
+ app.patch('/api/robot/eyes',async(req)=>devices.setEyeSettings((await session(req)).ownerId,PetEyeSettings.parse(req.body)));
  app.post('/api/robot/speak',{config:{rateLimit:{max:8,timeWindow:'1 minute'}}},async(req)=>{const b=PetSpeech.parse(req.body),s=await session(req);return devices.speak(s.ownerId,b.text);});
  app.post('/api/robot/control',async(req)=>{
   const b=z.discriminatedUnion('action',[
@@ -210,7 +220,8 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   socket.on('close',()=>{closed=true;eventConnections--;clearTimeout(startTimer);clearInterval(heartbeat);runtime.events.off('event',event);runtime.events.off('refresh',refresh);runtime.events.off('conversation_link',link);});
  });
  devices.register(app);
- const voiceProvider=options.voice??(cfg.VOICE_PROVIDER==='openai'?new OpenAIVoiceProvider(cfg.OPENAI_API_KEY!,cfg.OPENAI_REALTIME_MODEL!,cfg.OPENAI_TRANSCRIPTION_MODEL,cfg.OPENAI_VOICE,undefined,undefined,code=>{voiceDiagnostic=code;app.log.warn({code},'Voice provider diagnostic');}):cfg.VOICE_PROVIDER==='deepgram'?new DeepgramVoiceProvider(cfg.DEEPGRAM_API_KEY!,cfg.DEEPGRAM_STT_MODEL!,cfg.DEEPGRAM_TTS_MODEL!,runtime.provider):undefined);
+ const naturalVoiceProvider=options.voice??(cfg.VOICE_PROVIDER==='openai'?new OpenAIVoiceProvider(cfg.OPENAI_API_KEY!,cfg.OPENAI_REALTIME_MODEL!,cfg.OPENAI_TRANSCRIPTION_MODEL,cfg.OPENAI_VOICE,undefined,undefined,code=>{voiceDiagnostic=code;app.log.warn({code},'Voice provider diagnostic');}):cfg.VOICE_PROVIDER==='deepgram'?new DeepgramVoiceProvider(cfg.DEEPGRAM_API_KEY!,cfg.DEEPGRAM_STT_MODEL!,cfg.DEEPGRAM_TTS_MODEL!,runtime.provider):undefined);
+ const voiceProvider=naturalVoiceProvider&&cfg.VOICE_EFFECT==='subtle-robotic'?new RoboticVoiceProvider(naturalVoiceProvider):naturalVoiceProvider;
  devices.voice=new DeviceVoice(runtime,voiceProvider);
  const voice=registerVoice(app,runtime,cfg.APP_ORIGIN,voiceProvider,options.voiceLimits);
  let retentionAfter='';let retentionWork:Promise<void>|undefined;

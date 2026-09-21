@@ -7,8 +7,8 @@ export const Env=z.object({
  AUTH_MODE:z.enum(['development','local','oidc']).default('development'),LOCAL_PASSWORD_HASH:z.string().optional(),MODEL_PROVIDER:z.enum(['fixture','openai','anthropic']).default('fixture'),OPENAI_API_KEY:z.string().optional(),OPENAI_MODEL:z.string().optional(),OPENAI_REPOSITORY_MODEL:z.string().optional(),SQLITE_PATH:z.string().default('./data/marvin.sqlite'),DATABASE_URL:z.string().optional(),
  ANTHROPIC_API_KEY:z.string().optional(),ANTHROPIC_MODEL:z.string().optional(),
  DEEPGRAM_API_KEY:z.string().optional(),DEEPGRAM_STT_MODEL:z.string().optional(),DEEPGRAM_TTS_MODEL:z.string().optional(),
- VOICE_PROVIDER:z.enum(['disabled','openai','deepgram']).default('disabled'),OPENAI_REALTIME_MODEL:z.string().optional(),OPENAI_TRANSCRIPTION_MODEL:z.string().default('gpt-4o-mini-transcribe'),OPENAI_VOICE:z.enum(['marin','cedar','alloy','ash','ballad','coral','echo','sage','shimmer','verse']).default('marin'),
- HARDWARE_PROVISIONING_ENABLED:z.enum(['true','false']).default('false'),LOCAL_DEV_SETUP_CARDS_FILE:z.string().optional(),LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE:z.string().optional(),
+ VOICE_PROVIDER:z.enum(['disabled','openai','deepgram']).default('disabled'),VOICE_EFFECT:z.enum(['natural','subtle-robotic']).default('subtle-robotic'),OPENAI_REALTIME_MODEL:z.string().optional(),OPENAI_TRANSCRIPTION_MODEL:z.string().default('gpt-4o-mini-transcribe'),OPENAI_VOICE:z.enum(['marin','cedar','alloy','ash','ballad','coral','echo','sage','shimmer','verse']).default('cedar'),
+ HARDWARE_PROVISIONING_ENABLED:z.enum(['true','false']).default('false'),LOCAL_DEV_SETUP_CARDS_FILE:z.string().optional(),LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE:z.string().optional(),LOCAL_DEV_PETS_FILE:z.string().optional(),
  FIRMWARE_ROLLOUT_FILE:z.string().optional(),
  ENROLLMENT_KEYS_FILE:z.string().optional(),DEVICE_PUBLIC_ORIGIN:z.url().optional(),
  ENTIRE_CLI_PATH:z.string().optional(),ENTIRE_BINDINGS_FILE:z.string().optional(),ENTIRE_COMPANION_URL:z.preprocess(value=>value===''?undefined:value,z.url().optional()),ENTIRE_COMPANION_TOKEN:z.preprocess(value=>value===''?undefined:value,z.string().min(32).max(256).optional()),
@@ -21,10 +21,14 @@ export function config(env:NodeJS.ProcessEnv=process.env):Config{
  if(c.LOCAL_DEV_SETUP_CARDS_FILE&&!c.LOCAL_DEV_SETUP_CARDS_FILE.startsWith('/'))throw new Error('LOCAL_DEV_SETUP_CARDS_FILE must be an absolute private file path.');
  if(c.DEPLOYMENT_MODE!=='local-dev'&&c.LOCAL_DEV_SETUP_CARDS_FILE)throw new Error('LOCAL_DEV_SETUP_CARDS_FILE is available only in local-dev mode.');
  if(c.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE&&!c.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE.startsWith('/'))throw new Error('LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE must be an absolute private file path.');
+ if(c.LOCAL_DEV_PETS_FILE&&!c.LOCAL_DEV_PETS_FILE.startsWith('/'))throw new Error('LOCAL_DEV_PETS_FILE must be an absolute private file path.');
+ if(c.LOCAL_DEV_PETS_FILE&&(c.LOCAL_DEV_SETUP_CARDS_FILE||c.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE))throw new Error('LOCAL_DEV_PETS_FILE replaces the single-Pet local development settings.');
+ if(c.DEPLOYMENT_MODE!=='local-dev'&&c.LOCAL_DEV_PETS_FILE)throw new Error('LOCAL_DEV_PETS_FILE is available only in local-dev mode.');
  if(c.DEPLOYMENT_MODE!=='local-dev'&&c.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE)throw new Error('LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE is available only in local-dev mode.');
  if(c.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE&&!c.LOCAL_DEV_SETUP_CARDS_FILE)throw new Error('Automatic local-dev device registration requires the matching setup card.');
  if(c.LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE&&c.HARDWARE_PROVISIONING_ENABLED!=='true')throw new Error('Automatic local-dev device registration requires hardware provisioning.');
- if(c.LOCAL_DEV_SETUP_CARDS_FILE&&c.NODE_ENV!=='test'&&c.AUTH_MODE!=='local')throw new Error('Automatic local-dev setup requires password-protected local authentication.');
+ if(c.LOCAL_DEV_PETS_FILE&&c.HARDWARE_PROVISIONING_ENABLED!=='true')throw new Error('Automatic local-dev device registration requires hardware provisioning.');
+ if((c.LOCAL_DEV_SETUP_CARDS_FILE||c.LOCAL_DEV_PETS_FILE)&&c.NODE_ENV!=='test'&&c.AUTH_MODE!=='local')throw new Error('Automatic local-dev setup requires password-protected local authentication.');
  if(c.HARDWARE_PROVISIONING_ENABLED==='true'&&!c.ENROLLMENT_KEYS_FILE)throw new Error('Hardware provisioning needs configured enrollment trust.');
  if(!!c.ENROLLMENT_KEYS_FILE!==!!c.DEVICE_PUBLIC_ORIGIN)throw new Error('Device enrollment requires ENROLLMENT_KEYS_FILE and DEVICE_PUBLIC_ORIGIN.');
  if(c.ENROLLMENT_KEYS_FILE&&!c.ENROLLMENT_KEYS_FILE.startsWith('/'))throw new Error('ENROLLMENT_KEYS_FILE must be an absolute private file path.');

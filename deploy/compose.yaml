@@ -20,6 +20,13 @@ services:
       TRUST_PROXY_HOPS: 1
       SQLITE_PATH: /data/marvin.sqlite
       APP_ORIGIN: ${APP_ORIGIN:?Set an HTTPS origin with port 8443}
+      # This Compose stack is the local-development deployment.  Keep secure
+      # enrollment on by default; an operator may still explicitly override
+      # any value for an isolated or production-like deployment.
+      DEPLOYMENT_MODE: ${DEPLOYMENT_MODE:-local-dev}
+      HARDWARE_PROVISIONING_ENABLED: ${HARDWARE_PROVISIONING_ENABLED:-true}
+      ENROLLMENT_KEYS_FILE: ${ENROLLMENT_KEYS_FILE:-/private/owner-deployment-keys.json}
+      DEVICE_PUBLIC_ORIGIN: ${DEVICE_PUBLIC_ORIGIN:-${APP_ORIGIN:?Set an HTTPS origin with port 8443}}
     volumes:
       - marvin_data:/data
       # Local-only private deployment inputs (enrollment keys and optional

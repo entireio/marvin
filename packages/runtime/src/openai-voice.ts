@@ -6,6 +6,8 @@ import { persona,priorUserText,repositoryExplanation,repositoryToolRounds,type M
 import { allowedTools,bodyExplanation } from './policy.js';
 import type { VoiceConnection,VoiceProvider,VoiceSignal } from './voice.js';
 
+export const marvinVoiceDelivery=`Use a restrained, lower-register, neutral-to-masculine delivery. Sound dry, world-weary, matter-of-fact, slightly mechanical, and emotionally contained. Avoid warmth, cheerfulness, friendliness, a soothing cadence, sing-song intonation, upward inflections, breathy softness, or sounding as though you are smiling. Do not become hostile, angry, theatrical, exaggerated, or flatly monotone. Keep the pitch comparatively low, the cadence deliberate, the emphasis sparse, and pauses short.`;
+
 /** Bounded single-consumer queue. Provider output cannot grow memory without limit. */
 class Events {
  private items:RealtimeServerEvent[]=[];private wake:(()=>void)|undefined;private error:Error|undefined;private bytes=0;
@@ -26,7 +28,7 @@ export class OpenAIVoiceProvider implements VoiceProvider {
   ws.on('error',error=>{const code=error.error?.code;this.diagnostic?.(typeof code==='string'&&['invalid_api_key','insufficient_quota','credit_balance_exhausted','model_not_found','invalid_request_error','rate_limit_exceeded','server_error','session_expired','response_cancel_not_active','conversation_already_has_active_response'].includes(code)?code:'VOICE_PROVIDER_OR_TRANSPORT_ERROR');fail();});ws.socket.on('close',()=>{if(!closed)fail();});
   const connected=new Promise<void>((resolve,reject)=>{rejectReady=reject;const timer=setTimeout(()=>reject(new Error('Voice connection timed out')),12000);
    ws.on('session.updated',()=>{if(!ready){ready=true;clearTimeout(timer);resolve();}});ws.socket.on('close',()=>clearTimeout(timer));
-   ws.socket.on('open',()=>{try{send({type:'session.update',session:{type:'realtime',instructions:persona,output_modalities:['audio'],max_output_tokens:2400,audio:{input:{format:{type:'audio/pcm',rate:24000},transcription:{model:this.transcriptionModel},noise_reduction:{type:'near_field'},turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:450,create_response:false,interrupt_response:false}},output:{format:{type:'audio/pcm',rate:24000},voice:this.voice}}}});}catch{fail();}});
+   ws.socket.on('open',()=>{try{send({type:'session.update',session:{type:'realtime',instructions:`${persona}\n${marvinVoiceDelivery}`,output_modalities:['audio'],max_output_tokens:2400,audio:{input:{format:{type:'audio/pcm',rate:24000},transcription:{model:this.transcriptionModel},noise_reduction:{type:'near_field'},turn_detection:{type:'server_vad',threshold:0.5,prefix_padding_ms:300,silence_duration_ms:450,create_response:false,interrupt_response:false}},output:{format:{type:'audio/pcm',rate:24000},voice:this.voice}}}});}catch{fail();}});
   });
   ws.on('event',event=>{
    if(closed)return;
@@ -57,7 +59,7 @@ export class OpenAIVoiceProvider implements VoiceProvider {
       signal.throwIfAborted();responseId=undefined;
       if(responses.size>=8)throw new Error('Too many pending voice responses');
       const request=randomUUID();responseState={cancelled:false,cancelSent:false};responses.set(request,responseState);
-      send({type:'response.create',response:{conversation:'none',metadata:{marvin_turn:ctx.interaction.interactionId,round:String(round),marvin_request:request},input:input as ConversationItem[],instructions:`${persona}\nSpeak naturally and briefly. This is an AI-generated voice. Surface: ${ctx.interaction.surface}. ${bodyExplanation(ctx.interaction)} ${repositoryExplanation(ctx.interaction)} Entire state: ${ctx.interaction.entireState}.`,output_modalities:['audio'],max_output_tokens:2400,tools:allowedTools(ctx.interaction).map(t=>({type:'function',...t})),...(round===repositoryToolRounds?{tool_choice:'none'}:{})}});
+      send({type:'response.create',response:{conversation:'none',metadata:{marvin_turn:ctx.interaction.interactionId,round:String(round),marvin_request:request},input:input as ConversationItem[],instructions:`${persona}\n${marvinVoiceDelivery}\nSpeak briefly. This is an AI-generated voice. Surface: ${ctx.interaction.surface}. ${bodyExplanation(ctx.interaction)} ${repositoryExplanation(ctx.interaction)} Entire state: ${ctx.interaction.entireState}.`,output_modalities:['audio'],max_output_tokens:2400,tools:allowedTools(ctx.interaction).map(t=>({type:'function',...t})),...(round===repositoryToolRounds?{tool_choice:'none'}:{})}});
       let done:Extract<RealtimeServerEvent,{type:'response.done'}>|undefined;
       while(!done){const e=await queue.next(signal);
        if(e.type==='response.created'&&e.response.metadata?.marvin_turn===ctx.interaction.interactionId&&e.response.metadata?.round===String(round))responseId=e.response.id;
@@ -82,7 +84,7 @@ export class OpenAIVoiceProvider implements VoiceProvider {
     const abort=()=>{if(state)cancel(state);queue.fail(new Error('Voice interrupted'));};signal.addEventListener('abort',abort,{once:true});
     try{
      const request=randomUUID();state={cancelled:false,cancelSent:false};responses.set(request,state);
-     send({type:'response.create',response:{conversation:'none',metadata:{marvin_request:request,marvin_lifecycle:'linked'},input:[{type:'message',role:'user',content:[{type:'input_text',text}]}],instructions:'Speak the supplied sentence exactly once, naturally and briefly. Do not add or change any words.',output_modalities:['audio'],max_output_tokens:512}});
+     send({type:'response.create',response:{conversation:'none',metadata:{marvin_request:request,marvin_lifecycle:'linked'},input:[{type:'message',role:'user',content:[{type:'input_text',text}]}],instructions:`${marvinVoiceDelivery}\nSpeak the supplied sentence exactly once and briefly. Do not add or change any words.`,output_modalities:['audio'],max_output_tokens:512}});
      let done:Extract<RealtimeServerEvent,{type:'response.done'}>|undefined;
      while(!done){const e=await queue.next(signal);if(e.type==='response.created'&&e.response.metadata?.marvin_request===request)responseId=e.response.id;if(!responseId)continue;
       if(e.type==='response.output_audio.delta'&&e.response_id===responseId){if(e.delta.length>262144)throw new Error('Oversized audio');const bytes=Buffer.from(e.delta,'base64');if(bytes.length%2)throw new Error('Invalid PCM');for(let at=0;at<bytes.length;at+=12000){signal.throwIfAborted();yield bytes.subarray(at,at+12000);}}

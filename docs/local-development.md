@@ -77,9 +77,9 @@ mode-0600 `setup-secret.json` file:
 {"deviceId":"marvin_...","username":"...","password":"..."}
 ```
 
-For a shared developer registry, a one-item JSON array with that object is
-also accepted. In Compose, keep the source below `MARVIN_PRIVATE_DIR` and use
-its container path (for example
+For legacy compatibility, a one-item JSON array with that object is also
+accepted. In Compose, keep the source below `MARVIN_PRIVATE_DIR` and use its
+container path (for example
 `/private/factory-owner-DEVICE/setup-secret.json`), not the host path.
 Set `LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE` to the matching
 `/private/factory-owner-DEVICE/device-public.pem`. At local-dev startup Marvin
@@ -87,7 +87,31 @@ registers that factory identity in its local database and checks that its
 fingerprint matches the setup card. This is deliberately restricted to the
 explicit local-development factory input; cloud and local-secure deployments
 must use their reviewed operator registration procedure.
-The native factory file may additionally contain `security: 2` and `patch: 1`;
+For multiple Pets, instead create a separate private registry and set
+`LOCAL_DEV_PETS_FILE` (do not combine it with the two single-Pet variables):
+
+```json
+[
+  {
+    "label": "Desktop Pet A",
+    "cardFile": "/private/factory-owner-PET-A/setup-secret.json",
+    "devicePublicKeyFile": "/private/factory-owner-PET-A/device-public.pem"
+  },
+  {
+    "label": "Desktop Pet B",
+    "cardFile": "/private/factory-owner-PET-B/setup-secret.json",
+    "devicePublicKeyFile": "/private/factory-owner-PET-B/device-public.pem"
+  }
+]
+```
+
+All paths are container paths. Startup registers every identity. Local-development
+firmware advertises each Pet as `Marvin setup` followed by a short identity
+suffix, so the Pet chosen in the browser's Bluetooth window selects the matching
+card automatically; there is no separate Pet selector in the portal. Reflash
+Pets built before this behavior was added before using the multi-Pet flow. The
+native factory file may
+additionally contain `security: 2` and `patch: 1`;
 these are validated and retained only for compatibility with the factory tool.
 
 With `DEPLOYMENT_MODE=local-dev` and `AUTH_MODE=local`, an authenticated portal session can obtain
@@ -114,12 +138,20 @@ MARVIN_TLS_DATA_DIR=/absolute/path/to/marvin-tls \
 docker compose -f deploy/compose.yaml up --build -d
 ```
 
-For this workstation, the application variables in the private `.env` select
-`DEPLOYMENT_MODE=local-dev`, `HARDWARE_PROVISIONING_ENABLED=true`,
-`ENROLLMENT_KEYS_FILE=/private/owner-deployment-keys.json`, and
-`DEVICE_PUBLIC_ORIGIN=https://marvin.local:8443`,
-`LOCAL_DEV_SETUP_CARDS_FILE=/private/factory-owner-DEVICE/setup-secret.json`,
-and `LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE=/private/factory-owner-DEVICE/device-public.pem`.
+The Compose local-development stack defaults to `DEPLOYMENT_MODE=local-dev`,
+`HARDWARE_PROVISIONING_ENABLED=true`,
+`ENROLLMENT_KEYS_FILE=/private/owner-deployment-keys.json`, and uses
+`APP_ORIGIN` as `DEVICE_PUBLIC_ORIGIN`. This means a normal local launch has
+secure setup available without duplicating those settings in a private `.env`.
+Set `LOCAL_DEV_SETUP_CARDS_FILE=/private/factory-owner-DEVICE/setup-secret.json`
+and `LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE=/private/factory-owner-DEVICE/device-public.pem`
+when this workstation should use the optional single-Pet cardless setup path.
+For more than one local Pet, use `LOCAL_DEV_PETS_FILE` to point at a private
+JSON array. Each entry has a display `label`, `cardFile`, and
+`devicePublicKeyFile`, all using the container's `/private/...` paths. Marvin
+registers every listed identity at startup, then reveals only the credential
+matching the Pet selected in the Bluetooth chooser to the authenticated local
+browser session.
 Do not put the host path for
 the key file in `ENROLLMENT_KEYS_FILE`: inside the container it is deliberately
 mounted at `/private`. Check readiness with

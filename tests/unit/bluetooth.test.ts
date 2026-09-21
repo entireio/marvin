@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {BluetoothSetupSession,bluetoothError,type BluetoothDevice,type GattCharacteristic,type GattServer} from '../../packages/provisioning/src/bluetooth.js';
+import {BluetoothSetupSession,bluetoothError,localDeviceIdFromBluetoothName,type BluetoothDevice,type GattCharacteristic,type GattServer} from '../../packages/provisioning/src/bluetooth.js';
 function fixture(version:object,stall=false){
  let disconnects=0,writes=0,listeners=0;const bytes=new TextEncoder().encode(JSON.stringify(version));
  const endpoint:GattCharacteristic={async writeValueWithResponse(){writes++;},async readValue(){if(stall)return new Promise<DataView>(()=>{});return new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);}};
@@ -7,6 +7,7 @@ function fixture(version:object,stall=false){
  const device:BluetoothDevice={gatt:server,addEventListener(){listeners++;},removeEventListener(){listeners--;}};
  return {device,get writes(){return writes;},get disconnects(){return disconnects;},get listeners(){return listeners;}};
 }
+it('maps the Pet selected in the Bluetooth chooser to one local device identity',()=>{const first='marvin_11111111111111111111abcdefabcdef',second='marvin_22222222222222222222fedcbafedcba';expect(localDeviceIdFromBluetoothName('Marvin setup fedcbafedcba',[first,second])).toBe(second);expect(localDeviceIdFromBluetoothName('Marvin setup',[first,second])).toBeNull();expect(localDeviceIdFromBluetoothName('Marvin setup fedcbafedcba',[second,second])).toBeNull();});
 it('rejects insecure or incompatible firmware before exchanging setup credentials',async()=>{
  for(const version of [{marvin:1,security:0,patch:1},{marvin:1,security:2,patch:0},{marvin:2,security:2,patch:1}]){
   const f=fixture(version);await expect(BluetoothSetupSession.open(f.device,'fixture-user','fixture-secret')).rejects.toMatchObject({code:'FIRMWARE_INCOMPATIBLE'});expect(f.writes).toBe(1);expect(f.disconnects).toBe(1);expect(f.listeners).toBe(0);
