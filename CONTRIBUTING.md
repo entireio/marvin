@@ -75,10 +75,19 @@ are listed in [`.gitignore`](.gitignore) with an explanation, and
 
 ### Firmware (`firmware/`)
 
-- **All pin numbers and tuning constants live in `src/config.h`.** Never
-  hard-code a GPIO or a magic angle inside a driver.
+- **Pin numbers live in `src/boards/`, one header per board; every other tuning
+  constant lives in `src/config.h`.** Never hard-code a GPIO or a magic angle
+  inside a driver. A new board is a header there plus an `[env:…]` block in
+  `platformio.ini`, and no driver change.
 - One class per peripheral, in its own `.h`/`.cpp` pair (`motor`, `head_servos`,
-  `ble_serial`, `demo`). Follow that shape when adding hardware.
+  `ble_serial`, `demo`, `audio_io`). Follow that shape when adding hardware.
+- **Voice code is guarded by `MARVIN_VOICE`** and only compiles on the S3. Check
+  that the C3 environment still builds — `pio run` builds both, which is the
+  point.
+- **Work that has a deadline goes on its own task; work that moves a servo goes
+  in `loop()`.** Audio capture cannot miss a 20 ms frame, and the network task
+  cannot be allowed to drive a servo from under the main loop. Messages from the
+  backend cross that line through a queue.
 - `loop()` must stay non-blocking. Use millis-based state machines — look at
   `Demo::update()` and `HeadServos::update()` for the pattern. No `delay()` in
   the main loop.
@@ -95,6 +104,9 @@ shared by the serial and BLE transports. To add one, update:
 2. The help block in `setup()` in the same file
 3. The cheat sheet in `controller/index.html`
 4. The protocol table in the root [`README.md`](README.md)
+
+A command that the backend should also be able to send needs nothing extra: an
+`act` message carrying `cmd` goes through this same `processCommand()`.
 
 Use `respond()` / `respondf()` rather than `Serial.print()` so the output
 reaches BLE clients too, with ANSI colour codes stripped automatically.

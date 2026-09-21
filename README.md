@@ -34,10 +34,15 @@ drive it with — lives in this repository under an open licence.
 | **Head** — 2-axis pan/tilt | ✅ Working | Two SG90-class servos, smoothed motion |
 | **Connectivity** — Bluetooth Low Energy | ✅ Working | Nordic UART Service, browser-controllable |
 | **Demo mode** — autonomous exploration loop | ✅ Working | Scripted state machine, see `firmware/src/demo.cpp` |
+| **Voice** — ask a question, get an answer | ✅ Working | Both boards: microphone, speaker, Wi-Fi, a backend |
+| **Wake word** — "Hey Marvin" | 🚧 In progress | S3 only, eventually. Start a conversation from the controller meanwhile |
+| **Gestures** — the nod that says "I'm listening" | ✅ Working | `firmware/src/gestures.cpp` |
 | **Odometry** — wheel encoders | 🚧 Planned | For closed-loop speed and distance |
 | **Distance sensing** — time-of-flight | 🚧 Planned | Obstacle avoidance |
 | **Social sensing** — infrared | 🚧 Planned | Marvin-to-Marvin detection and interaction |
 | **Expression** — two round displays as eyes | 🚧 Planned | |
+| **Talking over Marvin** | 🚧 Planned | Needs acoustic echo cancellation |
+| **Intents** — "take a note", "turn around" | 🚧 Planned | The backend harness has the seam for it |
 | **Custom PCB** | 🚧 Planned | Replaces the current breakout-board wiring |
 
 ---
@@ -51,7 +56,7 @@ marvin/
 ├── electronics/    Schematics, PCB layout, BOM, power and battery design
 ├── mechanical/     CAD source and printable STLs for the chassis
 ├── docs/           Source for the project website (GitHub Pages)
-├── server/         Serves the website behind a GitHub sign-in (Cloud Run)
+├── server/         The backend: the robot's endpoint, the controller, the website
 └── README.md       You are here
 ```
 
@@ -61,15 +66,15 @@ Start there before changing anything inside it.
 | Folder | Read this first | Toolchain |
 | --- | --- | --- |
 | [`firmware/`](firmware/README.md) | Pin map, build and flash, adding a command | PlatformIO |
-| [`controller/`](controller/README.md) | Running the app, browser support | Any static file server |
+| [`controller/`](controller/README.md) | Setting a robot up, browser support | Any static file server |
 | [`electronics/`](electronics/README.md) | Board plan, power budget, BOM format | KiCad (planned) |
 | [`mechanical/`](mechanical/README.md) | Part list, print settings, large-file policy | Rhino 3D, any slicer |
 | [`docs/`](docs/README.md) | Website plan and deployment | Any static file server |
-| [`server/`](server/README.md) | Private hosting, GitHub sign-in, config | Go, Cloud Run |
+| [`server/`](server/README.md) | Voice architecture, providers, config | Go, Cloud Run or ECS |
 
-> **Note on naming:** `controller/` is the app you *drive the robot with*.
-> `docs/` is the *project website*. They are separate things. `server/` only
-> exists to keep the website private while the project still is.
+> **Note on naming:** `controller/` is the app you *set up and drive the robot
+> with*. `docs/` is the *project website*. `server/` serves both, and is also
+> what the robot itself connects to when it talks.
 
 ---
 
@@ -98,7 +103,38 @@ Open <http://localhost:3000>, click **Scan**, and pick `Marvin` from the device
 picker. Web Bluetooth requires either `localhost` or HTTPS — this is why a file
 opened directly with `file://` will not work.
 
-### 3. Print the chassis
+### 3. Give it a voice
+
+Needs the S3 build, a microphone and a speaker
+([`electronics/README.md`](electronics/README.md)), and a backend for the robot
+to talk to.
+
+**On your own machine, with Marvin on the same Wi-Fi** — no cloud account, no
+GitHub OAuth app, no certificate:
+
+```bash
+export OPENAI_API_KEY=sk-...     # or GEMINI_API_KEY
+./run_local.sh
+```
+
+Then open <http://localhost:8080/app/> and follow **Setup**. It prints the
+address to give the robot — your machine's LAN address, which the setup form
+fills in for you.
+
+Open it at **`localhost`, not your LAN address**. Web Bluetooth only runs in a
+secure context, which means HTTPS or localhost, and Scan fails anywhere else.
+That is a browser rule, not something this project can work around.
+
+**In the cloud**, when you want it to work from outside the house:
+
+```bash
+./deploy_google_cloud.sh --set-openai-key    # or ./deploy_aws.sh
+```
+
+Either way, **Setup** writes the Wi-Fi credentials and a device token to the
+robot over an encrypted Bluetooth link. Power-cycle it, and ask it something.
+
+### 4. Print the chassis
 
 STLs are in [`mechanical/stl/`](mechanical/stl). See
 [`mechanical/README.md`](mechanical/README.md) for the part list, orientation,
@@ -108,37 +144,57 @@ and print settings.
 
 ## Hardware overview
 
-### Current prototype
+### Two builds
 
-The firmware currently builds for a single target, defined in
-[`firmware/platformio.ini`](firmware/platformio.ini):
+| | ESP32-C3 SuperMini | ESP32-S3 SuperMini |
+| --- | --- | --- |
+| PlatformIO environment | `esp32c3-supermini` | `esp32s3-supermini` |
+| Drive, head, BLE, demo | ✅ | ✅ |
+| Voice | ✅ | ✅ |
+| Wake word | — push-to-talk | planned |
+| Talking over a reply | — | planned |
+| Module | 4 MB flash, no PSRAM | ESP32-S3FH4R2: 4 MB flash, 2 MB PSRAM |
+
+**Both boards hold a conversation.** What the C3 cannot do is listen for its own
+name — no PSRAM and no vector unit means nowhere to run a keyword model — so on
+that board you press **Start listening** in the web controller instead. The S3
+is where "Hey Marvin" and talking over a reply will land; both need the PSRAM.
+Nothing else differs.
 
 | | |
 | --- | --- |
-| **Board** | ESP32-C3 SuperMini (`lolin_c3_mini`) |
-| **Framework** | Arduino |
+| **Framework** | Arduino, on ESP-IDF 5.x via the pioarduino platform |
 | **Motor driver** | DRV8833 dual H-bridge |
 | **Servos** | 2 × SG90-class (pan + tilt) |
-| **Radio** | On-chip BLE via NimBLE |
-
-Earlier prototypes targeted ESP32-C6 boards, and the pin map in `config.h` is
-kept deliberately board-agnostic so other ESP32 variants can be added as new
-PlatformIO environments.
+| **Radio** | On-chip BLE via NimBLE; Wi-Fi on the S3 |
+| **Microphone** | INMP441, I²S |
+| **Amplifier** | MAX98357A, I²S — sharing one peripheral with the microphone |
 
 ### Pin assignment
 
-The single source of truth is
-[`firmware/src/config.h`](firmware/src/config.h) — change pins there, never
-inline in the drivers.
+The single source of truth is [`firmware/src/boards/`](firmware/src/boards) —
+change pins there, never inline in the drivers. Full wiring, including the parts
+that are not pin numbers, is in
+[`electronics/README.md`](electronics/README.md).
 
-| Function | GPIO | Notes |
+| Function | C3 | S3 |
 | --- | --- | --- |
-| Servo — tilt | 1 | |
-| Servo — pan/rotation | 4 | |
-| Motor A — IN1 | 5 | DRV8833 |
-| Motor A — IN2 | 6 | DRV8833 |
-| Motor B — IN3 | 20 | Wired inverted |
-| Motor B — IN4 | 10 | Wired inverted |
+| Servo — tilt | 1 | 1 |
+| Servo — pan/rotation | 4 | 2 |
+| Motor A — IN1 / IN2 | 5 / 6 | 4 / 5 |
+| Motor B — IN3 / IN4 | 20 / 10 | 6 / 7 |
+| I²S BCLK / WS | 3 / 0 | 15 / 16 |
+| I²S data in / out | 21 / 7 | 17 / 18 |
+| Amplifier enable | — (see below) | 21 |
+
+The C3 has no pin left for the amplifier's enable input: the only candidate is
+GPIO 2, which must read HIGH at reset or the chip will not boot. Leave it
+unconnected there and accept a little idle hiss — a robot that will not start is
+the worse problem. [`electronics/README.md`](electronics/README.md) has the
+wiring if you want it anyway.
+
+Motor B's inputs are wired inverted on both boards, so a positive speed on both
+channels drives forward without per-side sign correction in the firmware.
 
 Motor pins are driven LOW at the very start of `setup()`, before anything else,
 so the tracks do not lurch while the GPIOs are still floating at boot. Keep it
@@ -157,6 +213,7 @@ standard for serial-over-Bluetooth:
 | `6E400001-B5A3-F393-E0A9-E50E24DCCA9E` | Service |
 | `6E400002-…` | RX — client writes commands here |
 | `6E400003-…` | TX — robot notifies responses here |
+| `6E400004-…` | Provisioning — scan, Wi-Fi and the backend token, encrypted link only |
 
 Commands are case-insensitive, one per line:
 
@@ -167,8 +224,12 @@ Commands are case-insensitive, one per line:
 | `M<speed>` | −255–255 | Both motors, e.g. `M128` |
 | `A<speed>` | −255–255 | Motor A only |
 | `B<speed>` | −255–255 | Motor B only |
+| `G<name>` | — | Play a gesture: `wake_ack`, `nod`, `shake`, `centre` |
 | `S` | — | Stop all motors |
 | `D` | — | Toggle demo mode |
+| `W` | — | Toggle listening. `W1` starts, `W0` stops and asks for the reply |
+| `L` | — | Microphone-to-speaker loopback (voice builds) |
+| `?` | — | Network, backend and voice status (voice builds) |
 
 Any movement command automatically cancels demo mode. Angles and speeds are
 clamped to the limits in `config.h` rather than rejected.
@@ -183,12 +244,18 @@ free; then update the help text in `main.cpp`, the cheat sheet in
 
 ## Roadmap
 
-1. **Custom PCB** — collapse the breakout-board wiring into one board with
+1. **"Hey Marvin" on the robot** — the conversation path works today on both
+   boards, started from the controller. What is missing is a wake word model
+   small enough for the S3 and free to train.
+2. **Talking over Marvin** — acoustic echo cancellation, so the microphone can
+   stay open while the speaker is playing.
+3. **Intents** — "take a note", "turn around". The backend already has the seam:
+   a handler declares a tool, the model calls it, the handler acts.
+4. **Custom PCB** — collapse the breakout-board wiring into one board with
    proper power distribution and a battery charger.
-2. **Closed-loop drive** — wheel encoders for straight lines and known distances.
-3. **Sensing** — time-of-flight for obstacles, IR for spotting other Marvins.
-4. **Eyes** — two round displays and an expression system.
-5. **Project website** — an animated site in `docs/`, served on GitHub Pages.
+5. **Closed-loop drive** — wheel encoders for straight lines and known distances.
+6. **Sensing** — time-of-flight for obstacles, IR for spotting other Marvins.
+7. **Eyes** — two round displays and an expression system.
 
 ---
 
@@ -212,7 +279,7 @@ git lfs install && git lfs pull
 
 Marvin is dual-licensed, which is normal for open hardware:
 
-- **Software** — `firmware/`, `controller/`, `docs/` — under the
+- **Software** — `firmware/`, `controller/`, `server/`, `docs/` — under the
   [MIT Licence](LICENSE).
 - **Hardware** — `electronics/`, `mechanical/` — under the
   [CERN Open Hardware Licence v2, Strongly Reciprocal](LICENSE-hardware)

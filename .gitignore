@@ -83,3 +83,10 @@ mechanical/src/*.3dm
 # Slicer output — never commit machine-specific G-code
 *.gcode
 *.3mf.bak
+
+# AWS deployment settings — names people and resources, not secrets.
+deploy_aws.env
+
+# Local bench run: the signing key and any API keys.
+.marvin-local-secret
+.env
