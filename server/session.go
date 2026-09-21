@@ -1,9 +1,7 @@
 package main
 
 import (
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -12,6 +10,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/spedemon/marvin/server/internal/token"
 )
 
 const (
@@ -43,30 +43,11 @@ type oauthState struct {
 	Issued int64  `json:"iat"`
 }
 
-// sign returns "<payload>.<mac>" with both halves base64url-encoded.
-func sign(payload, key []byte) string {
-	body := base64.RawURLEncoding.EncodeToString(payload)
-	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte(body))
-	return body + "." + base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-}
-
-// unsign verifies the MAC and returns the payload it covers.
-func unsign(token string, key []byte) ([]byte, error) {
-	body, sig, ok := strings.Cut(token, ".")
-	if !ok {
-		return nil, errors.New("malformed token")
-	}
-	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte(body))
-	want := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-	// Constant-time: comparing with == would leak the signature one byte at a
-	// time to anyone able to measure the response.
-	if !hmac.Equal([]byte(sig), []byte(want)) {
-		return nil, errors.New("bad signature")
-	}
-	return base64.RawURLEncoding.DecodeString(body)
-}
+// Browser sessions and robot credentials are signed the same way with the same
+// key; internal/token holds the one implementation, so that the two can never
+// drift apart into one that is careful and one that is not.
+func sign(payload, key []byte) string               { return token.Sign(payload, key) }
+func unsign(tok string, key []byte) ([]byte, error) { return token.Unsign(tok, key) }
 
 func encodeSession(s session, key []byte) (string, error) {
 	payload, err := json.Marshal(s)

@@ -1,4 +1,4 @@
-# What reaches the image build: server/ and docs/, nothing else.
+# What reaches the image build: server/, docs/ and controller/, nothing else.
 #
 # For a Cloud Run deploy the upload is already narrowed by .gcloudignore, so
 # this file earns its keep on a local `docker build .` — without it the build
@@ -13,7 +13,6 @@
 firmware/
 mechanical/
 electronics/
-controller/
 
 # Deployment tooling and repository documentation are not part of the running
 # site. Anchored at the context root, so docs/README.md — which is served with
@@ -27,7 +26,10 @@ LICENSE
 LICENSE-hardware
 
 # Tests run before deployment, not inside the image.
+server/**/*_test.go
 server/*_test.go
 server/README.md
+controller/README.md
+controller/serve.sh
 
 .DS_Store

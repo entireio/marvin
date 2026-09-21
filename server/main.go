@@ -25,8 +25,13 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
+
+	"github.com/spedemon/marvin/server/device"
+	"github.com/spedemon/marvin/server/harness"
+	"github.com/spedemon/marvin/server/provider"
 )
 
 const userAgent = "marvin-site/1.0 (+https://github.com/spedemon/marvin)"
@@ -37,23 +42,46 @@ const userAgent = "marvin-site/1.0 (+https://github.com/spedemon/marvin)"
 const minSessionKeyLen = 32
 
 type config struct {
-	port         string
-	docsDir      string
-	clientID     string
-	clientSecret string
-	sessionKey   []byte
-	baseURL      string // optional; empty means derive from the request
-	sessionTTL   time.Duration
+	port          string
+	docsDir       string
+	controllerDir string
+	clientID      string
+	clientSecret  string
+	sessionKey    []byte
+	baseURL       string // optional; empty means derive from the request
+	sessionTTL    time.Duration
 
 	allowedUsers map[string]bool // lower-cased GitHub logins
 	allowedOrgs  []string        // lower-cased GitHub org logins
 	allowAnyUser bool
+
+	// localMode drops the sign-in so the system can be run on a bench with the
+	// robot on the same Wi-Fi. See local.go for what holds the line instead.
+	localMode bool
+
+	// Voice. Keys come from the environment — Secret Manager on Google, Secrets
+	// Manager on AWS — for the same reason the session key does: the server
+	// keeps no state, so there is nowhere else every instance would agree on.
+	aiProvider     string
+	aiKeys         map[string]string
+	aiModel        string
+	aiVoice        string
+	aiInstructions string
+	deviceTokenTTL time.Duration
 }
 
 type app struct {
-	cfg   config
-	files http.Handler
-	hc    *http.Client
+	cfg        config
+	files      http.Handler
+	controller http.Handler
+	hc         *http.Client
+
+	// Voice. Nil on an app built without setupVoice, which is how the website
+	// tests keep running against exactly the routes they were written for.
+	hub            *device.Hub
+	providers      *provider.Set
+	chain          harness.Chain
+	activeProvider atomic.Pointer[string]
 }
 
 func main() {
@@ -73,11 +101,7 @@ func run(cfg config) error {
 		return fmt.Errorf("site directory %q: %w", cfg.docsDir, err)
 	}
 
-	a := &app{
-		cfg:   cfg,
-		files: http.FileServer(noListingFS{http.Dir(cfg.docsDir)}),
-		hc:    &http.Client{Timeout: 15 * time.Second},
-	}
+	a := newApp(cfg)
 
 	srv := &http.Server{
 		Addr:              net.JoinHostPort("", cfg.port),
@@ -94,6 +118,10 @@ func run(cfg config) error {
 	// Draining here means an in-flight page load is not cut off mid-response.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	if cfg.localMode {
+		warnAboutLocalMode(cfg.port)
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -114,6 +142,23 @@ func run(cfg config) error {
 	}
 }
 
+// newApp builds the server, voice included.
+func newApp(cfg config) *app {
+	a := &app{
+		cfg:   cfg,
+		files: http.FileServer(noListingFS{http.Dir(cfg.docsDir)}),
+		// The robot's own WebSocket session can run for the full hour Cloud Run
+		// allows, so this client's timeout applies to GitHub calls only; the
+		// providers dial with their own contexts.
+		hc: &http.Client{Timeout: 15 * time.Second},
+	}
+	if cfg.controllerDir != "" {
+		a.controller = http.FileServer(noListingFS{http.Dir(cfg.controllerDir)})
+	}
+	a.setupVoice()
+	return a
+}
+
 func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
 
@@ -127,9 +172,32 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("GET "+callbackPath, a.handleCallback)
 	mux.HandleFunc("GET "+logoutPath, a.handleLogout)
 
+	// The robot. Authenticated by its own signed token, not by GitHub: there is
+	// no browser here and nobody to sign in.
+	if a.hub != nil {
+		mux.Handle("/v1/device", a.deviceHandler())
+
+		// The controller and its API, behind the same sign-in as the website.
+		mux.Handle("GET /api/status", a.requireAuth(http.HandlerFunc(a.handleStatus)))
+		mux.Handle("POST /api/provider", a.requireAuth(http.HandlerFunc(a.handleSelectProvider)))
+		mux.Handle("POST /api/device-token", a.requireAuth(http.HandlerFunc(a.handleDeviceToken)))
+		mux.Handle("POST /api/device-action", a.requireAuth(http.HandlerFunc(a.handleDeviceAction)))
+		mux.Handle("GET /ws/controller", a.requireAuth(http.HandlerFunc(a.handleControllerSocket)))
+	}
+	if a.controller != nil {
+		mux.Handle("/app/", a.requireAuth(http.StripPrefix("/app", a.serveControllerHandler())))
+		mux.HandleFunc("GET /app", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/app/", http.StatusMovedPermanently)
+		})
+	}
+
 	// Everything else is the website, and needs a session.
 	mux.Handle("/", a.requireAuth(http.HandlerFunc(a.serveSite)))
 
+	if a.cfg.localMode {
+		// Outermost, so it covers the health check and the sign-in routes too.
+		return localOnly(securityHeaders(mux))
+	}
 	return securityHeaders(mux)
 }
 
@@ -145,6 +213,10 @@ func (a *app) serveSite(w http.ResponseWriter, r *http.Request) {
 // the sign-in page.
 func (a *app) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if a.cfg.localMode {
+			next.ServeHTTP(w, r)
+			return
+		}
 		if _, ok := a.currentSession(r); !ok {
 			a.redirectToSignin(w, r, r.URL.RequestURI())
 			return
@@ -154,6 +226,11 @@ func (a *app) requireAuth(next http.Handler) http.Handler {
 }
 
 func (a *app) currentSession(r *http.Request) (session, bool) {
+	if a.cfg.localMode {
+		// Nobody signed in, but the handlers that log who did something still
+		// need a name to put in the line.
+		return session{Login: "local"}, true
+	}
 	c, err := r.Cookie(sessionCookieName)
 	if err != nil {
 		return session{}, false
@@ -239,21 +316,40 @@ func (n noListingFS) Open(name string) (http.File, error) {
 
 func loadConfig() (config, error) {
 	cfg := config{
-		port:         envOr("PORT", "8080"),
-		docsDir:      envOr("DOCS_DIR", "docs"),
-		clientID:     os.Getenv("GITHUB_CLIENT_ID"),
-		clientSecret: os.Getenv("GITHUB_CLIENT_SECRET"),
-		baseURL:      strings.TrimSuffix(os.Getenv("BASE_URL"), "/"),
-		allowedUsers: map[string]bool{},
+		port:          envOr("PORT", "8080"),
+		docsDir:       envOr("DOCS_DIR", "docs"),
+		controllerDir: envOr("CONTROLLER_DIR", "controller"),
+		clientID:      os.Getenv("GITHUB_CLIENT_ID"),
+		clientSecret:  os.Getenv("GITHUB_CLIENT_SECRET"),
+		baseURL:       strings.TrimSuffix(os.Getenv("BASE_URL"), "/"),
+		allowedUsers:  map[string]bool{},
+
+		aiKeys: map[string]string{
+			"openai": os.Getenv("OPENAI_API_KEY"),
+			"gemini": os.Getenv("GEMINI_API_KEY"),
+		},
+		aiModel:        os.Getenv("AI_MODEL"),
+		aiVoice:        os.Getenv("AI_VOICE"),
+		aiInstructions: envOr("AI_INSTRUCTIONS", defaultInstructions),
 	}
 
+	cfg.localMode = os.Getenv("MARVIN_LOCAL") == "true"
+
 	var missing []string
-	if cfg.clientID == "" {
-		missing = append(missing, "GITHUB_CLIENT_ID")
+	// The GitHub settings configure a sign-in that local mode does not have.
+	// Demanding them would mean registering an OAuth app in order to find out
+	// whether a microphone is wired the right way round.
+	if !cfg.localMode {
+		if cfg.clientID == "" {
+			missing = append(missing, "GITHUB_CLIENT_ID")
+		}
+		if cfg.clientSecret == "" {
+			missing = append(missing, "GITHUB_CLIENT_SECRET")
+		}
 	}
-	if cfg.clientSecret == "" {
-		missing = append(missing, "GITHUB_CLIENT_SECRET")
-	}
+	// SESSION_SECRET is still required, local or not: it signs the robots'
+	// credentials, and one generated afresh on every start would invalidate a
+	// robot's token every time the server restarted.
 	secret := os.Getenv("SESSION_SECRET")
 	if secret == "" {
 		missing = append(missing, "SESSION_SECRET")
@@ -281,7 +377,10 @@ func loadConfig() (config, error) {
 	// empty allowlist that defaulted to "any signed-in user" would be a public
 	// site wearing a login page — exactly the outcome this server exists to
 	// prevent, and one nobody would notice was broken.
-	if !cfg.allowAnyUser && len(cfg.allowedUsers) == 0 && len(cfg.allowedOrgs) == 0 {
+	//
+	// Not checked in local mode, where there is no sign-in for an allowlist to
+	// qualify; localOnly is what keeps strangers out there.
+	if !cfg.localMode && !cfg.allowAnyUser && len(cfg.allowedUsers) == 0 && len(cfg.allowedOrgs) == 0 {
 		return config{}, errors.New(
 			"no access rule set: give ALLOWED_GITHUB_USERS and/or ALLOWED_GITHUB_ORGS, " +
 				"or set ALLOW_ANY_GITHUB_USER=true to let in every GitHub account")
@@ -294,12 +393,39 @@ func loadConfig() (config, error) {
 	}
 	cfg.sessionTTL = time.Duration(n) * time.Hour
 
+	days := envOr("DEVICE_TOKEN_TTL_DAYS", "365")
+	d, err := strconv.Atoi(days)
+	if err != nil || d <= 0 {
+		return config{}, fmt.Errorf("DEVICE_TOKEN_TTL_DAYS must be a positive integer, got %q", days)
+	}
+	cfg.deviceTokenTTL = time.Duration(d) * 24 * time.Hour
+
+	// Default to whichever provider has a key, so that a deployment with one
+	// key works without a second setting. Naming a provider with no key is a
+	// startup error rather than a surprise at the first question.
+	cfg.aiProvider = strings.ToLower(strings.TrimSpace(os.Getenv("AI_PROVIDER")))
+	if cfg.aiProvider == "" {
+		for _, name := range []string{"openai", "gemini"} {
+			if cfg.aiKeys[name] != "" {
+				cfg.aiProvider = name
+				break
+			}
+		}
+	}
+	if cfg.aiProvider != "" && cfg.aiKeys[cfg.aiProvider] == "" {
+		return config{}, fmt.Errorf("AI_PROVIDER is %q but %s is not set",
+			cfg.aiProvider, apiKeyEnvFor(cfg.aiProvider))
+	}
+
 	return cfg, nil
 }
 
 // accessSummary describes the active access rule in one line, so the startup log
 // makes it obvious who can get in.
 func (c config) accessSummary() string {
+	if c.localMode {
+		return "ACCESS: local mode — no sign-in, private addresses only"
+	}
 	if c.allowAnyUser {
 		return "ACCESS: any signed-in GitHub account"
 	}

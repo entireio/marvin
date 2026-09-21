@@ -15,5 +15,6 @@
 !/.dockerignore
 !/server
 !/docs
+!/controller
 
 .DS_Store

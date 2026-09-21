@@ -19,10 +19,14 @@ cd "$(dirname "${BASH_SOURCE[0]}")"
 readonly CONFIG_FILE="deploy_google_cloud.env"
 readonly SECRET_SESSION="marvin-session-secret"
 readonly SECRET_CLIENT="marvin-github-client-secret"
+readonly SECRET_OPENAI="marvin-openai-api-key"
+readonly SECRET_GEMINI="marvin-gemini-api-key"
 
 ASSUME_YES=false
 ROTATE_SESSION_SECRET=false
 SET_CLIENT_SECRET=false
+SET_OPENAI_KEY=false
+SET_GEMINI_KEY=false
 
 # --------------------------------------------------------------------------
 # Output helpers
@@ -49,7 +53,11 @@ Options:
   --set-client-secret       Store a new GitHub OAuth client secret and redeploy.
                             Use after rotating the secret on GitHub.
   --rotate-session-secret   Generate a new cookie-signing key. This signs every
-                            visitor out; it is not done automatically.
+                            visitor out; it is not done automatically. It also
+                            invalidates every robot's device token, because the
+                            two are signed with the same key.
+  --set-openai-key          Store an OpenAI API key and redeploy.
+  --set-gemini-key          Store a Google Gemini API key and redeploy.
   --help                    Show this message.
 
 Settings (environment, or deploy_google_cloud.env beside this script):
@@ -65,6 +73,17 @@ Settings (environment, or deploy_google_cloud.env beside this script):
                                     Only needed behind a custom domain; the
                                     server derives it from the request otherwise.
   SESSION_TTL_HOURS                 How long a sign-in lasts. Default: 12.
+
+Voice — optional; without an AI key the site and controller work but the
+robot cannot hold a conversation. Keys are stored in Secret Manager by
+--set-openai-key / --set-gemini-key, never in this file.
+
+  AI_PROVIDER                       openai or gemini. Defaults to whichever
+                                    has a key stored.
+  AI_MODEL                          Override the provider's default model.
+  AI_VOICE                          Override the provider's default voice.
+  DEVICE_TOKEN_TTL_DAYS             How long a robot's credential lasts.
+                                    Default: 365.
 
 Access — at least one of these is required. The server refuses to start
 without one, because "any GitHub account" is a public site wearing a login page:
@@ -92,6 +111,8 @@ while [[ $# -gt 0 ]]; do
     --yes|-y)                ASSUME_YES=true ;;
     --set-client-secret)     SET_CLIENT_SECRET=true ;;
     --rotate-session-secret) ROTATE_SESSION_SECRET=true ;;
+    --set-openai-key)        SET_OPENAI_KEY=true ;;
+    --set-gemini-key)        SET_GEMINI_KEY=true ;;
     --help|-h)               usage; exit 0 ;;
     *)                       usage >&2; die "unknown option: $1" ;;
   esac
@@ -103,8 +124,12 @@ done
 # --------------------------------------------------------------------------
 if [[ -f "$CONFIG_FILE" ]]; then
   info "reading $CONFIG_FILE"
+  set -a
+  # The config file is written by whoever is deploying, so it does not exist
+  # when this script is linted.
   # shellcheck disable=SC1090
-  set -a; source "./$CONFIG_FILE"; set +a
+  source "./$CONFIG_FILE"
+  set +a
 fi
 
 REGION="${REGION:-us-central1}"
@@ -226,8 +251,37 @@ else
   info "$SECRET_CLIENT  already set"
 fi
 
+# The AI provider keys. Optional: the site and the controller work without
+# them, and a deployment that only ever uses one service should only store one.
+store_api_key() {
+  local secret="$1" label="$2" url="$3"
+  [[ -t 0 ]] || die "no terminal to prompt on. Run this interactively to set the $label key."
+  printf '\n    Paste the %s API key (input hidden).\n' "$label"
+  printf '    Find it at %s\n' "$url"
+  printf '    API key: '
+  read -rs API_KEY
+  printf '\n'
+  [[ -n "$API_KEY" ]] || die "no $label key entered"
+  # printf, not echo: a trailing newline would be sent in the Authorization
+  # header verbatim and every request would be rejected.
+  printf '%s' "$API_KEY" | add_secret_version "$secret"
+  unset API_KEY
+  info "$secret  stored"
+}
+
+if $SET_OPENAI_KEY; then
+  store_api_key "$SECRET_OPENAI" "OpenAI" "https://platform.openai.com/api-keys"
+fi
+if $SET_GEMINI_KEY; then
+  store_api_key "$SECRET_GEMINI" "Gemini" "https://aistudio.google.com/apikey"
+fi
+
 step "Granting the runtime access to those secrets"
-for secret in "$SECRET_SESSION" "$SECRET_CLIENT"; do
+RUNTIME_SECRETS=("$SECRET_SESSION" "$SECRET_CLIENT")
+if secret_exists "$SECRET_OPENAI"; then RUNTIME_SECRETS+=("$SECRET_OPENAI"); fi
+if secret_exists "$SECRET_GEMINI"; then RUNTIME_SECRETS+=("$SECRET_GEMINI"); fi
+
+for secret in "${RUNTIME_SECRETS[@]}"; do
   # Bound to the individual secret rather than the whole project, so this
   # service account cannot read secrets belonging to anything else.
   gcloud secrets add-iam-policy-binding "$secret" \
@@ -257,6 +311,28 @@ fi
 if [[ -n "$BASE_URL" ]]; then
   ENV_VARS="${ENV_VARS}@BASE_URL=${BASE_URL}"
 fi
+if [[ -n "${AI_PROVIDER:-}" ]]; then
+  ENV_VARS="${ENV_VARS}@AI_PROVIDER=${AI_PROVIDER}"
+fi
+if [[ -n "${AI_MODEL:-}" ]]; then
+  ENV_VARS="${ENV_VARS}@AI_MODEL=${AI_MODEL}"
+fi
+if [[ -n "${AI_VOICE:-}" ]]; then
+  ENV_VARS="${ENV_VARS}@AI_VOICE=${AI_VOICE}"
+fi
+if [[ -n "${DEVICE_TOKEN_TTL_DAYS:-}" ]]; then
+  ENV_VARS="${ENV_VARS}@DEVICE_TOKEN_TTL_DAYS=${DEVICE_TOKEN_TTL_DAYS}"
+fi
+
+# Only mount the AI keys that actually exist. Naming a missing secret makes
+# Cloud Run refuse the revision outright.
+SECRET_MOUNTS="GITHUB_CLIENT_SECRET=${SECRET_CLIENT}:latest,SESSION_SECRET=${SECRET_SESSION}:latest"
+if secret_exists "$SECRET_OPENAI"; then
+  SECRET_MOUNTS="${SECRET_MOUNTS},OPENAI_API_KEY=${SECRET_OPENAI}:latest"
+fi
+if secret_exists "$SECRET_GEMINI"; then
+  SECRET_MOUNTS="${SECRET_MOUNTS},GEMINI_API_KEY=${SECRET_GEMINI}:latest"
+fi
 
 step "Ready to deploy"
 if [[ "$ALLOW_ANY_GITHUB_USER" == "true" ]]; then
@@ -279,6 +355,25 @@ step "Building and deploying (a few minutes on the first run)"
 # sign-in. It has to be on: with IAM auth enabled, Cloud Run would reject every
 # request with a 403 before the container ever saw it, and nobody could reach
 # the sign-in page to authenticate in the first place. The container is the gate.
+#
+# The settings below are shaped by the robot's long-lived WebSocket:
+#
+#   --timeout 3600      Cloud Run's ceiling, and it applies to a WebSocket as
+#                       much as to a page load. The robot reconnects when it is
+#                       hit, which is invisible because conversation state does
+#                       not outlive a turn.
+#   --session-affinity  Keeps a reconnecting robot on the instance that already
+#                       knows about it.
+#   --min-instances 1   Without it the first "Hey Marvin" after a quiet spell
+#                       pays for a cold start, which is the one moment a person
+#                       is listening for an answer.
+#   --max-instances 1   The live device list and the provider chosen in the
+#                       controller are per-instance memory. One instance keeps
+#                       them coherent, and one instance at concurrency 80 is far
+#                       more than a household needs. Raise both together, and
+#                       expect the controller's view to fragment if you do.
+#   --memory 512Mi      Audio buffers, plus a TLS session to the AI provider for
+#                       every robot in a conversation.
 gcloud run deploy "$SERVICE" \
   --source . \
   --project "$PROJECT_ID" \
@@ -287,13 +382,14 @@ gcloud run deploy "$SERVICE" \
   --allow-unauthenticated \
   --port 8080 \
   --cpu 1 \
-  --memory 256Mi \
-  --min-instances 0 \
-  --max-instances 4 \
+  --memory 512Mi \
+  --min-instances 1 \
+  --max-instances 1 \
   --concurrency 80 \
-  --timeout 300 \
+  --timeout 3600 \
+  --session-affinity \
   --set-env-vars "^@^${ENV_VARS}" \
-  --set-secrets "GITHUB_CLIENT_SECRET=${SECRET_CLIENT}:latest,SESSION_SECRET=${SECRET_SESSION}:latest"
+  --set-secrets "$SECRET_MOUNTS"
 
 URL="$(gcloud run services describe "$SERVICE" \
   --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
