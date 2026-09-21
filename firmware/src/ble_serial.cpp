@@ -59,14 +59,59 @@ class BleRxCallbacks : public NimBLECharacteristicCallbacks {
 };
 
 // ---------------------------------------------------------------------------
+// Provisioning characteristic — Wi-Fi credentials and the backend token
+// ---------------------------------------------------------------------------
+class BleProvisionCallbacks : public NimBLECharacteristicCallbacks {
+    void onWrite(NimBLECharacteristic* pChar, NimBLEConnInfo& connInfo) override {
+        if (!_instance || !_instance->_provision) return;
+
+        // Belt and braces. The characteristic is declared WRITE_ENC so the
+        // stack should already have refused an unencrypted write, but this is
+        // a Wi-Fi password and the check is one line.
+        if (!connInfo.isEncrypted()) {
+            Serial.println("[BLE] refused a provisioning write on an unencrypted link");
+            return;
+        }
+
+        std::string value = pChar->getValue();
+        for (size_t i = 0; i < value.length(); i++) {
+            char c = value[i];
+            if (c == '\r' || c == '\n') {
+                if (_instance->_provisionBuffer.length() > 0) {
+                    _instance->_provision(_instance->_provisionBuffer);
+                    _instance->_provisionBuffer = "";
+                }
+            } else if (c >= 32 && c <= 126) {
+                _instance->_provisionBuffer += c;
+            }
+        }
+        // Same single-shot tolerance as the command characteristic: a client
+        // that writes "Ussid|pass" with no newline still gets through.
+        if (_instance->_provisionBuffer.length() > 0) {
+            _instance->_provision(_instance->_provisionBuffer);
+            _instance->_provisionBuffer = "";
+        }
+    }
+};
+
+// ---------------------------------------------------------------------------
 // BleSerial public API
 // ---------------------------------------------------------------------------
 
-void BleSerial::begin(const char* deviceName, BleCommandCallback callback) {
+void BleSerial::begin(const char* deviceName, BleCommandCallback callback,
+                      BleCommandCallback onProvision) {
     _callback = callback;
+    _provision = onProvision;
     _instance = this;
 
     NimBLEDevice::init(deviceName);
+
+    // Bonding and LE Secure Connections, without man-in-the-middle protection:
+    // Marvin has no display and no keypad, so there is no way to show or check
+    // a passkey. That leaves Just Works pairing, which is open to an active
+    // attacker present at the moment of pairing but protects everything
+    // afterwards — the right trade for a robot that is set up once, indoors.
+    NimBLEDevice::setSecurityAuth(/*bonding=*/true, /*mitm=*/false, /*sc=*/true);
 
     _server = NimBLEDevice::createServer();
     _server->setCallbacks(new BleServerCallbacks());
@@ -86,6 +131,15 @@ void BleSerial::begin(const char* deviceName, BleCommandCallback callback) {
         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
     );
     rxChar->setCallbacks(new BleRxCallbacks());
+
+    // Provisioning characteristic, on builds that have something to provision.
+    if (_provision) {
+        NimBLECharacteristic* provChar = pService->createCharacteristic(
+            NUS_PROVISION_UUID,
+            NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_ENC
+        );
+        provChar->setCallbacks(new BleProvisionCallbacks());
+    }
 
     // Start the GATT server (registers all services with the NimBLE host stack)
     _server->start();

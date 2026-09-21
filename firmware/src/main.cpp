@@ -4,6 +4,12 @@
 #include "head_servos.h"
 #include "demo.h"
 #include "ble_serial.h"
+#include "gestures.h"
+#include "audio_io.h"
+#include "settings.h"
+#include "net_wifi.h"
+#include "cloud_link.h"
+#include "voice.h"
 
 // ANSI color codes for terminal
 #define ANSI_COLOR_RED     "\x1b[31m"
@@ -20,7 +26,15 @@ Motor motorA(PIN_MOTOR_A_IN1, PIN_MOTOR_A_IN2);
 Motor motorB(PIN_MOTOR_B_IN3, PIN_MOTOR_B_IN4);
 HeadServos head;
 Demo demo(motorA, motorB, head);
+Gestures gestures(head);
 BleSerial bleSerial;
+#ifdef MARVIN_VOICE
+AudioIO   audio;
+Settings  settings;
+NetWiFi   wifi;
+CloudLink cloud;
+Voice     voice;
+#endif
 
 String commandStr = "";
 
@@ -66,6 +80,19 @@ void respondf(const char* fmt, ...) {
 
 // Callback for BLE-received commands (same path as Serial)
 void onBleCommand(const String& cmd);
+#ifdef MARVIN_VOICE
+// Callback for writes to the encrypted provisioning characteristic
+void onBleProvision(const String& line);
+
+// Wi-Fi state changes and scan results, to whoever is watching.
+//
+// Through respond(), so they reach the serial console and the web controller
+// alike — provisioning fails for dull reasons and the person holding the robot
+// should not have to guess which one.
+void onNetEvent(const String& line) {
+    respond((line + "\r\n").c_str());
+}
+#endif
 
 void printPrompt() {
     Serial.print(ANSI_COLOR_GREEN "Marvin> " ANSI_COLOR_RESET);
@@ -73,6 +100,13 @@ void printPrompt() {
 }
 
 void processCommand(String cmd);
+
+#ifdef MARVIN_VOICE
+// Commands arriving from the backend take the same path as serial and
+// Bluetooth ones. processCommand takes its argument by value because it trims
+// it; this adapter is what bridges that to the handler signature.
+static void onVoiceCommand(const String& cmd) { processCommand(cmd); }
+#endif
 
 void setup() {
     // Motor pins driven LOW first to prevent spin from floating GPIOs
@@ -97,10 +131,52 @@ void setup() {
     Serial.print("  " ANSI_COLOR_YELLOW "A<speed>" ANSI_COLOR_RESET " : Motor A only (-255..255)\r\n");
     Serial.print("  " ANSI_COLOR_YELLOW "B<speed>" ANSI_COLOR_RESET " : Motor B only (-255..255)\r\n");
     Serial.print("  " ANSI_COLOR_YELLOW "S"        ANSI_COLOR_RESET " : Stop all motors\r\n");
-    Serial.print("  " ANSI_COLOR_YELLOW "D"        ANSI_COLOR_RESET " : Toggle demo mode\r\n\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "G<name>"  ANSI_COLOR_RESET " : Play a gesture (wake_ack, nod, shake, centre)\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "D"        ANSI_COLOR_RESET " : Toggle demo mode\r\n");
+#ifdef MARVIN_VOICE
+    Serial.print("  " ANSI_COLOR_YELLOW "L"        ANSI_COLOR_RESET " : Toggle microphone-to-speaker loopback\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "W"        ANSI_COLOR_RESET " : Start/stop listening (W1 start, W0 stop)\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "?"        ANSI_COLOR_RESET " : Show network, backend and voice status\r\n");
+    Serial.print("Provisioning (over an encrypted Bluetooth link only):\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "Q"        ANSI_COLOR_RESET " : Scan for Wi-Fi networks\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "N<ssid>|<password>" ANSI_COLOR_RESET " : Wi-Fi network, and connect\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "U<url>"   ANSI_COLOR_RESET " : Backend, e.g. wss://host/v1/device\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "K<token>" ANSI_COLOR_RESET " : Device token from the web controller\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "I<id>"    ANSI_COLOR_RESET " : Device name\r\n");
+    Serial.print("  " ANSI_COLOR_YELLOW "X!"       ANSI_COLOR_RESET " : Forget everything above\r\n");
+#endif
+    Serial.print("\r\n");
+
+#ifdef MARVIN_VOICE
+    settings.begin();
+
+    // Before BLE: both want memory, and a failure here should be visible in the
+    // log rather than buried under the Bluetooth stack's own output.
+    if (!audio.begin()) {
+        Serial.print(ANSI_COLOR_RED "Audio failed to start — voice is unavailable\r\n" ANSI_COLOR_RESET);
+    }
+
+    wifi.begin(settings, onNetEvent);
+
+    // The link is started whether or not Wi-Fi is up yet: it retries on its own,
+    // and starting it here means a robot that is provisioned but out of range
+    // connects by itself the moment the network comes back.
+    if (settings.haveCloud()) {
+        cloud.begin(settings, Voice::handleCloudAudio);
+        voice.begin(settings, audio, cloud, gestures, wifi, onVoiceCommand);
+    } else {
+        Serial.print(ANSI_COLOR_YELLOW
+                     "Not provisioned — connect the web controller over Bluetooth to set up Wi-Fi\r\n"
+                     ANSI_COLOR_RESET);
+    }
+#endif
 
     // Initialise BLE (must be after Serial.begin so log output works)
+#ifdef MARVIN_VOICE
+    bleSerial.begin(settings.deviceId().c_str(), onBleCommand, onBleProvision);
+#else
     bleSerial.begin(BLE_DEVICE_NAME, onBleCommand);
+#endif
 
     printPrompt();
 }
@@ -120,6 +196,39 @@ void processCommand(String cmd) {
             respond(ANSI_COLOR_MAGENTA "All motors stopped\r\n" ANSI_COLOR_RESET);
             return;
         }
+#ifdef MARVIN_VOICE
+        if (type == 'L' || type == 'l') {
+            if (audio.loopbackRunning()) {
+                audio.stopLoopback();
+                respond(ANSI_COLOR_CYAN "Audio loopback OFF\r\n" ANSI_COLOR_RESET);
+            } else if (audio.startLoopback()) {
+                respond(ANSI_COLOR_CYAN "Audio loopback ON — speak into the microphone\r\n" ANSI_COLOR_RESET);
+            } else {
+                respond(ANSI_COLOR_RED "Audio loopback failed to start\r\n" ANSI_COLOR_RESET);
+            }
+            return;
+        }
+#endif
+#ifdef MARVIN_VOICE
+        if (type == 'W' || type == 'w') {
+            // Bare W toggles, which is what a person at a terminal wants.
+            // W1 and W0 are explicit, which is what the web controller wants —
+            // a toggle desynchronises the moment one message goes missing.
+            switch (voice.state()) {
+            case Voice::State::Idle:      voice.startListening(); break;
+            case Voice::State::Listening: voice.stopListening();  break;
+            default:                      voice.cancel();         break;
+            }
+            return;
+        }
+        if (type == '?') {
+            respond(settings.summary().c_str());
+            respond(wifi.summary().c_str());
+            respond(cloud.summary().c_str());
+            respond(voice.summary().c_str());
+            return;
+        }
+#endif
         if (type == 'D' || type == 'd') {
             if (demo.isEnabled()) {
                 demo.disable();
@@ -169,14 +278,106 @@ void processCommand(String cmd) {
         motorB.setSpeed(speed);
         respondf(ANSI_COLOR_MAGENTA "Motor B set to %d\r\n" ANSI_COLOR_RESET, speed);
     }
+#ifdef MARVIN_VOICE
+    else if (type == 'W' || type == 'w') {
+        if (value == 1) {
+            voice.startListening();
+        } else if (value == 0) {
+            voice.stopListening();
+        } else {
+            respond(ANSI_COLOR_RED "Use W1 to start listening, W0 to stop.\r\n" ANSI_COLOR_RESET);
+        }
+    }
+#endif
+    else if (type == 'G' || type == 'g') {
+        String name = cmd.substring(1);
+        name.trim();
+        // Gestures fight the demo sequence for the head, and the demo wins by
+        // rewriting the targets on its next step — so cancel it, the same way
+        // every other manual command does.
+        if (gestures.play(name.c_str())) {
+            respondf(ANSI_COLOR_BLUE "Gesture \"%s\"\r\n" ANSI_COLOR_RESET, name.c_str());
+        } else {
+            respondf(ANSI_COLOR_RED "Unknown gesture \"%s\". Try wake_ack, nod, shake, centre.\r\n"
+                     ANSI_COLOR_RESET, name.c_str());
+        }
+    }
     else {
-        respond(ANSI_COLOR_RED "Unknown command. Use R/T/M/A/B/S/D.\r\n" ANSI_COLOR_RESET);
+        respond(ANSI_COLOR_RED "Unknown command. Use R/T/M/A/B/G/S/D.\r\n" ANSI_COLOR_RESET);
     }
 }
 
 void onBleCommand(const String& cmd) {
     processCommand(cmd);
 }
+
+#ifdef MARVIN_VOICE
+// Writes to the provisioning characteristic. Only reachable over an encrypted,
+// bonded link — see ble_serial.cpp.
+//
+// Replies deliberately never echo what was written. The values coming through
+// here are a Wi-Fi password and a bearer token, and a terminal that repeats
+// them back is a terminal someone will paste into a bug report.
+void onBleProvision(const String& line) {
+    if (line.length() < 1) return;
+    char type = line.charAt(0);
+    String value = line.substring(1);
+    value.trim();
+
+    switch (type) {
+    case 'Q': case 'q':
+        // List the networks in range, so the controller can offer them rather
+        // than asking someone to type a name exactly right.
+        wifi.startScan();
+        return;
+
+    case 'N': case 'n': {
+        int bar = value.indexOf('|');
+        if (bar < 0) {
+            respond(ANSI_COLOR_RED "Expected N<ssid>|<password>\r\n" ANSI_COLOR_RESET);
+            return;
+        }
+        settings.setWiFi(value.substring(0, bar), value.substring(bar + 1));
+        // Connect straight away rather than waiting for the next backoff tick:
+        // somebody just pressed a button and is watching for the result.
+        wifi.reconnectNow();
+        return;
+    }
+    case 'U': case 'u':
+        if (!value.startsWith("ws://") && !value.startsWith("wss://")) {
+            respond(ANSI_COLOR_RED "Backend URL must start with wss:// or ws://\r\n" ANSI_COLOR_RESET);
+            return;
+        }
+        settings.setCloud(value, "");
+        respond(ANSI_COLOR_GREEN "Backend saved; restart Marvin to connect\r\n" ANSI_COLOR_RESET);
+        return;
+
+    case 'K': case 'k':
+        settings.setCloud("", value);
+        respond(ANSI_COLOR_GREEN "Device token saved; restart Marvin to connect\r\n" ANSI_COLOR_RESET);
+        return;
+
+    case 'I': case 'i':
+        settings.setDeviceId(value);
+        respond(ANSI_COLOR_GREEN "Device name saved; restart Marvin to advertise it\r\n" ANSI_COLOR_RESET);
+        return;
+
+    case 'X':
+        // Confirmation required: this is the one command here that destroys
+        // something, and a stray write should not wipe a robot's setup.
+        if (value == "!") {
+            settings.clear();
+            respond(ANSI_COLOR_MAGENTA "All settings cleared; restart Marvin\r\n" ANSI_COLOR_RESET);
+        } else {
+            respond(ANSI_COLOR_YELLOW "Send X! to confirm clearing every setting\r\n" ANSI_COLOR_RESET);
+        }
+        return;
+
+    default:
+        respond(ANSI_COLOR_RED "Unknown provisioning command. Use Q/N/U/K/I/X!.\r\n" ANSI_COLOR_RESET);
+    }
+}
+#endif
 
 void loop() {
     // Process serial input
@@ -203,6 +404,17 @@ void loop() {
 
     // Advance demo state machine (no-op when disabled)
     demo.update();
+
+    // Advance any gesture in flight (no-op when none is)
+    gestures.update();
+
+#ifdef MARVIN_VOICE
+    // Network housekeeping and anything the backend has asked for. Both are
+    // handled here rather than on their own tasks so that nothing arriving off
+    // the network moves a servo from a foreign task.
+    wifi.update();
+    voice.update();
+#endif
 
     // Step servos toward their targets
     head.update();
