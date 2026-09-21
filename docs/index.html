@@ -4,23 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Marvin — An open source tracked robot</title>
-<meta name="description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is open source: firmware, electronics, mechanics.">
+<meta name="description" content="A small tracked robot with an expressive two-axis head. Every part is open source: firmware, electronics, mechanics.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/img/favicon.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" sizes="180x180">
 <meta property="og:title" content="Marvin — An open source tracked robot">
-<meta property="og:description" content="A small tracked robot with an expressive two-axis head. Every file needed to build one is open source: firmware, electronics, mechanics.">
+<meta property="og:description" content="A small tracked robot with an expressive two-axis head. Every part is open source: firmware, electronics, mechanics.">
 <meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Same URL the design system's @import uses, so this is one request, not two.
-     Requesting it here starts the download immediately instead of waiting for
-     industry.css to parse first. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<script src="assets/js/site.js" defer></script>
+<link rel="stylesheet" href="assets/css/entire.css?v=card-align-2">
+<link rel="stylesheet" href="assets/css/sketch.css?v=continuous-rails-2">
+<script src="assets/js/site.js?v=safari-rails-1" defer></script>
 </head>
 <body class="home-page">
 <div style="min-height:100vh;background:var(--color-bg)">
@@ -28,43 +24,45 @@
 
   <header class="site-header">
     <div class="site-header__inner">
-      <a class="site-brand" href="index.html">MARVIN</a>
-      <nav class="site-nav" aria-label="Primary navigation">
+      <div class="site-identity"><a class="entire-home" href="https://entire.io" aria-label="Entire home"><svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 959.94 236.81"
+      aria-hidden="true" class="entire-logo"
+      fill="currentColor"
+    >
+      <path d="M897.09,222.01c-43.02,0-69.3-26.81-69.3-67.27s26.79-68.05,66.72-68.05,65.43,24.74,65.43,64.18c0,3.35,0,6.96-.26,10.83h-97.63v1.55c0,20.36,13.66,33.25,33.49,33.25,15.97,0,27.3-7.22,30.66-20.11h32.46c-4.38,25.26-27.31,45.62-61.57,45.62ZM862.57,139.27h64.4c-2.32-17.79-14.17-27.58-31.94-27.58-16.49,0-29.89,10.31-32.46,27.58Z" />
+      <path d="M747.44,219.9V89.86h28.16l3.05,19.52c6.85-11.15,17-19.52,38.06-19.52h6.85v29.4h-13.45c-22.58,0-30.45,16.22-30.45,36.25v64.38h-32.22Z" />
+      <path d="M688.15,219.9V89.54h32.14v130.36h-32.14ZM704.09,71.52c-10.38,0-17.97-7.62-17.97-17.79s7.59-17.79,17.97-17.79,17.98,7.62,17.98,17.79-7.85,17.79-17.98,17.79Z" />
+      <path d="M640.62,219.9c-24.76,0-36.12-11.95-36.12-36.61v-66.1h-21.97v-27.71h21.97v-27.71l32.08-8.9v36.61h31.58v27.71h-31.58v61.53c0,9.66,3.54,13.48,13.39,13.48h18.18v27.71h-27.53Z" />
+      <path d="M448.25,219.9V89.28h28.02l3.03,16.81c8.08-10.18,20.19-18.33,40.64-18.33,28.27,0,52,15.28,52,59.58v72.57h-32.06v-70.02c0-23.17-9.59-35.14-28.27-35.14-20.45,0-31.3,12.99-31.3,36.41v68.75h-32.06Z" />
+      <path d="M309.76,219.9V42.29h117.48v29.94h-83.3v43.64h68.11v28.67h-68.11v45.42h86.34v29.94h-120.52Z" />
+      <path d="M172.32,86.16c0,9.97,7.59,17.44,17.97,17.44s17.97-7.48,17.97-17.44-7.85-17.44-17.97-17.44-17.97,7.48-17.97,17.44Z" />
+      <path d="M114.18,102.55c0,10.27,7.59,17.97,17.97,17.97s17.97-7.7,17.97-17.97-7.85-17.97-17.97-17.97-17.97,7.7-17.97,17.97Z" />
+      <path d="M130.11,1.6c11.92-3.19,24.62-1.56,35.34,4.54l56.86,32.37c1.72.98,1.39,3.56-.52,4.07l-125.74,33.68c-12.51,3.35-19.93,16.2-16.58,28.7l6.07,22.64c3.35,12.5,16.21,19.92,28.71,16.57l69.76-18.69,35.66,35.22c6.69,6.6,10.45,15.61,10.45,25.01v18.68c0,12.25-9.44,22.43-21.65,23.37l-116.43,8.92c-13.55,1.04-26.88-3.85-36.54-13.4l-38.82-38.36c-6.68-6.6-10.45-15.61-10.45-25v-18.68c0-12.25,9.44-22.43,21.65-23.37l10.98-.84c2.07-.16,2.81-2.82,1.11-4.02l-24.07-17.06c-4.46-3.16-7.67-7.78-9.08-13.05L.8,60.49c-3.35-12.5,4.07-25.35,16.58-28.7L130.11,1.6Z" />
+    </svg></a></div>
+      <details class="site-navigation">
+        <summary aria-label="Toggle navigation"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></summary>
+        <nav class="site-nav" aria-label="Primary navigation">
         <a href="index.html" aria-current="page">Overview</a>
         <a href="build.html">Documentation</a>
         <a href="contribute.html">Get involved</a>
-      </nav>
-      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
+        </nav>
+      </details>
     </div>
   </header>
 
-  <main id="content" style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+  <main id="content" class="landing-content">
 
-    <section aria-labelledby="mv-hero" style="padding:clamp(40px,7vw,104px) 0 clamp(32px,5vw,64px)">
-      <div style="display:flex;justify-content:space-between;gap:16px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:clamp(24px,5vw,56px)">
-        <span>Open source exploring robot</span><span>Rev. A — 2026</span>
-      </div>
-      <h1 id="mv-hero" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(84px,20vw,300px);line-height:.82;letter-spacing:.01em;margin:0">MARVIN</h1>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,4vw,56px);margin-top:clamp(24px,4vw,44px);align-items:end">
-        <p style="margin:0;font-size:clamp(19px,2.1vw,25px);line-height:1.42;max-width:34ch">A small tracked robot with an expressive two&#8209;axis head. Roughly the size of a coffee cup. Every file needed to build one is open source.</p>
-        <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 18px;font-family:var(--font-mono);font-size:11.5px;letter-spacing:.04em;align-self:end">
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Stage</dt><dd style="margin:0">Early prototype</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Subsystems</dt><dd style="margin:0">5 of 10 working</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Electronics</dt><dd style="margin:0">Two paths &mdash; soldered, or PCBs</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts printed</dt><dd style="margin:0">9 &mdash; PLA FDM, or PA12 SLS</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Parts sourced</dt><dd style="margin:0">6, plus 4 to solder</dd>
-          <dt style="color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Licence</dt><dd style="margin:0">MIT · CERN&#8209;OHL&#8209;S&#8209;2.0</dd>
-        </dl>
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(24px,4vw,40px)">
-        <a class="btn btn-primary" href="build.html" style="text-decoration:none">Read the documentation</a>
-        <a class="btn btn-secondary" href="contribute.html" style="text-decoration:none">Get involved</a>
-        <a class="btn btn-ghost" href="https://github.com/spedemon/marvin" style="text-decoration:none">Repository</a>
-      </div>
+    <section aria-labelledby="mv-hero" class="site-section"><div class="site-section__inner">
+        <span class="rail-shading-horizontal" aria-hidden="true"></span>
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M39 24 L50 15 L45 60"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
+      <h1 id="mv-hero" style="margin:0">Marvin</h1>
+      <p class="hero-intro">A small tracked robot with an expressive two&#8209;axis head. Roughly the size of a coffee cup. Every part is open source: firmware, electronics, mechanics.</p>
+      <dl class="hero-facts"><div><dt>Stage</dt><dd>Early prototype</dd></div><div><dt>Subsystems</dt><dd>5 of 10 working</dd></div><div><dt>Electronics</dt><dd>Two paths &mdash; soldered, or PCBs</dd></div><div><dt>Parts printed</dt><dd>9 &mdash; PLA FDM, or PA12 SLS</dd></div><div><dt>Parts sourced</dt><dd>6, plus 4 to solder</dd></div><div><dt>Licence</dt><dd>MIT · CERN&#8209;OHL&#8209;S&#8209;2.0</dd></div></dl>
       <div style="margin-top:clamp(28px,5vw,60px)">
-        <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px)">
-          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
+        <figure class="hero-video" style="margin:0">
+          <div class="hero-video__media" style="position:relative;aspect-ratio:16/9;overflow:hidden">
             <!-- Ping-pong loop: the clip plays forward, then backwards, and the
                  file itself carries both passes — forward frames, then the same
                  frames in reverse with the two turning points not repeated. So
@@ -73,32 +71,38 @@
                  Doing this in the file rather than in JavaScript is deliberate:
                  reversing playback in the browser means seeking backwards frame
                  by frame, which no engine does smoothly at 1080p. -->
-            <video data-ref="videoRef" src="assets/video/marvin_moving_20sec_pingpong.mp4" poster="assets/img/marvin-hero-poster-10s.png" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <video data-ref="videoRef" poster="assets/img/marvin-hero-poster-alpha.webp" muted loop playsinline autoplay preload="metadata" aria-label="Marvin driving forward, pivoting, and turning its head to look around." style="width:100%;height:100%;object-fit:cover;display:block">
+              <!-- Safari uses HEVC alpha; other browsers use VP9 alpha. -->
+              <source src="assets/video/marvin_moving_20sec_alpha.mov" type='video/quicktime; codecs="hvc1"'>
+              <source src="assets/video/marvin_moving_20sec_alpha.webm" type='video/webm; codecs="vp9"'>
+            </video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Marvin under drive</span> — A forward run, a pivot on one track, and a look around.</span>
+            <span><span style="">Marvin under drive</span> — A forward run, a pivot on one track, and a look around.</span>
             <button type="button" data-action="togglePlay" style="cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px">Pause</button>
           </figcaption>
         </figure>
       </div>
-    </section>
+    </div></section>
 
-    <section aria-labelledby="mv-s01" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
+    <section aria-labelledby="mv-s01" class="site-section"><div class="site-section__inner">
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M35 23 C42 7 63 12 56 27 C51 36 36 45 32 59 L57 57"/></svg></span>
+        <span class="rail-shading rail-shading--top" aria-hidden="true"></span>
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Meet Marvin</p>
-          <h2 id="mv-s01" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">What it is</h2>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Meet Marvin</p>
+          <h2 id="mv-s01" style="margin:0 0 clamp(16px,2vw,24px)">What it is</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
-            <div style="max-width:68ch">
+            <div class="study-host" style="max-width:68ch">
               <p>Marvin drives on two rubber tracks and looks around with a head that pans and tilts on two servos. That is the whole of its body language, and it turns out to be enough.</p>
               <p>It is published as open source hardware: firmware, electronics, mechanical design, and the app you drive it with. The purpose is reproducibility. Anyone with a 3D printer and a soldering iron should be able to build one.</p>
               <p>It is also an early prototype. The drivetrain, the head and the Bluetooth link work today, driven by four breakout modules soldered together by hand. The sensing and the eyes do not exist yet: they belong to a pair of circuit boards that have been specified and not drawn.</p>
-              <p style="margin-bottom:0">That is the fork every builder meets. <a href="electronics.html#choice">Solder it yourself and it works this weekend</a>; build the boards and it gains eyes, distance, an IMU and the sense not to drive off a table. The schedule opposite is the honest version, and it doubles as a list of things worth doing.</p>
+              <p style="margin-bottom:0">The <a href="electronics.html#choice">hand-soldered build</a> supports driving and head movement. The planned circuit boards would add displays and sensors. The table shows what works today and what still needs development.</p>
+              <span class="margin-study margin-study--wiring" aria-hidden="true"></span>
             </div>
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Subsystem status</p>
-              <table class="table">
+              <p class="eyebrow" style="margin:0 0 8px;">Subsystem status</p>
+              <div class="table-scroll table-scroll--wide" role="region" aria-label="What it is table" tabindex="0"><table class="table">
                 <caption style="text-align:left;font-family:var(--font-mono);font-size:11px;color:var(--muted);padding-bottom:8px">Five subsystems work. Four more are specified but not built.</caption>
                 <thead><tr><th scope="col">Subsystem</th><th scope="col">State</th><th scope="col">Detail</th></tr></thead>
                 <tbody>
@@ -113,19 +117,21 @@
                   <tr><td>Cliff and robot-to-robot sensing</td><td><span class="tag tag-accent">Specified</span></td><td style="color:var(--muted)">Four floor sensors; a 940 nm IR pair</td></tr>
                   <tr><td>Odometry — wheel encoders</td><td><span class="tag tag-neutral">Planned</span></td><td style="color:var(--muted)">Closed-loop speed and distance</td></tr>
                 </tbody>
-              </table>
+              </table></div>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div></section>
 
-    <section aria-labelledby="mv-s02" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
+    <section aria-labelledby="mv-s02" class="site-section"><div class="site-section__inner">
+        <span class="rail-shading-horizontal" aria-hidden="true"></span>
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M35 18 C62 3 66 31 43 33 C68 27 62 66 34 58"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">How it is made</p>
-          <h2 id="mv-s02" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Anatomy</h2>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">How it is made</p>
+          <h2 id="mv-s02" style="margin:0 0 14px">Anatomy</h2>
           <p style="margin:0 0 clamp(20px,3vw,40px);max-width:68ch">Nine printed parts, numbered in assembly order: chassis, then drivetrain, then head. Scroll to bring them together.</p>
         </div>
       </div>
@@ -134,18 +140,26 @@
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
           <svg viewBox="40 0 640 660" role="img" aria-label="Exploded axonometric drawing of Marvin: eight printed parts separated along their assembly axes, each with a numbered callout." style="display:block;width:100%;height:auto;color:var(--color-text)">
             <defs>
-              <g id="mv-chassis"><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -34 M0 -34 L103.9 -94 M0 -34 L-72.7 -76" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-head"><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -58 M0 -58 L129.9 -133 M0 -58 L-34.6 -78" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 -60 L120 -125 M8 -60 L8 -22 M120 -125 L120 -87 M8 -22 L120 -87" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/></g>
-              <g id="mv-headcap"><path d="M0 0 L129.9 -75 L129.9 -89 L95.3 -109 L-34.6 -34 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -14 M0 -14 L129.9 -89 M0 -14 L-34.6 -34" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-plate"><path d="M0 0 L65.8 -38 L65.8 -47 L13.9 -77 L-52 -39 L-52 -30 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -9 M0 -9 L65.8 -47 M0 -9 L-52 -39" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-cover"><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -30 M0 -30 L102.2 -89 M0 -30 L-29.4 -47" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
-              <g id="mv-collar"><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -20 M0 -20 L26 -35 M0 -20 L-26 -35" fill="none" stroke="currentColor" stroke-width="1.1"/></g>
+              <filter id="mv-pen" x="-8%" y="-8%" width="116%" height="116%">
+                <feTurbulence type="fractalNoise" baseFrequency=".075" numOctaves="2" seed="12" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.3" xChannelSelector="R" yChannelSelector="G"/>
+              </filter>
+              <pattern id="mv-ink-hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(18)">
+                <path d="M1 -1 L.5 8 M4.5 -1 L5 8" fill="none" stroke="currentColor" stroke-width=".6" opacity=".3"/>
+              </pattern>
+
+              <g id="mv-chassis"><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -34 M0 -34 L103.9 -94 M0 -34 L-72.7 -76" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L-72.7 -42 L-72.7 -76 L0 -34 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L103.9 -60 L103.9 -94 L31.2 -136 L-72.7 -76 L-72.7 -42 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-head"><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -58 M0 -58 L129.9 -133 M0 -58 L-34.6 -78" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8 -60 L120 -125 M8 -60 L8 -22 M120 -125 L120 -87 M8 -22 L120 -87" fill="none" stroke="currentColor" stroke-width="1" opacity=".45"/><path d="M0 0 L-34.6 -20 L-34.6 -78 L0 -58 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L129.9 -75 L129.9 -133 L95.3 -153 L-34.6 -78 L-34.6 -20 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-headcap"><path d="M0 0 L129.9 -75 L129.9 -89 L95.3 -109 L-34.6 -34 L-34.6 -20 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -14 M0 -14 L129.9 -89 M0 -14 L-34.6 -34" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L129.9 -75 L129.9 -89 L0 -14 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L129.9 -75 L129.9 -89 L95.3 -109 L-34.6 -34 L-34.6 -20 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-plate"><path d="M0 0 L65.8 -38 L65.8 -47 L13.9 -77 L-52 -39 L-52 -30 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -9 M0 -9 L65.8 -47 M0 -9 L-52 -39" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L65.8 -38 L65.8 -47 L0 -9 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L65.8 -38 L65.8 -47 L13.9 -77 L-52 -39 L-52 -30 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-cover"><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -30 M0 -30 L102.2 -89 M0 -30 L-29.4 -47" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L102.2 -59 L102.2 -89 L0 -30 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L102.2 -59 L102.2 -89 L72.7 -106 L-29.4 -47 L-29.4 -17 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
+              <g id="mv-collar"><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.4"/><path d="M0 0 L0 -20 M0 -20 L26 -35 M0 -20 L-26 -35" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M0 0 L26 -15 L26 -35 L0 -20 Z" fill="url(#mv-ink-hatch)"/><path d="M0 0 L26 -15 L26 -35 L0 -50 L-26 -35 L-26 -15 Z" transform="translate(.8,-.6)" fill="none" stroke="currentColor" stroke-width=".55" opacity=".35"/></g>
               <g id="mv-wheel"><g transform="translate(-8.7,-5)"><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/></g><ellipse rx="17" ry="11" transform="rotate(-56)" fill="var(--color-bg)" stroke="currentColor" stroke-width="1.2"/><circle r="3.6" fill="none" stroke="currentColor" stroke-width="1"/></g>
             </defs>
 
             <g transform="translate(257,436)"><g data-dx="-70" data-dy="-40" style="transform:translate(-70px,-40px)">
               <use href="#mv-cover"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M-29 -40 L-112 -68" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="-29" cy="-40" r="2.2" fill="currentColor"/><text x="-142" y="-62" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">03</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M-29 -40 L-112 -40" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="-29" cy="-40" r="2.2" fill="currentColor"/><text x="-142" y="-34" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">03</text></g>
             </g></g>
 
             <g transform="translate(359,495)"><g data-dx="-70" data-dy="100" style="transform:translate(-70px,100px)">
@@ -153,94 +167,95 @@
               <g transform="translate(-17,-108)"><use href="#mv-wheel"/></g>
               <g transform="translate(22,-12)"><use href="#mv-wheel"/></g>
               <g transform="translate(85,-49)"><use href="#mv-wheel"/></g>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M84 -60 L232 -84" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="84" cy="-60" r="2.2" fill="currentColor"/><text x="240" y="-78" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">04</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M15.6 3.4 L232 3.4" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="15.6" cy="3.4" r="2.2" fill="currentColor"/><text x="240" y="9.4" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">04</text></g>
             </g></g>
 
             <g transform="translate(330,478)"><g data-dx="0" data-dy="0" style="transform:translate(0px,0px)">
               <use href="#mv-chassis"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M104 -70 L250 -104" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="104" cy="-70" r="2.2" fill="currentColor"/><text x="258" y="-98" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">01</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M-36 -38 L-185 -38" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="-36" cy="-38" r="2.2" fill="currentColor"/><text x="-215" y="-32" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">01</text></g>
             </g></g>
 
             <g transform="translate(359,495)"><g data-dx="78" data-dy="44" style="transform:translate(78px,44px)">
               <use href="#mv-cover"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M100 -74 L212 -98" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="100" cy="-74" r="2.2" fill="currentColor"/><text x="220" y="-92" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">02</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M100 -74 L212 -74" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="100" cy="-74" r="2.2" fill="currentColor"/><text x="220" y="-68" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">02</text></g>
             </g></g>
 
             <g transform="translate(341,412)"><g data-dx="0" data-dy="-88" style="transform:translate(0px,-88px)">
               <use href="#mv-plate" transform="scale(.55)"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M40 -30 L216 -56" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="40" cy="-30" r="2.2" fill="currentColor"/><text x="224" y="-50" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">08</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M36.2 -23.4 L216 -23.4" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="36.2" cy="-23.4" r="2.2" fill="currentColor"/><text x="224" y="-17.4" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">08</text></g>
             </g></g>
 
             <g transform="translate(345,403)"><g data-dx="0" data-dy="-139" style="transform:translate(0px,-139px)">
               <use href="#mv-collar"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M26 -18 L196 -58" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="26" cy="-18" r="2.2" fill="currentColor"/><text x="204" y="-52" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">07</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M26 -33 L196 -33" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="26" cy="-33" r="2.2" fill="currentColor"/><text x="204" y="-27" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">07</text></g>
             </g></g>
 
             <g transform="translate(315,397)"><g data-dx="0" data-dy="-201" style="transform:translate(0px,-201px)">
               <use href="#mv-head" transform="scale(.62)"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -52 L200 -80" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-52" r="2.2" fill="currentColor"/><text x="208" y="-74" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">05</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -52 L200 -52" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-52" r="2.2" fill="currentColor"/><text x="208" y="-46" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">05</text></g>
             </g></g>
 
             <g transform="translate(315,361)"><g data-dx="0" data-dy="-278" style="transform:translate(0px,-278px)">
               <use href="#mv-headcap" transform="scale(.62)"/>
-              <g data-callout style="color:var(--color-accent-700)"><path d="M82 -16 L178 -44" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="82" cy="-16" r="2.2" fill="currentColor"/><text x="186" y="-38" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">06</text></g>
+              <g data-callout style="color:var(--color-accent-700)"><path d="M80.5 -51 L178 -51" fill="none" stroke="currentColor" stroke-width="1"/><circle cx="80.5" cy="-51" r="2.2" fill="currentColor"/><text x="186" y="-45" fill="currentColor" style="font-family:var(--font-heading);font-weight:600;font-size:18px;letter-spacing:.04em">06</text></g>
             </g></g>
 
             <g opacity=".55"><path d="M95 642 L630 642" stroke="currentColor" stroke-width="1" fill="none"/></g>
           </svg>
           <figcaption style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Exploded axonometric</span> — The eight PLA parts. Geometry schematic, pending CAD export.</span>
+            <span><span style="">Exploded axonometric</span> — The eight PLA parts. Geometry schematic, pending CAD export.</span>
             <span data-ref="readoutRef" style="letter-spacing:.12em;text-transform:uppercase">Exploded</span>
           </figcaption>
         </figure>
         <div>
-          <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Printed parts</p>
-          <table class="table">
+          <p class="eyebrow" style="margin:0 0 8px;">Printed parts</p>
+          <div class="table-scroll table-scroll--wide" role="region" aria-label="Anatomy table" tabindex="0"><table class="table">
             <thead><tr><th scope="col" style="width:3.5em">#</th><th scope="col">Part</th><th scope="col">Qty</th><th scope="col">Material</th></tr></thead>
             <tbody>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">01</td><td>Body / chassis</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">02</td><td>Track cover, left</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">03</td><td>Track cover, right</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">04</td><td>Wheel</td><td>4</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">05</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">06</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">07</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">08</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
-              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;color:var(--color-accent-700)">09</td><td>Track link</td><td style="color:var(--muted)">many</td><td style="color:var(--muted)">TPU</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">01</td><td>Body / chassis</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">02</td><td>Track cover, left</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">03</td><td>Track cover, right</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">04</td><td>Wheel</td><td>4</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">05</td><td>Head base</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">06</td><td>Head cover</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">07</td><td>Neck</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">08</td><td>Neck mount</td><td>1</td><td style="color:var(--muted)">PLA</td></tr>
+              <tr><td style="font-family:var(--font-heading);font-weight:600;font-size:17px;">09</td><td>Track link</td><td style="color:var(--muted)">many</td><td style="color:var(--muted)">TPU</td></tr>
             </tbody>
-          </table>
+          </table></div>
           <p style="margin:16px 0 0;max-width:60ch">Eight of the nine print in PLA, and that whole set nests on one plate. Only the track links want a flexible filament, which is the one place the material changes.</p>
           <p style="margin:14px 0 0"><a href="build.html#print">Print settings, sliced projects and materials, in the build documentation</a></p>
         </div>
       </div>
-    </section>
+    </div></section>
 
-    <section aria-labelledby="mv-s03" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
+    <section aria-labelledby="mv-s03" class="site-section"><div class="site-section__inner">
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M48 13 L30 43 L59 41 M52 17 L48 62"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Behaviour</p>
-          <h2 id="mv-s03" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">It is curious</h2>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Behaviour</p>
+          <h2 id="mv-s03" style="margin:0 0 clamp(16px,2vw,24px)">It is curious</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,48px)">
             <div style="max-width:68ch">
-              <p>The personality is not a claim made in marketing copy. It is a hand-written table of movements in the firmware, and the comments in that file are the truest statement of the project's character that exists.</p>
+              <p>Marvin follows a programmed sequence of movements: looking around, turning, pausing, and doing the occasional double-take.</p>
               <blockquote style="margin:20px 0;padding-left:clamp(14px,2vw,22px);border-left:1px solid var(--color-accent);max-width:60ch">
                 <p style="margin:0 0 8px;font-size:17.5px;line-height:1.5">The patterns are meant to feel organic: the head often moves before the body turns; pauses with head sweeps simulate curiosity; asymmetric durations avoid a metronomic feel.</p>
                 <cite style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-style:normal">firmware/demo.cpp</cite>
               </blockquote>
-              <p>The head servos hold a target angle and walk the current angle toward it in small steps on a timer. That interpolation is about ten lines of code, and it is the entire reason the movement reads as organic rather than mechanical.</p>
+              <p>The firmware moves the head servos gradually toward each target angle, so the head turns smoothly instead of snapping into position.</p>
               <p style="margin-bottom:0">One aside, and then we will let it go: the name nods to the perpetually depressed robot from <i>The Hitchhiker's Guide to the Galaxy</i>. The resemblance ends at the name. This one is curious, which is more interesting and is what the firmware actually does.</p>
             </div>
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">A double-take, as choreographed</p>
+              <p class="eyebrow" style="margin:0 0 8px;">A double-take, as choreographed</p>
               <div class="blueprint" style="position:relative;padding:clamp(12px,2vw,18px)">
                 <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
                 <div style="display:grid;gap:0">
-                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:0 0 7px;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 40, CENTER - 15, 800 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">glance right-up</span></div>
-                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 50, CENTER - 20, 700 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">tilt up (surprised?)</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:0 0 7px;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 40, CENTER - 15, 800 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;">glance right-up</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 50, CENTER - 20, 700 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;">tilt up (surprised?)</span></div>
                   <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 35, CENTER,      500 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--muted)">—</span></div>
-                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER - 10, CENTER,      300 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">snap back</span></div>
-                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0 0"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 35, CENTER - 15, 600 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;color:var(--color-accent-700)">look again</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0;border-bottom:1px solid var(--rule)"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER - 10, CENTER,      300 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;">snap back</span></div>
+                  <div style="display:grid;grid-template-columns:minmax(0,1fr);gap:2px;padding:7px 0 0"><code style="font-family:var(--font-mono);font-size:11.5px;white-space:pre;overflow-x:auto">{ 0, 0, CENTER + 35, CENTER - 15, 600 },</code><span style="font-family:var(--font-mono);font-size:10.5px;letter-spacing:.04em;">look again</span></div>
                 </div>
               </div>
               <p style="margin:12px 0 0;font-family:var(--font-mono);font-size:11px;line-height:1.65;color:var(--muted)">Someone sat down and choreographed a robot doing a double-take, in a C++ struct array.</p>
@@ -248,10 +263,10 @@
           </div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(320px,100%),1fr));gap:clamp(20px,3vw,48px);margin-top:clamp(28px,4vw,56px)">
-        <figure class="blueprint" style="margin:0;position:relative;padding:clamp(14px,2vw,22px)">
+      <div class="motion-comparison">
+        <figure class="blueprint head-envelope" style="margin:0;position:relative;padding:clamp(14px,2vw,22px)">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <svg viewBox="0 0 460 300" role="img" aria-label="Diagram of the head movement envelope. Pan sweeps the full 0 to 180 degrees, centred at 90. Tilt is limited to 30 to 85 degrees, centred at 57." style="display:block;width:100%;height:auto;color:var(--color-text)">
+          <svg viewBox="0 80 460 210" role="img" aria-label="Diagram of the head movement envelope. Pan sweeps the full 0 to 180 degrees, centred at 90. Tilt is limited to 30 to 85 degrees, centred at 57." style="display:block;width:100%;color:var(--color-text)">
             <g transform="translate(120,220)">
               <text x="0" y="52" text-anchor="middle" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase">Pan 0–180°</text>
               <path data-draw="" style="--len:330" d="M-95 0 A95 95 0 0 1 95 0" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".75"/>
@@ -281,42 +296,49 @@
               <circle r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/>
             </g>
           </svg>
-          <figcaption style="margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)"><span style="color:var(--color-accent-700)">Head envelope</span> — Tilt is deliberately clamped to 30–85° to protect the neck from its mechanical stops. Ask for T200 and you get 85°, not an error.</figcaption>
+          <figcaption style="margin-top:14px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)"><span style="">Head envelope</span> — Tilt is deliberately clamped to 30–85° to protect the neck from its mechanical stops. Ask for T200 and you get 85°, not an error.</figcaption>
         </figure>
         <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px);align-self:start">
           <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-          <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden;background:var(--color-surface)">
+          <div class="duotone" style="position:relative;aspect-ratio:16/9;overflow:hidden">
             <!-- Ping-pong loop, matching the hero clip. -->
-            <video data-ref="demoRef" src="assets/video/marvin_head_7sec_pingpong.mp4" poster="assets/img/marvin-demo-poster.png" muted loop playsinline autoplay preload="none" aria-label="Marvin tilting its head back through its full range and lowering it again, the body still." style="width:100%;height:100%;object-fit:cover;display:block"></video>
+            <video data-ref="demoRef" poster="assets/img/marvin-demo-poster-alpha.webp" muted loop playsinline autoplay preload="none" aria-label="Marvin tilting its head back through its full range and lowering it again, the body still." style="width:100%;height:100%;object-fit:cover;display:block">
+              <!-- Safari uses HEVC alpha; other browsers use VP9 alpha. -->
+              <source src="assets/video/marvin_head_7sec_alpha.mov" type='video/quicktime; codecs="hvc1"'>
+              <source src="assets/video/marvin_head_7sec_alpha.webm" type='video/webm; codecs="vp9"'>
+            </video>
           </div>
           <figcaption style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)">
-            <span><span style="color:var(--color-accent-700)">Demo mode</span> — Nobody is driving; the head leads and the body follows.</span>
+            <span><span style="">Demo mode</span> — Nobody is driving; the head leads and the body follows.</span>
             <button type="button" data-action="toggleDemo" style="cursor:pointer;background:transparent;border:1px solid var(--rule);color:var(--muted);font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:5px 9px">Pause</button>
           </figcaption>
         </figure>
       </div>
-    </section>
+    </div></section>
 
-    <section aria-labelledby="mv-s04" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
+    <section aria-labelledby="mv-s04" class="site-section"><div class="site-section__inner">
+        <span class="build-study" aria-hidden="true"></span>
+        <span class="rail-shading-horizontal" aria-hidden="true"></span>
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M60 15 L39 17 L35 35 C60 23 65 61 33 60"/></svg></span>
+        <span class="rail-shading rail-shading--top" aria-hidden="true"></span>
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Start building</p>
-          <h2 id="mv-s04" style="font-size:clamp(28px,4vw,46px);margin:0 0 14px;letter-spacing:-.015em">Build one</h2>
-          <p style="margin:0 0 clamp(20px,3vw,34px);max-width:62ch">Nine parts to print, six to buy, and one decision to make before any of it: how you want the electronics.</p>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 12px;">Start building</p>
+          <h2 id="mv-s04" style="margin:0 0 14px">Build one</h2>
+          <p style="margin:0 0 clamp(20px,3vw,34px);max-width:36ch">Nine parts to print, six to buy, and one decision to make before any of it: how you want the electronics.</p>
 
           <p class="kicker kicker-a" style="margin:0 0 12px">The decision</p>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(260px,100%),1fr));gap:clamp(14px,2.5vw,28px);margin-bottom:clamp(24px,3.5vw,40px)">
+          <div class="build-paths">
             <a class="card blueprint" href="electronics.html#soldered" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span class="card-kicker" style="font-family:var(--font-mono)">Path A · Works today</span>
+              <span class="build-path-label"><span class="card-kicker" style="font-family:var(--font-mono)">Path A · Works today</span></span>
               <span class="card-title" style="font-size:22px">Solder it yourself</span>
-              <span class="card-body" style="opacity:1;color:var(--muted)">An ESP32-C3 SuperMini, a DRV8833, a charger and a step-up converter, joined with wire. Drive, head and Bluetooth, this weekend.</span>
+              <span class="card-body" style="opacity:1;color:var(--muted)">Connect an ESP32-C3 SuperMini, a DRV8833 motor driver, a charger and a step-up converter to control the motors and head servos over Bluetooth.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Wiring diagram</span>
             </a>
             <a class="card blueprint hatch" href="electronics.html#architecture" style="text-decoration:none;color:inherit;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <span class="card-kicker" style="font-family:var(--font-mono)">Path B · Specification only</span>
+              <span class="build-path-label"><span class="card-kicker" style="margin:0;font-family:var(--font-mono)">Path B · Specification only</span> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></span>
               <span class="card-title" style="font-size:22px">The Marvin PCBs</span>
               <span class="card-body" style="opacity:1;color:var(--muted)">Two boards, one in the head and one in the base. They add the eyes and the senses — and they have not been designed yet.</span>
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Read the specification</span>
@@ -347,54 +369,51 @@
               <span class="card-meta" style="font-family:var(--font-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--color-accent-700)">Firmware</span>
             </a>
           </div>
-          <p class="mono" style="margin:clamp(18px,3vw,28px) 0 0;font-size:11.5px;color:var(--muted)">The steps are written; the step drawings are not. <a href="contribute.html#mechanics">That is the next useful thing anyone could do</a>.</p>
+          <span class="tag tag-neutral mono" style="display:table;width:fit-content;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:clamp(18px,3vw,28px) 0 8px">HELP NEEDED</span>
+          <p class="mono" style="margin:0 0 0;font-size:11.5px;color:var(--muted)">The assembly instructions still need illustrations. If you build a Marvin, you can help by <a href="contribute.html#mechanics">photographing each step</a>.</p>
         </div>
       </div>
-    </section>
+    </div></section>
 
-    <section aria-labelledby="mv-s05" style="border-top:1px solid var(--rule-ink);padding:clamp(40px,6vw,88px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(48px,7.5vw,116px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
+    <section aria-labelledby="mv-s05" class="site-section"><div class="site-section__inner">
+        <span class="section-sketch-number" aria-hidden="true"><svg viewBox="0 0 70 80" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><path d="M17 15 C2 10 -2 59 12 61 C28 66 35 8 17 15 M56 15 C35 9 25 63 44 61 C64 59 60 29 37 37"/></svg></span>
+        <span class="rail-shading rail-shading--bottom" aria-hidden="true"></span>
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Open source</p>
-          <h2 id="mv-s05" style="font-size:clamp(28px,4vw,46px);margin:0 0 clamp(16px,2vw,24px);letter-spacing:-.015em">Open, in the ordinary sense of the word</h2>
+          <h2 id="mv-s05" style="margin:0 0 clamp(16px,2vw,24px)">Open source</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,48px)">
             <div style="max-width:68ch">
-              <p>Not source-available. Properly licensed, with the conventional open-hardware split: permissive for the code, strongly reciprocal for the hardware.</p>
-              <table class="table" style="margin-top:16px">
+              <p>Marvin’s code and hardware designs are open source. You can find the source files and licenses in the repository.</p>
+              <div class="table-scroll" role="region" aria-label="Open source licenses" tabindex="0"><table class="table" style="margin-top:16px">
                 <thead><tr><th scope="col">Covers</th><th scope="col">Licence</th></tr></thead>
                 <tbody>
                   <tr><td>Software — firmware, controller app, this website</td><td style="font-family:var(--font-mono);font-size:12.5px">MIT</td></tr>
                   <tr><td>Hardware — mechanical design, electronics</td><td style="font-family:var(--font-mono);font-size:12.5px">CERN-OHL-S-2.0</td></tr>
                 </tbody>
-              </table>
+              </table></div>
               <p style="margin-top:16px">CERN-OHL-S is reciprocal: build and distribute a modified Marvin and you share your design changes too.</p>
             </div>
             <div>
-              <p style="margin:0 0 12px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Four ways in</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Four ways in</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:clamp(12px,2vw,20px)">
                 <a href="contribute.html#firmware" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Firmware</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Embedded C++, PlatformIO, one class per peripheral.</span></a>
                 <a href="contribute.html#software" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Software</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">The controller app and this site. No build step, deliberately.</span></a>
                 <a href="contribute.html#mechanics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Mechanics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">CAD is the master. Meshes are derived, never edited.</span></a>
-                <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Two boards, fully specified and entirely undrawn. The largest open invitation.</span></a>
+                <a href="contribute.html#electronics" style="text-decoration:none;color:inherit;border-top:1px solid var(--rule-ink);padding-top:10px"><span style="display:block;font-family:var(--font-heading);font-weight:600;font-size:19px">Electronics</span><span style="display:block;font-size:14px;color:var(--muted);line-height:1.5">Help turn the two-board electronics specification into schematics and PCB layouts.</span></a>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(18px,3vw,28px)">
-                <a class="btn btn-secondary" href="https://github.com/spedemon/marvin" style="text-decoration:none">github.com/spedemon/marvin</a>
-                <a class="btn btn-ghost" href="contribute.html" style="text-decoration:none">How to get involved</a>
+                <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Repository</a>
+                <a class="btn btn-secondary" href="contribute.html" style="text-decoration:none">Get involved</a>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div></section>
   </main>
 
-  <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div class="page-footer__inner">
-      <span>Marvin — open source exploring robot</span>
-      <span>Rev. A</span>
-      <span>MIT · CERN-OHL-S-2.0</span>
-    </div>
+  <footer class="site-footer">
+    <p class="entire-footer">Built with ❤️ by <a href="https://github.com/spedemon">@spedemon</a> and <a href="https://github.com/entireio">@entireio</a></p>
   </footer>
 </div>
 </body>

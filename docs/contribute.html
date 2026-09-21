@@ -6,66 +6,78 @@
 <title>Get involved — Marvin</title>
 <meta name="description" content="Four ways to contribute to Marvin: firmware, software, mechanics and electronics.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/img/favicon.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" sizes="180x180">
 <meta property="og:title" content="Get involved — Marvin">
 <meta property="og:description" content="Four ways to contribute to Marvin: firmware, software, mechanics and electronics.">
 <meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Same URL the design system's @import uses, so this is one request, not two.
-     Requesting it here starts the download immediately instead of waiting for
-     industry.css to parse first. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<script src="assets/js/site.js" defer></script>
+<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
+<link rel="stylesheet" href="assets/css/sketch.css?v=continuous-rails-2">
+<script src="assets/js/site.js?v=safari-rails-1" defer></script>
 </head>
 <body class="contribute-page">
 <div style="min-height:100vh;background:var(--color-bg)">
   <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
   <header class="site-header">
     <div class="site-header__inner">
-      <a class="site-brand" href="index.html">MARVIN</a>
-      <nav class="site-nav" aria-label="Primary navigation">
+      <div class="site-identity"><a class="entire-home" href="https://entire.io" aria-label="Entire home"><svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 959.94 236.81"
+      aria-hidden="true" class="entire-logo"
+      fill="currentColor"
+    >
+      <path d="M897.09,222.01c-43.02,0-69.3-26.81-69.3-67.27s26.79-68.05,66.72-68.05,65.43,24.74,65.43,64.18c0,3.35,0,6.96-.26,10.83h-97.63v1.55c0,20.36,13.66,33.25,33.49,33.25,15.97,0,27.3-7.22,30.66-20.11h32.46c-4.38,25.26-27.31,45.62-61.57,45.62ZM862.57,139.27h64.4c-2.32-17.79-14.17-27.58-31.94-27.58-16.49,0-29.89,10.31-32.46,27.58Z" />
+      <path d="M747.44,219.9V89.86h28.16l3.05,19.52c6.85-11.15,17-19.52,38.06-19.52h6.85v29.4h-13.45c-22.58,0-30.45,16.22-30.45,36.25v64.38h-32.22Z" />
+      <path d="M688.15,219.9V89.54h32.14v130.36h-32.14ZM704.09,71.52c-10.38,0-17.97-7.62-17.97-17.79s7.59-17.79,17.97-17.79,17.98,7.62,17.98,17.79-7.85,17.79-17.98,17.79Z" />
+      <path d="M640.62,219.9c-24.76,0-36.12-11.95-36.12-36.61v-66.1h-21.97v-27.71h21.97v-27.71l32.08-8.9v36.61h31.58v27.71h-31.58v61.53c0,9.66,3.54,13.48,13.39,13.48h18.18v27.71h-27.53Z" />
+      <path d="M448.25,219.9V89.28h28.02l3.03,16.81c8.08-10.18,20.19-18.33,40.64-18.33,28.27,0,52,15.28,52,59.58v72.57h-32.06v-70.02c0-23.17-9.59-35.14-28.27-35.14-20.45,0-31.3,12.99-31.3,36.41v68.75h-32.06Z" />
+      <path d="M309.76,219.9V42.29h117.48v29.94h-83.3v43.64h68.11v28.67h-68.11v45.42h86.34v29.94h-120.52Z" />
+      <path d="M172.32,86.16c0,9.97,7.59,17.44,17.97,17.44s17.97-7.48,17.97-17.44-7.85-17.44-17.97-17.44-17.97,7.48-17.97,17.44Z" />
+      <path d="M114.18,102.55c0,10.27,7.59,17.97,17.97,17.97s17.97-7.7,17.97-17.97-7.85-17.97-17.97-17.97-17.97,7.7-17.97,17.97Z" />
+      <path d="M130.11,1.6c11.92-3.19,24.62-1.56,35.34,4.54l56.86,32.37c1.72.98,1.39,3.56-.52,4.07l-125.74,33.68c-12.51,3.35-19.93,16.2-16.58,28.7l6.07,22.64c3.35,12.5,16.21,19.92,28.71,16.57l69.76-18.69,35.66,35.22c6.69,6.6,10.45,15.61,10.45,25.01v18.68c0,12.25-9.44,22.43-21.65,23.37l-116.43,8.92c-13.55,1.04-26.88-3.85-36.54-13.4l-38.82-38.36c-6.68-6.6-10.45-15.61-10.45-25v-18.68c0-12.25,9.44-22.43,21.65-23.37l10.98-.84c2.07-.16,2.81-2.82,1.11-4.02l-24.07-17.06c-4.46-3.16-7.67-7.78-9.08-13.05L.8,60.49c-3.35-12.5,4.07-25.35,16.58-28.7L130.11,1.6Z" />
+    </svg></a></div>
+      <details class="site-navigation">
+        <summary aria-label="Toggle navigation"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></summary>
+        <nav class="site-nav" aria-label="Primary navigation">
         <a href="index.html">Overview</a>
         <a href="build.html">Documentation</a>
         <a href="contribute.html" aria-current="page">Get involved</a>
-      </nav>
-      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
+        </nav>
+      </details>
     </div>
   </header>
 
-  <main id="content" style="max-width:1240px;margin:0 auto;padding:0 clamp(16px,4vw,56px)">
+  <main id="content" class="landing-content">
 
-    <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">05</div>
+    <section aria-labelledby="mv-title" class="site-section"><div class="site-section__inner">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Open source project</p>
-          <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Get involved</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Four routes in, because they attract different people. Below each one: the state of it, the conventions that matter, and the specific thing that needs doing next.</p>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 10px;">Open source project</p>
+          <h1 id="mv-title" style="margin:0 0 16px">Get involved</h1>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Help with firmware, the controller app, mechanical design, or electronics. Each section describes the current work and suggests ways to contribute.</p>
         </div>
       </div>
-    </section>
+    </div></section>
 
     <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
       <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,30px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#firmware" style="text-decoration:none;color:var(--color-text)">Firmware</a></li>
-        <li><a href="#software" style="text-decoration:none;color:var(--color-text)">Software</a></li>
-        <li><a href="#mechanics" style="text-decoration:none;color:var(--color-text)">Mechanics</a></li>
-        <li><a href="#electronics" style="text-decoration:none;color:var(--color-text)">Electronics</a></li>
-        <li><a href="#conventions" style="text-decoration:none;color:var(--muted)">Conventions</a></li>
-        <li><a href="#open" style="text-decoration:none;color:var(--muted)">Open problems</a></li>
+        <li><a href="#firmware">Firmware</a></li>
+        <li><a href="#software">Software</a></li>
+        <li><a href="#mechanics">Mechanics</a></li>
+        <li><a href="#electronics">Electronics</a></li>
+        <li><a href="#conventions">Conventions</a></li>
+        <li><a href="#open">Open problems</a></li>
       </ol>
     </nav>
 
-    <section aria-labelledby="mv-repo" style="padding:clamp(32px,4vw,64px) 0">
-      <h2 id="mv-repo" style="margin:0 0 8px;font-size:clamp(22px,2.6vw,30px)">Where things live</h2>
-      <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">Five folders. Two are working software, one holds geometry and print files, one is a specification waiting for a schematic, and one is this site.</p>
-      <div style="overflow-x:auto">
-        <table class="table" style="max-width:76ch">
+    <section aria-labelledby="mv-repo" class="site-section"><div class="site-section__inner">
+      <h2 id="mv-repo" style="margin:0 0 8px">Where things live</h2>
+      <p style="margin:0 0 18px;max-width:64ch;color:var(--muted)">The main project folders and their contents are listed below.</p>
+      <div style="">
+        <div class="table-scroll table-scroll--wide" role="region" aria-label="Where things live table" tabindex="0"><table class="table" style="max-width:76ch">
           <thead><tr><th scope="col">Folder</th><th scope="col">Contains</th><th scope="col">State</th></tr></thead>
           <tbody>
             <tr><td style="font-family:var(--font-mono);font-size:12.5px">firmware/</td><td>ESP32 firmware — C++, PlatformIO, Arduino</td><td><span class="tag tag-outline">Working</span></td></tr>
@@ -74,26 +86,25 @@
             <tr><td style="font-family:var(--font-mono);font-size:12.5px">mechanical/</td><td>CAD master, meshes, sliced print projects</td><td><span class="tag tag-outline">Complete</span></td></tr>
             <tr><td style="font-family:var(--font-mono);font-size:12.5px">docs/</td><td>This website</td><td><span class="tag tag-outline">Working</span></td></tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
-    </section>
+    </div></section>
 
-    <section id="firmware" aria-labelledby="mv-fw" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
+    <section id="firmware" aria-labelledby="mv-fw" class="site-section"><div class="site-section__inner">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Embedded C++</p>
-          <h2 id="mv-fw" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Firmware</h2>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 10px;">Embedded C++</p>
+          <h2 id="mv-fw" style="margin:0 0 14px">Firmware</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>PlatformIO, the Arduino framework, one ESP32-C3 SuperMini. Clone, <span style="font-family:var(--font-mono);font-size:14px">./flash.sh</span>, and you have a serial prompt in under a minute.</p>
-              <p>The architecture is deliberately dull: one class per peripheral, a single configuration header, and a main loop that never blocks. The interesting part is the head interpolation — it holds a target angle and walks the current angle toward it on a timer, which is the whole reason the movement reads as a character rather than a machine.</p>
-              <p style="margin-bottom:0"><strong style="font-weight:700">Adding a command touches four places:</strong> the parser, the on-device help text, the controller app's cheat sheet, and the protocol documentation. Miss one and someone spends an evening confused.</p>
+              <p>The firmware uses PlatformIO and the Arduino framework, configured for an ESP32-C3 SuperMini. Connect the board over USB and run <span style="font-family:var(--font-mono);font-size:14px">./flash.sh</span> from the firmware directory to build and upload it.</p>
+              <p>The firmware has one class per peripheral and a shared configuration header. Timer-based updates keep movement running alongside Bluetooth and serial input. The head servos move gradually toward each target angle for smoother motion.</p>
+              <p style="margin-bottom:0"><strong style="font-weight:700">Adding a command touches four places:</strong> the parser, the on-device help text, the controller app's cheat sheet, and the protocol documentation. Keep these in sync so the documented commands match the firmware.</p>
             </div>
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Firmware source</p>
-              <div style="overflow-x:auto">
-                <table class="table">
+              <p class="eyebrow" style="margin:0 0 8px;">Firmware source</p>
+              <div style="">
+                <div class="table-scroll" role="region" aria-label="Firmware table" tabindex="0"><table class="table">
                   <thead><tr><th scope="col">File</th><th scope="col">Responsibility</th></tr></thead>
                   <tbody>
                     <tr><td style="font-family:var(--font-mono);font-size:12.5px">config.h</td><td style="color:var(--muted)">Every pin and tuning constant — the single source of truth</td></tr>
@@ -103,29 +114,29 @@
                     <tr><td style="font-family:var(--font-mono);font-size:12.5px">ble_serial.*</td><td style="color:var(--muted)">Bluetooth serial transport</td></tr>
                     <tr><td style="font-family:var(--font-mono);font-size:12.5px">demo.*</td><td style="color:var(--muted)">The autonomous movement sequence</td></tr>
                   </tbody>
-                </table>
+                </table></div>
               </div>
-              <p style="margin:14px 0 0;font-size:14.5px;color:var(--muted)">Next up: wheel encoders for closed-loop speed, and a time-of-flight sensor driver behind the same one-class-per-peripheral pattern.</p>
+              <span class="tag tag-neutral mono" style="display:table;width:fit-content;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:14px 0 8px">HELP NEEDED</span>
+              <p style="margin:0 0 0;font-size:14.5px;color:var(--muted)">Next up: wheel encoders for closed-loop speed, and a time-of-flight sensor driver behind the same one-class-per-peripheral pattern.</p>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div></section>
 
-    <section id="software" aria-labelledby="mv-sw" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
+    <section id="software" aria-labelledby="mv-sw" class="site-section"><div class="site-section__inner">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Web</p>
-          <h2 id="mv-sw" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Software</h2>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 10px;">Web</p>
+          <h2 id="mv-sw" style="margin:0 0 14px">Software</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>Two things: the controller app and this website. Both are plain HTML, CSS and JavaScript, served statically, with no build step and no framework. That is a constraint worth defending — it means the app can be served from a phone, a laptop, or a memory stick.</p>
-              <p style="margin-bottom:0">The site is hosted from a subpath on GitHub Pages, so every asset and link path must be relative. An absolute path beginning with a slash is the single most common way a Pages site ships broken.</p>
+              <p>The controller app and this website use plain HTML, CSS, and JavaScript. Both are served as static files, with no framework or build step.</p>
+              <p style="margin-bottom:0">Use relative asset paths and internal links so the site also works when hosted under a subpath. The controller needs HTTPS or localhost for Web Bluetooth.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Good first tasks</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Good first tasks</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
               <ul style="margin:0;padding-left:18px;font-size:14.5px;line-height:1.75">
                 <li>A keyboard driving mode for the controller — arrow keys to <span style="font-family:var(--font-mono);font-size:13px">A</span>/<span style="font-family:var(--font-mono);font-size:13px">B</span> speeds</li>
                 <li>A connection-state indicator that distinguishes &ldquo;no Bluetooth&rdquo; from &ldquo;not connected&rdquo;</li>
@@ -136,106 +147,99 @@
           </div>
         </div>
       </div>
-    </section>
+    </div></section>
 
-    <section id="mechanics" aria-labelledby="mv-mech" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
+    <section id="mechanics" aria-labelledby="mv-mech" class="site-section"><div class="site-section__inner">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">CAD and printing</p>
-          <h2 id="mv-mech" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Mechanics</h2>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 10px;">CAD and printing</p>
+          <h2 id="mv-mech" style="margin:0 0 14px">Mechanics</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>The CAD model is the master; meshes are derived from it. Never edit a mesh directly — a corrected STL is a dead end, because the next export overwrites it.</p>
-              <p>Part numbering is fixed at 01–08 and is used by the drawings, the tables and eventually the assembly steps. If you add a part, it takes the next number; nothing gets renumbered.</p>
-              <p style="margin-bottom:0">Keep individual files under about fifty megabytes. An oversized mesh is almost always over-tessellated rather than genuinely complex — <span style="font-family:var(--font-mono);font-size:13px">01_body.stl</span> was once a 454 MB export of what is essentially a printed box.</p>
+              <p>Make geometry changes in the CAD model and export updated meshes. Edits made only to an STL will be lost when the mesh is exported again.</p>
+              <p>Parts are numbered 01–09 across the drawings, tables, and mesh files. Give new parts the next available number and keep existing numbers unchanged.</p>
+              <p style="margin-bottom:0">Aim to keep individual mesh files under 50 MB. Check the tessellation settings when exporting large meshes, and preserve enough detail for printing.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Most valuable thing you could do</p>
-              <h3 style="margin:0 0 10px;font-size:22px">Assemble one and draw the steps</h3>
-              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The seventeen steps are written; not one of them has a picture. Build a Marvin, photograph each stage as you go, and the sequence becomes something a stranger can follow without reading. A face-plate mesh, validated print settings and the assembled dimensions are worth almost as much.</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Assembly documentation</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
+              <h3 style="margin:0 0 10px">Photograph your build</h3>
+              <p style="margin:0 0 12px;font-size:14.5px;color:var(--muted)">The assembly instructions need photos or drawings for each step. If you build a Marvin, photograph the process and note any unclear instructions. We also need a face-plate mesh, tested print settings, and measurements of the assembled robot.</p>
               <a class="btn btn-primary" href="build.html#assemble" style="text-decoration:none">Read the sequence</a>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div></section>
 
-    <section id="electronics" aria-labelledby="mv-el" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
+    <section id="electronics" aria-labelledby="mv-el" class="site-section"><div class="site-section__inner">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">PCB design</p>
-          <h2 id="mv-el" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Electronics</h2>
+          <p class="eyebrow section-eyebrow" style="margin:0 0 10px;">PCB design</p>
+          <h2 id="mv-el" style="margin:0 0 14px">Electronics</h2>
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div style="max-width:64ch">
-              <p>This is the largest open invitation in the project, and it is now a well-posed one. Two boards have been specified down to part numbers, I²C addresses and a six-wire harness — and neither has been drawn. <a href="electronics.html#architecture">The specification is in Electronics</a>.</p>
-              <p style="margin-bottom:0">What exists besides that is hand-soldered wiring that works, a pin map, and a known brownout problem: servos and motors drawing together sag the rail enough to reset the microcontroller, which shows up as a Bluetooth disconnect mid-drive. Giving the logic rail its own regulator is half of what the main board is for.</p>
+              <p>The proposed electronics use two boards connected by a six-wire harness. The specification lists components, I²C addresses, and pin assignments; schematics and PCB layouts are still needed. <a href="electronics.html#architecture">The specification is in Electronics</a>.</p>
+              <p style="margin-bottom:0">The working prototype uses hand-soldered modules. Its supply can sag when the servos and motors run together, resetting the microcontroller and interrupting Bluetooth. The proposed board separates the logic and motor supplies; this still needs to be built and tested.</p>
             </div>
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,20px);background-image:repeating-linear-gradient(135deg,var(--rule) 0 1px,transparent 1px 9px)">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-              <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Wanted, in order</p>
+              <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><p class="eyebrow" style="margin:0;">Electronics tasks</p> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
               <ol style="margin:0 0 14px;padding-left:20px;font-size:14.5px;line-height:1.75">
                 <li>A KiCad schematic for each board, drawn against the specification</li>
                 <li>A measured current budget — the rails were chosen, not verified</li>
                 <li>A layout for each board that fits inside part 01 and part 05</li>
                 <li>Firmware for the CH32V003, and the I²C register map the ESP32 will talk to</li>
-                <li>One fabricated set, and an honest account of what was wrong with it</li>
+                <li>A fabricated board set, test results, and documented issues</li>
               </ol>
               <a class="btn btn-primary" href="electronics.html#architecture" style="text-decoration:none">Read the specification</a>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div></section>
 
-    <section id="conventions" aria-labelledby="mv-conv" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <h2 id="mv-conv" style="margin:0 0 8px;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.015em">Conventions that actually matter</h2>
-      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">Seven rules. Each one exists because breaking it caused a problem.</p>
+    <section id="conventions" aria-labelledby="mv-conv" class="site-section"><div class="site-section__inner">
+      <h2 id="mv-conv" style="margin:0 0 8px">Project conventions</h2>
+      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">Follow these conventions when making changes.</p>
       <ol style="list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:0 clamp(24px,4vw,56px)">
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:var(--color-accent-700);font-variant-numeric:tabular-nums">01</span><span><strong style="font-weight:700">One configuration header.</strong> Every pin and tuning constant lives in <span style="font-family:var(--font-mono);font-size:13px">config.h</span>. Never hard-code a pin inside a driver — this is what makes moving to a different microcontroller a config change rather than a rewrite.</span></li>
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:var(--color-accent-700);font-variant-numeric:tabular-nums">02</span><span><strong style="font-weight:700">The main loop never blocks.</strong> Every periodic behaviour is a timer-based state machine. No <span style="font-family:var(--font-mono);font-size:13px">delay()</span> — it would stall Bluetooth and the console.</span></li>
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:var(--color-accent-700);font-variant-numeric:tabular-nums">03</span><span><strong style="font-weight:700">One class per peripheral</strong>, in its own header and source pair.</span></li>
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:var(--color-accent-700);font-variant-numeric:tabular-nums">04</span><span><strong style="font-weight:700">A new command touches four places.</strong> Parser, on-device help text, the app's cheat sheet, and the protocol documentation.</span></li>
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:var(--color-accent-700);font-variant-numeric:tabular-nums">05</span><span><strong style="font-weight:700">No build step in the controller app.</strong> No framework either. It is deliberate, so the app can be served from anywhere. Keep it that way.</span></li>
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:var(--color-accent-700);font-variant-numeric:tabular-nums">06</span><span><strong style="font-weight:700">CAD is the master; meshes are derived.</strong> Never edit a mesh directly.</span></li>
-        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;color:var(--color-accent-700);font-variant-numeric:tabular-nums">07</span><span><strong style="font-weight:700">Nothing over about 50 MB in the repository.</strong> An oversized mesh is usually over-tessellated, not complex.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">01</span><span><strong style="font-weight:700">One configuration header.</strong> Every pin and tuning constant lives in <span style="font-family:var(--font-mono);font-size:13px">config.h</span>. Use those definitions in drivers so pin assignments can be updated in one place.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">02</span><span><strong style="font-weight:700">The main loop never blocks.</strong> Every periodic behaviour is a timer-based state machine. No <span style="font-family:var(--font-mono);font-size:13px">delay()</span> — it would stall Bluetooth and the console.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">03</span><span><strong style="font-weight:700">One class per peripheral</strong>, in its own header and source pair.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">04</span><span><strong style="font-weight:700">A new command touches four places.</strong> Parser, on-device help text, the app's cheat sheet, and the protocol documentation.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">05</span><span><strong style="font-weight:700">No build step in the controller app.</strong> Keep it as static HTML, CSS, and JavaScript.</span></li>
+        <li style="display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--rule)"><span aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:26px;line-height:1;font-variant-numeric:tabular-nums">06</span><span><strong style="font-weight:700">CAD is the master; meshes are derived.</strong> Never edit a mesh directly.</span></li>
       </ol>
-    </section>
+    </div></section>
 
-    <section id="open" aria-labelledby="mv-open" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <h2 id="mv-open" style="margin:0 0 8px;font-size:clamp(26px,3.4vw,38px);letter-spacing:-.015em">Open problems</h2>
-      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">Everything the project knows it is missing, with the route that owns it. This table is the honest to-do list.</p>
-      <div style="overflow-x:auto">
-        <table class="table">
+    <section id="open" aria-labelledby="mv-open" class="site-section"><div class="site-section__inner">
+      <div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:12px;margin-bottom:10px"><h2 id="mv-open" style="margin:0">Open problems</h2> <span class="tag tag-neutral mono" style="display:inline-flex;flex:none;font:400 9.5px/14px var(--font-mono);letter-spacing:.12em;text-transform:uppercase;border:1px solid var(--help-border);background:var(--help-bg);color:var(--help-ink);border-radius:4px;padding:3px 8px;margin:0">HELP NEEDED</span></div>
+      <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch;color:var(--muted)">These tasks are open for contributions. Each is listed with the area of the project it belongs to.</p>
+      <div style="">
+        <div class="table-scroll table-scroll--wide" role="region" aria-label="Open problems table" tabindex="0"><table class="table">
           <thead><tr><th scope="col">Missing</th><th scope="col">Route</th><th scope="col">Why it matters</th></tr></thead>
           <tbody>
-            <tr><td>Schematics and layout for the two boards</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Electronics</td><td style="color:var(--muted)">The specification is written; nothing has been drawn</td></tr>
-            <tr><td>A measured current budget</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Electronics</td><td style="color:var(--muted)">Every rail in the specification was chosen, not verified</td></tr>
-            <tr><td>Assembly step drawings</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Seventeen steps, no pictures. Photographs would do</td></tr>
-            <tr><td>A face-plate mesh</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">The one printed part with no file, and the one everybody looks at</td></tr>
-            <tr><td>Validated print settings</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">The sliced projects have never been run on two different machines</td></tr>
-            <tr><td>Assembled dimensions and weight</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Cannot honestly describe the object without them</td></tr>
-            <tr><td>Confirmed track-link count</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Mechanics</td><td style="color:var(--muted)">Builders are currently guessing how many to print</td></tr>
-            <tr><td>Left/right assignment of motors A and B</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Firmware</td><td style="color:var(--muted)">Undefined, so pivots are trial and error</td></tr>
-            <tr><td>A CH32V003 driver, and an ESP32-S3 pin profile</td><td style="font-family:var(--font-mono);font-size:12.5px;color:var(--color-accent-700)">Firmware</td><td style="color:var(--muted)">Neither exists; the firmware is C3-only today</td></tr>
+            <tr><td>Schematics and layout for the two boards</td><td style="font-family:var(--font-mono);font-size:12.5px;">Electronics</td><td style="color:var(--muted)">The specification is written; nothing has been drawn</td></tr>
+            <tr><td>A measured current budget</td><td style="font-family:var(--font-mono);font-size:12.5px;">Electronics</td><td style="color:var(--muted)">Every rail in the specification was chosen, not verified</td></tr>
+            <tr><td>Assembly step drawings</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Seventeen steps, no pictures. Photographs would do</td></tr>
+            <tr><td>A face-plate mesh</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Needed to cover the front of the head</td></tr>
+            <tr><td>Validated print settings</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Confirm the supplied settings on additional printers</td></tr>
+            <tr><td>Assembled dimensions and weight</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Give builders accurate size and weight information</td></tr>
+            <tr><td>Confirmed track-link count</td><td style="font-family:var(--font-mono);font-size:12.5px;">Mechanics</td><td style="color:var(--muted)">Establish how many links to print for each track</td></tr>
+            <tr><td>Left/right assignment of motors A and B</td><td style="font-family:var(--font-mono);font-size:12.5px;">Firmware</td><td style="color:var(--muted)">Document which motor channel drives each track</td></tr>
+            <tr><td>A CH32V003 driver, and an ESP32-S3 pin profile</td><td style="font-family:var(--font-mono);font-size:12.5px;">Firmware</td><td style="color:var(--muted)">Neither exists; the firmware is C3-only today</td></tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:clamp(20px,3vw,32px)">
-        <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Open the repository</a>
+        <a class="btn btn-primary" href="https://github.com/spedemon/marvin" style="text-decoration:none">Repository</a>
         <a class="btn btn-secondary" href="reference.html" style="text-decoration:none">Reference</a>
       </div>
-    </section>
+    </div></section>
   </main>
 
-  <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div class="page-footer__inner">
-      <span>Marvin — open source exploring robot</span>
-      <span>Rev. A</span>
-      <span>MIT · CERN-OHL-S-2.0</span>
-    </div>
+  <footer class="site-footer">
+    <p class="entire-footer">Built with ❤️ by <a href="https://github.com/spedemon">@spedemon</a> and <a href="https://github.com/entireio">@entireio</a></p>
   </footer>
 </div>
 </body>

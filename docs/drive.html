@@ -6,41 +6,55 @@
 <title>Drive — Marvin</title>
 <meta name="description" content="Connect over Bluetooth and drive Marvin from a browser. The command language, the controller app, and troubleshooting.">
 <meta name="color-scheme" content="light dark">
-<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/img/favicon.svg?v=2" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" sizes="180x180">
 <meta property="og:title" content="Drive — Marvin">
 <meta property="og:description" content="Connect over Bluetooth and drive Marvin from a browser. The command language, the controller app, and troubleshooting.">
 <meta property="og:type" content="website">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<!-- Same URL the design system's @import uses, so this is one request, not two.
-     Requesting it here starts the download immediately instead of waiting for
-     industry.css to parse first. -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;700&family=Barlow+Condensed:wght@400;600&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="preload" href="assets/fonts/entire-headline-semibold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/css/industry.css">
 <link rel="stylesheet" href="assets/css/site.css">
-<script>(function(){try{var t=localStorage.getItem('marvin-theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-<script src="assets/js/site.js" defer></script>
+<link rel="stylesheet" href="assets/css/entire.css?v=copy-help-1">
+<link rel="stylesheet" href="assets/css/sketch.css?v=continuous-rails-2">
+<script src="assets/js/site.js?v=safari-rails-1" defer></script>
 </head>
 <body class="documentation-page">
 <div style="min-height:100vh;background:var(--color-bg)">
   <a href="#content" class="skip-link" style="position:absolute;left:-9999px;top:0;padding:8px 12px;background:var(--color-bg);border:1px solid var(--rule-ink);font-family:var(--font-mono);font-size:12px;z-index:60">Skip to content</a>
   <header class="site-header">
     <div class="site-header__inner">
-      <a class="site-brand" href="index.html">MARVIN</a>
-      <nav class="site-nav" aria-label="Primary navigation">
+      <div class="site-identity"><a class="entire-home" href="https://entire.io" aria-label="Entire home"><svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 959.94 236.81"
+      aria-hidden="true" class="entire-logo"
+      fill="currentColor"
+    >
+      <path d="M897.09,222.01c-43.02,0-69.3-26.81-69.3-67.27s26.79-68.05,66.72-68.05,65.43,24.74,65.43,64.18c0,3.35,0,6.96-.26,10.83h-97.63v1.55c0,20.36,13.66,33.25,33.49,33.25,15.97,0,27.3-7.22,30.66-20.11h32.46c-4.38,25.26-27.31,45.62-61.57,45.62ZM862.57,139.27h64.4c-2.32-17.79-14.17-27.58-31.94-27.58-16.49,0-29.89,10.31-32.46,27.58Z" />
+      <path d="M747.44,219.9V89.86h28.16l3.05,19.52c6.85-11.15,17-19.52,38.06-19.52h6.85v29.4h-13.45c-22.58,0-30.45,16.22-30.45,36.25v64.38h-32.22Z" />
+      <path d="M688.15,219.9V89.54h32.14v130.36h-32.14ZM704.09,71.52c-10.38,0-17.97-7.62-17.97-17.79s7.59-17.79,17.97-17.79,17.98,7.62,17.98,17.79-7.85,17.79-17.98,17.79Z" />
+      <path d="M640.62,219.9c-24.76,0-36.12-11.95-36.12-36.61v-66.1h-21.97v-27.71h21.97v-27.71l32.08-8.9v36.61h31.58v27.71h-31.58v61.53c0,9.66,3.54,13.48,13.39,13.48h18.18v27.71h-27.53Z" />
+      <path d="M448.25,219.9V89.28h28.02l3.03,16.81c8.08-10.18,20.19-18.33,40.64-18.33,28.27,0,52,15.28,52,59.58v72.57h-32.06v-70.02c0-23.17-9.59-35.14-28.27-35.14-20.45,0-31.3,12.99-31.3,36.41v68.75h-32.06Z" />
+      <path d="M309.76,219.9V42.29h117.48v29.94h-83.3v43.64h68.11v28.67h-68.11v45.42h86.34v29.94h-120.52Z" />
+      <path d="M172.32,86.16c0,9.97,7.59,17.44,17.97,17.44s17.97-7.48,17.97-17.44-7.85-17.44-17.97-17.44-17.97,7.48-17.97,17.44Z" />
+      <path d="M114.18,102.55c0,10.27,7.59,17.97,17.97,17.97s17.97-7.7,17.97-17.97-7.85-17.97-17.97-17.97-17.97,7.7-17.97,17.97Z" />
+      <path d="M130.11,1.6c11.92-3.19,24.62-1.56,35.34,4.54l56.86,32.37c1.72.98,1.39,3.56-.52,4.07l-125.74,33.68c-12.51,3.35-19.93,16.2-16.58,28.7l6.07,22.64c3.35,12.5,16.21,19.92,28.71,16.57l69.76-18.69,35.66,35.22c6.69,6.6,10.45,15.61,10.45,25.01v18.68c0,12.25-9.44,22.43-21.65,23.37l-116.43,8.92c-13.55,1.04-26.88-3.85-36.54-13.4l-38.82-38.36c-6.68-6.6-10.45-15.61-10.45-25v-18.68c0-12.25,9.44-22.43,21.65-23.37l10.98-.84c2.07-.16,2.81-2.82,1.11-4.02l-24.07-17.06c-4.46-3.16-7.67-7.78-9.08-13.05L.8,60.49c-3.35-12.5,4.07-25.35,16.58-28.7L130.11,1.6Z" />
+    </svg></a></div>
+      <details class="site-navigation">
+        <summary aria-label="Toggle navigation"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></summary>
+        <nav class="site-nav" aria-label="Primary navigation">
         <a href="index.html">Overview</a>
         <a href="build.html" aria-current="page">Documentation</a>
         <a href="contribute.html">Get involved</a>
-      </nav>
-      <button class="theme-toggle" type="button" data-action="toggleTheme" aria-label="Switch colour scheme">Dark</button>
+        </nav>
+      </details>
     </div>
   </header>
 
   <main id="content" class="docs-layout">
-    <aside class="docs-sidebar" aria-label="Documentation navigation">
-      <a class="docs-sidebar__title" href="build.html">Documentation</a>
-      <p class="docs-sidebar__group">Build Marvin</p>
+    <aside class="docs-sidebar">
+      <details class="docs-menu" open>
+        <summary>Documentation <span aria-hidden="true">⌄</span></summary>
+        <nav aria-label="Documentation navigation">
       <ul>
         <li><a href="build.html">Build</a></li>
         <li><a href="electronics.html">Electronics</a></li>
@@ -55,51 +69,40 @@
         </li>
         <li><a href="reference.html">Reference</a></li>
       </ul>
-      <p class="docs-sidebar__group">Project</p>
-      <ul><li><a href="contribute.html">Get involved</a></li></ul>
+        </nav>
+      </details>
     </aside>
     <div class="docs-content">
 
-    <section aria-labelledby="mv-title" style="padding:clamp(32px,5vw,72px) 0 clamp(20px,3vw,32px)">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(56px,9vw,140px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
+    <section aria-labelledby="mv-title" class="doc-section">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Documentation · Drive</p>
-          <h1 id="mv-title" style="font-size:clamp(38px,6vw,76px);line-height:.98;margin:0 0 16px;letter-spacing:-.02em">Drive</h1>
-          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Seven commands, each a letter and a number, over a browser or any Bluetooth terminal. Leave it alone and it explores by itself.</p>
+          <p class="eyebrow" style="margin:0 0 10px;">Documentation · Drive</p>
+          <h1 id="mv-title" style="margin:0 0 16px">Drive</h1>
+          <p style="margin:0;max-width:64ch;font-size:clamp(17px,1.7vw,20px);line-height:1.5">Control Marvin with seven text commands over USB serial or Bluetooth. Use the browser controller for manual driving, or enable demo mode to run a programmed movement sequence.</p>
         </div>
       </div>
     </section>
 
-    <nav aria-label="On this page" style="position:sticky;top:47px;z-index:20;background:color-mix(in srgb,var(--color-bg) 94%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--rule-ink);border-bottom:1px solid var(--rule)">
-      <ol style="list-style:none;margin:0;padding:9px 0;display:flex;flex-wrap:wrap;gap:clamp(10px,2.4vw,30px);font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase">
-        <li><a href="#connect" style="text-decoration:none;color:var(--color-text)">Connect</a></li>
-        <li><a href="#commands" style="text-decoration:none;color:var(--color-text)">Commands</a></li>
-        <li><a href="#demo" style="text-decoration:none;color:var(--color-text)">Demo mode</a></li>
-        <li><a href="#trouble" style="text-decoration:none;color:var(--color-text)">Troubleshooting</a></li>
-      </ol>
-    </nav>
-
-    <section id="connect" aria-labelledby="mv-connect" style="padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">01</div>
+    <section id="connect" aria-labelledby="mv-connect" class="doc-section">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Setup</p>
-          <h2 id="mv-connect" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Connect</h2>
-          <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch">The controller is a web page with no build step and no framework, so it can be served from anywhere. It talks to Marvin over Web Bluetooth, which has two hard requirements.</p>
+          <p class="eyebrow" style="margin:0 0 10px;">Setup</p>
+          <h2 id="mv-connect" style="margin:0 0 14px">Connect</h2>
+          <p style="margin:0 0 clamp(20px,3vw,32px);max-width:64ch">The controller is a static web page that connects to Marvin through Web Bluetooth. It needs a secure context and a browser that supports Web Bluetooth.</p>
 
           <div class="blueprint" style="position:relative;padding:clamp(16px,2.4vw,26px);max-width:74ch;margin-bottom:clamp(20px,3vw,32px)">
             <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
-            <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent-700)">Requirement — a secure context</p>
-            <p style="margin:0 0 14px;font-size:clamp(17px,1.8vw,21px);line-height:1.45">It must be served, not opened. Web Bluetooth exists only over <span style="font-family:var(--font-mono);font-size:.88em">https://</span> or <span style="font-family:var(--font-mono);font-size:.88em">localhost</span>. Double-click the file and the API is undefined — the Scan button does nothing, silently.</p>
+            <p class="eyebrow" style="margin:0 0 8px;">Requirement — a secure context</p>
+            <p style="margin:0 0 14px;font-size:clamp(17px,1.8vw,21px);line-height:1.45">It must be served, not opened. Web Bluetooth exists only over <span style="font-family:var(--font-mono);font-size:.88em">https://</span> or <span style="font-family:var(--font-mono);font-size:.88em">localhost</span>. Double-click the file and the API is undefined.</p>
             <code style="font-family:var(--font-mono);font-size:13.5px;display:block;white-space:pre;overflow-x:auto;padding-top:12px;border-top:1px solid var(--rule)"><span style="color:var(--muted)">$</span> cd controller &amp;&amp; ./serve.sh
 <span style="color:var(--muted)">→ http://localhost:3000  ·  Scan  ·  choose “Marvin”</span></code>
           </div>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr));gap:clamp(20px,3vw,44px);align-items:start">
             <div>
-              <p style="margin:0 0 8px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700)">Requirement — browser support</p>
-              <table class="table">
+              <p class="eyebrow" style="margin:0 0 8px;">Requirement — browser support</p>
+              <div class="table-scroll" role="region" aria-label="Connect table" tabindex="0"><table class="table">
                 <thead><tr><th scope="col">Browser</th><th scope="col">Web Bluetooth</th></tr></thead>
                 <tbody>
                   <tr><td>Chrome — desktop, Android</td><td><span class="tag tag-outline">Yes</span></td></tr>
@@ -108,8 +111,8 @@
                   <tr><td>Firefox</td><td><span class="tag tag-neutral">No</span></td></tr>
                   <tr><td>Safari — macOS, iOS</td><td><span class="tag tag-neutral">No</span></td></tr>
                 </tbody>
-              </table>
-              <p style="margin:12px 0 0;font-size:14.5px;color:var(--muted)">Bluetooth Low Energy allows one client at a time. If Marvin is missing from the picker, something else is already holding the connection — or it is not powered.</p>
+              </table></div>
+              <p style="margin:12px 0 0;font-size:14.5px;color:var(--muted)">Marvin accepts one Bluetooth client at a time. If it is missing from the picker, check its power and disconnect any other app connected to it.</p>
             </div>
             <figure class="blueprint" style="margin:0;position:relative;padding:clamp(8px,1.2vw,12px)">
   <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
@@ -124,7 +127,7 @@
        This one shares a two-column grid with the browser-support table, so it wraps: a tight row
        gap keeps the wrapped meta reading as part of the same caption. -->
   <figcaption style="display:flex;justify-content:space-between;align-items:baseline;gap:3px 16px;flex-wrap:wrap;margin-top:12px;font-family:var(--font-mono);font-size:10.5px;line-height:1.5;letter-spacing:.06em;color:var(--muted)">
-    <span><span style="color:var(--color-accent-700)">Controller connected</span> &mdash; The cheat sheet is printed on connect; every command and its reply is echoed below it.</span>
+    <span><span style="">Controller connected</span> &mdash; The cheat sheet is printed on connect; every command and its reply is echoed below it.</span>
     <span>Controller &#183; connected</span>
   </figcaption>
 </figure>
@@ -133,22 +136,21 @@
       </div>
     </section>
 
-    <section id="commands" aria-labelledby="mv-cmd" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">02</div>
+    <section id="commands" aria-labelledby="mv-cmd" class="doc-section">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Controls</p>
-          <h2 id="mv-cmd" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">The command language</h2>
+          <p class="eyebrow" style="margin:0 0 10px;">Controls</p>
+          <h2 id="mv-cmd" style="margin:0 0 14px">The command language</h2>
           <p style="margin:0 0 clamp(22px,3vw,36px);max-width:64ch">One line-based text protocol, identical over USB serial and Bluetooth. Case-insensitive, one command per line. The shaded band on each scale is the range the firmware will accept.</p>
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(230px,100%),1fr));gap:clamp(12px,2vw,20px)">
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,18px);display:flex;flex-direction:column;gap:8px">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div style="display:flex;align-items:baseline;gap:7px">
-                <span style="font-family:var(--font-heading);font-weight:600;font-size:54px;line-height:.82">R</span>
+                <span class="command-token">R</span>
                 <span style="font-family:var(--font-mono);font-size:14px;color:var(--muted)">&lt;angle&gt;</span>
               </div>
-              <h3 style="margin:0;font-size:19px;line-height:1.15">Head rotation — pan</h3>
+              <h3 style="margin:0">Head rotation — pan</h3>
               <svg viewBox="0 0 200 26" aria-hidden="true" style="display:block;width:100%;height:auto;color:var(--color-text)">
                 <rect x="10" y="6" width="180" height="8" fill="var(--color-accent-100)" stroke="none"/>
                 <path d="M10 10 L190 10" stroke="currentColor" stroke-width="1" opacity=".35"/>
@@ -158,16 +160,16 @@
                 <text x="93" y="25" fill="var(--color-accent-700)" style="font-family:var(--font-mono);font-size:8px">90</text>
                 <text x="176" y="25" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:8px">180</text>
               </svg>
-              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Full sweep, centred at 90.<br>e.g. <span style="color:var(--color-accent-700)">R90</span></p>
+              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Full sweep, centred at 90.<br>e.g. <span style="">R90</span></p>
             </div>
 
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,18px);display:flex;flex-direction:column;gap:8px">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div style="display:flex;align-items:baseline;gap:7px">
-                <span style="font-family:var(--font-heading);font-weight:600;font-size:54px;line-height:.82">T</span>
+                <span class="command-token">T</span>
                 <span style="font-family:var(--font-mono);font-size:14px;color:var(--muted)">&lt;angle&gt;</span>
               </div>
-              <h3 style="margin:0;font-size:19px;line-height:1.15">Head tilt</h3>
+              <h3 style="margin:0">Head tilt</h3>
               <svg viewBox="0 0 200 26" aria-hidden="true" style="display:block;width:100%;height:auto;color:var(--color-text)">
                 <rect x="40" y="6" width="55" height="8" fill="var(--color-accent-100)" stroke="none"/>
                 <path d="M10 10 L190 10" stroke="currentColor" stroke-width="1" opacity=".35"/>
@@ -177,16 +179,16 @@
                 <text x="60" y="25" fill="var(--color-accent-700)" style="font-family:var(--font-mono);font-size:8px">57</text>
                 <text x="88" y="25" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:8px">85</text>
               </svg>
-              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Clamped to protect the neck.<br>e.g. <span style="color:var(--color-accent-700)">T45</span></p>
+              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Clamped to protect the neck.<br>e.g. <span style="">T45</span></p>
             </div>
 
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,18px);display:flex;flex-direction:column;gap:8px">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div style="display:flex;align-items:baseline;gap:7px">
-                <span style="font-family:var(--font-heading);font-weight:600;font-size:54px;line-height:.82">M</span>
+                <span class="command-token">M</span>
                 <span style="font-family:var(--font-mono);font-size:14px;color:var(--muted)">&lt;speed&gt;</span>
               </div>
-              <h3 style="margin:0;font-size:19px;line-height:1.15">Both motors</h3>
+              <h3 style="margin:0">Both motors</h3>
               <svg viewBox="0 0 200 26" aria-hidden="true" style="display:block;width:100%;height:auto;color:var(--color-text)">
                 <rect x="10" y="6" width="180" height="8" fill="var(--color-accent-100)" stroke="none"/>
                 <path d="M10 10 L190 10" stroke="currentColor" stroke-width="1" opacity=".35"/>
@@ -196,16 +198,16 @@
                 <text x="96" y="25" fill="var(--color-accent-700)" style="font-family:var(--font-mono);font-size:8px">0</text>
                 <text x="172" y="25" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:8px">255</text>
               </svg>
-              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Negative reverses.<br>e.g. <span style="color:var(--color-accent-700)">M128</span></p>
+              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Negative reverses.<br>e.g. <span style="">M128</span></p>
             </div>
 
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,18px);display:flex;flex-direction:column;gap:8px">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div style="display:flex;align-items:baseline;gap:7px">
-                <span style="font-family:var(--font-heading);font-weight:600;font-size:54px;line-height:.82">A</span>
+                <span class="command-token">A</span>
                 <span style="font-family:var(--font-mono);font-size:14px;color:var(--muted)">&lt;speed&gt;</span>
               </div>
-              <h3 style="margin:0;font-size:19px;line-height:1.15">Motor A — one track</h3>
+              <h3 style="margin:0">Motor A — one track</h3>
               <svg viewBox="0 0 200 26" aria-hidden="true" style="display:block;width:100%;height:auto;color:var(--color-text)">
                 <rect x="10" y="6" width="180" height="8" fill="var(--color-accent-100)" stroke="none"/>
                 <path d="M10 10 L190 10" stroke="currentColor" stroke-width="1" opacity=".35"/>
@@ -214,16 +216,16 @@
                 <text x="10" y="25" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:8px">-255</text>
                 <text x="172" y="25" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:8px">255</text>
               </svg>
-              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Pivot by driving one side.<br>e.g. <span style="color:var(--color-accent-700)">A200</span></p>
+              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Pivot by driving one side.<br>e.g. <span style="">A200</span></p>
             </div>
 
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,18px);display:flex;flex-direction:column;gap:8px">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div style="display:flex;align-items:baseline;gap:7px">
-                <span style="font-family:var(--font-heading);font-weight:600;font-size:54px;line-height:.82">B</span>
+                <span class="command-token">B</span>
                 <span style="font-family:var(--font-mono);font-size:14px;color:var(--muted)">&lt;speed&gt;</span>
               </div>
-              <h3 style="margin:0;font-size:19px;line-height:1.15">Motor B — the other</h3>
+              <h3 style="margin:0">Motor B — the other</h3>
               <svg viewBox="0 0 200 26" aria-hidden="true" style="display:block;width:100%;height:auto;color:var(--color-text)">
                 <rect x="10" y="6" width="180" height="8" fill="var(--color-accent-100)" stroke="none"/>
                 <path d="M10 10 L190 10" stroke="currentColor" stroke-width="1" opacity=".35"/>
@@ -232,16 +234,16 @@
                 <text x="10" y="25" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:8px">-255</text>
                 <text x="172" y="25" fill="currentColor" opacity=".55" style="font-family:var(--font-mono);font-size:8px">255</text>
               </svg>
-              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Inputs wired inverted; positive is still forward.<br>e.g. <span style="color:var(--color-accent-700)">B200</span></p>
+              <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Inputs wired inverted; positive is still forward.<br>e.g. <span style="">B200</span></p>
             </div>
 
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,18px);display:flex;flex-direction:column;gap:8px">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div style="display:flex;align-items:baseline;gap:7px">
-                <span style="font-family:var(--font-heading);font-weight:600;font-size:54px;line-height:.82">S</span>
+                <span class="command-token">S</span>
                 <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">no argument</span>
               </div>
-              <h3 style="margin:0;font-size:19px;line-height:1.15">Stop</h3>
+              <h3 style="margin:0">Stop</h3>
               <div aria-hidden="true" style="height:1px;background:var(--rule-ink);margin:5px 0 3px"></div>
               <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Both tracks to zero. The head holds its angle.</p>
             </div>
@@ -249,10 +251,10 @@
             <div class="blueprint" style="position:relative;padding:clamp(14px,2vw,18px);display:flex;flex-direction:column;gap:8px">
               <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
               <div style="display:flex;align-items:baseline;gap:7px">
-                <span style="font-family:var(--font-heading);font-weight:600;font-size:54px;line-height:.82">D</span>
+                <span class="command-token">D</span>
                 <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase">no argument</span>
               </div>
-              <h3 style="margin:0;font-size:19px;line-height:1.15">Toggle demo mode</h3>
+              <h3 style="margin:0">Toggle demo mode</h3>
               <div aria-hidden="true" style="height:1px;background:var(--rule-ink);margin:5px 0 3px"></div>
               <p style="margin:0;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted)">Put it on the floor before you send this.</p>
             </div>
@@ -260,54 +262,52 @@
 
           <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:clamp(16px,2.5vw,32px);margin-top:clamp(24px,3.5vw,40px)">
             <div>
-              <h3 style="margin:0 0 6px;font-size:19px">Values are clamped, not rejected</h3>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">Ask for <span style="font-family:var(--font-mono);font-size:13px">T200</span> and you get 85° — the mechanical limit — not an error. The protocol assumes you meant &ldquo;as far as it goes&rdquo;.</p>
+              <h3 style="margin:0 0 6px">Values are clamped, not rejected</h3>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">Ask for <span style="font-family:var(--font-mono);font-size:13px">T200</span> and you get 85° — the mechanical limit — not an error. The firmware limits out-of-range values to the supported range.</p>
             </div>
             <div>
-              <h3 style="margin:0 0 6px;font-size:19px">Any movement cancels the demo</h3>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">You never have to switch modes first. Send a command and Marvin stops exploring and does as it is told.</p>
+              <h3 style="margin:0 0 6px">Any movement cancels the demo</h3>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">A manual movement command or the stop command cancels demo mode.</p>
             </div>
             <div>
-              <h3 style="margin:0 0 6px;font-size:19px">Any BLE terminal will do</h3>
-              <p style="margin:0;font-size:14.5px;color:var(--muted)">Bluetooth uses the Nordic UART Service, so a generic terminal app drives the robot as well as the project's own. <a href="reference.html#ble">The UUIDs are in Reference</a>.</p>
+              <h3 style="margin:0 0 6px">Use a BLE UART terminal</h3>
+              <p style="margin:0;font-size:14.5px;color:var(--muted)">Use a terminal app that supports the Nordic UART Service to send commands to Marvin. <a href="reference.html#ble">The UUIDs are in Reference</a>.</p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="demo" aria-labelledby="mv-demo" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">03</div>
+    <section id="demo" aria-labelledby="mv-demo" class="doc-section">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Autonomous behaviour</p>
-          <h2 id="mv-demo" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">What it does when left alone</h2>
+          <p class="eyebrow" style="margin:0 0 10px;">Demo mode</p>
+          <h2 id="mv-demo" style="margin:0 0 14px">Programmed movement</h2>
           <div style="max-width:64ch">
-            <p>Send <span style="font-family:var(--font-mono);font-size:14px">D</span> and Marvin runs a hand-choreographed sequence: arcs, pivots, straight runs, and pauses where the head sweeps as though scanning. The head usually moves before the body turns, which is what makes it read as intent rather than mechanism.</p>
-            <p style="margin-bottom:0">Nothing about it is generated or random. It is a table of movements someone wrote by hand, with asymmetric durations chosen to avoid a metronomic feel. <a href="index.html#mv-s03">The annotated sequence is on the home page</a>.</p>
+            <p>Send <span style="font-family:var(--font-mono);font-size:14px">D</span> and Marvin runs a hand-choreographed sequence: arcs, pivots, straight runs, and pauses where the head sweeps as though scanning. The head usually moves before the body turns.</p>
+            <p style="margin-bottom:0">The sequence is stored in the firmware. Different movement durations and pauses make the motion less repetitive. <a href="index.html#mv-s03">The annotated sequence is on the home page</a>.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <section id="trouble" aria-labelledby="mv-trouble" style="border-top:1px solid var(--rule-ink);padding:clamp(36px,5vw,80px) 0">
-      <div style="display:grid;grid-template-columns:clamp(64px,9vw,140px) minmax(0,1fr);gap:clamp(14px,3vw,40px);align-items:start">
-        <div aria-hidden="true" style="font-family:var(--font-heading);font-weight:600;font-size:clamp(44px,7vw,104px);line-height:.76;letter-spacing:-.02em;font-variant-numeric:tabular-nums">04</div>
+    <section id="trouble" aria-labelledby="mv-trouble" class="doc-section">
+      <div class="section-heading">
         <div>
-          <p style="margin:0 0 10px;font-family:var(--font-mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">If something goes wrong</p>
-          <h2 id="mv-trouble" style="font-size:clamp(28px,4vw,44px);margin:0 0 14px;letter-spacing:-.015em">Troubleshooting</h2>
-          <p style="margin:0 0 20px;max-width:64ch">Five symptoms account for almost every report so far.</p>
-          <div style="overflow-x:auto;max-width:88ch">
-            <table class="table">
+          <p class="eyebrow" style="margin:0 0 10px;">If something goes wrong</p>
+          <h2 id="mv-trouble" style="margin:0 0 14px">Troubleshooting</h2>
+          <p style="margin:0 0 20px;max-width:64ch">Start with these checks if you have trouble connecting or driving.</p>
+          <div style="max-width:88ch">
+            <div class="table-scroll" role="region" aria-label="Troubleshooting table" tabindex="0"><table class="table">
               <thead><tr><th scope="col">Symptom</th><th scope="col">Cause</th></tr></thead>
               <tbody>
                 <tr><td>Scan button does nothing</td><td style="color:var(--muted)">Not a secure context — use <span style="font-family:var(--font-mono);font-size:12.5px">localhost</span>, not <span style="font-family:var(--font-mono);font-size:12.5px">file://</span></td></tr>
                 <tr><td>&ldquo;Web Bluetooth is not supported&rdquo;</td><td style="color:var(--muted)">Firefox or Safari — use Chrome or Edge</td></tr>
-                <tr><td>Marvin not in the device picker</td><td style="color:var(--muted)">Not powered, or already connected elsewhere — BLE allows one client at a time</td></tr>
+                <tr><td>Marvin not in the device picker</td><td style="color:var(--muted)">Not powered, or already connected elsewhere — Marvin accepts one client at a time</td></tr>
                 <tr><td>Connects, then drops immediately</td><td style="color:var(--muted)">Low battery — the microcontroller browns out when the motors draw current</td></tr>
                 <tr><td>Robot lurches on power-up</td><td style="color:var(--muted)">Motor pins floating during boot</td></tr>
               </tbody>
-            </table>
+            </table></div>
           </div>
           <p style="margin:20px 0 0"><a href="reference.html">Continue to Reference: protocol, Bluetooth service, pin map, parts and licensing</a></p>
         </div>
@@ -316,12 +316,8 @@
     </div>
   </main>
 
-  <footer style="border-top:1px solid var(--rule-ink);margin-top:clamp(20px,4vw,40px)">
-    <div class="page-footer__inner">
-      <span>Marvin — open source exploring robot</span>
-      <span>Rev. A</span>
-      <span>MIT · CERN-OHL-S-2.0</span>
-    </div>
+  <footer class="site-footer">
+    <p class="entire-footer">Built with ❤️ by <a href="https://github.com/spedemon">@spedemon</a> and <a href="https://github.com/entireio">@entireio</a></p>
   </footer>
 </div>
 </body>

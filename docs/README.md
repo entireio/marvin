@@ -15,10 +15,13 @@ docs/
 ├── reference.html        Documentation / Reference — protocol, pins, files, licensing
 ├── contribute.html       Get involved — firmware, software, mechanics, electronics
 ├── assets/
-│   ├── css/industry.css  Design-system tokens and components (verbatim from the design)
-│   ├── css/site.css      Page styles, shared furniture, the path switch
-│   ├── js/site.js        Theme toggle, video controls, exploded-view assembly
-│   ├── img/              Video posters and the favicon
+│   ├── css/industry.css  Original component primitives
+│   ├── css/site.css      Diagram motion and assembly path switch
+│   ├── css/entire.css    Entire brand theme, responsive header and footer
+│   ├── css/sketch.css    Pen outlines, corner hatching and drawing annotations
+│   ├── fonts/            Self-hosted Entire Headline and Entire Mono
+│   ├── js/site.js        Responsive menus, scroll hints, videos, assembly
+│   ├── img/              Video posters, adaptive SVG favicon, Apple touch icon
 │   └── video/            Demo footage — silent, no audio track
 ├── DESIGN-BRIEF.md       The brief the design was made from
 ├── convert-artboards.py  How the design artboards became these pages
@@ -39,6 +42,31 @@ Then open <http://127.0.0.1:4173>. Opening `index.html` as a `file://` URL
 mostly works, but relative asset paths and the fonts behave better over HTTP.
 
 ---
+
+## Entire styling
+
+The site uses the logo, headline and monospace fonts, neutral surfaces, indigo
+accent, and footer from the sibling `entire.io` checkout. `assets/css/entire.css`
+adapts that design to the existing HTML components. Landing sections use full-width
+horizontal dividers with a 1280px inner frame, desktop side rails, and compact
+section headings matching Entire’s `SiteSection` structure. Headlines use
+Entire’s 32px mobile / 40px desktop scale (48px for the homepage). Navigation
+collapses into a fullscreen menu below 768px while the header stays 64px tall.
+Escape closes the menu; focus and background scrolling are contained while open.
+The documentation sidebar becomes its own disclosure below 901px, keeping
+page and section links accessible. Wide tables and the board diagram scroll
+within their own containers, with keyboard access and overflow hints. Body text uses Entire’s
+system sans-serif stack. All font and logo assets are local; there are no
+Google Fonts requests, React dependencies, or build requirements.
+
+The Entire logo links to `https://entire.io`; the original Marvin navigation
+remains. The color scheme follows the system preference automatically. Footer links use absolute Entire URLs, and the
+status link opens the live status page. The header and footer are static HTML
+on each of the six pages, so they work with JavaScript disabled. Keep those
+shared sections in sync when editing.
+
+To publish, serve `docs/` with any static host (for GitHub Pages, select the
+branch and `/docs` folder). Asset links remain relative for project subpaths.
 
 ## Where this came from
 
@@ -94,7 +122,6 @@ hand-edits.
 
 | Hook | What it does |
 | --- | --- |
-| `data-action="toggleTheme"` | Switches colour scheme and stores the choice. With nothing stored, `prefers-color-scheme` stays in charge. An inline script in each `<head>` applies a stored choice before first paint, so the other scheme never flashes. |
 | `data-action="togglePlay"` / `"toggleDemo"` | Play/pause for the two videos, with the button label kept in step. Under reduced motion the videos hold on their poster frame instead of autoplaying. Both are also held muted at runtime, so nothing can start the sound. |
 | `data-ref="anatomyRef"` | The exploded axonometric. Each part carries `data-dx`/`data-dy` — its offset in the exploded state — and scrolling the figure up the viewport interpolates those to zero, so the robot assembles as you read past it. |
 | `data-ref="readoutRef"` | Reads *Exploded → Assembling → Assembled* alongside the drawing. |
@@ -166,20 +193,26 @@ visually lossless (47 dB over the visible pixels, alpha bit-identical).
 
 ## Figure treatments
 
-Two conventions, and it matters which one a figure gets:
+The two homepage videos have real alpha transparency, so they sit directly on
+both system themes. Their original white-background MP4s remain in
+`assets/video/` as source material; the page serves the `*_alpha.mov` (HEVC with
+alpha, Safari) or `*_alpha.webm` (VP9 with alpha, Chromium/Firefox) derivatives.
+HEVC comes first because Safari can accept WebM without displaying its alpha.
+Transparent WebP posters cover loading and reduced-motion views. Rounded video
+corners, playback controls, silent playback and the existing loop timing remain.
 
-- **Footage is duotoned.** The video figures wrap their `<video>` in
-  `.duotone`, which lays the accent over the frame with
-  `mix-blend-mode: color`. This is the design system's treatment for
-  photography.
-- **Technical figures stay neutral.** The exploded axonometric is ink on the
-  page ground, and the print plate keeps the colours of
-  the render it came from. Duotone forces a single accent hue at one saturation
-  and varies only lightness, which flattens exactly the surface shading a parts
-  drawing needs to be readable. Do not add `.duotone` to these.
+The derivatives retain 1920 × 1080 at 24 fps: 480 frames for the driving loop
+and 168 for the head loop. Background removal uses BiRefNet general-lite subject
+masks, with optical-flow interpolation between masks every four frames. Enclosed
+mask holes are filled to keep the white shell opaque; edge pixels are cleaned
+of the original white background. The reverse half reuses the forward cutouts.
+VP9 is encoded with libvpx-vp9, CRF 25, `yuva420p`, and `-auto-alt-ref 0`.
+HEVC is written directly with Apple's AVAssetWriter and `hevcWithAlpha` codec;
+FFmpeg's MOV muxer did not preserve a playable alpha stream in this workflow.
+No segmentation or video processing runs in the browser.
 
-Both kinds still get the `.blueprint` frame with its four corner registration
-marks, so they read as one family regardless of treatment.
+Technical figures retain their original neutral colours. The shared Entire
+stylesheet disables the old duotone overlay and decorative corner marks.
 
 ## The two electronics paths
 
@@ -237,3 +270,21 @@ Pages and at the domain root on Cloud Run.
 ## Licence
 
 The website source is covered by the project's [MIT Licence](../LICENSE).
+
+## Architectural sketch treatment
+
+`assets/css/sketch.css` adds pen strokes over the Entire theme without
+changing its background colors or brand palette. Full-width section rules
+and outer rails use the existing divider color. Sparse, deterministic SVG
+hatching shades selected rail corners. The homepage's six decorative,
+hand-drawn section numbers run from 01 to 06 and are hidden from assistive
+technology. The anatomy SVG hatches selected faces and applies slight ink
+displacement only to geometry; callout lines and text stay crisp. Existing
+scroll and reduced-motion behavior, photographs and videos are unchanged.
+
+The Overview's margin studies are ink interpretations of the supplied print-plate
+and wiring images (see `assets/img/studies/GENERATED.md`). The printed parts sit in the top-right corner of
+Build one, beside its shorter introduction on desktop. The wiring study occupies existing spare height
+beside the subsystem table; `ResizeObserver` hides it when space is insufficient.
+Both are absolute decorations and introduce no section height or copy spacing.
+The wiring illustration is decorative, not an authoritative electrical schematic.
