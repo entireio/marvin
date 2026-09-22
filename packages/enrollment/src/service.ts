@@ -32,18 +32,23 @@ export class EnrollmentService {
    if(c.operation==='network'&&(slot.length!==1||slot[0].owner_id!==ownerId||slot[0].device_id!==c.deviceId||slot[0].state!=='linked'))throw new DomainError('DEVICE_FORBIDDEN','Only the linked owner can change this device’s network.',403);
    if(c.operation==='claim'&&slot.length)throw new DomainError('ALREADY_LINKED','An account and a device can each have only one active link.',409);
    await tx.query('INSERT INTO device_epochs(device_id,epoch) VALUES (?,1) ON CONFLICT(device_id) DO NOTHING',[c.deviceId]);let epoch=Number((await tx.query<{epoch:number}>('SELECT epoch FROM device_epochs WHERE device_id=?',[c.deviceId]))[0].epoch);
+   let ticketOwnerId=ownerId;
    if(c.operation==='reconcile'){
     if(slot.length)throw new DomainError('ACTIVE_BINDING','This Marvin still has an active account link.',409);
-    const recorded=(await tx.query<{revoked_epoch:number;acknowledged_at:number|null}>('SELECT revoked_epoch,acknowledged_at FROM device_revocations WHERE device_id=? AND former_owner_id=?',[c.deviceId,ownerId]))[0];
+    const recorded=(await tx.query<{former_owner_id:string;revoked_epoch:number;acknowledged_at:number|null}>('SELECT former_owner_id,revoked_epoch,acknowledged_at FROM device_revocations WHERE device_id=?',[c.deviceId]))[0];
     if(recorded?.acknowledged_at)throw new DomainError('RECOVERY_NOT_AUTHORIZED','This ownership cleanup has already been completed.',403);
-    let revocation=recorded?{revoked_epoch:Number(recorded.revoked_epoch)}:undefined;
+    let revocation=recorded?{former_owner_id:recorded.former_owner_id,revoked_epoch:Number(recorded.revoked_epoch)}:undefined;
     // Migration compatibility: completed claim tickets prove the former binding
     // for devices unlinked before revocation records were introduced.
-    if(!revocation){const previous=(await tx.query<{epoch:number}>("SELECT epoch FROM enrollment_tickets WHERE device_id=? AND owner_id=? AND operation='claim' AND receipt IS NOT NULL ORDER BY expires_at DESC LIMIT 1",[c.deviceId,ownerId]))[0];if(previous&&Number(previous.epoch)+1===epoch){await tx.query('INSERT INTO device_revocations(device_id,former_owner_id,revoked_epoch,replacement_epoch,revoked_at,acknowledged_at) VALUES (?,?,?,?,?,NULL) ON CONFLICT(device_id) DO NOTHING',[c.deviceId,ownerId,Number(previous.epoch),epoch,Date.now()]);revocation={revoked_epoch:Number(previous.epoch)};}}
+    if(!revocation){const previous=(await tx.query<{owner_id:string;epoch:number}>("SELECT owner_id,epoch FROM enrollment_tickets WHERE device_id=? AND operation='claim' AND receipt IS NOT NULL ORDER BY expires_at DESC LIMIT 1",[c.deviceId]))[0];if(previous&&Number(previous.epoch)+1===epoch){await tx.query('INSERT INTO device_revocations(device_id,former_owner_id,revoked_epoch,replacement_epoch,revoked_at,acknowledged_at) VALUES (?,?,?,?,?,NULL) ON CONFLICT(device_id) DO NOTHING',[c.deviceId,previous.owner_id,Number(previous.epoch),epoch,Date.now()]);revocation={former_owner_id:previous.owner_id,revoked_epoch:Number(previous.epoch)};}}
     if(!revocation)throw new DomainError('RECOVERY_NOT_AUTHORIZED','This account cannot clear the ownership stored on this Marvin.',403);
+    // The authenticated setup account proves physical access to this exact
+    // device. The ticket must still name the former owner so firmware can only
+    // clear the already-revoked local binding, never replace an active owner.
+    ticketOwnerId=revocation.former_owner_id;
     epoch=Number(revocation.revoked_epoch);
    }
-   const ticket=this.encode({iss:this.origin,aud:c.deviceId,sub:ownerId,jti:id,iat:Math.floor(Date.now()/1000),exp:Math.floor(expires/1000),op:c.operation,nonce:c.nonce,epoch});
+   const ticket=this.encode({iss:this.origin,aud:c.deviceId,sub:ticketOwnerId,jti:id,iat:Math.floor(Date.now()/1000),exp:Math.floor(expires/1000),op:c.operation,nonce:c.nonce,epoch});
    await tx.query('INSERT INTO enrollment_tickets(id,owner_id,device_id,nonce,operation,epoch,ticket_hash,expires_at) VALUES (?,?,?,?,?,?,?,?)',[id,ownerId,c.deviceId,c.nonce,c.operation,epoch,hash(ticket),expires]);
    if(c.operation==='claim')await tx.query("INSERT INTO body_slots(owner_id,device_id,enrollment_id,state,expires_at,epoch,simulated) VALUES (?,?,?,'reserved',?,?,0)",[ownerId,c.deviceId,id,expires,epoch]);
    return {ticket,enrollmentId:id,expiresAt:expires,backend:this.identity()};

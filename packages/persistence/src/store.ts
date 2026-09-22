@@ -138,5 +138,5 @@ export class Store {
   await tx.query('INSERT INTO audit_events(id,owner_id,kind,created_at) VALUES (?,?,?,?)',[randomUUID(),ownerId,'robot_unlinked',Date.now()]);
   return slot?{deviceId:String(slot.device_id),deviceErasureConfirmed:false}:null;
  }); }
- async acknowledgeRevocation(ownerId:string,deviceId:string){const rows=await this.db.query('UPDATE device_revocations SET acknowledged_at=? WHERE device_id=? AND former_owner_id=? AND acknowledged_at IS NULL RETURNING device_id',[Date.now(),deviceId,ownerId]);return rows.length>0;}
+ async acknowledgeRevocation(ownerId:string,deviceId:string){const rows=await this.db.query("UPDATE device_revocations SET acknowledged_at=? WHERE device_id=? AND acknowledged_at IS NULL AND EXISTS (SELECT 1 FROM enrollment_tickets WHERE owner_id=? AND device_id=? AND operation='reconcile' AND epoch=device_revocations.revoked_epoch) RETURNING device_id",[Date.now(),deviceId,ownerId,deviceId]);return rows.length>0;}
 }
