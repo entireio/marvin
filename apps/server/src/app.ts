@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify,{type FastifyReply,type FastifyRequest} from 'fastify';
 import {FirmwareRelease} from '../../../packages/operations/src/firmware-release.js';
 import {Readable} from 'node:stream';
 import { randomUUID } from 'node:crypto';
@@ -32,7 +32,7 @@ import { FixtureEntire,fixtureRepositories } from '../../../packages/runtime/src
 import { FixtureTextProvider,OpenAITextProvider,type TextProvider } from '../../../packages/runtime/src/provider.js';
 import { SendTurn, ClientEvent, RemoteIntent, DomainError, Id, RepositorySelection, type AgentEvent } from '../../../packages/contracts/src/index.js';
 import { HeadCalibration,PetAudioSettings,PetEyeSettings,PetSpeech } from '../../../packages/contracts/src/device.js';
-import { Identity,verifyPassword,safeReturnTo } from './auth.js';
+import { GithubIdentity,Identity,verifyPassword,safeReturnTo } from './auth.js';
 import type { Config } from './config.js';
 export async function createApp(cfg:Config,options:{database?:Database;provider?:TextProvider;logger?:boolean;entire?:RepositoryIntegration;voice?:VoiceProvider;voiceLimits?:{idleMs:number;maxMs:number;heartbeatMs:number}}={}){
  let voiceDiagnostic:string|undefined;
@@ -58,7 +58,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  }
  for(const pet of localDevPets){const registered=await enrollment!.registerDevice(readFileSync(pet.devicePublicKeyFile,'utf8'));if(registered!==pet.card.deviceId)throw new Error('A LOCAL_DEV_PETS_FILE public key does not match its setup card.');}
  runtime.devices=devices;
- const identity=new Identity(cfg,store), secure=cfg.NODE_ENV==='production'||cfg.APP_ORIGIN.startsWith('https:');
+ const identity=cfg.AUTH_MODE==='github'?new GithubIdentity(cfg,store):new Identity(cfg,store), secure=cfg.NODE_ENV==='production'||cfg.APP_ORIGIN.startsWith('https:');
  const cookieOptions={path:'/',httpOnly:true,sameSite:'lax' as const,secure,maxAge:8*60*60};
  await app.register(cookie);await app.register(rateLimit,{max:200,timeWindow:'1 minute',allowList:req=>{const path=req.url.split('?')[0]!;return !path.startsWith('/api/')||path==='/api/remote';}});await app.register(websocket,{options:{maxPayload:16384}});
  app.setErrorHandler((error,req,reply)=>{
@@ -86,11 +86,11 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.get('/api/device/firmware',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization);if(!firmwareRelease?.offeredTo(device.deviceId))return reply.code(204).send();return firmwareRelease.offer();});
  app.get('/api/device/firmware/:sequence/:part',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization),params=z.object({sequence:z.string().regex(/^[1-9][0-9]{0,9}$/),part:z.enum(['manifest','image'])}).parse(req.params);if(!firmwareRelease?.offeredTo(device.deviceId)||String(firmwareRelease.sequence)!==params.sequence)throw new DomainError('NOT_FOUND','Firmware release not available.',404);return reply.type('application/octet-stream').send(firmwareRelease.bytes(params.part));});
 
- app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE,oidcLabel:cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',deploymentMode:cfg.DEPLOYMENT_MODE,localDevSetupAvailable:!!localDevCard||localDevPets.length>0,docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',voiceStatus:voiceDiagnostic==='credit_balance_exhausted'?'billing_required':voiceDiagnostic?'unavailable':'ready',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
+ app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE==='github'?'oidc':cfg.AUTH_MODE,oidcLabel:cfg.AUTH_MODE==='github'?'GitHub':cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',deploymentMode:cfg.DEPLOYMENT_MODE,localDevSetupAvailable:!!localDevCard||localDevPets.length>0,docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',voiceStatus:voiceDiagnostic==='credit_balance_exhausted'?'billing_required':voiceDiagnostic?'unavailable':'ready',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
  app.get('/api/auth/session',async(req)=>{const s=await store.session(req.cookies.marvin_session);return s?{owner:await store.owner(s.ownerId),csrf:s.csrf}:null;});
  app.post('/api/auth/login',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{
   const body=z.object({password:z.string().max(1024).optional(),returnTo:z.string().max(150).optional()}).strict().parse(req.body);
-  if(cfg.AUTH_MODE==='oidc')throw new DomainError('USE_IDENTITY_PROVIDER','Use your identity provider to sign in.',400);
+  if(cfg.AUTH_MODE==='oidc'||cfg.AUTH_MODE==='github')throw new DomainError('USE_IDENTITY_PROVIDER','Use your identity provider to sign in.',400);
   if(cfg.AUTH_MODE==='development'&&!['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.ip))throw new DomainError('LOCAL_ONLY','Development sign-in is local only.',403);
   if(cfg.AUTH_MODE==='local'&&!await verifyPassword(body.password??'',cfg.LOCAL_PASSWORD_HASH!))throw new DomainError('INVALID_LOGIN','The passphrase is incorrect.',401);
   const o=await store.ensureOwner(cfg.AUTH_MODE==='development'?'development':'local','owner',cfg.AUTH_MODE==='development'?'Local developer':'Marvin owner');
@@ -110,8 +110,10 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  });
  app.get('/api/local-dev/setup-pets',async(req)=>{const sameOriginFetch=req.headers['sec-fetch-site']==='same-origin'&&['cors','same-origin'].includes(req.headers['sec-fetch-mode']??'');if(req.headers.origin!==cfg.APP_ORIGIN&&!sameOriginFetch)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);await session(req);if(cfg.DEPLOYMENT_MODE!=='local-dev'||!localDevPets.length)throw new DomainError('LOCAL_DEV_SETUP_UNAVAILABLE','Automatic multi-Pet setup is not enabled on this server.',404);return {pets:localDevPets.map(pet=>({deviceId:pet.card.deviceId,label:pet.label}))};});
  app.get('/api/local-dev/setup-card/:deviceId',async(req)=>{const sameOriginFetch=req.headers['sec-fetch-site']==='same-origin'&&['cors','same-origin'].includes(req.headers['sec-fetch-mode']??'');if(req.headers.origin!==cfg.APP_ORIGIN&&!sameOriginFetch)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);await session(req);const {deviceId}=z.object({deviceId:Id}).parse(req.params),pet=localDevPets.find(item=>item.card.deviceId===deviceId);if(cfg.DEPLOYMENT_MODE!=='local-dev'||!pet)throw new DomainError('LOCAL_DEV_SETUP_UNAVAILABLE','That Desktop Pet is not enabled for automatic setup.',404);return {card:pet.card};});
- app.get('/api/auth/start',async(req,reply)=>{if(cfg.AUTH_MODE!=='oidc')throw new DomainError('IDENTITY_UNCONFIGURED','Entire sign-in is not configured. Use the available local sign-in.',409);const query=req.query as Record<string,string>;const flow=await identity.begin(query.returnTo);reply.setCookie('marvin_auth',flow.token,{...cookieOptions,maxAge:300,path:'/api/auth'});return reply.redirect(flow.url);});
- app.get('/api/auth/callback',async(req,reply)=>{reply.clearCookie('marvin_auth',{path:'/api/auth'});try{const callback=new URL(cfg.OIDC_REDIRECT_URI!);callback.search=new URL(req.url,'http://localhost').search;const result=await identity.callback(req.cookies.marvin_auth,callback);const s=await store.createSession(result.owner.id);reply.setCookie('marvin_session',s.token,cookieOptions);return reply.redirect(cfg.APP_ORIGIN+result.returnTo);}catch{return reply.redirect(cfg.APP_ORIGIN+'/login?error=signin_failed');}});
+ app.get('/api/auth/start',async(req,reply)=>{if(!['oidc','github'].includes(cfg.AUTH_MODE))throw new DomainError('IDENTITY_UNCONFIGURED','Hosted sign-in is not configured. Use the available local sign-in.',409);const query=req.query as Record<string,string>;const flow=await identity.begin(query.returnTo);reply.setCookie('marvin_auth',flow.token,{...cookieOptions,maxAge:300,path:'/'});return reply.redirect(flow.url);});
+ const identityCallback=async(req:FastifyRequest,reply:FastifyReply)=>{reply.header('Cache-Control','no-store').clearCookie('marvin_auth',{path:'/'});try{const callback=new URL(cfg.AUTH_MODE==='github'?cfg.APP_ORIGIN+'/auth/callback':cfg.OIDC_REDIRECT_URI!);callback.search=new URL(req.url,'http://localhost').search;const result=await identity.callback(req.cookies.marvin_auth,callback);const s=await store.createSession(result.owner.id);reply.setCookie('marvin_session',s.token,cookieOptions);return reply.redirect(cfg.APP_ORIGIN+result.returnTo);}catch(e){app.log.warn({code:e instanceof DomainError?e.code:'IDENTITY_CALLBACK_FAILED'},'Identity callback failed');return reply.redirect(cfg.APP_ORIGIN+'/login?error=signin_failed');}};
+ app.get('/api/auth/callback',identityCallback);
+ app.get('/auth/callback',identityCallback);
  const requireEnrollment=()=>{if(!enrollment)throw new DomainError('ENROLLMENT_UNAVAILABLE','Device setup is not configured on this server.',503);return enrollment;};
  app.post('/api/robot/enrollment',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req)=>requireEnrollment().ticket((await session(req)).ownerId,req.body));
  app.delete('/api/robot/enrollment/:id',async(req)=>{const {id}=z.object({id:Id}).parse(req.params);await requireEnrollment().cancel((await session(req)).ownerId,id);return {ok:true};});
