@@ -6,7 +6,7 @@ import { Actions,BatteryStatus,DeviceControl,HeadCalibration,PetAudioSettings,Pe
 import { DomainError,Id,type InteractionContext } from '../../contracts/src/index.js';
 import { DeviceStore,type DeviceIdentity } from './store.js';
 
-type Connection={identity:DeviceIdentity;token:string;bootId:string;protocolMinor:number;capabilities:DeviceCapability[];socket:WebSocket;lastSeen:number;lastSeq:number;candidate?:boolean;candidateSince:number;stablePickedUp:boolean;closed:boolean;openedAt:number;audioReceivedBytes:number;audioSentBytes:number;voiceStarts:number;audioInputRate:16000|24000;lateAudioUntil:number;audioSettings:AudioSettings|null;headCalibration:HeadCalibrationSettings|null;batteryStatus:BatteryState|null;eyeSettings:EyeSettings|null};
+type Connection={identity:DeviceIdentity;token:string;bootId:string;protocolMinor:number;capabilities:DeviceCapability[];socket:WebSocket;lastSeen:number;lastSeq:number;candidate?:boolean;candidateSince:number;stablePickedUp:boolean;closed:boolean;openedAt:number;audioReceivedBytes:number;audioSentBytes:number;voiceStarts:number;audioInputRate:16000|24000;lateAudioUntil:number;audioSettings:AudioSettings|null;headCalibration:HeadCalibrationSettings|null;batteryStatus:BatteryState|null;eyeSettings:EyeSettings|null;remoteIds:Set<string>;remoteOrder:string[]};
 export class DeviceGateway {
  voice?:DeviceVoice;
  readonly events=new EventEmitter();private online=new Map<string,Connection>();private greeting=new Set<string>();
@@ -14,7 +14,8 @@ export class DeviceGateway {
  presence(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'online' as const,audioSettings:c.audioSettings,headCalibration:c.headCalibration,batteryStatus:c.batteryStatus,eyeSettings:c.eyeSettings}:null;}
  diagnostics(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{bootId:c.bootId,connectionOpenedAt:c.openedAt,audioReceivedBytes:c.audioReceivedBytes,audioSentBytes:c.audioSentBytes,voiceStarts:c.voiceStarts,voiceActive:this.voice?.active(c.identity.deviceId)??false}:null;}
  private async current(c:Connection){const id=await this.persistence.authenticate(c.token);if(c.closed||this.online.get(id.deviceId)!==c||id.epoch!==c.identity.epoch)throw new DomainError('DEVICE_OFFLINE','This device connection has ended.',409);return id;}
- private async send(c:Connection,event:unknown){await this.current(c);if(c.socket.readyState!==1||c.socket.bufferedAmount>65536){c.socket.close(1013,'Connection too slow');throw new DomainError('DEVICE_BACKPRESSURE','Your Desktop Pet needs to reconnect.',409);}c.socket.send(JSON.stringify(event));}
+ private sendConnected(c:Connection,event:unknown){if(c.closed||this.online.get(c.identity.deviceId)!==c)throw new DomainError('DEVICE_OFFLINE','This device connection has ended.',409);if(c.socket.readyState!==1||c.socket.bufferedAmount>65536){c.socket.close(1013,'Connection too slow');throw new DomainError('DEVICE_BACKPRESSURE','Your Desktop Pet needs to reconnect.',409);}c.socket.send(JSON.stringify(event));}
+ private async send(c:Connection,event:unknown){await this.current(c);this.sendConnected(c,event);}
  async setAudioSettings(ownerId:string,value:unknown){
   const settings=PetAudioSettings.parse(value),c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);
   if(!c)throw new DomainError('DEVICE_OFFLINE','Your Desktop Pet must be online to change its audio controls.',409);
@@ -62,12 +63,20 @@ export class DeviceGateway {
   Id.parse(id);const parsed=Actions[action]?.parse(args);if(!parsed)throw new DomainError('ACTION_UNSUPPORTED','Unknown physical action.',400);
   if(!this.supports(c,action))throw new DomainError('CAPABILITY_UNAVAILABLE','This Desktop Pet does not support that action.',409);
   if((action==='tracks'||action==='motion'||action==='remote')&&c.stablePickedUp)throw new DomainError('MOTION_UNSAFE','Track motion is disabled while Marvin is picked up.',409);
-  const identity=await this.current(c);if(ttlMs<1||ttlMs>5000)throw new DomainError('DEADLINE_INVALID','Action deadlines must be within five seconds.',400);
+  if(ttlMs<1||ttlMs>5000)throw new DomainError('DEADLINE_INVALID','Action deadlines must be within five seconds.',400);
+  /* The device socket was authenticated when it connected and is revalidated
+     by the five-second gateway heartbeat. Remote intent must stay on this
+     in-memory path: authenticating every sample adds two database round trips
+     and makes a 20 Hz joystick depend on Cloud SQL latency. Account unlinking
+     still calls revoke(), and socket loss still stops the firmware locally. */
+  if(action==='remote'){
+   const command:DeviceCommand={type:'command',id,deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,action,args:parsed,deadline:Date.now()+ttlMs};
+   c.remoteIds.add(id);c.remoteOrder.push(id);while(c.remoteOrder.length>64)c.remoteIds.delete(c.remoteOrder.shift()!);
+   try{this.sendConnected(c,command);}catch(error){c.remoteIds.delete(id);throw error;}
+   return {id,state:'accepted',accepted:true};
+  }
+  const identity=await this.current(c);
   const command:DeviceCommand={type:'command',id,deviceId:identity.deviceId,epoch:identity.epoch,bootId:c.bootId,action,args:parsed,deadline:Date.now()+ttlMs};
-  /* Intent samples are not auditable durable motions. Persisting 12 samples
-     per second would turn a joystick into a database write amplifier; safety
-     is instead enforced by the firmware's 250 ms input watchdog. */
-  if(action==='remote'){await this.send(c,command);return {id,state:'accepted',accepted:true};}
   const result=await this.persistence.create(identity,command);if(!result.created)return {id,state:result.state,accepted:result.state==='accepted'||result.state==='completed'};
   let finish:(status:{status:string;code?:string}|null)=>void=()=>{};
   const acknowledged=new Promise<{status:string;code?:string}|null>(resolve=>{finish=resolve;});
@@ -119,11 +128,16 @@ export class DeviceGateway {
      const identity=await this.persistence.authenticate(token);if(identity.deviceId!==message.deviceId)throw new DomainError('DEVICE_MISMATCH','Device identity mismatch.',403);
      if(this.online.size>=1000&&!this.online.has(identity.deviceId))throw new DomainError('GATEWAY_BUSY','Device gateway is busy.',429);
      const previous=this.online.get(identity.deviceId);if(previous){await this.voice?.disconnect(identity.deviceId);previous.closed=true;previous.socket.close(4409,'Replaced by a new device connection');}
-     c={identity,token,bootId:message.bootId,protocolMinor:message.protocol.minor,capabilities:[...new Set(message.capabilities)],socket,lastSeen:Date.now(),lastSeq:-1,candidateSince:0,stablePickedUp:false,closed:false,openedAt:Date.now(),audioReceivedBytes:0,audioSentBytes:0,voiceStarts:0,audioInputRate:message.audioInputRate??24000,lateAudioUntil:0,audioSettings:message.audioSettings??null,headCalibration:message.headCalibration??null,batteryStatus:message.batteryStatus??null,eyeSettings:message.eyeSettings??null};this.online.set(identity.deviceId,c);clearTimeout(setup);
+     c={identity,token,bootId:message.bootId,protocolMinor:message.protocol.minor,capabilities:[...new Set(message.capabilities)],socket,lastSeen:Date.now(),lastSeq:-1,candidateSince:0,stablePickedUp:false,closed:false,openedAt:Date.now(),audioReceivedBytes:0,audioSentBytes:0,voiceStarts:0,audioInputRate:message.audioInputRate??24000,lateAudioUntil:0,audioSettings:message.audioSettings??null,headCalibration:message.headCalibration??null,batteryStatus:message.batteryStatus??null,eyeSettings:message.eyeSettings??null,remoteIds:new Set(),remoteOrder:[]};this.online.set(identity.deviceId,c);clearTimeout(setup);
      await this.send(c,{type:'welcome',protocol:{major:1,minor:message.protocol.minor},epoch:identity.epoch,heartbeatMs:5000,serverTime:Date.now()});
      for(const command of await this.persistence.reconnect(identity,c.bootId))await this.send(c,command);this.events.emit('online',identity);void this.greet(c).catch(()=>{});return;
     }
-    if(!c)throw new DomainError('HELLO_REQUIRED','Send hello first.',400);await this.current(c);c.lastSeen=Date.now();
+    if(!c)throw new DomainError('HELLO_REQUIRED','Send hello first.',400);
+    /* Older firmware acknowledges every remote sample. Recognize those
+       ephemeral IDs before the durable-command path so mixed-version fleets
+       also avoid a credential query and no-op database update per sample. */
+    if(message.type==='command_status'&&c.remoteIds.delete(message.id)){c.lastSeen=Date.now();return;}
+    await this.current(c);c.lastSeen=Date.now();
     if(message.type==='heartbeat'){if(message.seq<=c.lastSeq)throw new DomainError('STALE_FRAME','Heartbeat sequence must increase.',400);c.lastSeq=message.seq;return;}
     if(message.type==='audio_settings'){
      if(c.protocolMinor<4||!c.capabilities.includes('voice'))throw new DomainError('CAPABILITY_UNAVAILABLE','Audio settings were not negotiated.',400);

@@ -24,6 +24,8 @@ export class DeviceSimulator extends EventEmitter {
  private command(command:DeviceCommand){
   if(command.deviceId!==this.deviceId||command.epoch!==this.epoch||command.bootId!==this.bootId||command.deadline<=Date.now())return;
   if(!Actions[command.action]?.safeParse(command.args).success||!this.capabilities.includes(command.action))return;
+  // Remote samples model the firmware's one-way, non-durable intent stream.
+  if(command.action==='remote'){this.executions++;return;}
   const previous=this.ledger.get(command.id);if(previous){this.ack(command.id,previous==='started'?'failed':previous);return;}
   // Write ahead of the simulated side effect. A crash may lose execution, but never retries uncertain motion.
   if(this.ledger.size>=4096){this.ack(command.id,'failed');return;}

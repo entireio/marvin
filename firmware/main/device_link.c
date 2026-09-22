@@ -186,7 +186,11 @@ static bool motion_command(esp_websocket_client_handle_t client,const cJSON *m){
   if(active_motion_id[0]){if(active_motion_tracks)marvin_tracks_stop();motion_record(active_motion_id,4);active_motion_id[0]=0;active_motion_until=0;}
   marvin_remote_intent_t input={(int)round(throttle->valuedouble*1000),(int)round(turn->valuedouble*1000),(int)round(head_yaw->valuedouble*1000),(int)round(head_pitch->valuedouble*1000),cJSON_IsTrue(auto_head)};
   esp_err_t result=marvin_remote_submit(&input);
-  return motion_status(client,id->valuestring,result==ESP_OK?"accepted":"failed",result==ESP_OK?NULL:"MOTION_UNSAFE");
+  /* Successful intent samples are intentionally one-way. Acknowledging every
+   * 20 Hz sample sends needless uplink traffic and used to trigger a database
+   * lookup plus update in the cloud gateway. Validation failures remain
+   * visible, while normal safety is enforced by the local intent watchdog. */
+  return result==ESP_OK?true:motion_status(client,id->valuestring,"failed","MOTION_UNSAFE");
  }
  motion_entry_t *old=motion_find(id->valuestring);
  if(old)return motion_status(client,id->valuestring,old->state==2?"completed":"failed",old->state==2?NULL:"DUPLICATE_UNCERTAIN");
