@@ -17,12 +17,12 @@ with serial.Serial(a.port,115200,timeout=.2) as port,log.open('x') as output:
    except serial.SerialException:
     print('USB disconnected. Reopen this monitor after reconnecting.');stop.set();return
  thread=threading.Thread(target=reader,daemon=True);thread.start()
- print(f'Logging diagnostic text to {log}\nEnter t for a quiet tone, m for microphone levels, q to close.\nIf no boot status appears, press the board RESET button once.',flush=True)
+ print(f'Logging diagnostic text to {log}\nEnter t for a quiet tone, m for microphone levels, p to pair a Gear VR controller, q to close.\nIf no boot status appears, press the board RESET button once.',flush=True)
  try:
   while not stop.is_set():
    command=input().strip().lower()
    if command=='q':break
-   if command in ('t','m'):port.write(command.encode());port.flush()
-   else:print('Use t, m, or q.')
+   if command in ('t','m','p'):port.write(command.encode());port.flush()
+   else:print('Use t, m, p, or q.')
  except (KeyboardInterrupt,EOFError):pass
  finally:stop.set();thread.join(timeout=2)

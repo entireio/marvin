@@ -49,11 +49,11 @@ bits. This is implemented by `gear_vr_controller.c`.
 3. Hold the ET-YO324 Home button to enter pairing mode. A production flow must
    display/announce a confirmation code and require a physical press before
    storing one bonded peer. That confirmation is not implemented yet.
-4. Trigger is the forward dead-man control; Back + trigger is deliberate
-   reverse. Lateral wrist tilt maps to turn after a neutral calibration while
-   the trigger is released. Touchpad maps to head yaw/pitch. A rising Home
-   press toggles Autonomous Head. Disconnect, pairing expiry, bad report, or
-   stale reports call the same remote dead-man stop.
+4. The circular touch surface maps to the same forward/reverse and turn axes as
+   the web drive stick; lifting the finger stops the tracks. After a short
+   neutral calibration, forward and side wrist tilt map to head pitch and yaw.
+   The volume buttons adjust speaker volume once per press. Disconnect, pairing
+   expiry, bad report, or stale reports call the same remote dead-man stop.
 
 `ble_remote.c` remains physical-presence gated: it does not scan at boot. The
 next hardware pass binds its pairing window to the existing button gesture,

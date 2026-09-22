@@ -277,7 +277,7 @@ static void audio_console(void *unused){
         continue;
       }
 #endif
-      if(c=='w'){marvin_body_wake_activation(false);marvin_device_voice_stop();}else if(c=='W')marvin_body_wake_activation(true);else if(c=='+')marvin_body_adjust_volume(5);else if(c=='-')marvin_body_adjust_volume(-5);else if(c=='v')marvin_device_voice_start();else if(c=='x')marvin_device_voice_stop();else if(c=='i')marvin_device_voice_interrupt();else if(c=='s'){marvin_body_audio_status();marvin_device_link_status();}else{if(c==EOF)clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));}}
+      if(c=='p'){marvin_ble_remote_open_pairing();printf("{\"gearVrPairing\":\"opened\"}\n");}else if(c=='w'){marvin_body_wake_activation(false);marvin_device_voice_stop();}else if(c=='W')marvin_body_wake_activation(true);else if(c=='+')marvin_body_adjust_volume(5);else if(c=='-')marvin_body_adjust_volume(-5);else if(c=='v')marvin_device_voice_start();else if(c=='x')marvin_device_voice_stop();else if(c=='i')marvin_device_voice_interrupt();else if(c=='s'){marvin_body_audio_status();marvin_device_link_status();}else{if(c==EOF)clearerr(stdin);vTaskDelay(pdMS_TO_TICKS(20));}}
 }
 #endif
 void app_main(void) {
