@@ -6,6 +6,12 @@ CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_0=n
 CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_1=n
 CONFIG_ESP_PROTOCOMM_SUPPORT_SECURITY_VERSION_2=y
 CONFIG_MBEDTLS_CERTIFICATE_BUNDLE=y
+# Cloud TLS endpoints can coalesce several 3.8 KB WebSocket audio frames into
+# one record.  The ESP32-S3 hardware AES path then allocates internal-DMA
+# bounce buffers for the PSRAM-backed TLS record and can exhaust contiguous
+# internal memory while AFE, Wi-Fi and BLE are active.  Software AES keeps the
+# same TLS protocol and verification while avoiding those transient buffers.
+CONFIG_MBEDTLS_HARDWARE_AES=n
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_LOG_DEFAULT_LEVEL_WARN=y

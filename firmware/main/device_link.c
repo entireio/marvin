@@ -344,13 +344,15 @@ static void upload(void *unused){
   if(atomic_load(&uplink_enabled)&&!atomic_load(&failed)&&marvin_body_input_waiting()>=8){
    xSemaphoreTake(uplink_lock,portMAX_DELAY);
    if(uplink_client&&atomic_load(&uplink_enabled)&&!atomic_load(&failed)){
-    /* Keep individual TLS writes short enough that a jittery AP cannot hold
-     * the control/receive path for half a second.  The capture queue remains
-     * the bounded cushion; this is not a retry or an unbounded spool. */
+    /* Production TLS termination can occasionally hold an otherwise healthy
+     * audio write for slightly more than 500 ms.  RX/control processing runs
+     * in the WebSocket event task, while the bounded 5.12 s capture queue
+     * cushions this uploader.  Keep a finite two-second deadline; this is not
+     * a retry or an unbounded spool. */
     size_t n=0;for(int part=0;part<6;part++){size_t count=marvin_body_take_input(uplink_pcm+n,960-n);if(!count)break;n+=count;}
     if(n&&atomic_load(&uplink_enabled)){
      int64_t began=esp_timer_get_time();atomic_fetch_add(&send_attempts,1);
-     int bytes=esp_websocket_client_send_bin(uplink_client,(const char*)uplink_pcm,(int)(n*2),pdMS_TO_TICKS(500));
+     int bytes=esp_websocket_client_send_bin(uplink_client,(const char*)uplink_pcm,(int)(n*2),pdMS_TO_TICKS(2000));
      unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&max_write_us))atomic_store(&max_write_us,elapsed);
      if(bytes!=(int)(n*2))fail(6);else atomic_fetch_add(&pcm_sent,n);
     }
