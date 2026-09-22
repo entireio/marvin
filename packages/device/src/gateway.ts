@@ -11,7 +11,7 @@ export class DeviceGateway {
  voice?:DeviceVoice;
  readonly events=new EventEmitter();private online=new Map<string,Connection>();private greeting=new Set<string>();
  constructor(readonly persistence:DeviceStore){this.events.setMaxListeners(100);}
- presence(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'online' as const,audioSettings:c.audioSettings,headCalibration:c.headCalibration,batteryStatus:c.batteryStatus,eyeSettings:c.eyeSettings}:null;}
+ presence(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'online' as const,audioSettings:c.audioSettings,headCalibration:c.headCalibration,headCalibrationPreview:c.protocolMinor>=11,batteryStatus:c.batteryStatus,eyeSettings:c.eyeSettings}:null;}
  diagnostics(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{bootId:c.bootId,connectionOpenedAt:c.openedAt,audioReceivedBytes:c.audioReceivedBytes,audioSentBytes:c.audioSentBytes,voiceStarts:c.voiceStarts,voiceActive:this.voice?.active(c.identity.deviceId)??false}:null;}
  private async current(c:Connection){const id=await this.persistence.authenticate(c.token);if(c.closed||this.online.get(id.deviceId)!==c||id.epoch!==c.identity.epoch)throw new DomainError('DEVICE_OFFLINE','This device connection has ended.',409);return id;}
  private sendConnected(c:Connection,event:unknown){if(c.closed||this.online.get(c.identity.deviceId)!==c)throw new DomainError('DEVICE_OFFLINE','This device connection has ended.',409);if(c.socket.readyState!==1||c.socket.bufferedAmount>65536){c.socket.close(1013,'Connection too slow');throw new DomainError('DEVICE_BACKPRESSURE','Your Desktop Pet needs to reconnect.',409);}c.socket.send(JSON.stringify(event));}
@@ -37,6 +37,16 @@ export class DeviceGateway {
   this.events.on('head_calibration',listener);const timeout=setTimeout(()=>finish(null),1200);
   try{await this.send(c,{type:'head_calibration',...calibration});const saved=await confirmed;if(!saved)throw new DomainError('HEAD_CALIBRATION_TIMEOUT','Your Desktop Pet did not confirm the calibration. Reconnect it and try again.',409);return saved;}
   finally{clearTimeout(timeout);this.events.off('head_calibration',listener);}
+ }
+ previewHeadCalibration(ownerId:string,value:unknown){
+  const calibration=HeadCalibration.parse(value),c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);
+  if(!c)throw new DomainError('DEVICE_OFFLINE','Your Desktop Pet must be online to preview its head calibration.',409);
+  if(c.protocolMinor<11||!c.capabilities.includes('head'))throw new DomainError('HEAD_CALIBRATION_PREVIEW_UNAVAILABLE','Update your Desktop Pet firmware to preview head calibration.',409);
+  /* Preview samples are transient and rate-bounded by the web client. They
+     use the already authenticated live connection and never enter durable
+     command storage or wait for a flash-backed acknowledgement. */
+  this.sendConnected(c,{type:'head_calibration_preview',...calibration});
+  return {accepted:true};
  }
  async setEyeSettings(ownerId:string,value:unknown){
   const settings=PetEyeSettings.parse(value),c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);
@@ -113,7 +123,7 @@ export class DeviceGateway {
     const message=DeviceControl.parse(JSON.parse(raw.toString()));
     if(message.type==='hello'){
      if(initialized)throw new DomainError('HELLO_DUPLICATE','Hello was already received.',400);initialized=true;
-     if(message.protocol.major!==1||![0,1,2,3,4,5,6,7,8,9,10].includes(message.protocol.minor)){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.10 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
+     if(message.protocol.major!==1||![0,1,2,3,4,5,6,7,8,9,10,11].includes(message.protocol.minor)){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.11 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
      if(message.audioInputRate&&message.protocol.minor<2)throw new DomainError('AUDIO_PROTOCOL','Native input rate requires protocol 1.2.',400);
      if(message.audioSettings&&message.protocol.minor<4)throw new DomainError('AUDIO_PROTOCOL','Audio settings require protocol 1.4.',400);
      if(message.audioSettings?.microphoneGainDb!==undefined&&message.protocol.minor<5)throw new DomainError('AUDIO_PROTOCOL','Microphone gain requires protocol 1.5.',400);

@@ -34,6 +34,7 @@ typedef struct {
     int remote_throttle,remote_turn,remote_head_yaw,remote_head_pitch;
     int drive_left,drive_right,remote_yaw,remote_pitch;
     int64_t remote_at_us;
+    int64_t calibration_preview_until_us;
     bool remote_active,remote_auto;
     marvin_connection_choreography_t connection;
     size_t connection_step;
@@ -115,11 +116,16 @@ static void task(void *unused){
     (void)unused;
     for(;;){
         int yaw=0,pitch=0,target_yaw=0,target_pitch=0;
-        bool output=false,drive=false,speech_body=false,eye_step=false,stop_drive=false;
+        bool output=false,drive=false,speech_body=false,eye_step=false,stop_drive=false,restore_calibration=false;
         int left=0,right=0,gaze_x=0,gaze_y=0;uint32_t gaze_ms=100;
         marvin_eye_expression_t eye_expression=MARVIN_EYES_NEUTRAL;
         int64_t now=esp_timer_get_time();
         xSemaphoreTake(lock,portMAX_DELAY);
+        if(state.calibration_preview_until_us&&now>=state.calibration_preview_until_us){
+            state.calibration_preview_until_us=0;restore_calibration=true;
+            state.remote_active=false;state.connection_active=false;state.wake_active=false;
+            target_locked(0,0,180,now);state.explicit=true;
+        }
         /* Remote control owns the real-time layer. It receives intention, not
          * PWM: a 50Hz loop curves sticks, limits acceleration and holds a
          * 120ms actuator watchdog. Loss of either transport is therefore safe. */
@@ -222,6 +228,7 @@ static void task(void *unused){
         }
         unsigned eyes_level=(unsigned)state.speech_energy;
         xSemaphoreGive(lock);
+        if(restore_calibration)marvin_head_calibration_restore();
         marvin_eyes_voice_level(eyes_level);
         if(output){marvin_eyes_head_target(target_yaw,target_pitch);marvin_eyes_head_pose(yaw,pitch);(void)marvin_head_pose(yaw,pitch);}
         if(eye_step){marvin_eyes_expression(eye_expression);marvin_eyes_gaze(gaze_x,gaze_y,gaze_ms);}
@@ -252,6 +259,17 @@ esp_err_t marvin_motion_head_request(int yaw,int pitch,uint32_t duration){
     state.remote_active=false;state.wake_active=false;target_locked(yaw,pitch,duration,now);state.explicit=true;xSemaphoreGive(lock);
     if(stop_connection){marvin_tracks_stop();marvin_eyes_expression(MARVIN_EYES_NEUTRAL);}
     return ESP_OK;
+}
+esp_err_t marvin_motion_head_calibration_preview(const marvin_head_calibration_t *calibration){
+    esp_err_t result=marvin_head_calibration_preview(calibration);if(result!=ESP_OK)return result;
+    result=marvin_motion_head_request(0,0,120);if(result!=ESP_OK){marvin_head_calibration_restore();return result;}
+    xSemaphoreTake(lock,portMAX_DELAY);state.calibration_preview_until_us=esp_timer_get_time()+2000000;xSemaphoreGive(lock);
+    return ESP_OK;
+}
+esp_err_t marvin_motion_head_calibration_commit(void){
+    if(!lock)return ESP_ERR_INVALID_STATE;
+    xSemaphoreTake(lock,portMAX_DELAY);state.calibration_preview_until_us=0;xSemaphoreGive(lock);
+    return marvin_motion_head_request(0,0,500);
 }
 esp_err_t marvin_remote_input(int throttle,int turn,int head_yaw,int head_pitch,bool autonomous_head){
     if(!lock||throttle < -1000||throttle > 1000||turn < -1000||turn > 1000||head_yaw < -1000||head_yaw > 1000||head_pitch < -1000||head_pitch > 1000)return ESP_ERR_INVALID_ARG;
@@ -340,4 +358,4 @@ void marvin_motion_wake(void){
     xSemaphoreGive(lock);
 }
 void marvin_motion_idle_enabled(bool enabled){if(!lock)return;xSemaphoreTake(lock,portMAX_DELAY);state.idle_enabled=enabled;state.idle_at_us=next_idle(esp_timer_get_time());xSemaphoreGive(lock);}
-void marvin_motion_stop(void){if(!lock)return;xSemaphoreTake(lock,portMAX_DELAY);state.cue=MARVIN_MOTION_CUE_NONE;state.speech_energy=state.speech_yaw=state.speech_pitch=state.speech_target_yaw=state.speech_target_pitch=0;state.connection_active=false;state.wake_active=false;state.started=false;state.remote_active=false;state.drive_left=state.drive_right=0;state.idle_enabled=false;marvin_eyes_head_target(state.yaw,state.pitch);marvin_eyes_voice_level(0);xSemaphoreGive(lock);marvin_tracks_stop();}
+void marvin_motion_stop(void){if(!lock)return;xSemaphoreTake(lock,portMAX_DELAY);bool restore_calibration=state.calibration_preview_until_us!=0;state.calibration_preview_until_us=0;state.cue=MARVIN_MOTION_CUE_NONE;state.speech_energy=state.speech_yaw=state.speech_pitch=state.speech_target_yaw=state.speech_target_pitch=0;state.connection_active=false;state.wake_active=false;state.started=false;state.remote_active=false;state.drive_left=state.drive_right=0;state.idle_enabled=false;marvin_eyes_head_target(state.yaw,state.pitch);marvin_eyes_voice_level(0);xSemaphoreGive(lock);if(restore_calibration)marvin_head_calibration_restore();marvin_tracks_stop();}

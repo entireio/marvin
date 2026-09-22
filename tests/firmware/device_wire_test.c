@@ -5,7 +5,7 @@
 #include <stdlib.h>
 static marvin_wire_t w;
 int main(void){
- const char *welcome="{\"type\":\"welcome\",\"protocol\":{\"major\":1,\"minor\":9},\"epoch\":7,\"heartbeatMs\":5000,\"serverTime\":2000000000000}";
+ const char *welcome="{\"type\":\"welcome\",\"protocol\":{\"major\":1,\"minor\":11},\"epoch\":7,\"heartbeatMs\":5000,\"serverTime\":2000000000000}";
  assert(marvin_wire_control(welcome,7,false));assert(!marvin_wire_control(welcome,8,false));assert(!marvin_wire_control(welcome,7,true));
  assert(!marvin_wire_control("{\"type\":\"welcome\",\"protocol\":{\"major\":1,\"minor\":2},\"epoch\":7,\"heartbeatMs\":5000}",7,false));
  assert(!marvin_wire_control("{\"type\":\"ping\"}",7,false));assert(marvin_wire_control("{\"type\":\"ping\"}",7,true));

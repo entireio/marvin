@@ -45,6 +45,7 @@ static marvin_head_calibration_t head_calibration={
     .pitch_reversed=true,
 #endif
 };
+static marvin_head_calibration_t saved_head_calibration;
 static const int motor_pins[]={LEFT_IN1,LEFT_IN2,RIGHT_IN3,RIGHT_IN4};
 
 static esp_err_t duty(ledc_channel_t channel, uint32_t value){
@@ -98,6 +99,7 @@ esp_err_t marvin_actuators_init(void){
         if(calibration_error==ESP_OK&&saved_size==sizeof(saved)&&saved.magic==HEAD_CALIBRATION_MAGIC&&saved.version==HEAD_CALIBRATION_VERSION&&saved.value.yaw_center>=60&&saved.value.yaw_center<=120&&saved.value.pitch_center>=60&&saved.value.pitch_center<=120)head_calibration=saved.value;
         else if(calibration_error!=ESP_ERR_NVS_NOT_FOUND){(void)nvs_erase_key(calibration_nvs,"settings");(void)nvs_commit(calibration_nvs);}
     }else calibration_nvs=0;
+    saved_head_calibration=head_calibration;
     if(xTaskCreate(expiry_task,"drive_expiry",2048,NULL,5,NULL)!=pdPASS){
         stop_locked();
         if(calibration_nvs)nvs_close(calibration_nvs);
@@ -185,7 +187,7 @@ esp_err_t marvin_head_pose(int yaw_degrees,int pitch_degrees){
 }
 void marvin_head_calibration_get(marvin_head_calibration_t *calibration){
     if(!calibration||!actuator_lock)return;
-    xSemaphoreTake(actuator_lock,portMAX_DELAY);*calibration=head_calibration;xSemaphoreGive(actuator_lock);
+    xSemaphoreTake(actuator_lock,portMAX_DELAY);*calibration=saved_head_calibration;xSemaphoreGive(actuator_lock);
 }
 esp_err_t marvin_head_calibration_set(const marvin_head_calibration_t *calibration){
     if(!actuator_lock||!calibration||calibration->yaw_center<60||calibration->yaw_center>120||calibration->pitch_center<60||calibration->pitch_center>120)return ESP_ERR_INVALID_ARG;
@@ -194,7 +196,16 @@ esp_err_t marvin_head_calibration_set(const marvin_head_calibration_t *calibrati
     stored_head_calibration_t saved={.magic=HEAD_CALIBRATION_MAGIC,.version=HEAD_CALIBRATION_VERSION,.value=*calibration};
     esp_err_t err=nvs_set_blob(calibration_nvs,"settings",&saved,sizeof(saved));
     if(err==ESP_OK)err=nvs_commit(calibration_nvs);
-    if(err==ESP_OK)head_calibration=*calibration;
+    if(err==ESP_OK)saved_head_calibration=head_calibration=*calibration;
     xSemaphoreGive(actuator_lock);
     return err;
+}
+esp_err_t marvin_head_calibration_preview(const marvin_head_calibration_t *calibration){
+    if(!actuator_lock||!calibration||calibration->yaw_center<60||calibration->yaw_center>120||calibration->pitch_center<60||calibration->pitch_center>120)return ESP_ERR_INVALID_ARG;
+    xSemaphoreTake(actuator_lock,portMAX_DELAY);head_calibration=*calibration;xSemaphoreGive(actuator_lock);
+    return ESP_OK;
+}
+void marvin_head_calibration_restore(void){
+    if(!actuator_lock)return;
+    xSemaphoreTake(actuator_lock,portMAX_DELAY);head_calibration=saved_head_calibration;xSemaphoreGive(actuator_lock);
 }

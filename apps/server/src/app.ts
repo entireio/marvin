@@ -124,6 +124,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.put('/api/robot/conversation',async(req)=>{const b=z.object({conversationId:Id.nullable()}).strict().parse(req.body),s=await session(req);const result=await store.setPetConversation(s.ownerId,b.conversationId);runtime.events.emit('conversation_link',s.ownerId);return result;});
  app.patch('/api/robot/audio',async(req)=>devices.setAudioSettings((await session(req)).ownerId,PetAudioSettings.parse(req.body)));
  app.patch('/api/robot/head-calibration',async(req)=>devices.setHeadCalibration((await session(req)).ownerId,HeadCalibration.parse(req.body)));
+ app.put('/api/robot/head-calibration/preview',{config:{rateLimit:{max:600,timeWindow:'1 minute'}}},async(req)=>devices.previewHeadCalibration((await session(req)).ownerId,HeadCalibration.parse(req.body)));
  app.patch('/api/robot/eyes',async(req)=>devices.setEyeSettings((await session(req)).ownerId,PetEyeSettings.parse(req.body)));
  app.post('/api/robot/speak',{config:{rateLimit:{max:8,timeWindow:'1 minute'}}},async(req)=>{const b=PetSpeech.parse(req.body),s=await session(req);return devices.speak(s.ownerId,b.text);});
  app.post('/api/robot/control',async(req)=>{

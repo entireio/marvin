@@ -23,3 +23,7 @@ esp_err_t marvin_head_set(uint8_t rotation_degrees, uint8_t tilt_degrees);
 esp_err_t marvin_head_pose(int yaw_degrees, int pitch_degrees);
 void marvin_head_calibration_get(marvin_head_calibration_t *calibration);
 esp_err_t marvin_head_calibration_set(const marvin_head_calibration_t *calibration);
+/* Applies a RAM-only center for interactive calibration. The durable value is
+ * unchanged and can be restored after a dropped browser/server connection. */
+esp_err_t marvin_head_calibration_preview(const marvin_head_calibration_t *calibration);
+void marvin_head_calibration_restore(void);

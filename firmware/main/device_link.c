@@ -308,7 +308,13 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"head_calibration")){
   const cJSON *yaw=cJSON_GetObjectItemCaseSensitive(m,"yawCenter"),*pitch=cJSON_GetObjectItemCaseSensitive(m,"pitchCenter"),*yaw_reverse=cJSON_GetObjectItemCaseSensitive(m,"yawReversed"),*pitch_reverse=cJSON_GetObjectItemCaseSensitive(m,"pitchReversed");
   ok=unique_fields(m)&&whole(yaw,60,120)&&whole(pitch,60,120)&&cJSON_IsBool(yaw_reverse)&&cJSON_IsBool(pitch_reverse);
-  if(ok){marvin_head_calibration_t value={(uint8_t)yaw->valueint,(uint8_t)pitch->valueint,cJSON_IsTrue(yaw_reverse),cJSON_IsTrue(pitch_reverse)};ok=marvin_head_calibration_set(&value)==ESP_OK&&marvin_motion_head_request(0,0,500)==ESP_OK;if(ok)atomic_store(&head_calibration_pending,true);}
+  if(ok){marvin_head_calibration_t value={(uint8_t)yaw->valueint,(uint8_t)pitch->valueint,cJSON_IsTrue(yaw_reverse),cJSON_IsTrue(pitch_reverse)};ok=marvin_head_calibration_set(&value)==ESP_OK&&marvin_motion_head_calibration_commit()==ESP_OK;if(ok)atomic_store(&head_calibration_pending,true);}
+  cJSON_Delete(m);return ok;
+ }
+ if(cJSON_IsString(type)&&!strcmp(type->valuestring,"head_calibration_preview")){
+  const cJSON *yaw=cJSON_GetObjectItemCaseSensitive(m,"yawCenter"),*pitch=cJSON_GetObjectItemCaseSensitive(m,"pitchCenter"),*yaw_reverse=cJSON_GetObjectItemCaseSensitive(m,"yawReversed"),*pitch_reverse=cJSON_GetObjectItemCaseSensitive(m,"pitchReversed");
+  ok=unique_fields(m)&&whole(yaw,60,120)&&whole(pitch,60,120)&&cJSON_IsBool(yaw_reverse)&&cJSON_IsBool(pitch_reverse);
+  if(ok){marvin_head_calibration_t value={(uint8_t)yaw->valueint,(uint8_t)pitch->valueint,cJSON_IsTrue(yaw_reverse),cJSON_IsTrue(pitch_reverse)};ok=marvin_motion_head_calibration_preview(&value)==ESP_OK;}
   cJSON_Delete(m);return ok;
  }
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"eye_settings")){

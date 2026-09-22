@@ -1,5 +1,6 @@
 #pragma once
 #include "esp_err.h"
+#include "actuators.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -14,6 +15,10 @@ typedef enum {
 /* Owns all head trajectories. Calls are non-blocking and bounded. */
 esp_err_t marvin_motion_init(void);
 esp_err_t marvin_motion_head_request(int yaw_degrees, int pitch_degrees, uint32_t duration_ms);
+/* Interactive calibration owns the head briefly and automatically restores
+ * the durable center if preview traffic stops. */
+esp_err_t marvin_motion_head_calibration_preview(const marvin_head_calibration_t *calibration);
+esp_err_t marvin_motion_head_calibration_commit(void);
 /* A transport-neutral remote intent. Values are normalized -1000..1000 and
  * must be renewed; stale input brings the tracks smoothly to rest. */
 esp_err_t marvin_remote_input(int throttle, int turn, int head_yaw, int head_pitch, bool autonomous_head);
