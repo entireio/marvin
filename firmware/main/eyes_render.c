@@ -85,12 +85,24 @@ void marvin_eye_render_volume(uint8_t buffer[MARVIN_EYE_BYTES],unsigned volume){
     for(unsigned y=0;y<filled;y++)horizontal(buffer,116,117,45-(int)y);
 }
 
-void marvin_eye_render_low_battery(uint8_t buffer[MARVIN_EYE_BYTES]){
-    /* Horizontal battery silhouette with a deliberately small remaining
-     * charge block. It sits flush to the left edge without becoming a second
-     * focal point beside the eye. */
-    horizontal(buffer,3,13,0);horizontal(buffer,3,13,9);
-    vertical(buffer,14,1,8);vertical(buffer,2,1,8);
+void marvin_eye_render_battery(uint8_t buffer[MARVIN_EYE_BYTES],unsigned level_percent,int critical){
+    if(level_percent>100)level_percent=100;
+
+    /* A persistent three-segment gauge. The body remains only 15 x 10 px so
+     * it reads as status, not part of the expression. Critical charge uses an
+     * empty body plus an adjacent exclamation mark; it cannot be mistaken for
+     * an ordinary low-but-usable level. */
+    horizontal(buffer,3,14,0);horizontal(buffer,3,14,9);
+    vertical(buffer,15,1,8);vertical(buffer,2,1,8);
     vertical(buffer,1,3,6);vertical(buffer,0,3,6);
-    for(int y=3;y<=6;y++)horizontal(buffer,11,12,y);
+    if(critical){
+        vertical(buffer,19,1,5);pixel(buffer,19,7,true);
+        return;
+    }
+
+    unsigned segments=level_percent>=67?3:level_percent>=34?2:1;
+    for(unsigned segment=0;segment<segments;segment++){
+        int x0=12-(int)segment*4;
+        for(int y=2;y<=7;y++)horizontal(buffer,x0,x0+2,y);
+    }
 }

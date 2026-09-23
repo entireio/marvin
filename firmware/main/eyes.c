@@ -193,14 +193,17 @@ static void task(void *unused){
     int64_t now=esp_timer_get_time(),sequence_began=0,squeeze_began=0,next_frame=now;
     int64_t next_idle=now+1000000,next_squeeze=now+2600000+(esp_random()%2600000);
     int64_t next_battery=now;
-    bool low_battery=false;
+    unsigned battery_percent=0;
+    bool battery_available=false,critical_battery=false;
     for(;;){
         now=esp_timer_get_time();
         marvin_eye_design_t design=(marvin_eye_design_t)clamp(atomic_load(&requested_design),MARVIN_EYE_DESIGN_CLASSIC,MARVIN_EYE_DESIGN_COUNT-1);
         if(now>=next_battery){
             marvin_battery_status_t battery;
             if(marvin_battery_monitor_read(&battery)&&battery.available){
-                low_battery=battery.level_percent<=(low_battery?LOW_BATTERY_EXIT_PERCENT:LOW_BATTERY_ENTER_PERCENT);
+                battery_percent=battery.level_percent;
+                battery_available=true;
+                critical_battery=battery_percent<=(critical_battery?LOW_BATTERY_EXIT_PERCENT:LOW_BATTERY_ENTER_PERCENT);
             }
             next_battery=now+BATTERY_SAMPLE_US;
         }
@@ -251,7 +254,7 @@ static void task(void *unused){
                 marvin_eye_render(displays[eye].pixels,&frame,(marvin_eye_render_design_t)design);
             }
             if(now<atomic_load(&volume_until_us))marvin_eye_render_volume(displays[0].pixels,atomic_load(&overlay_volume));
-            if(low_battery)marvin_eye_render_low_battery(displays[1].pixels);
+            if(battery_available)marvin_eye_render_battery(displays[1].pixels,battery_percent,critical_battery);
             flush(&displays[0]);flush(&displays[1]);
             do next_frame+=FRAME_PERIOD_US;while(next_frame<=now);
         }

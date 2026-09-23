@@ -1,5 +1,6 @@
 #include "ble_remote.h"
 #include "gear_vr_controller.h"
+#include "body_audio.h"
 #include "sdkconfig.h"
 
 /* The ET-YO324's useful input stream is Samsung's custom GATT service, not
@@ -32,7 +33,7 @@ static const ble_uuid128_t notify_uuid = BLE_UUID128_INIT(0x81,0xd2,0xa3,0x4e,0x
 static const ble_uuid128_t command_uuid = BLE_UUID128_INIT(0x82,0xd2,0xa3,0x4e,0xa1,0xf7,0x52,0xa0,0x3b,0x48,0xbc,0x81,0x26,0x17,0xc5,0xc8);
 static remote_peer_t saved_peer;
 static bool have_saved_peer, scanning, connecting, connected, enrolled, pairing_window_open;
-static atomic_bool pairing_requested;
+static atomic_bool pairing_requested,unpair_requested;
 static uint8_t own_addr_type;
 static uint16_t conn_handle = BLE_HS_CONN_HANDLE_NONE, service_start, service_end, notify_handle, command_def_handle, command_handle, cccd_handle;
 static ble_addr_t candidate_addr;
@@ -45,14 +46,21 @@ static bool is_controller_advertisement(const struct ble_gap_disc_desc *disc) {
     struct ble_hs_adv_fields fields; static const char name[]="Gear VR Controller";
     return !ble_hs_adv_parse_fields(&fields,disc->data,disc->length_data) && fields.name && fields.name_len>=sizeof(name)-1 && !memcmp(fields.name,name,sizeof(name)-1);
 }
-static void persist_peer(const ble_addr_t *addr) {
+static bool persist_peer(const ble_addr_t *addr) {
     nvs_handle_t nvs; remote_peer_t peer={.magic=REMOTE_MAGIC,.addr_type=addr->type}; memcpy(peer.addr,addr->val,sizeof(peer.addr));
     esp_err_t result=nvs_open(REMOTE_NAMESPACE,NVS_READWRITE,&nvs);
     if(result==ESP_OK){result=nvs_set_blob(nvs,REMOTE_KEY,&peer,sizeof(peer));if(result==ESP_OK)result=nvs_commit(nvs);nvs_close(nvs);}
-    if(result==ESP_OK){saved_peer=peer;have_saved_peer=true;}else ESP_LOGW(TAG,"could not remember controller: %s",esp_err_to_name(result));
+    if(result==ESP_OK){saved_peer=peer;have_saved_peer=true;return true;}
+    ESP_LOGW(TAG,"could not remember controller: %s",esp_err_to_name(result));return false;
 }
 static void load_peer(void) { nvs_handle_t nvs;size_t len=sizeof(saved_peer);if(nvs_open(REMOTE_NAMESPACE,NVS_READONLY,&nvs)==ESP_OK){if(nvs_get_blob(nvs,REMOTE_KEY,&saved_peer,&len)==ESP_OK&&len==sizeof(saved_peer)&&saved_peer.magic==REMOTE_MAGIC)have_saved_peer=true;nvs_close(nvs);} }
-static void forget_peer(void) { nvs_handle_t nvs;if(nvs_open(REMOTE_NAMESPACE,NVS_READWRITE,&nvs)==ESP_OK){nvs_erase_key(nvs,REMOTE_KEY);nvs_commit(nvs);nvs_close(nvs);}memset(&saved_peer,0,sizeof(saved_peer));have_saved_peer=false; }
+static bool forget_peer(void) {
+    nvs_handle_t nvs;esp_err_t result=nvs_open(REMOTE_NAMESPACE,NVS_READWRITE,&nvs);
+    if(result==ESP_OK){result=nvs_erase_key(nvs,REMOTE_KEY);if(result==ESP_ERR_NVS_NOT_FOUND)result=ESP_OK;if(result==ESP_OK)result=nvs_commit(nvs);nvs_close(nvs);}
+    if(result!=ESP_OK){ESP_LOGE(TAG,"could not forget controller: %s",esp_err_to_name(result));return false;}
+    memset(&saved_peer,0,sizeof(saved_peer));have_saved_peer=false;return true;
+}
+static void request_unpair(void){atomic_store(&unpair_requested,true);}
 static void stop_scan(void) { if(scanning){ble_gap_disc_cancel();scanning=false;} }
 static void schedule_retry(void) { next_scan=xTaskGetTickCount()+pdMS_TO_TICKS(RETRY_SECONDS*1000); }
 static void begin_scan(bool pairing_window) {
@@ -64,7 +72,8 @@ static void begin_scan(bool pairing_window) {
 static void terminate_gatt(const char *step,int status){ESP_LOGW(TAG,"%s failed: %d",step,status);if(conn_handle!=BLE_HS_CONN_HANDLE_NONE)ble_gap_terminate(conn_handle,BLE_ERR_REM_USER_CONN_TERM);}
 static int sensor_write_done(uint16_t ch,const struct ble_gatt_error *e,struct ble_gatt_attr *a,void *arg){
     (void)ch;(void)a;(void)arg;if(e->status){terminate_gatt("sensor-mode write",e->status);return 0;}
-    enrolled=true;pairing_window_open=false;if(!have_saved_peer)persist_peer(&candidate_addr);ESP_LOGW(TAG,"controller ready");return 0;
+    if(!have_saved_peer&&!persist_peer(&candidate_addr)){terminate_gatt("controller enrollment persistence",BLE_HS_ESTORE_CAP);return 0;}
+    enrolled=true;pairing_window_open=false;ESP_LOGW(TAG,"controller ready");return 0;
 }
 static int subscription_write_done(uint16_t ch,const struct ble_gatt_error *e,struct ble_gatt_attr *a,void *arg){
     (void)ch;(void)a;(void)arg;if(e->status){terminate_gatt("notification subscription",e->status);return 0;}
@@ -90,9 +99,24 @@ static int gap_event(struct ble_gap_event *event,void *arg){
     default:return 0;}
 }
 static void remote_task(void *arg){
-    (void)arg;load_peer();pairing_window_open=!have_saved_peer;pairing_deadline=xTaskGetTickCount()+pdMS_TO_TICKS(PAIR_SCAN_SECONDS*1000);/* Setup BLE starts NimBLE later; this task never delays app_main. */while(ble_hs_id_infer_auto(0,&own_addr_type))vTaskDelay(pdMS_TO_TICKS(250));begin_scan(pairing_window_open);
+    (void)arg;load_peer();marvin_gear_vr_set_unpair_handler(request_unpair);pairing_window_open=!have_saved_peer;pairing_deadline=xTaskGetTickCount()+pdMS_TO_TICKS(PAIR_SCAN_SECONDS*1000);/* Setup BLE starts NimBLE later; this task never delays app_main. */while(ble_hs_id_infer_auto(0,&own_addr_type))vTaskDelay(pdMS_TO_TICKS(250));begin_scan(pairing_window_open);
     for(;;){
-        if(atomic_exchange(&pairing_requested,false)){forget_peer();pairing_window_open=true;pairing_deadline=xTaskGetTickCount()+pdMS_TO_TICKS(PAIR_SCAN_SECONDS*1000);next_scan=0;ESP_LOGW(TAG,"USB pairing request accepted; pairing scan open for %d seconds",PAIR_SCAN_SECONDS);if(connected)ble_gap_terminate(conn_handle,BLE_ERR_REM_USER_CONN_TERM);else stop_scan();}
+        if(atomic_exchange(&unpair_requested,false)){
+            if(forget_peer()){
+                pairing_window_open=false;next_scan=portMAX_DELAY;stop_scan();
+                marvin_body_audio_flush();
+                marvin_body_audio_unpaired_cue();
+                ESP_LOGW(TAG,"Home hold accepted; controller forgotten and pairing remains closed");
+                if(connected)ble_gap_terminate(conn_handle,BLE_ERR_REM_USER_CONN_TERM);
+            }else ESP_LOGE(TAG,"Home hold rejected; saved controller retained");
+        }
+        if(atomic_exchange(&pairing_requested,false)){
+            if(forget_peer()){
+                pairing_window_open=true;pairing_deadline=xTaskGetTickCount()+pdMS_TO_TICKS(PAIR_SCAN_SECONDS*1000);next_scan=0;
+                ESP_LOGW(TAG,"USB pairing request accepted; pairing scan open for %d seconds",PAIR_SCAN_SECONDS);
+                if(connected)ble_gap_terminate(conn_handle,BLE_ERR_REM_USER_CONN_TERM);else stop_scan();
+            }else ESP_LOGE(TAG,"USB pairing request rejected; saved controller retained");
+        }
         if(pairing_window_open&&(int32_t)(xTaskGetTickCount()-pairing_deadline)>=0){pairing_window_open=false;stop_scan();ESP_LOGW(TAG,"pairing window closed");}
         if((have_saved_peer||pairing_window_open)&&!connected&&!connecting&&!scanning&&(int32_t)(xTaskGetTickCount()-next_scan)>=0)begin_scan(pairing_window_open);
         vTaskDelay(pdMS_TO_TICKS(250));

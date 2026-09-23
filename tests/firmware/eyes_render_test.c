@@ -50,11 +50,30 @@ int main(void){
  assert(!lit(pixels,116,42));           /* and grows upward as volume rises */
 
  marvin_eye_render(pixels,&empty,MARVIN_EYE_RENDER_CLASSIC);
- marvin_eye_render_low_battery(pixels);
- assert(lit(pixels,14,4));             /* battery body at the top edge */
+ marvin_eye_render_battery(pixels,16,false);
+ assert(lit(pixels,15,4));             /* battery body at the top edge */
  assert(lit(pixels,0,4));              /* positive terminal */
- assert(lit(pixels,12,4));             /* deliberately low charge */
- assert(!lit(pixels,7,4));
+ assert(lit(pixels,12,4));             /* low level: one of three segments */
+ assert(!lit(pixels,8,4));
+ assert(!lit(pixels,4,4));
+
+ marvin_eye_render(pixels,&empty,MARVIN_EYE_RENDER_CLASSIC);
+ marvin_eye_render_battery(pixels,50,false);
+ assert(lit(pixels,12,4));
+ assert(lit(pixels,8,4));              /* middle level: two segments */
+ assert(!lit(pixels,4,4));
+
+ marvin_eye_render(pixels,&empty,MARVIN_EYE_RENDER_CLASSIC);
+ marvin_eye_render_battery(pixels,100,false);
+ assert(lit(pixels,12,4));
+ assert(lit(pixels,8,4));
+ assert(lit(pixels,4,4));              /* high level: all three segments */
+
+ marvin_eye_render(pixels,&empty,MARVIN_EYE_RENDER_CLASSIC);
+ marvin_eye_render_battery(pixels,15,true);
+ assert(!lit(pixels,12,4));            /* critical level empties the gauge */
+ assert(lit(pixels,19,1));             /* and adds an unmistakable alert */
+ assert(lit(pixels,19,7));
 
  eye=(marvin_eye_pose_t){.center_x=64,.center_y=32,.outer_rx=32,.outer_ry=32,.inner_rx=12,.inner_ry=12};
  marvin_eye_render(pixels,&eye,MARVIN_EYE_RENDER_SOLID);

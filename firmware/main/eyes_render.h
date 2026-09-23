@@ -33,4 +33,4 @@ void marvin_eye_render(uint8_t buffer[MARVIN_EYE_BYTES], const marvin_eye_pose_t
 /* Pixel-native status overlays occupy the unused outside edges of the wide
  * displays. They intentionally draw over an already-rendered eye frame. */
 void marvin_eye_render_volume(uint8_t buffer[MARVIN_EYE_BYTES], unsigned volume);
-void marvin_eye_render_low_battery(uint8_t buffer[MARVIN_EYE_BYTES]);
+void marvin_eye_render_battery(uint8_t buffer[MARVIN_EYE_BYTES], unsigned level_percent, int critical);
