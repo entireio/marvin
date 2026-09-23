@@ -1,6 +1,13 @@
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
+test('an expired API session returns to sign-in instead of reporting the Pet offline',async({page})=>{
+ const body={device_id:'00000000-0000-4000-8000-000000000099',network:'Studio',simulated:0};let checks=0;
+ await page.route('**/api/settings',async route=>{const response=await route.fetch();await route.fulfill({json:{...await response.json(),body}});});
+ await page.route('**/api/robot/presence',route=>{checks++;return checks===1?route.fulfill({json:{body,presence:{deviceId:body.device_id,status:'online',capabilities:[],audioSettings:null,headCalibration:null,headCalibrationPreview:false,batteryStatus:null,eyeSettings:null}}}):route.fulfill({status:401,json:{error:{code:'UNAUTHENTICATED',message:'Please sign in to continue.'}}});});
+ await page.goto('/login');await page.getByRole('button',{name:'Enter local preview'}).click();await expect(page.getByRole('button',{name:'Desktop Pet Online'})).toBeVisible();await expect(page.getByRole('link',{name:'Continue with GitHub'})).toHaveCount(0);await expect(page.getByText('Your session expired. Sign in to continue.')).toBeVisible({timeout:5000});await expect(page.getByRole('button',{name:'Desktop Pet Offline'})).toHaveCount(0);
+});
+
 test('connected Pet audio controls stay synchronized and speech lives in the remote',async({page})=>{
  let audio={volume:60,muted:false,microphoneGainDb:30,allowPlaybackMic:false,followupSeconds:5},battery={levelPercent:74,voltageMv:3950,charging:null as boolean|null};
  let calibration={yawCenter:90,pitchCenter:90,yawReversed:true,pitchReversed:true};

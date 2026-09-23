@@ -14,7 +14,7 @@ export type HeadCalibration=z.infer<typeof HeadCalibration>;
 /** A short, exact line that the owner asks the Desktop Pet to say aloud. */
 export const PetSpeech=z.object({text:z.string().trim().min(1).max(500)}).strict();
 export type PetSpeech=z.infer<typeof PetSpeech>;
-export const DeviceHello=z.object({type:z.literal('hello'),protocol:z.object({major:z.number().int(),minor:z.number().int()}).strict(),deviceId:Id,bootId:Id,capabilities:z.array(DeviceCapability).max(10),firmware:z.string().max(64),audioInputRate:z.literal(16000).optional(),audioSettings:PetAudioSettings.optional(),headCalibration:HeadCalibration.optional(),batteryStatus:BatteryStatus.optional(),eyeSettings:PetEyeSettings.optional()}).strict();
+export const DeviceHello=z.object({type:z.literal('hello'),protocol:z.object({major:z.number().int(),minor:z.number().int()}).strict(),deviceId:Id,bootId:Id,capabilities:z.array(DeviceCapability).max(10),firmware:z.string().max(64),audioInputRate:z.literal(16000).optional(),audioCodec:z.literal('ima-adpcm').optional(),audioSettings:PetAudioSettings.optional(),headCalibration:HeadCalibration.optional(),batteryStatus:BatteryStatus.optional(),eyeSettings:PetEyeSettings.optional()}).strict();
 export const DeviceControl=z.discriminatedUnion('type',[
  DeviceHello,
  z.object({type:z.literal('heartbeat'),seq:z.number().int().nonnegative()}).strict(),
@@ -27,7 +27,8 @@ export const DeviceControl=z.discriminatedUnion('type',[
  z.object({type:z.literal('battery_status'),...BatteryStatus.shape}).strict(),
  z.object({type:z.literal('head_calibration'),...HeadCalibration.shape}).strict(),
  z.object({type:z.literal('eye_settings'),...PetEyeSettings.shape}).strict(),
- z.object({type:z.literal('voice_playback_done'),interactionId:Id}).strict()
+ z.object({type:z.literal('voice_playback_done'),interactionId:Id}).strict(),
+ z.object({type:z.literal('link_diagnostics'),wifiRssi:z.number().int().min(-127).max(0),audioTimeouts:z.number().int().nonnegative(),internalFreeBytes:z.number().int().nonnegative(),internalLargestBlock:z.number().int().nonnegative(),resetReason:z.number().int().nonnegative(),lastLinkFault:z.number().int().nonnegative()}).strict()
 ]);
 export const Actions={
  eyes:z.object({expression:z.enum(['neutral','listening','thinking','speaking','concerned','sleeping'])}).strict(),

@@ -13,7 +13,8 @@ esp_err_t marvin_device_link_start(marvin_link_snapshot_t snapshot,const char *c
 bool marvin_device_link_online(void);
 
 void marvin_device_voice_start(void);
-void marvin_device_voice_wake(void);
+/* False means the wake was local but the cloud link is unavailable. */
+bool marvin_device_voice_wake(void);
 void marvin_device_voice_stop(void);
 void marvin_device_voice_interrupt(void);
 void marvin_device_voice_interrupt_wake(void);

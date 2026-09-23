@@ -6,12 +6,14 @@
 #include "eyes.h"
 #include "remote_control.h"
 #include "battery_monitor.h"
+#include "audio_adpcm.h"
 #include "esp_websocket_client.h"
 #include "esp_crt_bundle.h"
 #include "esp_random.h"
 #include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
+#include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_netif_sntp.h"
 #include "esp_idf_version.h"
@@ -42,8 +44,10 @@ static atomic_bool connected,failed,online,quiescing,link_parked;
 static atomic_uint voice_request,link_fault,rx_frames,rx_binary,rx_max_us,control_max_us;
 static atomic_bool audio_settings_pending,head_calibration_pending,eye_settings_pending;
 static void fail(unsigned reason){unsigned zero=0;atomic_compare_exchange_strong(&link_fault,&zero,reason);atomic_store(&failed,true);}
-static atomic_uint pcm_sent,max_write_us,send_attempts,link_stack,link_attempts,link_state;
+static atomic_uint pcm_sent,compressed_sent,max_write_us,encode_max_us,send_attempts,audio_timeouts,link_stack,link_attempts,link_state;
 static int16_t *uplink_pcm;
+static uint8_t *uplink_adpcm;
+static uint32_t uplink_sequence;
 static SemaphoreHandle_t uplink_lock;
 static esp_websocket_client_handle_t uplink_client;
 static atomic_bool uplink_enabled,upload_parked;
@@ -113,12 +117,16 @@ static cJSON *battery_status(void){
  return status;
 }
 static bool send_battery_status(esp_websocket_client_handle_t client){cJSON *message=battery_status();if(!message)return false;cJSON_AddStringToObject(message,"type","battery_status");return send_json(client,message);}
+static bool send_link_diagnostics(esp_websocket_client_handle_t client){
+ wifi_ap_record_t ap;int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:-127;cJSON *message=cJSON_CreateObject();if(!message)return false;
+ cJSON_AddStringToObject(message,"type","link_diagnostics");cJSON_AddNumberToObject(message,"wifiRssi",rssi);cJSON_AddNumberToObject(message,"audioTimeouts",atomic_load(&audio_timeouts));cJSON_AddNumberToObject(message,"internalFreeBytes",heap_caps_get_free_size(MALLOC_CAP_INTERNAL));cJSON_AddNumberToObject(message,"internalLargestBlock",heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));cJSON_AddNumberToObject(message,"resetReason",esp_reset_reason());cJSON_AddNumberToObject(message,"lastLinkFault",atomic_load(&link_fault));return send_json(client,message);
+}
 static bool hello(esp_websocket_client_handle_t client){
  cJSON *message=cJSON_CreateObject();if(!message)return false;
  cJSON_AddStringToObject(message,"type","hello");cJSON *protocol=cJSON_AddObjectToObject(message,"protocol");cJSON_AddNumberToObject(protocol,"major",1);cJSON_AddNumberToObject(protocol,"minor",MARVIN_DEVICE_PROTOCOL_MINOR);
  cJSON_AddStringToObject(message,"deviceId",identity.device_id);cJSON_AddStringToObject(message,"bootId",boot_id);cJSON *caps=cJSON_AddArrayToObject(message,"capabilities");if(marvin_body_audio_available()){cJSON *settings=audio_settings();if(!settings){cJSON_Delete(message);return false;}cJSON_AddItemToArray(caps,cJSON_CreateString("voice"));cJSON_AddItemToObject(message,"audioSettings",settings);}cJSON_AddItemToArray(caps,cJSON_CreateString("head"));cJSON *calibration=head_calibration();if(!calibration){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"headCalibration",calibration);cJSON_AddItemToArray(caps,cJSON_CreateString("eyes"));cJSON *eyes=eye_settings();if(!eyes){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"eyeSettings",eyes);cJSON *battery=battery_status();if(!battery){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"batteryStatus",battery);
  cJSON_AddItemToArray(caps,cJSON_CreateString("tracks"));cJSON_AddItemToArray(caps,cJSON_CreateString("motion"));cJSON_AddItemToArray(caps,cJSON_CreateString("remote"));
- cJSON_AddNumberToObject(message,"audioInputRate",16000);
+ cJSON_AddNumberToObject(message,"audioInputRate",16000);cJSON_AddStringToObject(message,"audioCodec","ima-adpcm");
 #ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
  cJSON_AddStringToObject(message,"firmware","marvin-local-dev");
 #else
@@ -335,7 +343,7 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
    ok=cJSON_IsNumber(volume)&&isfinite(volume->valuedouble)&&volume->valuedouble==volume->valueint&&volume->valueint>=0&&volume->valueint<=100&&cJSON_IsBool(muted)&&cJSON_IsNumber(gain)&&isfinite(gain->valuedouble)&&gain->valuedouble==gain->valueint&&gain->valueint>=0&&gain->valueint<=36&&gain->valueint%6==0&&cJSON_IsBool(playback)&&cJSON_IsNumber(followup)&&isfinite(followup->valuedouble)&&followup->valuedouble==followup->valueint&&followup->valueint>=0&&followup->valueint<=30;
    if(ok){ok=marvin_body_set_volume((unsigned)volume->valueint)&&marvin_body_set_microphone_gain((unsigned)gain->valueint)&&marvin_body_set_microphone_muted(cJSON_IsTrue(muted))&&marvin_body_set_playback_mic(cJSON_IsTrue(playback))&&marvin_body_set_followup_seconds((unsigned)followup->valueint);if(ok){atomic_store(&audio_settings_pending,true);if(cJSON_IsTrue(muted))atomic_store(&voice_request,2);}}
   }
-  else if(!strcmp(type->valuestring,"voice_turn_end")){const cJSON *value=cJSON_GetObjectItemCaseSensitive(m,"interactionId");uint8_t id[16];ok=voice_active&&cJSON_IsString(value)&&uuid(value->valuestring,id);if(ok)snprintf(playback_done_id,sizeof(playback_done_id),"%s",value->valuestring);}
+  else if(!strcmp(type->valuestring,"voice_turn_end")){const cJSON *value=cJSON_GetObjectItemCaseSensitive(m,"interactionId");uint8_t id[16];ok=voice_active&&cJSON_IsString(value)&&uuid(value->valuestring,id)&&marvin_body_audio_turn_end(id);if(ok)snprintf(playback_done_id,sizeof(playback_done_id),"%s",value->valuestring);}
   else if(!strcmp(type->valuestring,"voice_closed")||!strcmp(type->valuestring,"voice_error")){voice_stop_local();head_signal(0);printf("{\"voice\":\"closed\"}\n");ok=true;}
  }
  cJSON_Delete(m);return ok;
@@ -347,22 +355,20 @@ static void upload(void *unused){
  for(;;){
   if(atomic_load(&quiescing)){atomic_store(&upload_parked,true);vTaskDelay(pdMS_TO_TICKS(100));continue;}
   atomic_store(&upload_stack,uxTaskGetStackHighWaterMark(NULL));
-  if(atomic_load(&uplink_enabled)&&!atomic_load(&failed)&&marvin_body_input_waiting()>=8){
+  if(atomic_load(&uplink_enabled)&&!atomic_load(&failed)&&marvin_body_input_waiting()>=3){
    xSemaphoreTake(uplink_lock,portMAX_DELAY);
    if(uplink_client&&atomic_load(&uplink_enabled)&&!atomic_load(&failed)){
-    /* Production TLS termination can occasionally hold an otherwise healthy
-     * audio write for slightly more than 500 ms.  RX/control processing runs
-     * in the WebSocket event task, while the bounded 5.12 s capture queue
-     * cushions this uploader.  Keep a finite two-second deadline; this is not
-     * a retry or an unbounded spool. */
-    size_t n=0;for(int part=0;part<6;part++){size_t count=marvin_body_take_input(uplink_pcm+n,960-n);if(!count)break;n+=count;}
+    /* Thirty-millisecond independent ADPCM frames are about one quarter of
+     * raw PCM. They bound Wi-Fi/TLS write time and make a dropped frame local. */
+    size_t n=0;for(int part=0;part<3;part++){size_t count=marvin_body_take_input(uplink_pcm+n,480-n);if(!count)break;n+=count;}
     if(n&&atomic_load(&uplink_enabled)){
+     int64_t encoded_at=esp_timer_get_time();size_t encoded=marvin_adpcm_encode(uplink_sequence++,uplink_pcm,n,uplink_adpcm,MARVIN_ADPCM_HEADER_BYTES+(MARVIN_ADPCM_MAX_SAMPLES/2));unsigned encode_elapsed=esp_timer_get_time()-encoded_at;if(encode_elapsed>atomic_load(&encode_max_us))atomic_store(&encode_max_us,encode_elapsed);
      int64_t began=esp_timer_get_time();atomic_fetch_add(&send_attempts,1);
-     int bytes=esp_websocket_client_send_bin(uplink_client,(const char*)uplink_pcm,(int)(n*2),pdMS_TO_TICKS(2000));
+     int bytes=encoded?esp_websocket_client_send_bin(uplink_client,(const char*)uplink_adpcm,(int)encoded,pdMS_TO_TICKS(4500)):-1;
      unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&max_write_us))atomic_store(&max_write_us,elapsed);
-     if(bytes!=(int)(n*2))fail(6);else atomic_fetch_add(&pcm_sent,n);
+     if(bytes!=(int)encoded){atomic_fetch_add(&audio_timeouts,1);printf("{\"audioWriteTimeout\":%u,\"elapsedUs\":%u}\n",atomic_load(&audio_timeouts),elapsed);}else{atomic_fetch_add(&pcm_sent,n);atomic_fetch_add(&compressed_sent,encoded);}
     }
-    memset(uplink_pcm,0,1920*sizeof(int16_t));
+    memset(uplink_pcm,0,480*sizeof(int16_t));
    }
    xSemaphoreGive(uplink_lock);
   }
@@ -382,13 +388,13 @@ static void run(void *unused){
   snprintf(uri,sizeof(uri),"wss://%.192s/api/device/socket",identity.origin+8);snprintf(headers,sizeof(headers),"Authorization: Bearer %.95s\r\n",identity.credential);
   atomic_fetch_add(&link_attempts,1);atomic_store(&link_state,5);
   atomic_store(&connected,false);atomic_store(&failed,false);atomic_store(&link_fault,0);atomic_store(&online,false);xQueueReset(incoming);marvin_wire_reset(&wire);wire.allow_audio=marvin_body_audio_available();voice_stop_local();atomic_store(&voice_request,0);atomic_store(&audio_settings_pending,false);atomic_store(&head_calibration_pending,false);atomic_store(&eye_settings_pending,false);
-  esp_websocket_client_config_t config={.uri=uri,.headers=headers,.cert_pem=trusted_ca&&trusted_ca[0]?trusted_ca:NULL,.crt_bundle_attach=trusted_ca&&trusted_ca[0]?NULL:esp_crt_bundle_attach,.disable_auto_reconnect=true,.network_timeout_ms=5000,.task_stack=6144,.task_core_id=1,.buffer_size=4096,.tcp_nodelay=marvin_body_audio_available(),.ping_interval_sec=5,.pingpong_timeout_sec=10};
+  esp_websocket_client_config_t config={.uri=uri,.headers=headers,.cert_pem=trusted_ca&&trusted_ca[0]?trusted_ca:NULL,.crt_bundle_attach=trusted_ca&&trusted_ca[0]?NULL:esp_crt_bundle_attach,.disable_auto_reconnect=true,.network_timeout_ms=5000,.task_stack=6144,.task_core_id=1,.buffer_size=4096,.tcp_nodelay=marvin_body_audio_available(),.ping_interval_sec=5,.pingpong_timeout_sec=45};
   esp_websocket_client_handle_t client=esp_websocket_client_init(&config);mbedtls_platform_zeroize(headers,sizeof(headers));
   if(client){
    xSemaphoreTake(uplink_lock,portMAX_DELAY);uplink_client=client;xSemaphoreGive(uplink_lock);
    bool started=esp_websocket_register_events(client,WEBSOCKET_EVENT_ANY,event,NULL)==ESP_OK&&esp_websocket_client_start(client)==ESP_OK;
    if(!started){atomic_store(&link_state,6);atomic_store(&failed,true);}
-   bool sent=false;uint32_t sequence=0;int64_t began=esp_timer_get_time(),last_received=began,last_sent=began,last_battery=began;
+   bool sent=false;uint32_t sequence=0;int64_t began=esp_timer_get_time(),last_received=began,last_sent=began,last_battery=began,last_diagnostics=0;
    while(!atomic_load(&failed)&&!atomic_load(&quiescing)){
     int64_t now=esp_timer_get_time();
     if(!read_identity(&current)||current.epoch!=identity.epoch||strcmp(current.credential,identity.credential)||milliseconds()>=identity.expires_ms){atomic_store(&failed,true);}
@@ -396,9 +402,10 @@ static void run(void *unused){
     if(atomic_load(&connected)&&!sent){sent=hello(client);if(!sent)atomic_store(&failed,true);}
     for(unsigned received=0;received<2&&xQueueReceive(incoming,&frame,0)==pdTRUE;received++){int64_t began=esp_timer_get_time();if(!receive(client,atomic_load(&online)))fail(frame.binary?5:4);else last_received=now;unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&rx_max_us))atomic_store(&rx_max_us,elapsed);}
     if(atomic_load(&online)&&!motion_tick(client))atomic_store(&failed,true);
-    if((!atomic_load(&online)&&now-began>10000000)||(atomic_load(&online)&&now-last_received>15000000))atomic_store(&failed,true);
+    if((!atomic_load(&online)&&now-began>10000000)||(atomic_load(&online)&&now-last_received>45000000))atomic_store(&failed,true);
     if(atomic_load(&online)&&now-last_sent>=5000000){cJSON *m=cJSON_CreateObject();cJSON_AddStringToObject(m,"type","heartbeat");cJSON_AddNumberToObject(m,"seq",sequence++);if(!send_json(client,m))atomic_store(&failed,true);last_sent=now;}
     if(atomic_load(&online)&&now-last_battery>=30000000){if(!send_battery_status(client))atomic_store(&failed,true);last_battery=now;}
+    if(atomic_load(&online)&&(!last_diagnostics||now-last_diagnostics>=30000000)){if(!send_link_diagnostics(client))atomic_store(&failed,true);last_diagnostics=now;}
     if(atomic_load(&online)&&atomic_exchange(&audio_settings_pending,false)&&!send_audio_settings(client))atomic_store(&failed,true);
     if(atomic_load(&online)&&atomic_exchange(&head_calibration_pending,false)&&!send_head_calibration(client))atomic_store(&failed,true);
     if(atomic_load(&online)&&atomic_exchange(&eye_settings_pending,false)&&!send_eye_settings(client))atomic_store(&failed,true);
@@ -413,7 +420,7 @@ static void run(void *unused){
 
     }
     atomic_store(&link_stack,uxTaskGetStackHighWaterMark(NULL));
-    if(atomic_load(&online)&&now-began>60000000)retry=0;
+    if(atomic_load(&online))retry=0;
     vTaskDelay(pdMS_TO_TICKS(20));
    }
    printf("{\"linkFault\":%u,\"rxFrames\":%u,\"rxBinary\":%u,\"rxMaxUs\":%u,\"controlMaxUs\":%u}\n",atomic_load(&link_fault),atomic_load(&rx_frames),atomic_load(&rx_binary),atomic_load(&rx_max_us),atomic_load(&control_max_us));marvin_motion_connection(false);marvin_tracks_stop();if(active_motion_id[0]){motion_record(active_motion_id,3);active_motion_id[0]=0;}voice_stop_local();head_signal(0);atomic_store(&online,false);xSemaphoreTake(uplink_lock,portMAX_DELAY);uplink_client=NULL;xSemaphoreGive(uplink_lock);if(started)esp_websocket_client_stop(client);esp_websocket_client_destroy(client);
@@ -444,8 +451,9 @@ esp_err_t marvin_device_link_start(marvin_link_snapshot_t snapshot,const char *c
  else incoming=xQueueCreate(RECEIVE_FRAMES,sizeof(marvin_frame_t));
  if(!incoming)return ESP_ERR_NO_MEM;
  if(marvin_body_audio_available()){
-  uplink_pcm=heap_caps_calloc(1920,sizeof(int16_t),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
-  if(!uplink_pcm)return ESP_ERR_NO_MEM;
+  uplink_pcm=heap_caps_calloc(480,sizeof(int16_t),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+  uplink_adpcm=heap_caps_calloc(MARVIN_ADPCM_HEADER_BYTES+(MARVIN_ADPCM_MAX_SAMPLES/2),1,MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT);
+  if(!uplink_pcm||!uplink_adpcm)return ESP_ERR_NO_MEM;
  }
  /* Third-party debug logs can contain HTTP headers; never enable them here. */
  esp_log_level_set("websocket_client",ESP_LOG_WARN);esp_log_level_set("transport_ws",ESP_LOG_WARN);
@@ -458,16 +466,17 @@ esp_err_t marvin_device_link_start(marvin_link_snapshot_t snapshot,const char *c
 bool marvin_device_link_online(void){return atomic_load(&online);}
 
 void marvin_device_voice_start(void){if(atomic_load(&online)&&marvin_body_audio_available()&&!marvin_body_microphone_muted())atomic_store(&voice_request,1);}
-void marvin_device_voice_wake(void){
+bool marvin_device_voice_wake(void){
  if(atomic_load(&online)&&marvin_body_audio_available()&&!marvin_body_microphone_muted()){
-  atomic_store(&voice_request,4);
+  atomic_store(&voice_request,4);return true;
  }
+ return false;
 }
 void marvin_device_voice_stop(void){marvin_body_capture(false);marvin_body_audio_flush();atomic_store(&voice_request,2);}
 void marvin_device_voice_interrupt(void){marvin_body_audio_flush();atomic_store(&voice_request,3);}
 void marvin_device_voice_interrupt_wake(void){marvin_body_audio_flush();atomic_store(&voice_request,4);}
 void marvin_device_audio_changed(void){atomic_store(&audio_settings_pending,true);if(marvin_body_microphone_muted())marvin_device_voice_stop();}
-void marvin_device_link_status(void){printf("{\"uploadStackFree\":%u}\n",atomic_load(&upload_stack));printf("{\"uplink\":{\"online\":%s,\"pcmSamples16k\":%u,\"attempts\":%u,\"maxWriteUs\":%u,\"stackFree\":%u,\"connectionAttempts\":%u,\"state\":%u}}\n",atomic_load(&online)?"true":"false",atomic_load(&pcm_sent),atomic_load(&send_attempts),atomic_load(&max_write_us),atomic_load(&link_stack),atomic_load(&link_attempts),atomic_load(&link_state));}
+void marvin_device_link_status(void){wifi_ap_record_t ap;int rssi=esp_wifi_sta_get_ap_info(&ap)==ESP_OK?ap.rssi:0;printf("{\"uploadStackFree\":%u}\n",atomic_load(&upload_stack));printf("{\"uplink\":{\"online\":%s,\"codec\":\"ima-adpcm\",\"wifiRssi\":%d,\"pcmSamples16k\":%u,\"compressedBytes\":%u,\"attempts\":%u,\"audioTimeouts\":%u,\"encodeMaxUs\":%u,\"maxWriteUs\":%u,\"stackFree\":%u,\"connectionAttempts\":%u,\"state\":%u,\"lastLinkFault\":%u,\"internalFreeBytes\":%u,\"internalLargestBlock\":%u}}\n",atomic_load(&online)?"true":"false",rssi,atomic_load(&pcm_sent),atomic_load(&compressed_sent),atomic_load(&send_attempts),atomic_load(&audio_timeouts),atomic_load(&encode_max_us),atomic_load(&max_write_us),atomic_load(&link_stack),atomic_load(&link_attempts),atomic_load(&link_state),atomic_load(&link_fault),(unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),(unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));}
 
 bool marvin_device_link_quiesce(void){
  if(!incoming)return true;

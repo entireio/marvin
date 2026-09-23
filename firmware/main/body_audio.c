@@ -4,6 +4,7 @@
 #include "board_audio.h"
 #include "audio_rate.h"
 #include "audio_preroll.h"
+#include "audio_playback_policy.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -35,8 +36,8 @@ static int16_t *ring;
 static size_t head,used;
 static uint8_t turn[16];
 static bool has_turn,available;
-static atomic_bool capture_active,playing,quiescing;
-static atomic_bool ready_cue_pending,ready_cue_playing;
+static atomic_bool capture_active,playing,quiescing,turn_active,turn_ended,prewarm_requested;
+static atomic_bool ready_cue_pending,unpaired_cue_pending,reconnecting_cue_pending,ready_cue_playing;
 static atomic_bool microphone_muted;
 static atomic_bool playback_mic_enabled;
 static atomic_uint followup_seconds=5;
@@ -109,7 +110,7 @@ static void capture_task(void *unused){
   if(result.wake&&now-last_wake>2000000){last_wake=now;
 #ifndef CONFIG_MARVIN_SILENT_TEST
    if(atomic_load(&capture_active)&&atomic_load(&playing)){atomic_fetch_add(&local_interrupts,1);marvin_device_voice_interrupt_wake();}
-   else if(!atomic_load(&capture_active)&&!atomic_load(&playing)&&now>=wake_resume_at&&!atomic_load(&microphone_muted)){atomic_fetch_add(&local_wakes,1);if(atomic_load(&wake_activation_enabled)){marvin_motion_wake();marvin_device_voice_wake();}}
+   else if(!atomic_load(&capture_active)&&!atomic_load(&playing)&&now>=wake_resume_at&&!atomic_load(&microphone_muted)){atomic_fetch_add(&local_wakes,1);if(atomic_load(&wake_activation_enabled)){marvin_motion_wake();if(!marvin_device_voice_wake())marvin_body_audio_reconnecting_cue();}}
 #endif
   }
   if(!atomic_load(&capture_active)){partial_count=0;marvin_preroll_push(preroll,result.pcm,result.frames);continue;}
@@ -155,7 +156,7 @@ static unsigned speech_level(const int16_t *samples,size_t count){
  return level>1000?1000:level;
 }
 static void playback_task(void *unused){
- (void)unused;int16_t source[240],samples[160],silence[160]={0};int64_t last_write=0;
+ (void)unused;int16_t source[240],samples[160],silence[160]={0};int64_t last_write=0,amplifier_ready_at=0;
  /* Two short rising notes, each faded in and out to avoid clicks. */
  static const int16_t low[20]={0,2472,4702,6472,7608,8000,7608,6472,4702,2472,0,-2472,-4702,-6472,-7608,-8000,-7608,-6472,-4702,-2472};
  static const int16_t high[16]={0,3061,5657,7391,8000,7391,5657,3061,0,-3061,-5657,-7391,-8000,-7391,-5657,-3061};
@@ -164,17 +165,40 @@ static void playback_task(void *unused){
   if(atomic_load(&flush_requests)){vTaskDelay(1);continue;}
   atomic_store(&playback_stack,uxTaskGetStackHighWaterMark(NULL));
   xSemaphoreTake(output_lock,portMAX_DELAY);
+  if(atomic_exchange(&prewarm_requested,false)){
+   /* voice_turn arrives before provider generation. Start the analog path now
+    * and let model latency overlap the NS4150B's startup interval. */
+   last_write=0;
+   atomic_store(&playing,true);
+   if(marvin_audio_mute(false)!=ESP_OK)atomic_store(&fault,3);
+   amplifier_ready_at=esp_timer_get_time()+MARVIN_AMPLIFIER_STARTUP_US;
+   /* Prime the TX path, but use the monotonic deadline above—not DMA queue
+    * depth—as the proof that the physical amplifier is ready. */
+   for(unsigned lead=0;lead<4;lead++){
+    if(marvin_audio_write(silence,160)!=ESP_OK){atomic_store(&fault,4);break;}
+    atomic_fetch_add(&playback_leadin_samples,160);
+   }
+  }
+  int64_t now=esp_timer_get_time();
+  bool response_ready=!atomic_load(&turn_active)||marvin_amplifier_ready(now,amplifier_ready_at);
   xSemaphoreTake(lock,portMAX_DELAY);
-  size_t n=used<240?used:240;
+  size_t n=response_ready?(used<240?used:240):0;
   for(size_t i=0;i<n;i++)source[i]=ring[(head+i)%OUTPUT_SAMPLES];
   head=(head+n)%OUTPUT_SAMPLES;used-=n;
   xSemaphoreGive(lock);
-  if(!n&&!atomic_load(&playing)&&atomic_exchange(&ready_cue_pending,false)){
+  bool reconnecting_cue=!n&&!atomic_load(&playing)&&atomic_exchange(&reconnecting_cue_pending,false);
+  bool unpaired_cue=!reconnecting_cue&&!n&&!atomic_load(&playing)&&atomic_exchange(&unpaired_cue_pending,false);
+  if(!n&&!atomic_load(&playing)&&(reconnecting_cue||unpaired_cue||atomic_exchange(&ready_cue_pending,false))){
    atomic_store(&ready_cue_playing,true);atomic_store(&playing,true);
    bool ok=marvin_audio_mute(false)==ESP_OK;
-   for(unsigned lead=0;ok&&lead<5;lead++)ok=marvin_audio_write(silence,160)==ESP_OK;
-   for(unsigned note=0;ok&&note<2;note++){
-    const int16_t *wave=note?high:low;unsigned period=note?16:20;
+   /* Local cues do not have a preceding voice_turn, so supply the complete
+    * conservative NS4150B startup interval here. */
+   for(unsigned lead=0;ok&&lead<15;lead++)ok=marvin_audio_write(silence,160)==ESP_OK;
+   for(unsigned note=0;ok&&note<(reconnecting_cue?3u:2u);note++){
+    /* Ready rises; unpairing falls so the two local acknowledgements remain
+     * distinguishable without an application or network connection. */
+    const bool use_high=reconnecting_cue?note==1:unpaired_cue?note==0:note!=0;
+    const int16_t *wave=use_high?high:low;unsigned period=use_high?16:20;
     for(unsigned chunk=0;ok&&chunk<8;chunk++){
      for(unsigned i=0;i<160;i++){
       unsigned index=chunk*160+i;
@@ -185,7 +209,7 @@ static void playback_task(void *unused){
      }
      ok=marvin_audio_write(samples,160)==ESP_OK;
     }
-    if(note==0)for(unsigned gap=0;ok&&gap<2;gap++)ok=marvin_audio_write(silence,160)==ESP_OK;
+    if(note<(reconnecting_cue?2u:1u))for(unsigned gap=0;ok&&gap<2;gap++)ok=marvin_audio_write(silence,160)==ESP_OK;
    }
    /* I2S write queues DMA. Clock out its four 10 ms buffers before muting. */
    for(unsigned tail=0;ok&&tail<6;tail++)ok=marvin_audio_write(silence,160)==ESP_OK;
@@ -196,23 +220,14 @@ static void playback_task(void *unused){
    int64_t began=esp_timer_get_time();size_t frames=marvin_rate_convert(&output_rate,source,n,samples,160);
    unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&convert_max_us))atomic_store(&convert_max_us,elapsed);
    if(frames){
-    if(!atomic_load(&playing)){
-     /* The ES8311 and external amplifier need a short quiet settling period.
-      * Clock silence through the complete analog path before consuming the
-      * first response sample, otherwise the first phoneme is clipped. */
-     atomic_store(&playing,true);
-     if(marvin_audio_mute(false)!=ESP_OK)atomic_store(&fault,3);
-     for(unsigned lead=0;lead<5;lead++){
-      if(marvin_audio_write(silence,160)!=ESP_OK){atomic_store(&fault,4);break;}
-      atomic_fetch_add(&playback_leadin_samples,160);
-     }
-    }
     marvin_motion_voice_level(speech_level(samples,frames));
     began=esp_timer_get_time();if(marvin_audio_write(samples,frames)!=ESP_OK)atomic_store(&fault,4);
     else {atomic_fetch_add(&played_samples,frames);last_write=esp_timer_get_time();}
     elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&write_max_us))atomic_store(&write_max_us,elapsed);
    }
-  }else if(atomic_load(&playing)&&esp_timer_get_time()-last_write>=60000){marvin_audio_mute(true);atomic_store(&playing,false);marvin_motion_voice_level(0);}
+  }else if(atomic_load(&turn_active)&&atomic_load(&playing)&&marvin_playback_should_power_down(atomic_load(&turn_ended),true,now,last_write,amplifier_ready_at)){
+   marvin_audio_mute(true);atomic_store(&playing,false);atomic_store(&turn_active,false);marvin_motion_voice_level(0);
+  }
   xSemaphoreGive(output_lock);
   memset(source,0,sizeof(source));memset(samples,0,sizeof(samples));
   /* DMA supplies the playback clock. A10ms task delay would insert gaps. */
@@ -270,13 +285,23 @@ void marvin_body_audio_flush(void){
  int64_t began=esp_timer_get_time();atomic_fetch_add(&flush_requests,1);
  /* Same order as playback; receive enqueue never takes the hardware lock. */
  xSemaphoreTake(output_lock,portMAX_DELAY);xSemaphoreTake(lock,portMAX_DELAY);
- used=head=0;has_turn=false;memset(turn,0,sizeof(turn));atomic_store(&ready_cue_pending,false);xSemaphoreGive(lock);
+ used=head=0;has_turn=false;memset(turn,0,sizeof(turn));atomic_store(&turn_active,false);atomic_store(&turn_ended,false);atomic_store(&prewarm_requested,false);atomic_store(&ready_cue_pending,false);atomic_store(&unpaired_cue_pending,false);atomic_store(&reconnecting_cue_pending,false);xSemaphoreGive(lock);
  marvin_rate_init(&output_rate,false);marvin_audio_mute(true);atomic_store(&playing,false);
  marvin_motion_voice_level(0);
  xSemaphoreGive(output_lock);atomic_fetch_sub(&flush_requests,1);
  unsigned elapsed=esp_timer_get_time()-began;if(elapsed>atomic_load(&flush_max_us))atomic_store(&flush_max_us,elapsed);
 }
-void marvin_body_audio_turn(const uint8_t id[16]){marvin_body_audio_flush();xSemaphoreTake(lock,portMAX_DELAY);memcpy(turn,id,16);has_turn=true;xSemaphoreGive(lock);}
+void marvin_body_audio_turn(const uint8_t id[16]){
+ marvin_body_audio_flush();xSemaphoreTake(lock,portMAX_DELAY);memcpy(turn,id,16);has_turn=true;atomic_store(&turn_ended,false);atomic_store(&turn_active,true);atomic_store(&prewarm_requested,true);xSemaphoreGive(lock);
+}
+bool marvin_body_audio_turn_end(const uint8_t id[16]){
+ if(!lock||!id)return false;
+ xSemaphoreTake(lock,portMAX_DELAY);
+ bool current=has_turn&&!memcmp(turn,id,16);
+ if(current)atomic_store(&turn_ended,true);
+ xSemaphoreGive(lock);
+ return current;
+}
 bool marvin_body_audio_append(const uint8_t *frame,size_t length){
  if(!lock||!frame||length<22||length>3860||(length-20)%2||memcmp(frame,"MVA1",4))return false;
  int64_t began=esp_timer_get_time();size_t count=(length-20)/2;
@@ -296,6 +321,27 @@ bool marvin_body_audio_ready_cue(void){
 #else
  if(!marvin_body_audio_available()||!output_lock||marvin_audio_volume()==0||atomic_load(&microphone_muted))return false;
  atomic_store(&ready_cue_pending,true);return true;
+#endif
+}
+bool marvin_body_audio_unpaired_cue(void){
+#ifdef CONFIG_MARVIN_SILENT_TEST
+ return false;
+#else
+ /* The request may arrive during the small startup interval before audio is
+  * marked available. Atomics are initialized statically, and the playback
+  * task will consume it once started. Speaker volume zero remains an
+  * intentional user choice. */
+ if(marvin_audio_volume()==0)return false;
+ atomic_store(&unpaired_cue_pending,true);return true;
+#endif
+}
+
+bool marvin_body_audio_reconnecting_cue(void){
+#ifdef CONFIG_MARVIN_SILENT_TEST
+ return false;
+#else
+ if(!marvin_body_audio_available()||!output_lock||marvin_audio_volume()==0||atomic_load(&microphone_muted))return false;
+ atomic_store(&reconnecting_cue_pending,true);return true;
 #endif
 }
 

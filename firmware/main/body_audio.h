@@ -9,6 +9,7 @@ void marvin_body_capture(bool active);
 size_t marvin_body_take_input(int16_t *pcm,size_t capacity);
 size_t marvin_body_input_waiting(void);
 void marvin_body_audio_turn(const uint8_t id[16]);
+bool marvin_body_audio_turn_end(const uint8_t id[16]);
 bool marvin_body_audio_append(const uint8_t *frame,size_t length);
 void marvin_body_audio_flush(void);
 unsigned marvin_body_audio_fault(void);
@@ -16,6 +17,10 @@ bool marvin_body_audio_playing(void);
 bool marvin_body_audio_drained(void);
 /* Queue one short local cue after the authenticated backend welcome. */
 bool marvin_body_audio_ready_cue(void);
+/* A short local acknowledgement for a successfully forgotten BLE remote. */
+bool marvin_body_audio_unpaired_cue(void);
+/* Three-note local acknowledgement when wake cannot reach the cloud. */
+bool marvin_body_audio_reconnecting_cue(void);
 
 void marvin_body_audio_status(void);
 
