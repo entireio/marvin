@@ -15,6 +15,7 @@ WORKDIR /app
 COPY --from=build --chown=node:node /app/package.json /app/package-lock.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node deploy/cloud/firmware-rollout ./firmware-rollout
 RUN mkdir /data && chown node:node /data
 USER node
 EXPOSE 4310

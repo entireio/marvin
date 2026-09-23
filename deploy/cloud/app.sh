@@ -18,7 +18,9 @@ RUNTIME_EMAIL="${RUNTIME_SERVICE_ACCOUNT}@${PROJECT_ID}.iam.gserviceaccount.com"
 IMAGE_TAG="${IMAGE_TAG:-$(date -u +%Y%m%d-%H%M%S)}"
 IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPOSITORY}/app:${IMAGE_TAG}"
 
-gcloud services enable run.googleapis.com sqladmin.googleapis.com sql-component.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com --project "$PROJECT_ID"
+if [[ "${SKIP_CLOUD_SERVICE_ENABLE:-false}" != "true" ]]; then
+  gcloud services enable run.googleapis.com sqladmin.googleapis.com sql-component.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com --project "$PROJECT_ID"
+fi
 
 if ! gcloud artifacts repositories describe "$ARTIFACT_REPOSITORY" --location "$REGION" --project "$PROJECT_ID" >/dev/null 2>&1; then
   gcloud artifacts repositories create "$ARTIFACT_REPOSITORY" --repository-format docker --location "$REGION" --project "$PROJECT_ID"
@@ -80,8 +82,17 @@ APP_ORIGIN="${APP_ORIGIN:-${EXISTING_APP_ORIGIN:-https://${SERVICE}-r7vxrettpq-u
 PUBLIC_DOCS_URL="${PUBLIC_DOCS_URL:-$(gcloud run services describe "$DOCS_SERVICE" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)' 2>/dev/null || true)}"
 if [[ -z "$PUBLIC_DOCS_URL" ]]; then echo "Deploy the docs service first or set PUBLIC_DOCS_URL." >&2; exit 1; fi
 
+APP_ENV="^@^NODE_ENV=production@DEPLOYMENT_MODE=cloud@AUTH_MODE=github@GITHUB_ALLOWED_USERS=spedemon,ashtom@APP_ORIGIN=${APP_ORIGIN}@PUBLIC_DOCS_URL=${PUBLIC_DOCS_URL}@MODEL_PROVIDER=openai@OPENAI_MODEL=gpt-5.4-mini-2026-03-17@VOICE_PROVIDER=openai@OPENAI_REALTIME_MODEL=gpt-realtime-2.1@OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe@OPENAI_VOICE=cedar@VOICE_EFFECT=subtle-robotic@HARDWARE_PROVISIONING_ENABLED=true@ENTIRE_CONNECTOR_ENABLED=true@ENROLLMENT_KEYS_FILE=/secrets/enrollment.json@DEVICE_PUBLIC_ORIGIN=${APP_ORIGIN}@TRUST_PROXY_HOPS=0"
+ROLLOUT_DIRECTORY="deploy/cloud/firmware-rollout"
+if [[ -f "$ROLLOUT_DIRECTORY/rollout.json" ]]; then
+  for file in public.pem manifest.bin image.bin; do
+    [[ -f "$ROLLOUT_DIRECTORY/$file" ]] || { echo "Incomplete staged firmware rollout: missing $file." >&2; exit 1; }
+  done
+  APP_ENV="${APP_ENV}@FIRMWARE_ROLLOUT_FILE=/app/firmware-rollout/rollout.json"
+fi
+
 gcloud builds submit --tag "$IMAGE" --project "$PROJECT_ID" .
-gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --project "$PROJECT_ID" --platform managed --service-account "$RUNTIME_EMAIL" --allow-unauthenticated --ingress all --port 8080 --cpu 2 --memory 2Gi --concurrency 80 --min-instances 1 --max-instances 1 --session-affinity --timeout 3600 --add-cloudsql-instances "$CONNECTION_NAME" --set-env-vars "^@^NODE_ENV=production@DEPLOYMENT_MODE=cloud@AUTH_MODE=github@GITHUB_ALLOWED_USERS=spedemon,ashtom@APP_ORIGIN=${APP_ORIGIN}@PUBLIC_DOCS_URL=${PUBLIC_DOCS_URL}@MODEL_PROVIDER=openai@OPENAI_MODEL=gpt-5.4-mini-2026-03-17@VOICE_PROVIDER=openai@OPENAI_REALTIME_MODEL=gpt-realtime-2.1@OPENAI_TRANSCRIPTION_MODEL=gpt-4o-mini-transcribe@OPENAI_VOICE=cedar@VOICE_EFFECT=subtle-robotic@HARDWARE_PROVISIONING_ENABLED=true@ENROLLMENT_KEYS_FILE=/secrets/enrollment.json@DEVICE_PUBLIC_ORIGIN=${APP_ORIGIN}@TRUST_PROXY_HOPS=0" --set-secrets "GITHUB_CLIENT_ID=marvin-github-client-id:latest,GITHUB_CLIENT_SECRET=marvin-github-client-secret:latest,OPENAI_API_KEY=marvin-openai-api-key:latest,DATABASE_URL=marvin-database-url:latest,/secrets/enrollment.json=marvin-enrollment-keys:latest" --startup-probe "httpGet.path=/api/health,initialDelaySeconds=0,timeoutSeconds=5,periodSeconds=5,failureThreshold=24" --liveness-probe "httpGet.path=/api/health,initialDelaySeconds=5,timeoutSeconds=5,periodSeconds=30,failureThreshold=3"
+gcloud run deploy "$SERVICE" --image "$IMAGE" --region "$REGION" --project "$PROJECT_ID" --platform managed --service-account "$RUNTIME_EMAIL" --allow-unauthenticated --ingress all --port 8080 --cpu 2 --memory 2Gi --concurrency 80 --min-instances 1 --max-instances 1 --session-affinity --timeout 3600 --add-cloudsql-instances "$CONNECTION_NAME" --set-env-vars "$APP_ENV" --set-secrets "GITHUB_CLIENT_ID=marvin-github-client-id:latest,GITHUB_CLIENT_SECRET=marvin-github-client-secret:latest,OPENAI_API_KEY=marvin-openai-api-key:latest,DATABASE_URL=marvin-database-url:latest,/secrets/enrollment.json=marvin-enrollment-keys:latest" --startup-probe "httpGet.path=/api/health,initialDelaySeconds=0,timeoutSeconds=5,periodSeconds=5,failureThreshold=24" --liveness-probe "httpGet.path=/api/health,initialDelaySeconds=5,timeoutSeconds=5,periodSeconds=30,failureThreshold=3"
 
 DEPLOYED_URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --project "$PROJECT_ID" --format='value(status.url)')"
 if [[ "$DEPLOYED_URL" != "$APP_ORIGIN" ]]; then echo "APP_ORIGIN does not match the deployed service URL: $DEPLOYED_URL" >&2; exit 1; fi

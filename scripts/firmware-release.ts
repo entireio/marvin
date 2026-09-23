@@ -14,7 +14,7 @@ const payload=Buffer.alloc(112);payload.write('MRVOTA01');payload.writeUInt32BE(
 const digest=createHash('sha256').update(binary).digest();digest.copy(payload,16);payload.write('waveshare-esp32s3-audio',48);payload.write(options.layout,80);payload.writeUInt32BE(options['minimum-sequence'],96);
 const signature=sign('sha256',payload,{key,dsaEncoding:'ieee-p1363'});
 if(signature.length!==64)throw new Error('Unexpected release signature format.');
-const directory=resolve(options.out);mkdirSync(directory,{mode:0o700});
+const directory=resolve(options.out);mkdirSync(directory,{mode:0o700,recursive:true});
 writeFileSync(directory+'/image.bin',binary,{mode:0o600,flag:'wx'});
 writeFileSync(directory+'/manifest.bin',Buffer.concat([payload,signature]),{mode:0o600,flag:'wx'});
 writeFileSync(directory+'/release.json',JSON.stringify({format:1,board:'waveshare-esp32s3-audio',layout:options.layout,sequence:options.sequence,minimumSequence:options['minimum-sequence'],imageBytes:binary.length,sha256:digest.toString('hex')},null,2)+'\n',{mode:0o600,flag:'wx'});

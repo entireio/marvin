@@ -1,0 +1,8 @@
+.gcloudignore
+.git
+#!include:.gitignore
+
+# Operator-staged signed rollout bytes must reach Cloud Build even though they
+# remain excluded from source control.
+!deploy/cloud/firmware-rollout/
+!deploy/cloud/firmware-rollout/**

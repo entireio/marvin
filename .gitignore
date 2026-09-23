@@ -1,6 +1,7 @@
 node_modules/
 dist/
 coverage/
+.build/
 .env
 .env.*
 !.env.example
@@ -38,6 +39,11 @@ firmware/managed_components/
 # Legacy local deployment state retained only in older history.
 .marvin-local-secret
 deploy_google_cloud.env
+
+# Operator-staged public firmware rollout bytes. Signed bundles are release
+# artifacts, not source; the README documents the staging contract.
+/deploy/cloud/firmware-rollout/*
+!/deploy/cloud/firmware-rollout/README.md
 
 # Editor and operating-system files.
 Thumbs.db

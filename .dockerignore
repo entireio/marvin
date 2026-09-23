@@ -13,3 +13,7 @@ tests/acceptance
 *.bin
 *.pem
 *.key
+
+# A deliberately staged signed rollout is copied into the runtime image.
+!deploy/cloud/firmware-rollout/
+!deploy/cloud/firmware-rollout/**
