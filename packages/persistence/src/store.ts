@@ -2,7 +2,10 @@ import { randomUUID, createHash, randomBytes } from 'node:crypto';
 import { DomainError, type Conversation, type Turn, type InteractionContext, type AgentEvent, type RepoCard } from '../../contracts/src/index.js';
 import type { Database, Sql } from './database.js';
 export const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+export const SESSION_LIFETIME_MS=8*60*60*1000;
+export const SESSION_RENEWAL_WINDOW_MS=60*60*1000;
 export type Owner = { id: string; name: string; entireState: InteractionContext['entireState']; activeConversation: string | null; petConversation: string | null };
+export type EntireConnection={ownerId:string;authKind:'hosted_cli'|'connector';status:'pending'|'connected'|'reauth_required'|'revoked'|'error';secretRef:string|null;cliVersion:string|null;connectedAt:number|null;lastVerifiedAt:number|null;updatedAt:number;version:number};
 type Row = Record<string, any>;
 const conversation = (r: Row): Conversation => ({ id:r.id,title:r.title,repositoryId:r.repository_id,updatedAt:Number(r.updated_at),summary:r.summary,summaryThrough:r.summary_through });
 const turn = (r: Row): Turn => ({ id:r.id,conversationId:r.conversation_id,userText:r.user_text,assistantText:r.assistant_text,status:r.status,surface:r.surface,routeId:r.route_id,createdAt:Number(r.created_at),ordinal:r.ordinal,lastSeq:Number(r.last_seq??0),cards:JSON.parse(r.cards) });
@@ -14,12 +17,16 @@ export class Store {
   return owner((await this.db.query<Row>('SELECT * FROM owners WHERE issuer=? AND subject=?',[issuer,subject]))[0]);
  }
  async owner(id: string) { const r=await this.db.query<Row>('SELECT * FROM owners WHERE id=?',[id]); if(!r[0]) throw new DomainError('NOT_FOUND','Account not found',404); return owner(r[0]); }
- async createSession(ownerId: string, lifetime=8*60*60*1000) {
+ async createSession(ownerId: string, lifetime=SESSION_LIFETIME_MS) {
   const token=randomBytes(32).toString('base64url'), csrf=randomBytes(32).toString('base64url'), now=Date.now();
   await this.db.query('INSERT INTO sessions(hash,owner_id,csrf,expires_at,authenticated_at) VALUES (?,?,?,?,?)',[hash(token),ownerId,csrf,now+lifetime,now]);
   return { token, csrf };
  }
- async session(token?: string) { if(!token) return null; const r=(await this.db.query<Row>('SELECT * FROM sessions WHERE hash=? AND expires_at>?',[hash(token),Date.now()]))[0]; return r ? {ownerId:r.owner_id as string,csrf:r.csrf as string,authenticatedAt:Number(r.authenticated_at)} : null; }
+ async session(token?: string) { if(!token) return null; const r=(await this.db.query<Row>('SELECT * FROM sessions WHERE hash=? AND expires_at>?',[hash(token),Date.now()]))[0]; return r ? {ownerId:r.owner_id as string,csrf:r.csrf as string,authenticatedAt:Number(r.authenticated_at),expiresAt:Number(r.expires_at)} : null; }
+ async renewSession(token:string,lifetime=SESSION_LIFETIME_MS,renewalWindow=SESSION_RENEWAL_WINDOW_MS){
+  const now=Date.now(),rows=await this.db.query<Row>('UPDATE sessions SET expires_at=? WHERE hash=? AND expires_at>? AND expires_at<=? RETURNING expires_at',[now+lifetime,hash(token),now,now+renewalWindow]);
+  return rows.length>0;
+ }
  async logout(token: string) { await this.db.query('DELETE FROM sessions WHERE hash=?',[hash(token)]); }
  async listConversations(ownerId: string) { const recent=(await this.db.query<Row>('SELECT * FROM conversations WHERE owner_id=? ORDER BY updated_at DESC LIMIT 100',[ownerId])).map(conversation),linked=(await this.owner(ownerId)).petConversation;return linked&&!recent.some(c=>c.id===linked)?[await this.getConversation(ownerId,linked),...recent]:recent; }
  async createConversation(ownerId: string) {
@@ -60,6 +67,15 @@ export class Store {
   });
  }
  async setEntireState(ownerId: string,state: Owner['entireState']) { await this.db.query('UPDATE owners SET entire_state=? WHERE id=?',[state,ownerId]); }
+ async entireConnection(ownerId:string):Promise<EntireConnection|null>{const r=(await this.db.query<Row>('SELECT * FROM entire_connections WHERE owner_id=?',[ownerId]))[0];return r?{ownerId:r.owner_id,authKind:r.auth_kind,status:r.status,secretRef:r.secret_ref??null,cliVersion:r.cli_version??null,connectedAt:r.connected_at===null?null:Number(r.connected_at),lastVerifiedAt:r.last_verified_at===null?null:Number(r.last_verified_at),updatedAt:Number(r.updated_at),version:Number(r.version)}:null;}
+ async setEntireConnection(ownerId:string,value:{authKind:EntireConnection['authKind'];status:EntireConnection['status'];secretRef?:string|null;cliVersion?:string|null}){const now=Date.now();await this.db.query('INSERT INTO entire_connections(owner_id,auth_kind,status,secret_ref,cli_version,connected_at,last_verified_at,updated_at,version) VALUES (?,?,?,?,?,?,?,?,1) ON CONFLICT(owner_id) DO UPDATE SET auth_kind=excluded.auth_kind,status=excluded.status,secret_ref=excluded.secret_ref,cli_version=excluded.cli_version,connected_at=CASE WHEN excluded.status=? THEN COALESCE(entire_connections.connected_at,excluded.connected_at) ELSE entire_connections.connected_at END,last_verified_at=CASE WHEN excluded.status=? THEN excluded.last_verified_at ELSE entire_connections.last_verified_at END,updated_at=excluded.updated_at,version=entire_connections.version+1',[ownerId,value.authKind,value.status,value.secretRef??null,value.cliVersion??null,value.status==='connected'?now:null,value.status==='connected'?now:null,now,'connected','connected']);return this.entireConnection(ownerId);}
+ async verifyEntireConnection(ownerId:string){await this.db.query('UPDATE entire_connections SET last_verified_at=?,updated_at=? WHERE owner_id=?',[Date.now(),Date.now(),ownerId]);}
+ async removeEntireConnection(ownerId:string){await this.db.query('DELETE FROM entire_connections WHERE owner_id=?',[ownerId]);}
+ async createEntireConnectorPairing(ownerId:string,lifetime=10*60*1000){const token=randomBytes(32).toString('base64url'),now=Date.now();await this.db.transaction(async tx=>{await tx.query('DELETE FROM entire_connector_pairings WHERE owner_id=? OR expires_at<=?',[ownerId,now]);await tx.query('INSERT INTO entire_connector_pairings(hash,owner_id,expires_at,created_at) VALUES (?,?,?,?)',[hash(token),ownerId,now+lifetime,now]);});return {token,expiresAt:now+lifetime};}
+ async consumeEntireConnectorPairing(token:string){return this.db.transaction(async tx=>{const row=(await tx.query<Row>('DELETE FROM entire_connector_pairings WHERE hash=? AND expires_at>? RETURNING owner_id',[hash(token),Date.now()]))[0];return row?String(row.owner_id):null;});}
+ async registerEntireConnector(ownerId:string,name:string){const id=randomUUID(),credential=randomBytes(32).toString('base64url'),now=Date.now(),safeName=name.trim().slice(0,80)||'Entire connector';await this.db.transaction(async tx=>{await tx.query('DELETE FROM entire_connectors WHERE owner_id=?',[ownerId]);await tx.query('INSERT INTO entire_connectors(id,owner_id,credential_hash,name,created_at,last_seen_at) VALUES (?,?,?,?,?,?)',[id,ownerId,hash(credential),safeName,now,now]);});return {id,credential,name:safeName};}
+ async authenticateEntireConnector(id:string,credential:string){const row=(await this.db.query<Row>('SELECT * FROM entire_connectors WHERE id=? AND credential_hash=? AND revoked_at IS NULL',[id,hash(credential)]))[0];if(!row)return null;await this.db.query('UPDATE entire_connectors SET last_seen_at=? WHERE id=?',[Date.now(),id]);return {id:String(row.id),ownerId:String(row.owner_id),name:String(row.name)};}
+ async revokeEntireConnector(ownerId:string){await this.db.query('UPDATE entire_connectors SET revoked_at=? WHERE owner_id=? AND revoked_at IS NULL',[Date.now(),ownerId]);await this.db.query('DELETE FROM entire_connector_pairings WHERE owner_id=?',[ownerId]);}
  async begin(ctx: InteractionContext,text: string,workerId: string) {
   try { return await this.db.transaction(async tx=>{
    // Lock the conversation in both engines before selecting its next ordinal.
@@ -138,5 +154,20 @@ export class Store {
   await tx.query('INSERT INTO audit_events(id,owner_id,kind,created_at) VALUES (?,?,?,?)',[randomUUID(),ownerId,'robot_unlinked',Date.now()]);
   return slot?{deviceId:String(slot.device_id),deviceErasureConfirmed:false}:null;
  }); }
+ async operatorUnlinkDevice(deviceId:string,operatorId:string,reason:string,targetDeployment?:string){
+  if(!/^marvin_[a-f0-9]{32}$/.test(deviceId))throw new DomainError('INVALID_DEVICE','Use a registered Marvin device ID.',400);
+  if(!operatorId.trim()||operatorId.length>128||!reason.trim()||reason.length>256||(targetDeployment&&targetDeployment.length>128))throw new DomainError('INVALID_RECOVERY_AUDIT','Operator recovery requires a bounded operator, reason, and optional target.',400);
+  return this.db.transaction(async tx=>{
+   const slot=(await tx.query<Row>("SELECT * FROM body_slots WHERE device_id=? AND state='linked'",[deviceId]))[0];
+   if(slot){
+    await tx.query('DELETE FROM body_slots WHERE device_id=?',[deviceId]);
+    await tx.query('UPDATE device_epochs SET epoch=epoch+1 WHERE device_id=?',[deviceId]);
+    const replacement=Number((await tx.query<Row>('SELECT epoch FROM device_epochs WHERE device_id=?',[deviceId]))[0].epoch);
+    await tx.query('INSERT INTO device_revocations(device_id,former_owner_id,revoked_epoch,replacement_epoch,revoked_at,acknowledged_at) VALUES (?,?,?,?,?,NULL) ON CONFLICT(device_id) DO UPDATE SET former_owner_id=excluded.former_owner_id,revoked_epoch=excluded.revoked_epoch,replacement_epoch=excluded.replacement_epoch,revoked_at=excluded.revoked_at,acknowledged_at=NULL',[deviceId,slot.owner_id,Number(slot.epoch),replacement,Date.now()]);
+   }
+   const id=randomUUID();await tx.query('INSERT INTO operator_device_recoveries(id,device_id,former_owner_id,former_epoch,operator_id,reason,target_deployment,created_at) VALUES (?,?,?,?,?,?,?,?)',[id,deviceId,slot?.owner_id??null,slot?Number(slot.epoch):null,operatorId.trim(),reason.trim(),targetDeployment?.trim()||null,Date.now()]);
+   return {id,deviceId,linked:!!slot,formerOwnerId:slot?String(slot.owner_id):null,formerEpoch:slot?Number(slot.epoch):null,deviceErasureConfirmed:false};
+  });
+ }
  async acknowledgeRevocation(ownerId:string,deviceId:string){const rows=await this.db.query("UPDATE device_revocations SET acknowledged_at=? WHERE device_id=? AND acknowledged_at IS NULL AND EXISTS (SELECT 1 FROM enrollment_tickets WHERE owner_id=? AND device_id=? AND operation='reconcile' AND epoch=device_revocations.revoked_epoch) RETURNING device_id",[Date.now(),deviceId,ownerId,deviceId]);return rows.length>0;}
 }

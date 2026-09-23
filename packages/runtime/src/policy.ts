@@ -1,7 +1,10 @@
 import { Actions } from '../../contracts/src/device.js';
 import { z } from 'zod';
 import { DomainError, type InteractionContext } from '../../contracts/src/index.js';
-const query=z.string().trim().min(1).max(300).refine(s=>!s.startsWith('-')&&!/(?:^|\s)(?:repo|author|branch|date)\s*:/i.test(s),'Use a plain query without scope filters.');
+const query=z.string().trim().min(1).max(300).refine(s=>{
+ if(s.startsWith('-')||/(?:^|\s)(?:repo|author|branch)\s*:/i.test(s))return false;
+ return [...s.matchAll(/(?:^|\s)date\s*:\s*([^\s]+)/gi)].every(match=>/^(?:week|month)$/i.test(match[1]??''));
+},'Use plain search text; only date:week and date:month filters are allowed.');
 export const repositoryArguments={
  repository_summary:z.object({}).strict(),
  repository_search:z.object({query,mode:z.enum(['code','history']),page:z.number().int().min(1).max(20)}).strict(),
@@ -13,12 +16,12 @@ export const repositoryArguments={
 };
 export function validateRepositoryArguments(name:keyof typeof repositoryArguments,args:unknown){
  const parsed=repositoryArguments[name].safeParse(args);
- if(!parsed.success)throw new DomainError('TOOL_ARGUMENTS',name==='repository_source'?'Invalid source range or arguments. Provide a relative file path and integer start/end lines, with 1 <= start <= end and end - start < 160. For a first read use start=1, end=160; request the next range separately.':'Invalid repository tool arguments. Retry using the tool schema; use plain search text without scope filters.',400);
+ if(!parsed.success)throw new DomainError('TOOL_ARGUMENTS',name==='repository_source'?'Invalid source range or arguments. Provide a relative file path and integer start/end lines, with 1 <= start <= end and end - start < 160. For a first read use start=1, end=160; request the next range separately.':'Invalid repository tool arguments. Retry using the tool schema; only date:week and date:month search filters are allowed.',400);
  return parsed.data;
 }
 const params=(properties:Record<string,unknown>,required:string[])=>({type:'object',properties,required,additionalProperties:false});
 export const tools={
- repository_search:{name:'repository_search',description:'Search the authorized repository with Entire. Code search matches literal text: use a short code identifier or single distinctive keyword, not a natural-language question. It returns indexed exact-text matches; history returns paginated checkpoint/session/commit excerpts. Do not assume index freshness.',parameters:params({query:{type:'string',maxLength:300},mode:{type:'string',enum:['code','history']},page:{type:'integer',minimum:1,maximum:20}},['query','mode','page'])},
+ repository_search:{name:'repository_search',description:'Search the authorized repository with Entire. Code search matches literal text: use a short code identifier or single distinctive keyword, not a natural-language question. History returns paginated checkpoint/session/commit excerpts; for recent activity include date:week or date:month in the query while retaining a short topic or the user\'s time phrase. Do not assume index freshness.',parameters:params({query:{type:'string',maxLength:300},mode:{type:'string',enum:['code','history']},page:{type:'integer',minimum:1,maximum:20}},['query','mode','page'])},
  repository_source:{name:'repository_source',description:'Read committed source after locating a path. Use start=1, end=160 for a first read; end-start MUST be less than160. Read up to160 lines from a regular file in the committed local checkout. Result includes the exact revision. Secret paths, binaries and symlinks are excluded.',parameters:params({path:{type:'string'},start:{type:'integer',minimum:1},end:{type:'integer',minimum:1}},['path','start','end'])},
  repository_history:{name:'repository_history',description:'List up to10 stored Entire checkpoints for the current local branch. An empty list is not evidence of no development activity.',parameters:params({},[])},
  repository_checkpoint:{name:'repository_checkpoint',description:'Read stored metadata and summaries for a complete checkpoint ID returned by history. Does not generate summaries or retrieve full transcripts.',parameters:params({id:{type:'string'}},['id'])},

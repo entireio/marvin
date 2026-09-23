@@ -14,7 +14,7 @@ export async function deleteAccount(store:Store,ownerId:string){
   await tx.query('UPDATE owners SET created_at=created_at WHERE id=?',[ownerId]);
   await tx.query('UPDATE device_epochs SET epoch=epoch+1 WHERE device_id IN (SELECT device_id FROM body_slots WHERE owner_id=?)',[ownerId]);
   for(const table of ['events','tool_invocations'])await tx.query(`DELETE FROM ${table} WHERE interaction_id IN (SELECT id FROM turns WHERE owner_id=?)`,[ownerId]);
-  for(const table of ['device_credentials','device_commands','enrollment_tickets','body_slots','audit_events','sessions','turns','conversations'])await tx.query(`DELETE FROM ${table} WHERE owner_id=?`,[ownerId]);
+  for(const table of ['device_credentials','device_commands','enrollment_tickets','body_slots','audit_events','entire_connector_pairings','entire_connectors','entire_connections','sessions','turns','conversations'])await tx.query(`DELETE FROM ${table} WHERE owner_id=?`,[ownerId]);
   await tx.query('DELETE FROM device_revocations WHERE former_owner_id=?',[ownerId]);
   await tx.query('DELETE FROM owners WHERE id=?',[ownerId]);
  });

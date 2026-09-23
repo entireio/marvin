@@ -42,6 +42,17 @@ export const migrations = [
  ,{version:8,statements:[
  `ALTER TABLE owners ADD COLUMN pet_conversation TEXT`
  ]}
+ ,{version:9,statements:[
+ `CREATE TABLE operator_device_recoveries (id TEXT PRIMARY KEY, device_id TEXT NOT NULL, former_owner_id TEXT, former_epoch INTEGER, operator_id TEXT NOT NULL, reason TEXT NOT NULL, target_deployment TEXT, created_at BIGINT NOT NULL)`,
+ `CREATE INDEX operator_device_recovery_history ON operator_device_recoveries(device_id,created_at)`
+ ]}
+ ,{version:10,statements:[
+ `CREATE TABLE entire_connections (owner_id TEXT PRIMARY KEY REFERENCES owners(id), auth_kind TEXT NOT NULL CHECK(auth_kind IN ('hosted_cli','connector')), status TEXT NOT NULL CHECK(status IN ('pending','connected','reauth_required','revoked','error')), secret_ref TEXT, cli_version TEXT, connected_at BIGINT, last_verified_at BIGINT, updated_at BIGINT NOT NULL, version INTEGER NOT NULL DEFAULT 1)`,
+ `CREATE TABLE entire_connector_pairings (hash TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES owners(id), expires_at BIGINT NOT NULL, created_at BIGINT NOT NULL)`,
+ `CREATE INDEX entire_connector_pairing_expiry ON entire_connector_pairings(expires_at)`,
+ `CREATE TABLE entire_connectors (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL UNIQUE REFERENCES owners(id), credential_hash TEXT NOT NULL UNIQUE, name TEXT NOT NULL, created_at BIGINT NOT NULL, last_seen_at BIGINT, revoked_at BIGINT)`,
+ `CREATE INDEX entire_connector_owner ON entire_connectors(owner_id,revoked_at)`
+ ]}
 ];
 export async function migrate(db: Database, target=migrations.at(-1)!.version) {
  await db.transaction(async tx => {

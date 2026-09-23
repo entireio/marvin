@@ -12,6 +12,7 @@ export const Env=z.object({
  FIRMWARE_ROLLOUT_FILE:z.string().optional(),
  ENROLLMENT_KEYS_FILE:z.string().optional(),DEVICE_PUBLIC_ORIGIN:z.url().optional(),
  ENTIRE_CLI_PATH:z.string().optional(),ENTIRE_BINDINGS_FILE:z.string().optional(),ENTIRE_COMPANION_URL:z.preprocess(value=>value===''?undefined:value,z.url().optional()),ENTIRE_COMPANION_TOKEN:z.preprocess(value=>value===''?undefined:value,z.string().min(32).max(256).optional()),
+ ENTIRE_HOSTED_CLI_PATH:z.preprocess(value=>value===''?undefined:value,z.string().optional()),ENTIRE_HOSTED_SECRET_DIR:z.preprocess(value=>value===''?undefined:value,z.string().optional()),ENTIRE_HOSTED_SECRET_KEY:z.preprocess(value=>value===''?undefined:value,z.string().optional()),ENTIRE_CONNECTOR_ENABLED:z.enum(['true','false']).default('true'),
  OIDC_ISSUER:z.url().optional(),OIDC_CLIENT_ID:z.string().optional(),OIDC_CLIENT_SECRET:z.string().optional(),OIDC_LABEL:z.string().default('Identity provider'),OIDC_REDIRECT_URI:z.url().optional(),
  GITHUB_CLIENT_ID:z.string().optional(),GITHUB_CLIENT_SECRET:z.string().optional(),GITHUB_ALLOWED_USERS:z.string().default(''),PUBLIC_DOCS_URL:z.url().default('https://marvin-site-r7vxrettpq-uc.a.run.app/')
 });
@@ -35,6 +36,10 @@ export function config(env:NodeJS.ProcessEnv=process.env):Config{
  if(c.ENROLLMENT_KEYS_FILE&&!c.ENROLLMENT_KEYS_FILE.startsWith('/'))throw new Error('ENROLLMENT_KEYS_FILE must be an absolute private file path.');
  if(!!c.ENTIRE_CLI_PATH!==!!c.ENTIRE_BINDINGS_FILE)throw new Error('Entire requires both ENTIRE_CLI_PATH and ENTIRE_BINDINGS_FILE.');
  if(!!c.ENTIRE_COMPANION_URL!==!!c.ENTIRE_COMPANION_TOKEN)throw new Error('Entire companion requires both ENTIRE_COMPANION_URL and ENTIRE_COMPANION_TOKEN.');
+ const hosted=[c.ENTIRE_HOSTED_CLI_PATH,c.ENTIRE_HOSTED_SECRET_DIR,c.ENTIRE_HOSTED_SECRET_KEY];if(hosted.some(Boolean)&&!hosted.every(Boolean))throw new Error('Hosted Entire requires ENTIRE_HOSTED_CLI_PATH, ENTIRE_HOSTED_SECRET_DIR and ENTIRE_HOSTED_SECRET_KEY.');
+ if(c.ENTIRE_HOSTED_CLI_PATH&&!c.ENTIRE_HOSTED_CLI_PATH.startsWith('/'))throw new Error('ENTIRE_HOSTED_CLI_PATH must be an absolute executable path.');
+ if(c.ENTIRE_HOSTED_SECRET_DIR&&!c.ENTIRE_HOSTED_SECRET_DIR.startsWith('/'))throw new Error('ENTIRE_HOSTED_SECRET_DIR must be an absolute private directory.');
+ if(c.ENTIRE_HOSTED_SECRET_KEY){let key:Buffer;try{key=Buffer.from(c.ENTIRE_HOSTED_SECRET_KEY,'base64');}catch{throw new Error('ENTIRE_HOSTED_SECRET_KEY must be base64.');}if(key.length!==32)throw new Error('ENTIRE_HOSTED_SECRET_KEY must decode to exactly 32 bytes.');}
  if(c.ENTIRE_CLI_PATH&&c.AUTH_MODE==='oidc')throw new Error('The Entire CLI adapter supports local deployments only. Hosted OIDC requires an approved Entire server integration.');
  if(c.ENTIRE_CLI_PATH&&!c.ENTIRE_CLI_PATH.startsWith('/'))throw new Error('ENTIRE_CLI_PATH must be an absolute executable path.');
  if(c.ENTIRE_COMPANION_URL){const entireUrl=new URL(c.ENTIRE_COMPANION_URL);if(entireUrl.pathname!=='/'||entireUrl.search||entireUrl.hash||!['http:','https:'].includes(entireUrl.protocol))throw new Error('ENTIRE_COMPANION_URL must be an HTTP origin.');c.ENTIRE_COMPANION_URL=entireUrl.origin;}
