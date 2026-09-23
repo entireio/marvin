@@ -1,5 +1,7 @@
 # Marvin
 
+> **Created by Stefano Pedemonte · Hosted and maintained by Entire.**
+
 Marvin is an open-source embodied agent: a private conversational workspace,
 an expressive tracked desktop pet, and the hardware files needed to build it.
 This repository is the single source of truth for the web application, server,
