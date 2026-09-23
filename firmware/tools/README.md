@@ -69,3 +69,6 @@ the serial port. The EEP hardware pull-down and power wiring requirements in
 - OTA, migration, update and wake-corpus scripts are specialized recovery or
   evidence tools. Read their corresponding document in `docs/` before running
   them; do not substitute them for `board-flash.py`.
+- `recovery-trust.py` derives a factory CSV containing the public fleet-return
+  recovery key without changing device identity. The private recovery key must
+  remain outside firmware and deployment files; see `docs/pet-lifecycle.md`.

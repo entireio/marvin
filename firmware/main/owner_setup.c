@@ -14,7 +14,9 @@ static marvin_journal_t journal;
 static marvin_journal_record_t loaded;
 static marvin_transfer_t transfer;
 static marvin_ticket_claims_t claims;
-static char issuer[201],public_key[1024],nonce[65],operation[12],verified_ticket[4097];
+static char issuer[201],public_key[1024],recovery_public_key[1024],nonce[65],operation[12],verified_ticket[4097];
+static bool recovery_ready;
+static const char recovery_issuer[]="marvin-fleet-recovery-v1";
 static uint32_t challenge_session;
 static int64_t challenged_at;
 static bool ready,verified;
@@ -27,7 +29,8 @@ static bool persist(void *context,const marvin_journal_record_t *record){
 esp_err_t marvin_owner_setup_init(void){
  nvs_handle_t h;size_t length=sizeof(issuer);ready=false;
  if(!marvin_identity_device_id()||nvs_open_from_partition("factory","identity",NVS_READONLY,&h)!=ESP_OK)return ESP_ERR_INVALID_STATE;
- esp_err_t err=nvs_get_str(h,"enroll_iss",issuer,&length);length=sizeof(public_key);if(err==ESP_OK)err=nvs_get_str(h,"enroll_pub",public_key,&length);nvs_close(h);
+ esp_err_t err=nvs_get_str(h,"enroll_iss",issuer,&length);length=sizeof(public_key);if(err==ESP_OK)err=nvs_get_str(h,"enroll_pub",public_key,&length);
+ size_t recovery_length=sizeof(recovery_public_key);recovery_ready=nvs_get_str(h,"recovery_pub",recovery_public_key,&recovery_length)==ESP_OK;nvs_close(h);
  if(err!=ESP_OK||strncmp(issuer,"https://",8)||strpbrk(issuer+8,"/?#@"))return ESP_ERR_INVALID_ARG;
  err=nvs_open("ownership",NVS_READONLY,&h);
  if(err==ESP_ERR_NVS_NOT_FOUND)ready=marvin_journal_open(&journal,NULL,persist,NULL);
@@ -40,14 +43,15 @@ static bool integer(const cJSON *value,double max){return cJSON_IsNumber(value)&
 static int unhex(char c){if(c>='0'&&c<='9')return c-'0';if(c>='a'&&c<='f')return c-'a'+10;return -1;}
 bool marvin_owner_setup_control(uint32_t session,const cJSON *request,cJSON *reply){
  const cJSON *op=cJSON_GetObjectItemCaseSensitive(request,"op");if(!cJSON_IsString(op))return false;
- if(strcmp(op->valuestring,"challenge")&&strncmp(op->valuestring,"ticket_",7)&&strcmp(op->valuestring,"clear_owner"))return false;
+ if(strcmp(op->valuestring,"challenge")&&strncmp(op->valuestring,"ticket_",7)&&strcmp(op->valuestring,"clear_owner")&&strcmp(op->valuestring,"clear_returned"))return false;
  if(!ready){cJSON_AddStringToObject(reply,"error","ENROLLMENT_UNAVAILABLE");return true;}
  if(journal.current.pending&&strcmp(op->valuestring,"challenge")&&strcmp(op->valuestring,"clear_owner")&&strncmp(op->valuestring,"ticket_",7)){cJSON_AddStringToObject(reply,"error","SETUP_PENDING");return true;}
  const char *error=NULL;
  if(!strcmp(op->valuestring,"challenge")){
   marvin_owner_setup_disconnected();const cJSON *kind=cJSON_GetObjectItemCaseSensitive(request,"operation"),*issued=cJSON_GetObjectItemCaseSensitive(request,"issuedAt");
-  bool reconcile=cJSON_IsString(kind)&&!strcmp(kind->valuestring,"reconcile");
-  if(!cJSON_IsString(kind)||!cJSON_IsNumber(issued)||(!strcmp(kind->valuestring,"network")&&!journal.current.linked)||(!strcmp(kind->valuestring,"claim")&&journal.current.linked)||(reconcile&&!journal.current.linked)||(journal.current.pending&&!reconcile))error=journal.current.pending?"SETUP_PENDING":"OWNERSHIP_STATE";
+  bool reconcile=cJSON_IsString(kind)&&!strcmp(kind->valuestring,"reconcile"),recover=cJSON_IsString(kind)&&!strcmp(kind->valuestring,"recover");
+  if(recover&&!recovery_ready)error="RECOVERY_UNAVAILABLE";
+  else if(!cJSON_IsString(kind)||!cJSON_IsNumber(issued)||(!strcmp(kind->valuestring,"network")&&!journal.current.linked)||(!strcmp(kind->valuestring,"claim")&&journal.current.linked)||((reconcile||recover)&&!journal.current.linked)||(journal.current.pending&&!reconcile&&!recover))error=journal.current.pending?"SETUP_PENDING":"OWNERSHIP_STATE";
   else if(marvin_identity_challenge(kind->valuestring,issued->valuedouble,reply)!=ESP_OK)error="INVALID_CHALLENGE";
   else{const cJSON *challenge=cJSON_GetObjectItemCaseSensitive(reply,"challenge"),*value=cJSON_GetObjectItemCaseSensitive(challenge,"nonce");if(!cJSON_IsString(value)||strlen(value->valuestring)!=64)error="INVALID_CHALLENGE";else{memcpy(nonce,value->valuestring,65);strcpy(operation,kind->valuestring);challenge_session=session;challenged_at=esp_timer_get_time();}}
  }else if(!fresh(session))error="CHALLENGE_EXPIRED";
@@ -61,13 +65,17 @@ bool marvin_owner_setup_control(uint32_t session,const cJSON *request,cJSON *rep
  }else if(!strcmp(op->valuestring,"ticket_finish")){
   if(verified){cJSON_AddBoolToObject(reply,"verified",true);return true;}
   size_t size=0;const uint8_t *ticket=marvin_transfer_finish(&transfer,session,(uint64_t)(esp_timer_get_time()/1000),&size);struct timeval now;gettimeofday(&now,NULL);
-  bool reconcile=!strcmp(operation,"reconcile");marvin_ticket_expectation_t expected={.public_key_pem=public_key,.issuer=issuer,.device_id=marvin_identity_device_id(),.nonce=nonce,.operation=operation,.owner=journal.current.linked?journal.current.owner:NULL,.epoch=journal.current.linked&&!reconcile?journal.current.epoch:0,.now_seconds=now.tv_sec,.challenge_age_ms=(uint32_t)((esp_timer_get_time()-challenged_at)/1000)};
+  bool reconcile=!strcmp(operation,"reconcile"),recover=!strcmp(operation,"recover");marvin_ticket_expectation_t expected={.public_key_pem=recover?recovery_public_key:public_key,.issuer=recover?recovery_issuer:issuer,.device_id=marvin_identity_device_id(),.nonce=nonce,.operation=operation,.owner=journal.current.linked?journal.current.owner:NULL,.epoch=journal.current.linked?journal.current.epoch:0,.now_seconds=now.tv_sec,.challenge_age_ms=(uint32_t)((esp_timer_get_time()-challenged_at)/1000)};
+  if(reconcile)expected.epoch=journal.current.epoch;
   if(!ticket||memchr(ticket,0,size)||!marvin_ticket_verify((const char*)ticket,size,&expected,&claims))error="TICKET_INVALID";
   else{memcpy(verified_ticket,ticket,size);verified_ticket[size]=0;verified=true;cJSON_AddBoolToObject(reply,"verified",true);}marvin_transfer_clear(&transfer);
  }else if(!strcmp(op->valuestring,"clear_owner")){
   if(!verified||strcmp(operation,"reconcile"))error="OWNER_TICKET_REQUIRED";
   else if(!marvin_journal_revoke(&journal,claims.owner,journal.current.epoch))error="OWNERSHIP_STATE";
   else{atomic_store(&linked_view,false);marvin_owner_setup_disconnected();cJSON_AddBoolToObject(reply,"cleared",true);}
+ }else if(!strcmp(op->valuestring,"clear_returned")){
+  if(!verified||strcmp(operation,"recover"))error="RECOVERY_TICKET_REQUIRED";
+  else{nvs_handle_t h;if(nvs_open("ownership",NVS_READWRITE,&h)!=ESP_OK)error="RECOVERY_STORAGE";else{esp_err_t err=nvs_erase_all(h);if(err==ESP_OK)err=nvs_commit(h);nvs_close(h);if(err!=ESP_OK)error="RECOVERY_STORAGE";else{marvin_journal_close(&journal);ready=marvin_journal_open(&journal,NULL,persist,NULL);atomic_store(&linked_view,false);marvin_owner_setup_disconnected();cJSON_AddBoolToObject(reply,"cleared",true);cJSON_AddBoolToObject(reply,"restartRequired",true);}}}
  }else error="UNKNOWN_OPERATION";
  if(error){cJSON_AddStringToObject(reply,"error",error);}
  return true;

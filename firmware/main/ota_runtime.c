@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/time.h>
 static atomic_uint requested;
+bool marvin_owner_setup_linked(void);
 static atomic_bool busy,cancel_requested;
 static bool bootstrap_failure_reported;
 static marvin_link_snapshot_t snapshot;
@@ -60,7 +61,10 @@ static void confirm_boot(void){
 #endif
  for(unsigned i=0;i<180;i++){
   vTaskDelay(pdMS_TO_TICKS(500));uint32_t progress=marvin_body_health_progress();
-  bool healthy=marvin_device_link_online()&&marvin_body_health_ready();
+  /* A factory-bootstrap Pet is intentionally unlinked and has no Wi-Fi yet.
+   * Its signed capsule still authenticates the exact first image, so require
+   * local body health here and retain the online requirement for linked OTA. */
+  bool healthy=(marvin_device_link_online()||(trial&&!marvin_owner_setup_linked()))&&marvin_body_health_ready();
 #ifdef CONFIG_MARVIN_LOCAL_AFE
   healthy=healthy&&progress>previous;
 #endif

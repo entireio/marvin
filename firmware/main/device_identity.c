@@ -40,7 +40,7 @@ static esp_err_t sign_digest(const unsigned char digest[32],char proof[100]){
 }
 esp_err_t marvin_identity_challenge(const char *operation,double browser_time,cJSON *reply){
  if(!initialized)return ESP_ERR_INVALID_STATE;
- if((strcmp(operation,"claim")&&strcmp(operation,"network")&&strcmp(operation,"reconcile"))||!isfinite(browser_time)||browser_time<1||browser_time>9007199254740991.0||floor(browser_time)!=browser_time)return ESP_ERR_INVALID_ARG;
+ if((strcmp(operation,"claim")&&strcmp(operation,"network")&&strcmp(operation,"reconcile")&&strcmp(operation,"recover"))||!isfinite(browser_time)||browser_time<1||browser_time>9007199254740991.0||floor(browser_time)!=browser_time)return ESP_ERR_INVALID_ARG;
  unsigned char random[32],digest[32];char nonce[65],message[220],proof[100];
  esp_fill_random(random,sizeof(random));for(size_t i=0;i<sizeof(random);i++)snprintf(nonce+2*i,3,"%02x",random[i]);
  int length=snprintf(message,sizeof(message),"marvin-setup-v1:%s:%s:%s:%.0f",device_id,nonce,operation,browser_time);if(length<0||length>=sizeof(message))return ESP_ERR_INVALID_SIZE;

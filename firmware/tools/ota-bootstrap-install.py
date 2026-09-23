@@ -20,7 +20,6 @@ from release_key import bootstrap_capsule, public_release_key
 
 
 FLASH_BYTES = 0x1000000
-APP_BYTES = 0x1E0000
 FACTORY_BYTES = 0x6000
 
 
@@ -52,14 +51,21 @@ parser.add_argument("--public-key", type=Path, required=True)
 parser.add_argument("--factory", type=Path, required=True)
 parser.add_argument("--prior-app", type=Path, required=True)
 parser.add_argument("--port", default="/dev/cu.usbmodem1101")
+parser.add_argument("--expected-mac", required=True)
 parser.add_argument("--attest-prior-healthy", action="store_true")
+parser.add_argument("--clear-runtime-nvs", action="store_true", help="Erase saved owner and Wi-Fi state during a deployment move")
+parser.add_argument("--attest-source-unlinked", action="store_true", help="Confirm the source backend binding was revoked before clearing runtime state")
 parser.add_argument("--flash", action="store_true")
 args = parser.parse_args()
 
 if not re.fullmatch(r"/dev/cu\.usbmodem[\w.-]+", args.port):
     parser.error("Select the Waveshare USB modem port")
+if not re.fullmatch(r"[0-9a-f]{2}(?::[0-9a-f]{2}){5}", args.expected_mac):
+    parser.error("--expected-mac must be a lower-case hardware MAC")
 if not args.attest_prior_healthy:
     parser.error("--attest-prior-healthy is required after physical validation of the prior image")
+if args.clear_runtime_nvs and not args.attest_source_unlinked:
+    parser.error("--attest-source-unlinked is required before clearing runtime NVS")
 
 snapshot_manifest = json.loads((args.snapshot / "manifest.json").read_text())
 snapshot = args.snapshot / "original-flash.bin"
@@ -77,11 +83,16 @@ for required in (
     "#define CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE 1",
     "#define CONFIG_MARVIN_HEY_MARVIN_WAKE 1",
     "#define CONFIG_MARVIN_WAKE_AUTOSTART 1",
+    "#define CONFIG_BT_NIMBLE_HOST_TASK_STACK_SIZE 8192",
 ):
     if required not in config:
         raise RuntimeError(f"Release build lacks required setting: {required}")
 if "#define CONFIG_MARVIN_SILENT_TEST 1" in config:
     raise RuntimeError("Release build unexpectedly disables audible behavior")
+if "#define CONFIG_MARVIN_AFE_LAYOUT_V3 1" in config:
+    layout, app_bytes, candidate_offset, model_offset = "afe-v3", 0x400000, 0x420000, 0x820000
+else:
+    layout, app_bytes, candidate_offset, model_offset = "afe-v1", 0x1E0000, 0x200000, 0x3E0000
 
 image = args.release / "image.bin"
 manifest = args.release / "manifest.bin"
@@ -90,13 +101,13 @@ public_pem = public_release_key(args.public_key)
 capsule = bootstrap_capsule(manifest, public_pem)
 candidate = image.read_bytes()
 if (
-    not 1024 <= len(candidate) <= APP_BYTES
+    not 1024 <= len(candidate) <= app_bytes
     or candidate[0] != 0xE9
     or int.from_bytes(capsule[12:16], "big") != len(candidate)
     or capsule[16:48] != hashlib.sha256(candidate).digest()
     or release_metadata.get("sequence") != int.from_bytes(capsule[8:12], "big")
     or release_metadata.get("minimumSequence") != 0
-    or release_metadata.get("layout") != "afe-v1"
+    or release_metadata.get("layout") != layout
 ):
     raise RuntimeError("Release bundle is inconsistent with its signed bootstrap capsule")
 
@@ -118,8 +129,8 @@ if flash[0x20000 : 0x20000 + len(prior)] != prior:
     raise RuntimeError("Snapshot slot 0 does not contain the attested prior application")
 if flash[0x8000 : 0x8000 + partition.stat().st_size] != partition.read_bytes():
     raise RuntimeError("Release partition table differs from the board snapshot")
-model_digest = digest(flash[0x3E0000 : 0x7E0000])
-if flash[0x3E0000 : 0x7E0000] == bytes([0xFF]) * 0x400000:
+model_digest = digest(flash[model_offset : model_offset + 0x400000])
+if flash[model_offset : model_offset + 0x400000] == bytes([0xFF]) * 0x400000:
     raise RuntimeError("Snapshot has no AFE model partition to preserve")
 
 selector = ota_data()
@@ -131,9 +142,20 @@ if not selector_path.exists():
         os.fchmod(output.fileno(), 0o600)
         output.write(selector)
 
+nvs_erase_path = args.release / "runtime-nvs-erased.bin"
+if args.clear_runtime_nvs:
+    erased = bytes([0xFF]) * 0x6000
+    if nvs_erase_path.exists() and nvs_erase_path.read_bytes() != erased:
+        raise RuntimeError("Existing runtime NVS erase image differs")
+    if not nvs_erase_path.exists():
+        with nvs_erase_path.open("xb") as output:
+            os.fchmod(output.fileno(), 0o600)
+            output.write(erased)
+
 plan = {
     "operation": "stage first rollback-capable signed release",
     "port": args.port,
+    "expectedMac": args.expected_mac,
     "snapshotSha256": snapshot_manifest["sha256"],
     "priorApplicationSha256": digest(prior),
     "candidateApplicationSha256": digest(candidate),
@@ -141,11 +163,13 @@ plan = {
     "releaseSequence": release_metadata["sequence"],
     "writes": {
         "0x0": str(bootloader.resolve()),
+        **({"0x9000": "erase runtime NVS after source unlink attestation"} if args.clear_runtime_nvs else {}),
         "0x12000": str(factory.resolve()),
-        "0x200000": str(image.resolve()),
+        hex(candidate_offset): str(image.resolve()),
         "0x10000-last": str(selector_path.resolve()),
     },
-    "preserved": ["partition table", "runtime NVS", "PHY data", "slot 0 prior app", "AFE model"],
+    "preserved": ["partition table", "PHY data", "slot 0 prior app", "AFE model"] + ([] if args.clear_runtime_nvs else ["runtime NVS"]),
+    "sourceUnlinkAttested": args.attest_source_unlinked if args.clear_runtime_nvs else None,
     "efusesChanged": False,
 }
 print(json.dumps(plan, indent=2), flush=True)
@@ -168,8 +192,14 @@ base = [
 def run(parts: list[str], timeout: int = 300) -> None:
     subprocess.run(base + parts, check=True, timeout=timeout)
 
+identity = subprocess.run(base + ["--after", "no_reset", "chip_id"], check=True, timeout=60, capture_output=True, text=True)
+observed = re.findall(r"MAC:\s*([0-9a-f:]{17})", identity.stdout + identity.stderr, re.IGNORECASE)
+if not observed or observed[-1].lower() != args.expected_mac:
+    raise RuntimeError("Connected board MAC does not match the reviewed flash plan")
 run(["verify_flash", "0x20000", str(args.prior_app)], 180)
 run(["verify_flash", "0x8000", str(partition)], 180)
+if args.clear_runtime_nvs:
+    run(["--after", "no_reset", "write_flash", "--flash_mode", "dio", "--flash_size", "16MB", "--flash_freq", "80m", "0x9000", str(nvs_erase_path)], 120)
 run(
     [
         "--after",
@@ -185,7 +215,7 @@ run(
         str(bootloader),
         "0x12000",
         str(factory),
-        "0x200000",
+        hex(candidate_offset),
         str(image),
     ],
     300,

@@ -12,11 +12,13 @@ const wifi=wifiFlag>=0?z.object({ssid:z.string().min(1).refine(s=>Buffer.byteLen
 const credentials=JSON.parse(readFileSync(resolve(directory,'setup-secret.json'),'utf8'));
 const child=spawn(resolve('work/idf-tools/python_env/idf5.4_py3.13_env/bin/python'),['firmware/tools/ble-bridge.py'],{stdio:['pipe','pipe','inherit']});
 const lines=createInterface({input:child.stdout})[Symbol.asyncIterator]();
-async function receive(){let timer:ReturnType<typeof setTimeout>;try{return await Promise.race([lines.next().then(({value,done})=>{if(done)throw new Error('BLE transport ended');const data=JSON.parse(value);if(data.error)throw new Error('BLE transport: '+data.error);return data;}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('BLE transport timed out')),45000);})]);}finally{clearTimeout(timer!);}}
-async function transport(channel:string,bytes?:Uint8Array){child.stdin.write(JSON.stringify({op:bytes?'exchange':'read',channel,...(bytes?{hex:Buffer.from(bytes).toString('hex')}:{})})+'\n');return new Uint8Array(Buffer.from((await receive()).hex,'hex'));}
+async function receive(){let timer:ReturnType<typeof setTimeout>;try{return await Promise.race([lines.next().then(({value,done})=>{if(done)throw new Error('BLE transport ended');const data=JSON.parse(value);if(data.error)throw new Error('BLE transport: '+data.error+(data.detail?' ('+data.detail+')':''));return data;}),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('BLE transport timed out')),45000);})]);}finally{clearTimeout(timer!);}}
+let transportCount=0;
+async function transport(channel:string,bytes?:Uint8Array){const exchange=++transportCount;child.stdin.write(JSON.stringify({op:bytes?'exchange':'read',channel,...(bytes?{hex:Buffer.from(bytes).toString('hex')}:{})})+'\n');try{return new Uint8Array(Buffer.from((await receive()).hex,'hex'));}catch(error){throw new Error(`BLE exchange ${exchange} on ${channel} failed: ${error instanceof Error?error.message:'unknown transport error'}`,{cause:error});}}
 const secure=new Security2(),decoder=new TextDecoder();
 try{
  await receive();console.log('BLE connected; reading protocol version');const version=JSON.parse(decoder.decode(await transport('ff51',new TextEncoder().encode('---'))));if(version.security!==2||version.patch!==1)throw new Error('Require Security 2 patch 1');
+ await new Promise(resolve=>setTimeout(resolve,1000));
  console.log('Opening Security 2 session');
  if(process.argv.includes('--bad-proof')){
   let rejected=false,exchanges=0;try{await secure.open(credentials.username,credentials.password+'_incorrect',data=>{exchanges++;return transport('ff52',data);});}catch(error){if(error instanceof Error&&exchanges===2&&/rejected|prove|BleakGATTProtocolError/.test(error.message))rejected=true;else throw error;}

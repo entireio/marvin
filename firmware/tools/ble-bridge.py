@@ -18,10 +18,14 @@ async def main():
    channel=request['channel']
    if channel not in ['ff51','ff52','ff53']:raise ValueError('Unknown characteristic')
    uuid=SERVICE.replace('ff50',channel)
-   if op=='exchange':await client.write_gatt_char(uuid,bytes.fromhex(request['hex']),response=True)
+   if op=='exchange':
+    await client.write_gatt_char(uuid,bytes.fromhex(request['hex']),response=True)
+    # Protocomm prepares the Security2 reply after accepting the write. Give
+    # the ESP task one scheduling slice before CoreBluetooth issues the read.
+    await asyncio.sleep(.1)
    elif op!='read':raise ValueError('Unknown transport operation')
    data=bytes(await client.read_gatt_char(uuid))
    print(json.dumps({'hex':data.hex()}),flush=True)
 try:asyncio.run(main())
 except Exception as error:
- print(json.dumps({'error':type(error).__name__}),flush=True);sys.exit(1)
+ print(json.dumps({'error':type(error).__name__,'detail':str(error)[:256]}),flush=True);sys.exit(1)

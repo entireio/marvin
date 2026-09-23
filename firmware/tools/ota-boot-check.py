@@ -14,6 +14,11 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--port", default="/dev/cu.usbmodem1101")
 parser.add_argument("--seconds", type=int, default=120)
 parser.add_argument("--output", type=Path, required=True)
+parser.add_argument(
+    "--allow-unlinked-bootstrap",
+    action="store_true",
+    help="Allow an intentionally unlinked factory-new Pet to pass before Wi-Fi setup",
+)
 args = parser.parse_args()
 if not 10 <= args.seconds <= 180:
     parser.error("seconds must be 10–180")
@@ -53,12 +58,14 @@ with serial.Serial(args.port, 115200, timeout=0.1, write_timeout=1) as port:
                 audio = audio or event["audio"].get("available") is True
             if "afe" in event:
                 afe_progress = max(afe_progress, int(event["afe"].get("processedSamples16k", 0)))
-        if confirmed and online and audio and afe_progress >= 80000:
+        connectivity_ready = online or args.allow_unlinked_bootstrap
+        if confirmed and connectivity_ready and audio and afe_progress >= 80000:
             break
 
+connectivity_ready = online or args.allow_unlinked_bootstrap
 result = {
     "completedAt": datetime.now(timezone.utc).isoformat(),
-    "passed": confirmed and online and audio and afe_progress >= 80000 and not crash,
+    "passed": confirmed and connectivity_ready and audio and afe_progress >= 80000 and not crash,
     "elapsedSeconds": round(time.monotonic() - started, 3),
     "bootConfirmed": confirmed,
     "deviceOnline": online,
@@ -66,7 +73,12 @@ result = {
     "afeProcessedSamples16k": afe_progress,
     "crashObserved": crash,
     "updateEvents": events,
-    "scope": "Physical ESP32-S3 boot health and signed-image confirmation; raw serial output not retained",
+    "scope": (
+        "Physical ESP32-S3 unlinked bootstrap health and signed-image confirmation; "
+        "raw serial output not retained"
+        if args.allow_unlinked_bootstrap
+        else "Physical ESP32-S3 linked boot health and signed-image confirmation; raw serial output not retained"
+    ),
 }
 args.output.parent.mkdir(parents=True, exist_ok=True)
 args.output.write_text(json.dumps(result, indent=2) + "\n")

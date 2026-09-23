@@ -76,7 +76,7 @@ for image in images.values():
  if sha(Path(image['path']))!=image['sha256']:raise RuntimeError('An image changed after planning. Wait for the build to finish and rerun flashing.')
 print('Installing selected development profile. No eFuses are programmed.',flush=True)
 if a.reuse_verified_base:
- verify=base+['verify_flash']
+ verify=base+['--after','no_reset','verify_flash']
  for offset,image in images.items():
   if offset not in ('0x10000','0x20000'):verify += [offset,image['path']]
  subprocess.run(verify,check=True,timeout=180)
@@ -86,11 +86,11 @@ if a.app_only:
  # model itself is present. Require the installed table before preserving it.
  table=Path(images['0x8000']['path'])
  with tempfile.NamedTemporaryFile() as current_table:
-  subprocess.run(base+['read_flash','0x8000',hex(table.stat().st_size),current_table.name],check=True,timeout=60)
+  subprocess.run(base+['--after','no_reset','read_flash','0x8000',hex(table.stat().st_size),current_table.name],check=True,timeout=60)
   if sha(Path(current_table.name))!=images['0x8000']['sha256']:
    raise RuntimeError('Installed partition table does not match local-dev AFE layout. Run a full local-dev install; app-only will not orphan the wake model.')
  # Application-only iterations must also retain the exact reviewed wake model.
- subprocess.run(base+['verify_flash',model_offset,images[model_offset]['path']],check=True,timeout=180)
+ subprocess.run(base+['--after','no_reset','verify_flash',model_offset,images[model_offset]['path']],check=True,timeout=180)
 command=base+['write_flash']+args['write_flash_args']
 for offset,image in images.items():
  if a.app_only:

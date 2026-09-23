@@ -9,6 +9,7 @@ const add=(name:string,body:object,accept=false,changes:object={},header?:object
 add('valid-claim',base,true);
 add('valid-network',{...base,op:'network'},true,{operation:'network',owner:base.sub,epoch:7});
 add('valid-reconcile',{...base,jti:randomUUID(),op:'reconcile'},true,{operation:'reconcile',owner:base.sub,epoch:7});
+add('valid-recover',{...base,iss:'marvin-fleet-recovery-v1',jti:randomUUID(),op:'recover'},true,{issuer:'marvin-fleet-recovery-v1',operation:'recover',owner:base.sub,epoch:7});
 add('wrong-backend',{...base,iss:'https://attacker.example'});
 add('wrong-device',{...base,aud:'marvin_'+'b'.repeat(32)});
 add('wrong-nonce',{...base,nonce:'2'.repeat(64)});
