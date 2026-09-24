@@ -17,7 +17,7 @@ if importlib.util.find_spec('esptool') is None and not os.environ.get('MARVIN_FL
 p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('--backup',type=Path,required=True)
 p.add_argument('--port',default='/dev/cu.usbmodem1101')
-p.add_argument('--profile',choices=['audio','provisioning','owner','local-dev','afe','afe-audible','motion-afe'],default='audio')
+p.add_argument('--profile',choices=['audio','provisioning','owner','local-dev','afe','afe-audible','motion-afe','release-v3'],default='audio')
 p.add_argument('--factory',type=Path,help='Private generated factory directory; required by owner-capable profiles and verified, never written, with --reuse-verified-base')
 p.add_argument('--reuse-verified-base',action='store_true',help='Verify the installed bootloader, partitions, model and factory against this build; write only OTA metadata and application')
 p.add_argument('--app-only',action='store_true',help='Fast local-dev loop: write only the reviewed application partition, preserving factory, Wi-Fi and OTA metadata')
@@ -35,13 +35,14 @@ if diagnostic!=(a.profile=='audio'):raise RuntimeError('Build does not match sel
 if a.profile!='audio' and not a.factory and not (a.profile=='local-dev' and a.app_only):p.error('--factory is required for provisioning')
 if a.app_only and a.profile!='local-dev':p.error('--app-only is restricted to the explicit local-dev profile')
 if a.app_only and a.reuse_verified_base:p.error('--app-only already preserves the base; do not combine it with the slower base verification')
-if ('CONFIG_MARVIN_OWNER_ENROLLMENT=y' in config)!=(a.profile in ('owner','local-dev','afe','afe-audible','motion-afe')):raise RuntimeError('Owner authorization does not match the selected profile.')
+if ('CONFIG_MARVIN_OWNER_ENROLLMENT=y' in config)!=(a.profile in ('owner','local-dev','afe','afe-audible','motion-afe','release-v3')):raise RuntimeError('Owner authorization does not match the selected profile.')
 if ('CONFIG_MARVIN_LOCAL_DEV_MODE=y' in config)!=(a.profile=='local-dev'):raise RuntimeError('Local development mode does not match the selected profile.')
-afe_profile=a.profile in ('local-dev','afe','afe-audible','motion-afe')
+afe_profile=a.profile in ('local-dev','afe','afe-audible','motion-afe','release-v3')
 if ('CONFIG_MARVIN_LOCAL_AFE=y' in config)!=afe_profile:raise RuntimeError('Local AFE configuration does not match the selected profile.')
 if a.profile=='local-dev' and any('CONFIG_'+option+'=y' not in config for option in ('MARVIN_WAKE_AUTOSTART','MARVIN_MICRO_WAKE_WORD','MARVIN_HEY_MARVIN_WAKE')):raise RuntimeError('Local development firmware must retain the full wake path.')
-if a.profile in ('afe-audible','motion-afe') and ('CONFIG_MARVIN_SILENT_TEST=y' in config or 'CONFIG_MARVIN_SPEAKER_VOLUME=95' not in config):raise RuntimeError('Audible bench profile must have speaker enabled at volume 95.')
+if a.profile in ('afe-audible','motion-afe','release-v3') and ('CONFIG_MARVIN_SILENT_TEST=y' in config or 'CONFIG_MARVIN_SPEAKER_VOLUME=95' not in config):raise RuntimeError('Audible profile must have speaker enabled at volume 95.')
 if a.profile=='motion-afe' and any('CONFIG_'+option+'=y' not in config for option in ('MARVIN_WAKE_AUTOSTART','MARVIN_MICRO_WAKE_WORD','MARVIN_HEY_MARVIN_WAKE')):raise RuntimeError('Motion profile is missing a required wake option.')
+if a.profile=='release-v3' and any('CONFIG_'+option+'=y' not in config for option in ('MARVIN_SIGNED_OTA','BOOTLOADER_APP_ROLLBACK_ENABLE','MARVIN_WAKE_AUTOSTART','MARVIN_MICRO_WAKE_WORD','MARVIN_HEY_MARVIN_WAKE','MARVIN_AFE_LAYOUT_V3')):raise RuntimeError('Release-v3 profile is missing a required release option.')
 args=json.loads((build/'flasher_args.json').read_text())
 expected={'0x0':'bootloader/bootloader.bin','0x8000':'partition_table/partition-table.bin','0x10000':'ota_data_initial.bin','0x20000':'marvin.bin'}
 afe_v3='CONFIG_MARVIN_AFE_LAYOUT_V3=y' in config
@@ -58,7 +59,8 @@ factory_preserved=a.app_only or a.reuse_verified_base
 ota_metadata_preserved=a.app_only
 planned_images={k:v for k,v in images.items() if (a.app_only and k=='0x20000') or (a.reuse_verified_base and k in ('0x10000','0x20000')) or (not a.app_only and not a.reuse_verified_base)}
 verified_base={k:v for k,v in images.items() if a.reuse_verified_base and k not in ('0x10000','0x20000')}
-print(json.dumps({'operation':'install '+a.profile+(' app-only development firmware' if a.app_only else ' development firmware'),'backupVerified':True,'port':a.port,'imagesToWrite':planned_images,'verifiedBaseImages':verified_base,'factoryPreserved':factory_preserved,'otaMetadataPreserved':ota_metadata_preserved},indent=2),flush=True)
+kind='release firmware' if a.profile=='release-v3' else 'development firmware'
+print(json.dumps({'operation':'install '+a.profile+(' app-only development firmware' if a.app_only else ' '+kind),'backupVerified':True,'port':a.port,'imagesToWrite':planned_images,'verifiedBaseImages':verified_base,'factoryPreserved':factory_preserved,'otaMetadataPreserved':ota_metadata_preserved},indent=2),flush=True)
 if not a.flash:
  print('Plan only. Add --flash to install. No serial access or writes were performed.');sys.exit(0)
 base=[sys.executable,'-m','esptool','--chip','esp32s3','--port',a.port,'--baud','460800']
@@ -74,7 +76,7 @@ if 'Secure Boot: Disabled' not in security or 'Flash Encryption: Disabled' not i
 if 'Detected flash size: 16MB' not in inspect('flash_id'):raise RuntimeError('Unexpected flash size.')
 for image in images.values():
  if sha(Path(image['path']))!=image['sha256']:raise RuntimeError('An image changed after planning. Wait for the build to finish and rerun flashing.')
-print('Installing selected development profile. No eFuses are programmed.',flush=True)
+print('Installing selected firmware profile. No eFuses are programmed.',flush=True)
 if a.reuse_verified_base:
  verify=base+['--after','no_reset','verify_flash']
  for offset,image in images.items():
@@ -98,4 +100,4 @@ for offset,image in images.items():
  elif not a.reuse_verified_base or offset in ('0x10000','0x20000'):command += [offset,image['path']]
 subprocess.run(command,check=True,timeout=300)
 (root/('work/board/'+a.profile+'-flash.json')).write_text(json.dumps({'flashedAt':datetime.now(timezone.utc).isoformat(),'backup':str(a.backup.resolve()),'imagesWritten':planned_images,'baseVerified':a.reuse_verified_base,'appOnly':a.app_only,'factoryPreserved':factory_preserved,'otaMetadataPreserved':ota_metadata_preserved,'esptoolWriteAndVerifySucceeded':True},indent=2)+'\n')
-print('Development firmware installed and verified: '+a.profile)
+print('Firmware installed and verified: '+a.profile)

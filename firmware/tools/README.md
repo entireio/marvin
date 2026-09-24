@@ -10,9 +10,11 @@ private toolchain under `work/`; none is a general-purpose flasher.
 | --- | --- | --- |
 | Build the daily local firmware | `sh firmware/tools/build-waveshare-local-dev.sh` | No |
 | Build the audible motion firmware | `sh firmware/tools/build-waveshare-motion-afe.sh` | No |
+| Build the cloud release firmware | `sh firmware/tools/build-waveshare-release-v3.sh` | No |
 | Inspect a proposed flash | `python3 firmware/tools/board-flash.py --backup PATH --profile PROFILE ...` | No |
 | Fast local-dev application update | Add `--app-only --flash` to the local-dev flash command | Application only |
 | Install an audible motion image | `MARVIN_FLASH=1 sh firmware/tools/build-and-flash-motion-afe.sh` | OTA metadata and application only |
+| Install a cloud release on a matching v3 base | `python3 firmware/tools/board-flash.py --profile release-v3 --reuse-verified-base ... --flash` | OTA metadata and application only |
 | Capture a new board backup | `python3 firmware/tools/board-backup.py --port PORT` | No |
 | Migrate an AFE v1 development board to 4 MiB slots | `python3 firmware/tools/migrate-afe-v3-local-dev.py ...` | Model, application, partition table |
 | Run the diagnostic console | `python3 firmware/tools/board-monitor.py --port PORT` | No |
