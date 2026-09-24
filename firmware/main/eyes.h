@@ -54,3 +54,6 @@ void marvin_eyes_drive(int left_percent, int right_percent, uint32_t duration_ms
 
 /* Briefly show speaker level at the outside edge of the left display. */
 void marvin_eyes_volume(unsigned volume_percent);
+
+/* Enable or suppress every battery overlay, including the critical warning. */
+void marvin_eyes_show_battery(bool show);

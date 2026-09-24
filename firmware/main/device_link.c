@@ -42,7 +42,7 @@ static marvin_link_snapshot_t read_identity;
 static const char *trusted_ca;
 static atomic_bool connected,failed,online,quiescing,link_parked;
 static atomic_uint voice_request,link_fault,rx_frames,rx_binary,rx_max_us,control_max_us;
-static atomic_bool audio_settings_pending,head_calibration_pending,eye_settings_pending;
+static atomic_bool audio_settings_pending,head_calibration_pending,eye_settings_pending,display_settings_pending;
 static void fail(unsigned reason){unsigned zero=0;atomic_compare_exchange_strong(&link_fault,&zero,reason);atomic_store(&failed,true);}
 static atomic_uint pcm_sent,compressed_sent,max_write_us,encode_max_us,send_attempts,audio_timeouts,link_stack,link_attempts,link_state;
 static int16_t *uplink_pcm;
@@ -65,6 +65,8 @@ typedef struct {uint32_t magic,next;motion_entry_t entries[64];} motion_ledger_t
 static motion_ledger_t motion_ledger;
 static nvs_handle_t motion_nvs;
 static bool motion_ledger_ready;
+static nvs_handle_t display_preferences_nvs;
+static bool show_battery_icon=true;
 static char active_motion_id[37];
 static int64_t active_motion_until;
 static bool active_motion_tracks;
@@ -109,6 +111,8 @@ static bool send_head_calibration(esp_websocket_client_handle_t client){cJSON *m
 static const char *eye_design_name(marvin_eye_design_t design){return design==MARVIN_EYE_DESIGN_SOLID?"solid":design==MARVIN_EYE_DESIGN_FRIENDLY?"friendly":"classic";}
 static cJSON *eye_settings(void){cJSON *settings=cJSON_CreateObject();if(settings)cJSON_AddStringToObject(settings,"design",eye_design_name(marvin_eyes_design()));return settings;}
 static bool send_eye_settings(esp_websocket_client_handle_t client){cJSON *message=eye_settings();if(!message)return false;cJSON_AddStringToObject(message,"type","eye_settings");return send_json(client,message);}
+static cJSON *display_settings(void){cJSON *settings=cJSON_CreateObject();if(settings)cJSON_AddBoolToObject(settings,"showBatteryIcon",show_battery_icon);return settings;}
+static bool send_display_settings(esp_websocket_client_handle_t client){cJSON *message=display_settings();if(!message)return false;cJSON_AddStringToObject(message,"type","display_settings");return send_json(client,message);}
 static cJSON *battery_status(void){
  marvin_battery_status_t value;cJSON *status=cJSON_CreateObject();if(!status)return NULL;
  if(marvin_battery_monitor_read(&value)&&value.available){cJSON_AddNumberToObject(status,"levelPercent",value.level_percent);cJSON_AddNumberToObject(status,"voltageMv",value.voltage_mv);}
@@ -124,7 +128,7 @@ static bool send_link_diagnostics(esp_websocket_client_handle_t client){
 static bool hello(esp_websocket_client_handle_t client){
  cJSON *message=cJSON_CreateObject();if(!message)return false;
  cJSON_AddStringToObject(message,"type","hello");cJSON *protocol=cJSON_AddObjectToObject(message,"protocol");cJSON_AddNumberToObject(protocol,"major",1);cJSON_AddNumberToObject(protocol,"minor",MARVIN_DEVICE_PROTOCOL_MINOR);
- cJSON_AddStringToObject(message,"deviceId",identity.device_id);cJSON_AddStringToObject(message,"bootId",boot_id);cJSON *caps=cJSON_AddArrayToObject(message,"capabilities");if(marvin_body_audio_available()){cJSON *settings=audio_settings();if(!settings){cJSON_Delete(message);return false;}cJSON_AddItemToArray(caps,cJSON_CreateString("voice"));cJSON_AddItemToObject(message,"audioSettings",settings);}cJSON_AddItemToArray(caps,cJSON_CreateString("head"));cJSON *calibration=head_calibration();if(!calibration){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"headCalibration",calibration);cJSON_AddItemToArray(caps,cJSON_CreateString("eyes"));cJSON *eyes=eye_settings();if(!eyes){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"eyeSettings",eyes);cJSON *battery=battery_status();if(!battery){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"batteryStatus",battery);
+ cJSON_AddStringToObject(message,"deviceId",identity.device_id);cJSON_AddStringToObject(message,"bootId",boot_id);cJSON *caps=cJSON_AddArrayToObject(message,"capabilities");if(marvin_body_audio_available()){cJSON *settings=audio_settings();if(!settings){cJSON_Delete(message);return false;}cJSON_AddItemToArray(caps,cJSON_CreateString("voice"));cJSON_AddItemToObject(message,"audioSettings",settings);}cJSON_AddItemToArray(caps,cJSON_CreateString("head"));cJSON *calibration=head_calibration();if(!calibration){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"headCalibration",calibration);cJSON_AddItemToArray(caps,cJSON_CreateString("eyes"));cJSON *eyes=eye_settings();if(!eyes){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"eyeSettings",eyes);cJSON *battery=battery_status();if(!battery){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"batteryStatus",battery);cJSON *display=display_settings();if(!display){cJSON_Delete(message);return false;}cJSON_AddItemToObject(message,"displaySettings",display);
  cJSON_AddItemToArray(caps,cJSON_CreateString("tracks"));cJSON_AddItemToArray(caps,cJSON_CreateString("motion"));cJSON_AddItemToArray(caps,cJSON_CreateString("remote"));
  cJSON_AddNumberToObject(message,"audioInputRate",16000);cJSON_AddStringToObject(message,"audioCodec","ima-adpcm");
 #ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
@@ -331,6 +335,12 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
   ok=unique_fields(m)&&value<MARVIN_EYE_DESIGN_COUNT&&marvin_eyes_set_design(value)==ESP_OK;if(ok)atomic_store(&eye_settings_pending,true);
   cJSON_Delete(m);return ok;
  }
+ if(cJSON_IsString(type)&&!strcmp(type->valuestring,"display_settings")){
+  const cJSON *show=cJSON_GetObjectItemCaseSensitive(m,"showBatteryIcon");
+  ok=unique_fields(m)&&cJSON_IsBool(show)&&display_preferences_nvs;
+  if(ok){uint8_t value=cJSON_IsTrue(show)?1:0;ok=nvs_set_u8(display_preferences_nvs,"show_battery",value)==ESP_OK&&nvs_commit(display_preferences_nvs)==ESP_OK;if(ok){show_battery_icon=value!=0;marvin_eyes_show_battery(show_battery_icon);atomic_store(&display_settings_pending,true);}}
+  cJSON_Delete(m);return ok;
+ }
  if(!marvin_body_audio_available()){cJSON_Delete(m);return false;}
  if(cJSON_IsString(type)){
   if(!strcmp(type->valuestring,"voice_ready")&&voice_pending){const cJSON *rate=cJSON_GetObjectItemCaseSensitive(m,"sampleRate"),*channels=cJSON_GetObjectItemCaseSensitive(m,"channels"),*format=cJSON_GetObjectItemCaseSensitive(m,"format");const cJSON *input=cJSON_GetObjectItemCaseSensitive(m,"inputSampleRate");ok=cJSON_IsNumber(input)&&input->valuedouble==16000&&cJSON_IsNumber(rate)&&rate->valuedouble==24000&&cJSON_IsNumber(channels)&&channels->valuedouble==1&&cJSON_IsString(format)&&!strcmp(format->valuestring,"s16le");if(ok){voice_pending=false;voice_active=true;voice_since=esp_timer_get_time();atomic_store(&uplink_enabled,true);head_signal(1);printf("{\"voice\":\"listening\"}\n");}}
@@ -387,7 +397,7 @@ static void run(void *unused){
   if(strncmp(identity.origin,"https://",8)||strpbrk(identity.origin+8,"/?#@\r\n")||strpbrk(identity.credential,"\r\n")){atomic_store(&link_state,4);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
   snprintf(uri,sizeof(uri),"wss://%.192s/api/device/socket",identity.origin+8);snprintf(headers,sizeof(headers),"Authorization: Bearer %.95s\r\n",identity.credential);
   atomic_fetch_add(&link_attempts,1);atomic_store(&link_state,5);
-  atomic_store(&connected,false);atomic_store(&failed,false);atomic_store(&link_fault,0);atomic_store(&online,false);xQueueReset(incoming);marvin_wire_reset(&wire);wire.allow_audio=marvin_body_audio_available();voice_stop_local();atomic_store(&voice_request,0);atomic_store(&audio_settings_pending,false);atomic_store(&head_calibration_pending,false);atomic_store(&eye_settings_pending,false);
+  atomic_store(&connected,false);atomic_store(&failed,false);atomic_store(&link_fault,0);atomic_store(&online,false);xQueueReset(incoming);marvin_wire_reset(&wire);wire.allow_audio=marvin_body_audio_available();voice_stop_local();atomic_store(&voice_request,0);atomic_store(&audio_settings_pending,false);atomic_store(&head_calibration_pending,false);atomic_store(&eye_settings_pending,false);atomic_store(&display_settings_pending,false);
   esp_websocket_client_config_t config={.uri=uri,.headers=headers,.cert_pem=trusted_ca&&trusted_ca[0]?trusted_ca:NULL,.crt_bundle_attach=trusted_ca&&trusted_ca[0]?NULL:esp_crt_bundle_attach,.disable_auto_reconnect=true,.network_timeout_ms=5000,.task_stack=6144,.task_core_id=1,.buffer_size=4096,.tcp_nodelay=marvin_body_audio_available(),.ping_interval_sec=5,.pingpong_timeout_sec=45};
   esp_websocket_client_handle_t client=esp_websocket_client_init(&config);mbedtls_platform_zeroize(headers,sizeof(headers));
   if(client){
@@ -409,6 +419,7 @@ static void run(void *unused){
     if(atomic_load(&online)&&atomic_exchange(&audio_settings_pending,false)&&!send_audio_settings(client))atomic_store(&failed,true);
     if(atomic_load(&online)&&atomic_exchange(&head_calibration_pending,false)&&!send_head_calibration(client))atomic_store(&failed,true);
     if(atomic_load(&online)&&atomic_exchange(&eye_settings_pending,false)&&!send_eye_settings(client))atomic_store(&failed,true);
+    if(atomic_load(&online)&&atomic_exchange(&display_settings_pending,false)&&!send_display_settings(client))atomic_store(&failed,true);
     if(atomic_load(&online)&&playback_done_id[0]&&marvin_body_audio_drained()){cJSON *done=cJSON_CreateObject();cJSON_AddStringToObject(done,"type","voice_playback_done");cJSON_AddStringToObject(done,"interactionId",playback_done_id);playback_done_id[0]=0;if(!send_json(client,done))atomic_store(&failed,true);}
     if(atomic_load(&online)&&marvin_body_audio_available()){
      unsigned request=atomic_exchange(&voice_request,0);
@@ -434,6 +445,10 @@ static void run(void *unused){
 esp_err_t marvin_device_link_start(marvin_link_snapshot_t snapshot,const char *ca){
  if(incoming||!snapshot)return ESP_ERR_INVALID_STATE;
  esp_err_t battery_error=marvin_battery_monitor_init();if(battery_error!=ESP_OK)ESP_LOGW("marvin","Battery ADC unavailable: %s",esp_err_to_name(battery_error));
+ esp_err_t display_error=nvs_open("pet_display",NVS_READWRITE,&display_preferences_nvs);
+ if(display_error==ESP_OK){uint8_t saved=1;display_error=nvs_get_u8(display_preferences_nvs,"show_battery",&saved);if(display_error==ESP_OK&&saved<=1)show_battery_icon=saved!=0;else if(display_error!=ESP_ERR_NVS_NOT_FOUND){(void)nvs_erase_key(display_preferences_nvs,"show_battery");(void)nvs_commit(display_preferences_nvs);}}
+ else display_preferences_nvs=0;
+ marvin_eyes_show_battery(show_battery_icon);
  esp_err_t ledger_error=nvs_open("motion",NVS_READWRITE,&motion_nvs);
  if(ledger_error==ESP_OK){size_t len=sizeof(motion_ledger);ledger_error=nvs_get_blob(motion_nvs,"ledger",&motion_ledger,&len);if(ledger_error==ESP_ERR_NVS_NOT_FOUND){memset(&motion_ledger,0,sizeof(motion_ledger));motion_ledger.magic=0x4d4f544e;motion_ledger_ready=true;}else motion_ledger_ready=ledger_error==ESP_OK&&len==sizeof(motion_ledger)&&motion_ledger.magic==0x4d4f544e;}
  if(!motion_ledger_ready)ESP_LOGE("marvin","Motion ledger unavailable; remote motion disabled");

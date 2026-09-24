@@ -2,20 +2,20 @@ import type { DeviceVoice } from './voice.js';
 import { EventEmitter } from 'node:events';
 import type { FastifyInstance } from 'fastify';
 import type WebSocket from 'ws';
-import { Actions,BatteryStatus,DeviceControl,HeadCalibration,PetAudioSettings,PetEyeSettings,type BatteryStatus as BatteryState,type DeviceAction,type DeviceCapability,type DeviceCommand,type HeadCalibration as HeadCalibrationSettings,type PetAudioSettings as AudioSettings,type PetEyeSettings as EyeSettings } from '../../contracts/src/device.js';
+import { Actions,BatteryStatus,DeviceControl,HeadCalibration,PetAudioSettings,PetDisplaySettings,PetEyeSettings,type BatteryStatus as BatteryState,type DeviceAction,type DeviceCapability,type DeviceCommand,type HeadCalibration as HeadCalibrationSettings,type PetAudioSettings as AudioSettings,type PetDisplaySettings as DisplaySettings,type PetEyeSettings as EyeSettings } from '../../contracts/src/device.js';
 import { DomainError,Id,type InteractionContext } from '../../contracts/src/index.js';
 import { DeviceStore,type DeviceIdentity } from './store.js';
 import { decodeAdpcmFrame } from './adpcm.js';
 
 type LinkDiagnostics={wifiRssi:number;audioTimeouts:number;internalFreeBytes:number;internalLargestBlock:number;resetReason:number;lastLinkFault:number};
-type Connection={identity:DeviceIdentity;token:string;bootId:string;protocolMinor:number;capabilities:DeviceCapability[];socket:WebSocket;lastSeen:number;lastSeq:number;candidate?:boolean;candidateSince:number;stablePickedUp:boolean;closed:boolean;openedAt:number;audioReceivedBytes:number;audioDecodedBytes:number;audioTimeouts:number;audioSentBytes:number;voiceStarts:number;audioInputRate:16000|24000;audioCodec?:'ima-adpcm';lateAudioUntil:number;audioSettings:AudioSettings|null;headCalibration:HeadCalibrationSettings|null;batteryStatus:BatteryState|null;eyeSettings:EyeSettings|null;linkDiagnostics:LinkDiagnostics|null;remoteIds:Set<string>;remoteOrder:string[]};
+type Connection={identity:DeviceIdentity;token:string;bootId:string;protocolMinor:number;capabilities:DeviceCapability[];socket:WebSocket;lastSeen:number;lastSeq:number;candidate?:boolean;candidateSince:number;stablePickedUp:boolean;closed:boolean;openedAt:number;audioReceivedBytes:number;audioDecodedBytes:number;audioTimeouts:number;audioSentBytes:number;voiceStarts:number;audioInputRate:16000|24000;audioCodec?:'ima-adpcm';lateAudioUntil:number;audioSettings:AudioSettings|null;headCalibration:HeadCalibrationSettings|null;batteryStatus:BatteryState|null;eyeSettings:EyeSettings|null;displaySettings:DisplaySettings|null;linkDiagnostics:LinkDiagnostics|null;remoteIds:Set<string>;remoteOrder:string[]};
 type Recent={connection:Connection;expires:number};
 export class DeviceGateway {
  voice?:DeviceVoice;
  readonly events=new EventEmitter();private online=new Map<string,Connection>();private recent=new Map<string,Recent>();private greeting=new Set<string>();
  constructor(readonly persistence:DeviceStore){this.events.setMaxListeners(100);}
- presence(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'online' as const,audioSettings:c.audioSettings,headCalibration:c.headCalibration,headCalibrationPreview:c.protocolMinor>=11,batteryStatus:c.batteryStatus,eyeSettings:c.eyeSettings}:null;}
- publicPresence(ownerId:string){const live=this.presence(ownerId);if(live)return live;const r=[...this.recent.values()].find(r=>r.connection.identity.ownerId===ownerId&&r.expires>Date.now()),c=r?.connection;return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'reconnecting' as const,audioSettings:c.audioSettings,headCalibration:c.headCalibration,headCalibrationPreview:c.protocolMinor>=11,batteryStatus:c.batteryStatus,eyeSettings:c.eyeSettings}:null;}
+ presence(ownerId:string){const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'online' as const,audioSettings:c.audioSettings,headCalibration:c.headCalibration,headCalibrationPreview:c.protocolMinor>=11,batteryStatus:c.batteryStatus,eyeSettings:c.eyeSettings,displaySettings:c.displaySettings}:null;}
+ publicPresence(ownerId:string){const live=this.presence(ownerId);if(live)return live;const r=[...this.recent.values()].find(r=>r.connection.identity.ownerId===ownerId&&r.expires>Date.now()),c=r?.connection;return c?{deviceId:c.identity.deviceId,epoch:c.identity.epoch,bootId:c.bootId,capabilities:c.capabilities,status:'reconnecting' as const,audioSettings:c.audioSettings,headCalibration:c.headCalibration,headCalibrationPreview:c.protocolMinor>=11,batteryStatus:c.batteryStatus,eyeSettings:c.eyeSettings,displaySettings:c.displaySettings}:null;}
  diagnostics(ownerId:string){const online=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed),r=[...this.recent.values()].find(r=>r.connection.identity.ownerId===ownerId&&r.expires>Date.now()),c=online??r?.connection;return c?{status:online?'online':'reconnecting',bootId:c.bootId,connectionOpenedAt:c.openedAt,audioReceivedBytes:c.audioReceivedBytes,audioDecodedBytes:c.audioDecodedBytes,audioTimeouts:c.audioTimeouts,audioSentBytes:c.audioSentBytes,voiceStarts:c.voiceStarts,voiceActive:this.voice?.active(c.identity.deviceId)??false,link:c.linkDiagnostics}:null;}
  private async current(c:Connection){const id=await this.persistence.authenticate(c.token);if(c.closed||this.online.get(id.deviceId)!==c||id.epoch!==c.identity.epoch)throw new DomainError('DEVICE_OFFLINE','This device connection has ended.',409);return id;}
  private sendConnected(c:Connection,event:unknown){if(c.closed||this.online.get(c.identity.deviceId)!==c)throw new DomainError('DEVICE_OFFLINE','This device connection has ended.',409);if(c.socket.readyState!==1||c.socket.bufferedAmount>65536){c.socket.close(1013,'Connection too slow');throw new DomainError('DEVICE_BACKPRESSURE','Your Desktop Pet needs to reconnect.',409);}c.socket.send(JSON.stringify(event));}
@@ -62,6 +62,17 @@ export class DeviceGateway {
   this.events.on('eye_settings',listener);const timeout=setTimeout(()=>finish(null),1200);
   try{await this.send(c,{type:'eye_settings',...settings});const saved=await confirmed;if(!saved)throw new DomainError('EYE_SETTINGS_TIMEOUT','Your Desktop Pet did not confirm the eye design. Reconnect it and try again.',409);return saved;}
   finally{clearTimeout(timeout);this.events.off('eye_settings',listener);}
+ }
+ async setDisplaySettings(ownerId:string,value:unknown){
+  const settings=PetDisplaySettings.parse(value),c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);
+  if(!c)throw new DomainError('DEVICE_OFFLINE','Your Desktop Pet must be online to change its display settings.',409);
+  if(c.protocolMinor<13||!c.displaySettings)throw new DomainError('DISPLAY_SETTINGS_UNAVAILABLE','Update your Desktop Pet firmware to change its battery indicator.',409);
+  let finish:(saved:DisplaySettings|null)=>void=()=>{};
+  const confirmed=new Promise<DisplaySettings|null>(resolve=>{finish=resolve;});
+  const listener=(source:DeviceIdentity,saved:DisplaySettings)=>{if(source.deviceId===c.identity.deviceId&&saved.showBatteryIcon===settings.showBatteryIcon)finish(saved);};
+  this.events.on('display_settings',listener);const timeout=setTimeout(()=>finish(null),1200);
+  try{await this.send(c,{type:'display_settings',...settings});const saved=await confirmed;if(!saved)throw new DomainError('DISPLAY_SETTINGS_TIMEOUT','Your Desktop Pet did not confirm the battery indicator setting. Reconnect it and try again.',409);return saved;}
+  finally{clearTimeout(timeout);this.events.off('display_settings',listener);}
  }
  async speak(ownerId:string,text:string){
   const c=[...this.online.values()].find(c=>c.identity.ownerId===ownerId&&!c.closed);
@@ -127,7 +138,7 @@ export class DeviceGateway {
     const message=DeviceControl.parse(JSON.parse(raw.toString()));
     if(message.type==='hello'){
      if(initialized)throw new DomainError('HELLO_DUPLICATE','Hello was already received.',400);initialized=true;
-     if(message.protocol.major!==1||message.protocol.minor<0||message.protocol.minor>12){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.12 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
+     if(message.protocol.major!==1||message.protocol.minor<0||message.protocol.minor>13){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.13 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
      if(message.audioInputRate&&message.protocol.minor<2)throw new DomainError('AUDIO_PROTOCOL','Native input rate requires protocol 1.2.',400);
      if(message.audioSettings&&message.protocol.minor<4)throw new DomainError('AUDIO_PROTOCOL','Audio settings require protocol 1.4.',400);
      if(message.audioSettings?.microphoneGainDb!==undefined&&message.protocol.minor<5)throw new DomainError('AUDIO_PROTOCOL','Microphone gain requires protocol 1.5.',400);
@@ -139,12 +150,14 @@ export class DeviceGateway {
      if(message.protocol.minor>=9&&!message.batteryStatus)throw new DomainError('BATTERY_PROTOCOL','Battery status is missing.',400);
      if(message.eyeSettings&&message.protocol.minor<10)throw new DomainError('EYE_PROTOCOL','Eye settings require protocol 1.10.',400);
      if(message.protocol.minor>=10&&message.capabilities.includes('eyes')&&!message.eyeSettings)throw new DomainError('EYE_PROTOCOL','Eye settings are missing.',400);
+     if(message.displaySettings&&message.protocol.minor<13)throw new DomainError('DISPLAY_PROTOCOL','Display settings require protocol 1.13.',400);
+     if(message.protocol.minor>=13&&!message.displaySettings)throw new DomainError('DISPLAY_PROTOCOL','Display settings are missing.',400);
      if(message.protocol.minor>=12&&message.capabilities.includes('voice')&&(message.audioInputRate!==16000||message.audioCodec!=='ima-adpcm'))throw new DomainError('AUDIO_PROTOCOL','Protocol 1.12 voice requires negotiated compressed audio.',400);
      if(message.protocol.minor<12&&message.audioCodec)throw new DomainError('AUDIO_PROTOCOL','Compressed audio requires protocol 1.12.',400);
      const identity=await this.persistence.authenticate(token);if(identity.deviceId!==message.deviceId)throw new DomainError('DEVICE_MISMATCH','Device identity mismatch.',403);
      if(this.online.size>=1000&&!this.online.has(identity.deviceId))throw new DomainError('GATEWAY_BUSY','Device gateway is busy.',429);
      const previous=this.online.get(identity.deviceId);if(previous){await this.voice?.disconnect(identity.deviceId);previous.closed=true;previous.socket.close(4409,'Replaced by a new device connection');}
-     c={identity,token,bootId:message.bootId,protocolMinor:message.protocol.minor,capabilities:[...new Set(message.capabilities)],socket,lastSeen:Date.now(),lastSeq:-1,candidateSince:0,stablePickedUp:false,closed:false,openedAt:Date.now(),audioReceivedBytes:0,audioDecodedBytes:0,audioTimeouts:0,audioSentBytes:0,voiceStarts:0,audioInputRate:message.audioInputRate??24000,audioCodec:message.audioCodec,lateAudioUntil:0,audioSettings:message.audioSettings??null,headCalibration:message.headCalibration??null,batteryStatus:message.batteryStatus??null,eyeSettings:message.eyeSettings??null,linkDiagnostics:null,remoteIds:new Set(),remoteOrder:[]};this.online.set(identity.deviceId,c);this.recent.delete(identity.deviceId);clearTimeout(setup);
+     c={identity,token,bootId:message.bootId,protocolMinor:message.protocol.minor,capabilities:[...new Set(message.capabilities)],socket,lastSeen:Date.now(),lastSeq:-1,candidateSince:0,stablePickedUp:false,closed:false,openedAt:Date.now(),audioReceivedBytes:0,audioDecodedBytes:0,audioTimeouts:0,audioSentBytes:0,voiceStarts:0,audioInputRate:message.audioInputRate??24000,audioCodec:message.audioCodec,lateAudioUntil:0,audioSettings:message.audioSettings??null,headCalibration:message.headCalibration??null,batteryStatus:message.batteryStatus??null,eyeSettings:message.eyeSettings??null,displaySettings:message.displaySettings??null,linkDiagnostics:null,remoteIds:new Set(),remoteOrder:[]};this.online.set(identity.deviceId,c);this.recent.delete(identity.deviceId);clearTimeout(setup);
      await this.send(c,{type:'welcome',protocol:{major:1,minor:message.protocol.minor},epoch:identity.epoch,heartbeatMs:5000,serverTime:Date.now()});
      for(const command of await this.persistence.reconnect(identity,c.bootId))await this.send(c,command);this.events.emit('online',identity);void this.greet(c).catch(()=>{});return;
     }
@@ -165,6 +178,10 @@ export class DeviceGateway {
     if(message.type==='eye_settings'){
      if(c.protocolMinor<10||!c.capabilities.includes('eyes'))throw new DomainError('EYE_PROTOCOL','Eye settings were not negotiated.',400);
      c.eyeSettings={design:message.design};this.events.emit('eye_settings',c.identity,c.eyeSettings);return;
+    }
+    if(message.type==='display_settings'){
+     if(c.protocolMinor<13)throw new DomainError('DISPLAY_PROTOCOL','Display settings were not negotiated.',400);
+     c.displaySettings={showBatteryIcon:message.showBatteryIcon};this.events.emit('display_settings',c.identity,c.displaySettings);return;
     }
     if(message.type==='battery_status'){
      if(c.protocolMinor<9)throw new DomainError('BATTERY_PROTOCOL','Battery status was not negotiated.',400);

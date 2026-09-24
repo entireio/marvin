@@ -34,7 +34,7 @@ import { authorizeTool } from '../../../packages/runtime/src/policy.js';
 import { FixtureEntire,fixtureRepositories } from '../../../packages/runtime/src/entire.js';
 import { FixtureTextProvider,OpenAITextProvider,type TextProvider } from '../../../packages/runtime/src/provider.js';
 import { SendTurn, ClientEvent, RemoteIntent, DomainError, Id, RepositorySelection, type AgentEvent } from '../../../packages/contracts/src/index.js';
-import { HeadCalibration,PetAudioSettings,PetEyeSettings,PetSpeech } from '../../../packages/contracts/src/device.js';
+import { HeadCalibration,PetAudioSettings,PetDisplaySettings,PetEyeSettings,PetSpeech } from '../../../packages/contracts/src/device.js';
 import { GithubIdentity,Identity,verifyPassword,safeReturnTo } from './auth.js';
 import type { Config } from './config.js';
 export async function createApp(cfg:Config,options:{database?:Database;provider?:TextProvider;logger?:boolean;entire?:RepositoryIntegration;voice?:VoiceProvider;voiceLimits?:{idleMs:number;maxMs:number;heartbeatMs:number}}={}){
@@ -137,6 +137,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.patch('/api/robot/head-calibration',async(req)=>devices.setHeadCalibration((await session(req)).ownerId,HeadCalibration.parse(req.body)));
  app.put('/api/robot/head-calibration/preview',{config:{rateLimit:{max:600,timeWindow:'1 minute'}}},async(req)=>devices.previewHeadCalibration((await session(req)).ownerId,HeadCalibration.parse(req.body)));
  app.patch('/api/robot/eyes',async(req)=>devices.setEyeSettings((await session(req)).ownerId,PetEyeSettings.parse(req.body)));
+ app.patch('/api/robot/display',async(req)=>devices.setDisplaySettings((await session(req)).ownerId,PetDisplaySettings.parse(req.body)));
  app.post('/api/robot/speak',{config:{rateLimit:{max:8,timeWindow:'1 minute'}}},async(req)=>{const b=PetSpeech.parse(req.body),s=await session(req);return devices.speak(s.ownerId,b.text);});
  app.post('/api/robot/control',async(req)=>{
   const b=z.discriminatedUnion('action',[

@@ -38,7 +38,7 @@ typedef struct {
 
 static const char *TAG="marvin_eyes";
 static display_t displays[2];
-static atomic_bool pair_available,awake;
+static atomic_bool pair_available,awake,show_battery=true;
 static atomic_int pending_sequence;
 static atomic_int requested_expression=MARVIN_EYES_NEUTRAL;
 static atomic_int requested_design=MARVIN_EYE_DESIGN_CLASSIC;
@@ -254,7 +254,7 @@ static void task(void *unused){
                 marvin_eye_render(displays[eye].pixels,&frame,(marvin_eye_render_design_t)design);
             }
             if(now<atomic_load(&volume_until_us))marvin_eye_render_volume(displays[0].pixels,atomic_load(&overlay_volume));
-            if(battery_available)marvin_eye_render_battery(displays[1].pixels,battery_percent,critical_battery);
+            if(battery_available&&atomic_load(&show_battery))marvin_eye_render_battery(displays[1].pixels,battery_percent,critical_battery);
             flush(&displays[0]);flush(&displays[1]);
             do next_frame+=FRAME_PERIOD_US;while(next_frame<=now);
         }
@@ -324,3 +324,4 @@ void marvin_eyes_volume(unsigned volume_percent){
     atomic_store(&overlay_volume,(unsigned)clamp((int)volume_percent,0,100));
     atomic_store(&volume_until_us,esp_timer_get_time()+VOLUME_OVERLAY_US);
 }
+void marvin_eyes_show_battery(bool show){atomic_store(&show_battery,show);}

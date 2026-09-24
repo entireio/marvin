@@ -46,9 +46,11 @@ percentage temporarily, and the exact discharge curve depends on the cell.
 
 This board revision does not route USB power or the ETA6098 `STAT` output to
 the ESP32. The protocol therefore reports `charging: null`; firmware does not
-infer charging from voltage changes. The right eye instead shows battery state
-at all times as a compact three-segment gauge. At the critical threshold the
-segments are replaced by an empty gauge and exclamation mark.
+infer charging from voltage changes. When the display preference is enabled,
+the right eye shows battery state as a compact three-segment gauge. At the
+critical threshold the segments are replaced by an empty gauge and exclamation
+mark. Disabling the preference suppresses the complete battery overlay,
+including that critical warning.
 
 ## Build
 

@@ -7,6 +7,8 @@ export type PetAudioSettings=z.infer<typeof PetAudioSettings>;
 export const EyeDesign=z.enum(['classic','solid','friendly']);
 export const PetEyeSettings=z.object({design:EyeDesign}).strict();
 export type PetEyeSettings=z.infer<typeof PetEyeSettings>;
+export const PetDisplaySettings=z.object({showBatteryIcon:z.boolean()}).strict();
+export type PetDisplaySettings=z.infer<typeof PetDisplaySettings>;
 export const BatteryStatus=z.object({levelPercent:z.number().int().min(0).max(100).nullable(),voltageMv:z.number().int().min(2500).max(5000).nullable(),charging:z.boolean().nullable()}).strict().refine(value=>(value.levelPercent===null)===(value.voltageMv===null),{message:'Battery level and voltage must be available together.'});
 export type BatteryStatus=z.infer<typeof BatteryStatus>;
 export const HeadCalibration=z.object({yawCenter:z.number().int().min(60).max(120),pitchCenter:z.number().int().min(60).max(120),yawReversed:z.boolean(),pitchReversed:z.boolean()}).strict();
@@ -14,7 +16,7 @@ export type HeadCalibration=z.infer<typeof HeadCalibration>;
 /** A short, exact line that the owner asks the Desktop Pet to say aloud. */
 export const PetSpeech=z.object({text:z.string().trim().min(1).max(500)}).strict();
 export type PetSpeech=z.infer<typeof PetSpeech>;
-export const DeviceHello=z.object({type:z.literal('hello'),protocol:z.object({major:z.number().int(),minor:z.number().int()}).strict(),deviceId:Id,bootId:Id,capabilities:z.array(DeviceCapability).max(10),firmware:z.string().max(64),audioInputRate:z.literal(16000).optional(),audioCodec:z.literal('ima-adpcm').optional(),audioSettings:PetAudioSettings.optional(),headCalibration:HeadCalibration.optional(),batteryStatus:BatteryStatus.optional(),eyeSettings:PetEyeSettings.optional()}).strict();
+export const DeviceHello=z.object({type:z.literal('hello'),protocol:z.object({major:z.number().int(),minor:z.number().int()}).strict(),deviceId:Id,bootId:Id,capabilities:z.array(DeviceCapability).max(10),firmware:z.string().max(64),audioInputRate:z.literal(16000).optional(),audioCodec:z.literal('ima-adpcm').optional(),audioSettings:PetAudioSettings.optional(),headCalibration:HeadCalibration.optional(),batteryStatus:BatteryStatus.optional(),eyeSettings:PetEyeSettings.optional(),displaySettings:PetDisplaySettings.optional()}).strict();
 export const DeviceControl=z.discriminatedUnion('type',[
  DeviceHello,
  z.object({type:z.literal('heartbeat'),seq:z.number().int().nonnegative()}).strict(),
@@ -27,6 +29,7 @@ export const DeviceControl=z.discriminatedUnion('type',[
  z.object({type:z.literal('battery_status'),...BatteryStatus.shape}).strict(),
  z.object({type:z.literal('head_calibration'),...HeadCalibration.shape}).strict(),
  z.object({type:z.literal('eye_settings'),...PetEyeSettings.shape}).strict(),
+ z.object({type:z.literal('display_settings'),...PetDisplaySettings.shape}).strict(),
  z.object({type:z.literal('voice_playback_done'),interactionId:Id}).strict(),
  z.object({type:z.literal('link_diagnostics'),wifiRssi:z.number().int().min(-127).max(0),audioTimeouts:z.number().int().nonnegative(),internalFreeBytes:z.number().int().nonnegative(),internalLargestBlock:z.number().int().nonnegative(),resetReason:z.number().int().nonnegative(),lastLinkFault:z.number().int().nonnegative()}).strict()
 ]);
