@@ -20,11 +20,10 @@ The installed dual DC motor module is a **DRV8833** carrier. `EEP` is its active
 | 3 | EEP (DRV8833 nSLEEP) | Low at startup and after stopping |
 | 8 / 9 | Head tilt / rotation servo signal | 50 Hz, 1–2 ms pulses on explicit command |
 
-The firmware logical mapping is corrected for the assembled pet: positive left
-speed drives the physical right motor forward, and positive right speed drives
-the physical left motor forward. Logical left uses GPIO5/4 and logical right
-uses GPIO6/7. Both motor input polarities are reversed in the mapping so
-positive speed means forward.
+The firmware logical mapping is corrected for the assembled pet's inverted
+left/right motor channels. Logical left uses GPIO6/7 and logical right uses
+GPIO5/4. The pin order within each channel retains the motor polarity required
+for positive speed to mean forward.
 
 `actuators.c` configures 20 kHz motor PWM, holds EEP low while idle, raises it only after a bounded track command has set the inputs, and lowers it before clearing them on stop or expiry. Scripted track commands may run for up to 30 seconds; the remote-control loop independently renews a 120 ms watchdog. Positive track speed selects IN2/IN4 because the motor positive leads are on OUT2/OUT4. The head outputs start without pulses and are configured only when explicitly commanded. The previous GPIO4/5/6 audio button placeholders are disabled by default.
 
