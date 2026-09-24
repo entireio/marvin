@@ -1,0 +1,105 @@
+Was ashtom/website-design merged into main?
+
+---
+
+Ok, in the branch, we had changed the design away from entire.io to be more like a sketch. Keep most of it, but change the rails and background back to look like entire.io.
+
+---
+
+What about the Marvin control web app?
+
+---
+
+Run a server first, so I can inspect it
+
+---
+
+Ok, now adjust the design for these pages as well to fully match the entire.io design system.
+
+---
+
+Ok, let's take it step by step. Entire logo should go in the top left, next to Marvin written in Aeonik.
+
+---
+
+Next, the sidebar doesn't look or behave like entire.io at all.
+
+---
+
+When the sidebar is collapsed, hide Marvin from the top-left, just leave the icon.
+
+---
+
+Remove the marvin face from the main area.
+
+---
+
+On http://127.0.0.1:5173/login, the rail lines don't match the landing page. The footer is missing too. Also, remove the dark/light mode switch and link it to the system appearance.
+
+---
+
+Move the logged developer as round avatar to the top right corner. Move the docs link, settings, and logout as menu under it similar how entire.io logged-in state does it. Keep the Desktop Pet button on the left of it.
+
+---
+
+The repository selector on top isn't following entire.io design
+
+---
+
+Also add the dark/light mode switch into that menu. And do no highlight Build Documentation unless the mouse is hovering it.
+
+---
+
+The Select Repository button still doesn't look good. Remove the icon and adjust the styling to Entire design.
+
+---
+
+[Image #1] [Image #2] Appearance still isn't right, compare the two screenshots. Order should be (under the name) Settings, Documentation, line, Appearance, line, Logout.
+
+---
+
+The Settings screen still looks a bit like the old design?
+
+---
+
+In Privacy and history, move What Marvin keeps next to the icon, not below it
+
+---
+
+The Desktop Pet view in Settings lost the face and some other stuff?
+
+---
+
+Why did the heading change?
+
+---
+
+Revert that. Which other headlines did you change?
+
+---
+
+Ok. Next, when clicking "Desktop Pet setup", the dialog looks broken.
+
+---
+
+Can we simulate the remote control screen?
+
+---
+
+Remove the SIMULATED REMOTE and SIMULATED labels, so I can see the actual layout.
+
+---
+
+Remove the Drive Marvin label. Instead, show the Entire icon, the Live Remote next to it. Then review the Make Marvin say something box. It doesn't seem to follow our design.
+
+---
+
+The Entire icon and Live Remote label are bigger than the normal UI. Why?
+
+---
+
+Fix it
+
+---
+
+Move the "Make Marvin say something" area down by twice the distance.

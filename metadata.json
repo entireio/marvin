@@ -1,0 +1,58 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M38GZF5J6A882CGFEB4CBJ1K",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 27,
+  "files_touched": [
+    "apps/build-docs/assets/css/sketch.css",
+    "apps/build-docs/build.html",
+    "apps/build-docs/contribute.html",
+    "apps/build-docs/drive.html",
+    "apps/build-docs/electronics.html",
+    "apps/build-docs/index.html",
+    "apps/build-docs/reference.html",
+    "apps/web/index.html",
+    "apps/web/public/fonts/aeonik-semibold.woff",
+    "apps/web/public/fonts/entire-headline-semibold.woff2",
+    "apps/web/public/fonts/entire-mono-bold.woff2",
+    "apps/web/public/fonts/entire-mono-regular.woff2",
+    "apps/web/public/icons/sidebar-floating.svg",
+    "apps/web/public/icons/sidebar-inline.svg",
+    "apps/web/src/AccountMenu.tsx",
+    "apps/web/src/App.tsx",
+    "apps/web/src/Dialog.tsx",
+    "apps/web/src/PrivacyPanel.tsx",
+    "apps/web/src/RemotePreview.tsx",
+    "apps/web/src/RepositorySelector.tsx",
+    "apps/web/src/Sidebar.tsx",
+    "apps/web/src/appearance.ts",
+    "apps/web/src/entire.css",
+    "apps/web/src/main.tsx",
+    "apps/web/src/sidebar.css",
+    "apps/web/src/style.css",
+    "apps/web/src/useSidebar.ts",
+    "packages/design-tokens/tokens.css",
+    "tests/e2e/account-menu.spec.ts",
+    "tests/e2e/portal.spec.ts",
+    "tests/e2e/privacy.spec.ts",
+    "tests/e2e/sidebar.spec.ts"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 576702,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 26383360,
+    "output_tokens": 62467,
+    "api_call_count": 229,
+    "subagent_tokens_complete": true
+  }
+}
