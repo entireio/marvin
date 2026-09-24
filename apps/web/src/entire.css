@@ -1,0 +1,323 @@
+/* Entire's visual system, shared by every app surface. Functional layout and
+   mobile controller sizing remain in style.css; this layer owns presentation. */
+@font-face {
+  font-family: "Entire Headline";
+  src: url('/fonts/entire-headline-semibold.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Entire Mono";
+  src: url('/fonts/entire-mono-regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Entire Mono";
+  src: url('/fonts/entire-mono-bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Aeonik";
+  src: url('/fonts/aeonik-semibold.woff') format('woff');
+  font-weight: 600;
+  font-display: swap;
+}
+:root {
+  font: 400 16px/1.5 var(--marvin-font-body);
+  color: var(--marvin-text);
+  background: var(--marvin-bg);
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--marvin-accent); color: var(--marvin-action-text); }
+h1, h2, h3, h4 { letter-spacing: 0; }
+h1, h2, h3 { font-family: var(--marvin-font-heading); }
+h3, .dialog-header h2, .login-form h2, .setup-content > h3 {
+  font-size: 24px;
+  line-height: 28px;
+  font-weight: 500;
+}
+h4 { font-size: 16px; line-height: 20px; font-weight: 600; }
+p { line-height: 1.5; }
+.wordmark, .login-header .wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font: 600 24px/28px "Aeonik", var(--marvin-font-body);
+  letter-spacing: 0;
+}
+.wordmark-logo {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  background: currentColor;
+  mask: url('/favicon.svg') center / contain no-repeat;
+  -webkit-mask: url('/favicon.svg') center / contain no-repeat;
+}
+.eyebrow, .welcome .eyebrow, .settings-pane > .eyebrow {
+  font: 400 11px/16px var(--marvin-font-code);
+  letter-spacing: .06em;
+  color: var(--marvin-accent);
+}
+.login-copy h1, .welcome h1 {
+  font: 500 40px/40px var(--marvin-font-heading);
+  letter-spacing: 0;
+}
+.login-copy h1 { font-size: 48px; line-height: 48px; }
+.login-description { font-size: 20px; line-height: 28px; }
+.welcome > p:last-child { font-size: 16px; line-height: 24px; }
+
+/* 1280px outer rails and a 64px header match Entire's SiteSection geometry. */
+/* Match the landing page: full-width horizontal rules intersect continuous
+   1280px rails; padding belongs inside the frame, never outside the rules. */
+.login-page { max-width: none; padding: 0; margin: 0; border: 0; }
+.login-header { display: block; height: 64px; flex-shrink: 0; }
+.login-header__inner {
+  max-width: 1280px; height: 63px; margin-inline: auto; padding: 12px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+}
+.login-grid { width: 100%; max-width: 1280px; margin-inline: auto; gap: 48px; padding: 64px 32px; }
+.login-footer { display: block; height: auto; font-size: 14px; line-height: 20px; }
+.login-footer p { max-width: 1280px; margin: auto; padding: 32px; text-align: center; line-height: 20px; }
+.login-footer a { color: inherit; text-underline-offset: 3px; }
+.login-footer a:hover { color: var(--marvin-text); }
+.workspace-header { height: 64px; padding-inline: 24px; background: var(--marvin-bg); }
+.sidebar { padding-top: 0; }
+.sidebar-brand { height: 64px; flex-shrink: 0; margin-bottom: 24px; }
+.login-illustration { border-radius: var(--marvin-radius-panel); }
+.login-illustration::before, .login-illustration::after { display: none; }
+.remote-header { height: 64px; padding-inline: max(24px, calc((100% - 1232px) / 2)); }
+@media (min-width: 1280px) {
+  .login-page::before {
+    content: ''; position: fixed; top: -100vh; bottom: -100vh;
+    left: calc((100% - 1280px) / 2); right: calc((100% - 1280px) / 2);
+    border-inline: 1px solid var(--marvin-rule); pointer-events: none; z-index: 1;
+  }
+  .remote-screen::before {
+    content: ''; position: absolute; inset: 0;
+    width: 1280px; max-width: 100%; margin-inline: auto;
+    border-inline: 1px solid var(--marvin-rule); pointer-events: none;
+  }
+}
+
+/* Quiet raised surfaces, indigo actions, and consistent controls. */
+.button, .new-chat, .icon-button, .send-button, .settings-nav button,
+.history-list button, .sidebar-bottom > a, .sidebar-bottom > button,
+.field input, .field select, .repository-panel select, .eye-design-card select,
+.voice-action, .voice-end, .remote-speech-composer {
+  border-radius: var(--marvin-radius-control);
+}
+.button { min-height: var(--marvin-target-size); font-size: 14px; font-weight: 500; line-height: 20px; }
+.button.primary:hover { filter: none; background: var(--marvin-accent-hover); }
+.button.secondary { box-shadow: 0 1px 2px rgb(0 0 0 / .04); }
+.dialog, .setting-card, .repo-card, .connect-card, .suggestions button,
+.composer, .voice-composer, .voice-presence, .instructions, .remote-speech,
+.entire-auth-step, .connector-fallback, .autonomous-switch {
+  border-radius: var(--marvin-radius-panel);
+}
+.dialog { background: var(--panel); }
+.dialog-header { background: var(--panel); min-height: 64px; }
+.settings-nav { background: var(--marvin-bg); }
+.settings-nav button.active, .history-list button.active {
+  color: var(--marvin-link); background: var(--marvin-accent-subtle);
+}
+.suggestions button, .connect-card, .composer, .voice-presence, .voice-composer,
+.remote-speech { background: var(--panel); border-color: var(--marvin-rule); box-shadow: none; }
+.suggestions button:hover { transform: none; background: var(--hover); border-color: var(--marvin-accent); }
+.composer:focus-within, .voice-composer:focus-within {
+  border-color: var(--marvin-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--marvin-accent) 12%, transparent);
+}
+.badge, .body-status, .remote-status, .live-badge { border-radius: 5px; }
+.badge { font-size: 11px; line-height: 16px; }
+.badge.small { font-size: 10px; }
+.remote-speech .notice { color: var(--marvin-link); }
+.remote-speech h3 { font-family: var(--marvin-font-body); letter-spacing: 0; }
+.marvin-face.large { transform: none; box-shadow: none; border-radius: var(--marvin-radius-panel); }
+.connection-logo { border-radius: var(--marvin-radius-control); }
+.connection-logo::before {
+  content: ''; width: 24px; height: 24px; background: currentColor;
+  mask: url('/favicon.svg') center / contain no-repeat;
+  -webkit-mask: url('/favicon.svg') center / contain no-repeat;
+}
+.markdown h1, .markdown h2, .markdown h3 { line-height: 1.25; }
+/* Text on a sunken surface needs more contrast than the default muted label. */
+.user-message .message-label, .avatar { color: var(--marvin-text); }
+
+@media (max-width: 767px) {
+  .login-page { padding: 0; }
+  .login-header__inner, .login-grid {
+    padding-inline: max(20px, env(safe-area-inset-left)) max(20px, env(safe-area-inset-right));
+  }
+  .login-grid { padding-block: 40px; gap: 32px; }
+  .login-footer p { padding: 28px 20px max(28px, env(safe-area-inset-bottom)); }
+  .login-copy h1, .welcome h1 { font-size: 32px; line-height: 32px; }
+  .login-description { font-size: 18px; line-height: 26px; }
+  .workspace-header {
+    height: calc(64px + env(safe-area-inset-top));
+    padding-inline: max(12px, env(safe-area-inset-left)) max(12px, env(safe-area-inset-right));
+  }
+  .app-layout .sidebar { padding-top: env(safe-area-inset-top); }
+  .settings-nav { top: 64px; }
+  .settings-pane { padding: 24px 20px; }
+  .dialog-header { padding: 16px 20px; }
+}
+@media (max-width: 600px) {
+  .remote-header {
+    height: calc(64px + env(safe-area-inset-top));
+    padding-inline: max(14px, env(safe-area-inset-left)) max(14px, env(safe-area-inset-right));
+  }
+  .remote-main { grid-template-columns: minmax(0, 1fr); }
+  .remote-main > * { min-width: 0; }
+  .autonomous-switch span { flex: 1; }
+  .autonomous-switch b { white-space: nowrap; }
+  .autonomous-switch small { min-width: 0; }
+  .remote-speech { border-radius: var(--marvin-radius-panel); }
+  .remote-status { border-radius: 50%; }
+}
+@media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
+  .remote-header { height: calc(52px + env(safe-area-inset-top)); }
+}
+
+/* Entire's logged-in header: a 32px circular avatar in a 40px trigger,
+   with account actions in an end-aligned floating menu. */
+.account-menu { position: relative; flex-shrink: 0; z-index: 60; }
+.account-menu-trigger {
+  width: 40px; height: 40px; padding: 4px; display: grid; place-items: center;
+  border-radius: 50%; color: var(--marvin-text);
+}
+.account-menu-trigger:hover, .account-menu-trigger[aria-expanded=true] { background: var(--hover); }
+.account-avatar {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 50%; border: 1px solid var(--marvin-rule);
+  background: var(--marvin-surface); font-size: 14px; font-weight: 500;
+}
+.account-menu-content {
+  position: absolute; right: 0; top: calc(100% + 8px); width: 240px;
+  max-width: calc(100vw - 24px); padding: 4px;
+  background: var(--panel); border: 1px solid var(--marvin-rule);
+  border-radius: 12px; box-shadow: var(--shadow);
+}
+.account-menu-heading { padding: 10px 12px; display: grid; gap: 3px; }
+.account-menu-heading strong { font-size: 14px; font-weight: 500; overflow-wrap: anywhere; }
+.account-menu-heading span { color: var(--marvin-muted); font-size: 12px; }
+.account-menu-content [role=menuitem] {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px;
+  padding: 8px 12px; border-radius: 8px; color: var(--marvin-text);
+  font-size: 14px; line-height: 20px; text-decoration: none; text-align: left;
+}
+.account-menu-content [role=menuitem]:hover {
+  background: var(--hover); outline: none;
+}
+.account-menu-content [role=menuitem] svg { color: var(--marvin-muted); }
+.account-menu-content .account-external { margin-left: auto; }
+.account-menu-separator { height: 1px; margin: 4px; background: var(--marvin-rule); }
+
+.pet-status-icon { display: none; }
+@media (max-width: 767px) {
+  .pet-status-icon { display: block; }
+  .body-status { min-height: 36px; }
+}
+
+/* Entire's compact repository switcher and searchable combobox. */
+.repository-picker{position:relative;min-width:0;max-width:280px}
+.repository-picker-trigger{display:flex;align-items:center;gap:8px;height:32px;max-width:100%;padding:0 8px;border:0;border-radius:6px;background:transparent;color:var(--marvin-muted);font-family:var(--marvin-font-body);font-size:14px;font-weight:400;line-height:20px;text-align:left;transition:background-color 150ms,color 150ms}
+.repository-picker-trigger:hover{background:var(--hover);color:var(--marvin-text)}
+.repository-picker-trigger:focus-visible{outline:2px solid var(--marvin-link);outline-offset:2px}
+.repository-picker-trigger[data-selected=true]{color:var(--marvin-text);font-weight:600}
+.repository-picker-trigger:disabled{opacity:.5;cursor:default}
+.repository-picker-trigger>svg{flex-shrink:0;color:var(--marvin-muted)}
+.repository-picker-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repository-picker-popup{position:absolute;top:calc(100% + 8px);left:0;z-index:60;width:320px;max-width:calc(100vw - 120px);padding:4px;background:var(--panel);border:1px solid var(--marvin-rule);border-radius:12px;box-shadow:0 8px 28px #00000018}
+.repository-picker-search{display:flex;align-items:center;gap:8px;padding:0 10px;margin-bottom:4px;border:1px solid var(--marvin-rule);border-radius:8px;color:var(--marvin-muted)}
+.repository-picker-search:focus-within{outline:2px solid var(--marvin-link);outline-offset:-1px}
+.repository-picker-search input{width:100%;min-width:0;height:36px;padding:0;border:0;border-radius:0;background:transparent;color:var(--marvin-text);font:inherit;font-size:14px;outline:none!important;box-shadow:none}
+.repository-picker-search>svg{flex-shrink:0}
+.repository-picker-list{max-height:280px;overflow-y:auto}
+.repository-picker-option{display:flex;align-items:center;gap:8px;min-height:32px;padding:6px 12px;border-radius:8px;font-size:14px;cursor:pointer}
+.repository-picker-option.is-active{background:var(--hover)}
+.repository-picker-option>span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.repository-picker-check{display:flex;flex:0 0 16px}
+.repository-picker-empty{padding:8px 12px;color:var(--marvin-muted);font-size:14px}
+@media(max-width:600px){.repository-picker{flex:1;min-width:0}.header-left>.badge{display:none}.repository-picker-popup{width:280px}}
+
+.account-menu-content [role=menuitem]:focus-visible,.account-appearance button:focus-visible{outline:2px solid var(--marvin-link);outline-offset:-2px}
+/* Appearance follows the same text-row submenu pattern as Entire. */
+.account-appearance{position:relative}
+.account-appearance-submenu{position:absolute;right:100%;top:-5px;width:144px;padding:4px;background:var(--panel);border:1px solid var(--marvin-rule);border-radius:12px;box-shadow:0 4px 12px #00000012;z-index:1}
+.account-appearance-submenu [role=menuitemradio]{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:32px;padding:6px 12px;border-radius:8px;color:var(--marvin-text);font-size:14px;text-align:left}
+.account-appearance-submenu [role=menuitemradio]:hover{background:var(--hover)}
+.account-menu-content .account-menu-separator{margin:4px -4px}
+.account-menu-content{box-shadow:0 4px 12px #00000012}
+@media(max-width:480px){.account-appearance-submenu{right:0;top:100%}}
+
+/* Settings uses Entire's compact section headings and neutral navigation. */
+.dialog.settings-dialog{width:min(920px,calc(100vw - 32px));background:var(--marvin-bg)}
+.settings-dialog .dialog-header{min-height:56px;padding:8px 20px;background:var(--marvin-bg)}
+.settings-dialog .dialog-header h2{font-family:var(--marvin-font-body);font-size:16px;line-height:24px;font-weight:600;letter-spacing:0}
+.settings-dialog .settings-layout{grid-template-columns:208px minmax(0,1fr);min-height:480px}
+.settings-dialog .settings-nav{padding:16px 8px;background:transparent}
+.settings-dialog .settings-nav button{min-height:36px;margin:0 0 2px;padding:8px 12px;gap:8px;font-size:14px;line-height:20px;border-radius:8px;color:var(--marvin-muted)}
+.settings-dialog .settings-nav button:hover{background:var(--hover);color:var(--marvin-text)}
+.settings-dialog .settings-nav button.active{background:color-mix(in srgb,var(--marvin-text) 6%,transparent);color:var(--marvin-text);font-weight:600}
+.settings-dialog .settings-nav svg{flex-shrink:0;color:var(--marvin-muted)}
+.settings-dialog .settings-pane{min-width:0;padding:28px 32px 32px}
+.settings-pane>h3{font-family:var(--marvin-font-body);font-size:20px;line-height:28px;font-weight:600;letter-spacing:-.2px;margin:0 0 8px}
+.settings-pane>.muted{font-size:14px;line-height:20px;margin:0 0 24px}
+.settings-pane .setting-card{padding:16px;margin:24px 0;border-radius:12px;background:var(--panel);box-shadow:0 1px 3px #00000004}
+.settings-pane .setting-card-title{gap:12px;margin-bottom:12px}
+.settings-pane .setting-card strong,.settings-pane h4{font-family:var(--marvin-font-body);font-size:14px;font-weight:600;line-height:20px;letter-spacing:0}
+.settings-pane h4{margin:0 0 8px}
+.settings-pane .setting-card>p{font-size:14px;line-height:20px;margin:12px 0}
+.settings-pane .setting-card small,.settings-pane .fine-print{font-size:12px;line-height:18px}
+.settings-pane .button{min-height:36px;padding:7px 12px;font-size:14px;line-height:20px;box-shadow:none}
+.settings-pane .button.full{width:auto;max-width:100%}
+.settings-pane .button.secondary{background:var(--panel);border:1px solid var(--marvin-rule);color:var(--marvin-text)}
+.settings-pane .button.secondary:hover{background:var(--hover)}
+.settings-pane .field select,.settings-pane .field input,.settings-pane .eye-design-card select{min-height:36px;padding:7px 12px;border-radius:8px;font-size:14px}
+.settings-pane .ownership-section{margin-top:28px;padding-top:24px}
+.settings-pane .ownership-section p{font-size:14px;line-height:20px}
+@media(max-width:767px){
+ .dialog.settings-dialog{width:calc(100vw - 20px)}
+ .settings-dialog .settings-layout{grid-template-columns:minmax(0,1fr);min-height:0}
+ .settings-dialog .settings-nav{padding:8px;top:56px;background:var(--marvin-bg)}
+ .settings-dialog .settings-nav button{flex-shrink:0;margin:0;font-size:13px}
+ .settings-dialog .settings-pane{padding:24px 20px}
+}
+.settings-pane .setting-card>.button{display:flex;width:fit-content;margin-top:16px}
+.settings-pane .setting-card>.text-button{display:flex;width:fit-content;margin:16px 0 0;font-size:13px;line-height:20px}
+
+.settings-pane .setting-card-title>svg:first-child{margin-left:0;flex-shrink:0;color:var(--marvin-muted)}
+.settings-pane .setting-card-title>h4{margin:0}
+.pet-setup-dialog .dialog-header{min-height:56px;padding:8px 20px}
+.pet-setup-dialog .dialog-header h2{font-family:var(--marvin-font-body);font-size:16px;line-height:24px;font-weight:600}
+.pet-setup-dialog .dialog-body{padding:24px;color:var(--marvin-muted);font-size:14px;line-height:20px}
+.pet-setup-dialog .dialog-body>p{margin:0}
+
+.remote-header .remote-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.remote-header .remote-brand h2{margin:0;font-family:"Aeonik",var(--marvin-font-body);font-size:22px;line-height:28px;font-weight:600;white-space:nowrap}
+.remote-brand .wordmark-logo{display:block;flex-shrink:0;width:26px;height:26px}
+.remote-speech{grid-template-columns:minmax(0,1fr);gap:12px;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+.remote-speech-heading{display:block}
+.remote-speech-heading h3{position:static;width:auto;height:auto;overflow:visible;clip:auto;margin:0 0 4px;font-size:16px;line-height:24px;font-weight:600}
+.remote-speech-heading p{max-width:none;font-size:14px;line-height:20px}
+.remote-speech-composer{padding:12px;gap:12px;background:var(--panel);border:1px solid var(--marvin-rule);border-radius:12px;align-items:flex-end;flex-direction:row}
+.remote-speech textarea{min-width:0;min-height:56px;padding:0;font-size:14px;line-height:20px}
+.remote-speech-composer .button{width:auto;min-height:36px;padding:8px 12px;box-shadow:none}
+.remote-speech-meta{font:12px/18px var(--marvin-font-body);margin:8px 0 0}
+@media(max-width:767px){
+ .remote-speech{grid-template-columns:minmax(0,1fr);gap:8px;padding:0}
+ .remote-speech-heading h3{font-size:14px;line-height:20px;margin:0}
+ .remote-speech-composer{padding:8px;gap:8px;align-items:center}
+ .remote-speech textarea{height:40px;min-height:40px;max-height:40px;padding:10px 4px;font-size:16px}
+ .remote-speech-composer .button{min-height:40px}
+ .remote-speech-heading .notice{display:block;margin:6px 0 0;padding:6px 8px;font-size:12px}
+}
+@media(max-height:500px) and (orientation:landscape){
+ .remote-speech{gap:6px;padding:0}
+ .remote-speech-heading h3{font-size:14px;line-height:20px;margin:0}
+ .remote-speech-heading p{display:none}
+ .remote-speech textarea{min-height:40px;height:40px}
+ .remote-speech-composer{padding:6px;gap:6px;align-items:center}
+}

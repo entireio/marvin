@@ -6,46 +6,23 @@
   --sketch-hatch: repeating-linear-gradient(112deg, transparent 0 5px, var(--sketch-faint) 5px 5.6px, transparent 5.6px 8px);
 }
 
-/* The page itself is a drawing sheet: replace the original straight grid,
-   rather than laying a textured line over a still-visible CSS border. */
-.site-header, .site-section, .doc-section, .site-footer,
-.site-header__inner, .site-section__inner, .docs-layout, .docs-content,
-.entire-footer { border-color: transparent; }
+/* Keep Entire's straight section rules and neutral backgrounds. A continuous
+   outer frame stays stationary during Safari rubber-band scrolling. */
 .site-section, .doc-section, .site-header__inner, .site-section__inner,
 .docs-layout, .entire-footer { position: relative; }
-.site-section::after, .doc-section::after, .site-header::after {
-  content: ''; position: absolute; bottom: -11px; left: 0; right: 0;
-  width: 100%; height: 22px; margin-inline: auto;
-  background: var(--sketch-ink); pointer-events: none; z-index: 2;
-  -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
-  mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
-}
-.doc-section::after { width: calc(100% + 12px); left: -6px; }
-.doc-section:last-child::after { display: none; }
-/* One continuous outer frame extends past the viewport during rubber-band scrolling.
-   Fixed positioning keeps the extra paint out of the document's scroll height. */
-body::before {
-  content: ''; position: fixed; top: -100vh; bottom: -100vh;
-  left: max(0px, calc((100% - 1294px) / 2));
-  right: max(0px, calc((100% - 1294px) / 2));
-  background: var(--sketch-ink); opacity: .8;
-  pointer-events: none; z-index: 51;
-  -webkit-mask: url('../img/sketch-rail.svg') left top / 14px 800px repeat-y,
-                url('../img/sketch-rail.svg') right top / 14px 800px repeat-y;
-  mask: url('../img/sketch-rail.svg') left top / 14px 800px repeat-y,
-        url('../img/sketch-rail.svg') right top / 14px 800px repeat-y;
+@media (min-width: 1280px) {
+  .site-header__inner, .site-section__inner, .docs-layout,
+  .entire-footer { border-inline-color: transparent; }
+  body::before {
+    content: ''; position: fixed; top: -100vh; bottom: -100vh;
+    left: calc((100% - 1280px) / 2); right: calc((100% - 1280px) / 2);
+    border-inline: 1px solid var(--rule); pointer-events: none; z-index: 51;
+  }
 }
 @media print, (forced-colors: active) {
   body::before { display: none; }
-}
-.docs-content { position: relative; }
-@media (min-width: 901px) {
-  .docs-content::before {
-    content: ''; position: absolute; inset: 0 auto 0 -7px; width: 14px;
-    background: var(--sketch-ink); opacity: .65; pointer-events: none;
-    -webkit-mask: url('../img/sketch-rail.svg') center / 100% 100%;
-    mask: url('../img/sketch-rail.svg') center / 100% 100%;
-  }
+  .site-header__inner, .site-section__inner, .docs-layout,
+  .entire-footer { border-inline-color: var(--rule); }
 }
 
 /* Two slightly different passes of the pen around a sheet. */
@@ -143,59 +120,15 @@ body::before {
   .hero-facts > div::before, .hero-facts > div::after { display: none; }
 }
 
-/* Original background and brand colors come exclusively from entire.css.
-   Sparse, fixed stroke clusters shade the rails; no page-wide grain or tint. */
+/* Retain hand-drawn section numbers on the clean Entire surfaces. */
 .section-sketch-number {
   position: absolute; top: 24px; left: 32px; width: 44px; height: 57px;
   color: var(--muted); opacity: .48; transform: rotate(-5deg);
   pointer-events: none;
 }
 .section-sketch-number svg { display: block; width: 100%; height: 100%; }
-.rail-shading {
-  position: absolute; width: min(260px, 30%); height: 52px;
-  color: var(--color-text); opacity: .15; pointer-events: none;
-  background: currentColor;
-  -webkit-mask: var(--shading) center / 100% 100% no-repeat;
-  mask: var(--shading) center / 100% 100% no-repeat;
-}
-.rail-shading--top { top: 0; right: 1px; }
-.rail-shading--bottom { bottom: 0; left: 1px; transform: rotate(180deg); }
-.site-section:nth-child(2) .rail-shading { width: min(185px, 26%); height: 38px; }
-.site-section:nth-child(3) .rail-shading { height: 65px; width: min(310px, 30%); }
-.site-section:nth-child(4) .rail-shading { height: 43px; }
-.site-section:nth-child(5) .rail-shading { width: min(205px, 27%); }
 @media(max-width:700px) {
   .section-sketch-number { left: 18px; top: 12px; width: 29px; height: 38px; }
-  .rail-shading { max-height: 30px; }
-}
-@media(forced-colors:active) { .rail-shading { display:none; } }
-
-.site-section:nth-child(1) .rail-shading { --shading: url('../img/rail-shading-1.svg'); }
-.site-section:nth-child(2) .rail-shading { --shading: url('../img/rail-shading-2.svg'); }
-.site-section:nth-child(3) .rail-shading { --shading: url('../img/rail-shading-3.svg'); }
-.site-section:nth-child(4) .rail-shading { --shading: url('../img/rail-shading-4.svg'); }
-.site-section:nth-child(5) .rail-shading { --shading: url('../img/rail-shading-5.svg'); }
-.site-section:nth-child(6) .rail-shading { --shading: url('../img/rail-shading-6.svg'); }
-
-/* Horizontal pen strokes taper inward from a few other rail corners. */
-.rail-shading-horizontal {
-  position: absolute; top: 1px; right: 1px; width: min(240px, 30%); height: 105px;
-  background: var(--color-text); opacity: .15; pointer-events: none;
-  -webkit-mask: url('../img/rail-shading-horizontal.svg') center / 100% 100% no-repeat;
-  mask: url('../img/rail-shading-horizontal.svg') center / 100% 100% no-repeat;
-}
-.site-section:nth-child(3) .rail-shading-horizontal { width: min(180px, 25%); height: 78px; }
-.site-section:nth-child(5) .rail-shading-horizontal { top: auto; bottom: 1px; transform: scaleY(-1); }
-@media(max-width:700px) { .rail-shading-horizontal { width: 100px; max-height: 65px; } }
-@media(forced-colors:active) { .rail-shading-horizontal { display: none; } }
-
-/* Documentation has no full-width final section rule, so its footer owns it. */
-.documentation-page .site-footer { position: relative; }
-.documentation-page .site-footer::before {
-  content: ''; position: absolute; top: -11px; left: 0; right: 0; height: 22px;
-  background: var(--sketch-ink); pointer-events: none;
-  -webkit-mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
-  mask: url('../img/sketch-rule.svg') center / 100% 100% no-repeat;
 }
 
 /* Studies occupy only the measured spare height of an existing grid column.

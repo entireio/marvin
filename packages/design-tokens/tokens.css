@@ -1,46 +1,65 @@
-/* Seed portal tokens, derived from the existing Marvin docs implementation.
-   Review semantic contrast and font licensing during M2. No remote font import. */
+/* Entire website semantics, adapted locally so the app has no runtime dependency
+   on the marketing site. Light/dark surfaces follow its neutral scale; brand
+   accents use indigo 800/400. Appearance follows the operating system unless explicitly selected. */
 :root {
   color-scheme: light;
-  --marvin-bg: #f2f2f3;
-  --marvin-surface: #e9e9ea;
-  --marvin-text: #1d1f20;
-  --marvin-muted: #5d5d60;
-  --marvin-accent: #5980a6;
-  --marvin-link: #416180;
-  --marvin-action-bg: #2c455d;
+  --marvin-bg: #f6f6f6;
+  --marvin-surface: #f2f2f2;
+  --marvin-raised: #fcfcfc;
+  --marvin-text: #0f0f0f;
+  --marvin-muted: #707070;
+  --marvin-accent: #372aac;
+  --marvin-accent-subtle: #e0e7ff;
+  --marvin-accent-hover: #312e81;
+  --marvin-link: var(--marvin-accent);
+  --marvin-action-bg: var(--marvin-accent);
   --marvin-action-text: #ffffff;
-  --marvin-rule: color-mix(in srgb, #1d1f20 16%, transparent);
-  --marvin-font-body: "Barlow", system-ui, sans-serif;
-  --marvin-font-heading: "Barlow Condensed", system-ui, sans-serif;
-  --marvin-font-code: "IBM Plex Mono", ui-monospace, monospace;
-  --marvin-radius-control: 4px;
-  --marvin-radius-panel: 7px;
+  --marvin-rule: rgb(0 0 0 / .1);
+  --marvin-font-body: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --marvin-font-heading: "Entire Headline", ui-sans-serif, system-ui, sans-serif;
+  --marvin-font-code: "Entire Mono", ui-monospace, monospace;
+  --marvin-radius-control: 8px;
+  --marvin-radius-panel: 12px;
   --marvin-target-size: 44px;
+  --panel: var(--marvin-raised);
+  --sidebar: var(--marvin-bg);
+  --hover: var(--marvin-surface);
+  --danger: #9a3434;
+  --success: #44624e;
+  --shadow: 0 16px 48px rgb(0 0 0 / .12);
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-appearance="light"]) {
     color-scheme: dark;
-    --marvin-bg: #17181a;
-    --marvin-surface: #1e1f21;
-    --marvin-text: #efece6;
-    --marvin-muted: #cfccc7;
-    --marvin-accent: #94bce3;
-    --marvin-link: #bad4ea;
-    --marvin-action-bg: #bad4ea;
-    --marvin-action-text: #17181a;
-    --marvin-rule: color-mix(in srgb, #efece6 20%, transparent);
+    --marvin-bg: #161616;
+    --marvin-surface: #222222;
+    --marvin-raised: #1c1c1c;
+    --marvin-text: #f3f3f3;
+    --marvin-muted: #949494;
+    --marvin-accent: #7c86ff;
+    --marvin-accent-subtle: #25234a;
+    --marvin-accent-hover: #a5b4fc;
+    --marvin-action-text: #161616;
+    --marvin-rule: rgb(255 255 255 / .1);
+    --danger: #ffaaa4;
+    --success: #a9cfb3;
+    --shadow: 0 16px 48px rgb(0 0 0 / .4);
   }
 }
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --marvin-bg: #17181a;
-  --marvin-surface: #1e1f21;
-  --marvin-text: #efece6;
-  --marvin-muted: #cfccc7;
-  --marvin-accent: #94bce3;
-  --marvin-link: #bad4ea;
-  --marvin-action-bg: #bad4ea;
-  --marvin-action-text: #17181a;
-  --marvin-rule: color-mix(in srgb, #efece6 20%, transparent);
+
+:root[data-appearance="dark"] {
+    color-scheme: dark;
+    --marvin-bg: #161616;
+    --marvin-surface: #222222;
+    --marvin-raised: #1c1c1c;
+    --marvin-text: #f3f3f3;
+    --marvin-muted: #949494;
+    --marvin-accent: #7c86ff;
+    --marvin-accent-subtle: #25234a;
+    --marvin-accent-hover: #a5b4fc;
+    --marvin-action-text: #161616;
+    --marvin-rule: rgb(255 255 255 / .1);
+    --danger: #ffaaa4;
+    --success: #a9cfb3;
+    --shadow: 0 16px 48px rgb(0 0 0 / .4);
 }

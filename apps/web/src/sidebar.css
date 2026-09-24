@@ -1,0 +1,116 @@
+/* Entire app shell: 52px header, 272px navigation, 36px rows. The app uses
+   the full viewport; the marketing site's centered rails belong to login. */
+.app-layout {
+  --sidebar-width: 272px;
+  --sidebar-hover: rgb(0 0 0 / .035);
+  --sidebar-selected: rgb(0 0 0 / .06);
+  display: block;
+  max-width: none;
+  border: 0;
+  position: relative;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-appearance="light"]) .app-layout {
+    --sidebar-hover: rgb(255 255 255 / .06);
+    --sidebar-selected: rgb(255 255 255 / .08);
+  }
+}
+.app-layout .workspace { height: 100%; margin-left: 0; transition: margin-left 150ms ease-out; }
+.sidebar-pinned .workspace { margin-left: var(--sidebar-width); }
+.app-layout .workspace-header { height: 52px; padding-inline: 16px; }
+.app-sidebar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--sidebar-width);
+  z-index: 40;
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr);
+  background: var(--marvin-bg);
+  border-right: 1px solid var(--marvin-rule);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 150ms ease-out, visibility 150ms;
+}
+.sidebar-pinned .app-sidebar, .sidebar-floating .app-sidebar, .sidebar-drawer .app-sidebar {
+  transform: translateX(0); visibility: visible;
+  transition: transform 150ms ease-out;
+}
+.sidebar-floating .app-sidebar, .sidebar-drawer .app-sidebar { box-shadow: 4px 0 16px rgb(0 0 0 / .12); }
+.app-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--marvin-rule);
+}
+.app-sidebar-header .wordmark, .sidebar-header-brand .wordmark { font-size: 22px; gap: 10px; }
+.app-sidebar-header .wordmark-logo, .sidebar-header-brand .wordmark-logo { width: 26px; height: 26px; }
+.app-sidebar-header .icon-button, .sidebar-launcher .icon-button { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+.sidebar-mode-icon {
+  display: block; width: 18px; height: 18px; background: currentColor;
+  mask: url('/icons/sidebar-inline.svg') center / contain no-repeat;
+  -webkit-mask: url('/icons/sidebar-inline.svg') center / contain no-repeat;
+}
+.sidebar-mode-icon.is-floating, .sidebar-pin:hover .sidebar-mode-icon:not(.is-floating) {
+  mask-image: url('/icons/sidebar-floating.svg');
+  -webkit-mask-image: url('/icons/sidebar-floating.svg');
+}
+.sidebar-pin:hover .sidebar-mode-icon.is-floating {
+  mask-image: url('/icons/sidebar-inline.svg');
+  -webkit-mask-image: url('/icons/sidebar-inline.svg');
+}
+.sidebar-launcher { display: flex; align-items: center; gap: 8px; }
+.sidebar-header-brand .wordmark > span:not(.wordmark-logo) { display: none; }
+.app-sidebar-scroll { min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 8px 0; scrollbar-width: thin; }
+.sidebar-row {
+  display: flex; width: calc(100% - 16px); min-width: 0; height: 36px;
+  align-items: center; gap: 2px; padding: 0; margin: 0 8px;
+  border: 0; border-radius: 8px; background: transparent;
+  text-align: left; text-decoration: none; color: var(--marvin-text);
+  font: 400 14px/20px var(--marvin-font-body);
+  transition: background-color 150ms;
+}
+.sidebar-row:hover { background: var(--sidebar-hover); text-decoration: none; }
+.sidebar-row:focus-visible, .sidebar-pet-link:focus-visible { outline-offset: -2px; }
+.sidebar-row > span:not(.sidebar-icon) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-icon { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; color: var(--marvin-muted); }
+.sidebar-trailing { margin-left: auto; margin-right: 10px; color: var(--marvin-muted); }
+.sidebar-section-heading {
+  position: relative; display: flex; align-items: center; justify-content: space-between;
+  min-height: 40px; margin: 8px 8px 0; padding: 12px 8px 4px;
+  border-top: 1px solid var(--marvin-rule); color: var(--marvin-muted);
+  font: 400 12px/16px var(--marvin-font-body);
+}
+.sidebar-help summary { list-style: none; cursor: pointer; padding: 4px; border-radius: 4px; }
+.sidebar-help summary::-webkit-details-marker, .sidebar-account summary::-webkit-details-marker { display: none; }
+.sidebar-help[open] { width: 100%; }
+.sidebar-section-heading:has(.sidebar-help[open]) { flex-wrap: wrap; }
+.sidebar-help[open] summary { position: absolute; right: 4px; top: 8px; }
+.sidebar-help p { font-size: 12px; line-height: 18px; padding: 8px 0; }
+.sidebar-conversations .history-row { position: relative; display: flex; gap: 0; min-width: 0; margin: 1px 0; }
+.sidebar-conversations .history-conversation { padding-right: 32px; flex: 1; }
+.sidebar-conversations .history-conversation.active { color: var(--marvin-text); background: var(--sidebar-selected); font-weight: 600; }
+.sidebar-pet-link {
+  position: absolute; right: 12px; top: 4px; width: 28px; height: 28px;
+  display: grid; place-items: center; border-radius: 6px; color: var(--marvin-muted);
+  opacity: 0; transition: opacity 150ms, background-color 150ms;
+}
+.history-row:hover .sidebar-pet-link, .history-row:focus-within .sidebar-pet-link,
+.sidebar-pet-link.linked { opacity: 1; }
+.sidebar-pet-link:hover { background: var(--sidebar-selected); }
+.sidebar-pet-link.linked { color: var(--marvin-link); }
+.app-sidebar-backdrop { position: absolute; inset: 0; z-index: 39; background: rgb(0 0 0 / .4); backdrop-filter: blur(3px); }
+@media (hover: none) { .sidebar-pet-link { opacity: 1; } }
+@media (max-width: 767px) {
+  .app-layout .workspace-header { height: calc(52px + env(safe-area-inset-top)); }
+  .app-sidebar { max-width: calc(100vw - 48px); grid-template-rows: calc(52px + env(safe-area-inset-top)) minmax(0, 1fr); }
+  .app-sidebar-header { padding-top: env(safe-area-inset-top); }
+  .app-sidebar-scroll { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  .sidebar-header-brand { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-sidebar, .app-layout .workspace, .sidebar-row, .sidebar-pet-link { transition: none; }
+}
+
+:root[data-appearance="dark"] .app-layout { --sidebar-hover: rgb(255 255 255 / .06); --sidebar-selected: rgb(255 255 255 / .08); }
