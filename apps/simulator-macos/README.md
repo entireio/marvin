@@ -43,8 +43,11 @@ it does not change `xcode-select` or accept any license agreements.
 | Quit | Command-Q |
 
 Drive through the five amber beacons in order. Each launch or reset places a new
-random course, keeping the full pulsing rings clear of obstacles, the launch pad,
-the arena edges, and each other. The minimap shows the current
+random course, keeping the full ring grooves clear of obstacles, the launch pad,
+the arena edges, and each other. The rings are recessed V-shaped floor grooves;
+the active groove pulses in brightness without changing its size. Large centered
+numbers face the final approach of the shortest route from launch or the preceding
+checkpoint, using conservative obstacle polygons padded for Marvin’s footprint. The minimap shows the current
 objective, obstacles, and Marvin's heading. Driving into an obstacle stops
 translation; turn or reverse to get free. Input and drive velocity clear when
 the window loses focus. The simulation freezes while the app is inactive.

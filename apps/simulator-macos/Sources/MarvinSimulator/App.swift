@@ -89,7 +89,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     @objc func tick() {
         let now = ProcessInfo.processInfo.systemUptime
         let dt = min(now-lastTime, 0.1); lastTime = now
-        if active { simulation.advance(view.driveInput, dt: dt) }
+        // The automated renderer check uses a fixed clock and must not depend
+        // on another app taking focus. Interactive play still pauses on blur.
+        if active || smokeDirectory != nil {
+            simulation.advance(view.driveInput, dt: smokeDirectory == nil ? dt : 1.0/60)
+        }
         robot.update(simulation); world.update(simulation); updateCamera(snap: false)
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
         hud.needsDisplay = true
@@ -183,8 +187,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 charactersIgnoringModifiers: "", isARepeat: false, keyCode: code)!
             if down { view.keyDown(with: event) } else { view.keyUp(with: event) }
         }
-        if smokeFrames == 30 { key(13, down: true) }
-        if smokeFrames == 90 { key(13, down: false); key(2, down: true) }
+        if (30..<90).contains(smokeFrames) { key(13, down: true) }
+        if (90..<120).contains(smokeFrames) { key(13, down: false); key(2, down: true) }
         if smokeFrames == 120 { view.clearInput() }
         if smokeFrames == 150 {
             do {
@@ -270,18 +274,37 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     && simulation.checkpoints.enumerated().allSatisfy { i, point in
                         let ring = world.beacons[i].position, label = world.beaconLabels[i].position
                         return abs(Double(ring.x)-point.x) < 0.00001 && abs(Double(ring.z)-point.z) < 0.00001
-                            && abs(Double(label.x)-(point.x-0.1)) < 0.00001
+                            && abs(Double(label.x)-point.x) < 0.00001 && abs(Double(label.z)-point.z) < 0.00001
                             && CourseLayout.isClear(point, among: Array(simulation.checkpoints.prefix(i)))
                     }
+                let groovesPassed = world.floorSurface.geometry != nil && world.beacons.allSatisfy { node in
+                    guard let geometry = node.geometry else { return false }
+                    let bounds = geometry.boundingBox
+                    return node.position.y == 0 && abs(Double(bounds.min.y)+FloorGroove.depth) < 0.000001
+                        && bounds.max.y == 0 && node.scale.x == 1 && node.scale.z == 1
+                }
+                let labelsPassed = simulation.checkpoints.enumerated().allSatisfy { i, point in
+                    let label = world.beaconLabels[i], bounds = world.beaconLabels[i].geometry!.boundingBox
+                    let center = SIMD4<Float>(Float((bounds.min.x+bounds.max.x)/2), Float((bounds.min.y+bounds.max.y)/2), 0, 1)
+                    let positioned = label.simdTransform * simd_inverse(label.simdPivot) * center
+                    let bottom = label.simdTransform * SIMD4<Float>(0, -1, 0, 0)
+                    let start = i == 0 ? Checkpoint(x: 0, z: -2.6) : simulation.checkpoints[i-1]
+                    let angle = CourseRoute.labelYaw(from: start, to: point)
+                    let length = hypot(Double(bottom.x), Double(bottom.z))
+                    return abs(Double(positioned.x)-point.x) < 0.00001 && abs(Double(positioned.z)-point.z) < 0.00001
+                        && abs(Double(bottom.x)/length-sin(angle)) < 0.00001
+                        && abs(Double(bottom.z)/length-cos(angle)) < 0.00001
+                        && abs(Double((bounds.max.y-bounds.min.y)*label.scale.y)-0.36) < 0.00001
+                }
                 let passed = robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
-                    && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
+                    && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
                 let report: [String: Any] = ["passed": passed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,
                     "cameraPassed": cameraPassed, "lightIconPassed": lightIconPassed, "darkIconPassed": darkIconPassed,
-                    "coursePassed": coursePassed, "neckPassed": neckPassed, "tracksPassed": tracksPassed, "groundContactPassed": groundContactPassed,
+                    "labelsPassed": labelsPassed, "groovesPassed": groovesPassed, "coursePassed": coursePassed, "neckPassed": neckPassed, "tracksPassed": tracksPassed, "groundContactPassed": groundContactPassed,
                     "renderer": "SceneKit / Metal", "width": bitmap.pixelsWide,
                     "height": bitmap.pixelsHigh]
                 try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])

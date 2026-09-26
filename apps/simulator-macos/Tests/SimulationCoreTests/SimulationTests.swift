@@ -133,6 +133,30 @@ struct SimulationTests {
         for _ in 0..<240 { sim.advance(input, dt: 1.0/60) }
         require(sim.checkpoint >= 1)
     }
+    func testCourseApproachRoutes() {
+        // Direct approach needs no detour; an obstacle-crossing route must bend.
+        equal(CourseRoute.path(from: Checkpoint(x: 0, z: -2.6), to: Checkpoint(x: 0, z: -1)).count, 2)
+        greater(Double(CourseRoute.path(from: Checkpoint(x: -4, z: -0.4), to: Checkpoint(x: 0, z: -0.4)).count), 2)
+        for seed in UInt64(0)..<30 {
+            let course = Simulation(seed: seed).checkpoints
+            var start = Checkpoint(x: 0, z: -2.6)
+            for goal in course {
+                let route = CourseRoute.path(from: start, to: goal)
+                equal(route.first, start); equal(route.last, goal)
+                for (a,b) in zip(route, route.dropFirst()) {
+                    for step in 0...100 {
+                        let t = Double(step)/100
+                        require(Simulation.isFree(x: a.x+(b.x-a.x)*t, z: a.z+(b.z-a.z)*t))
+                    }
+                }
+                let approach = route[route.count-2], yaw = CourseRoute.labelYaw(from: start, to: goal)
+                let distance = hypot(approach.x-goal.x, approach.z-goal.z)
+                near(sin(yaw), (approach.x-goal.x)/distance, accuracy: 1e-9)
+                near(cos(yaw), (approach.z-goal.z)/distance, accuracy: 1e-9)
+                start = goal
+            }
+        }
+    }
     func testNeckConcentricDuringPan() {
         // Compare opposite points on the CAD's lower circular neck section.
         let left = SIMD3<Double>(-0.1325, 0.295, -0.01886)
@@ -215,6 +239,7 @@ struct SimulationTests {
         checks.testTrackTravelAndContact()
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
-        print("PASS: 9 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        checks.testCourseApproachRoutes()
+        print("PASS: 10 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }
