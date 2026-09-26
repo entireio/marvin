@@ -1,0 +1,81 @@
+Review all files in this repo. Do you have enough data to build a full 3D model of Marvin?
+
+---
+
+Cool. I want you to make a simulation that runs on MacOS that shows the 3D Marvin in a simulated world and the user can control him with the keyboard.
+
+---
+
+No, not a browser simulator. I want a native app.
+
+---
+
+When driving or when panning the camera, the ground flickers
+
+---
+
+[Image #1] The lower body front center has a black line and a dot that move with the head. What is this?
+
+---
+
+Also, reset the camera position and angle with Cmd-R
+
+---
+
+Restart the app
+
+---
+
+Compare your Marvin with this from the webpage: [Image #1] Note the button row, the neck, and how the display is integrated flush into the front panel.
+
+---
+
+Always reopen the simulator yourself
+
+---
+
+[Image #1] You left a black dot next to the buttons. This should also be a button.
+
+---
+
+The A and D directions are reverse. A should turn left, D should turn right. Same for Q and E. R and F are correct, but don't do proper collision detection between upper and lower body. C switches between cameras, but all of them weirdly tilt the game arena.
+
+---
+
+[Image #1] There is a part floating under his head
+
+---
+
+Create an Mac app icon using the Entire icon. Make sure you have a light mode and dark mode version.
+
+---
+
+Give the ground a different color, like a light brown that looks like soil.
+
+---
+
+[Image #1] I think the tracks are thicker in real life.
+
+---
+
+[Image #1] Why does the app not have the typical Mac traffic light buttons, but instead a desktop share button?
+
+---
+
+Restart the simulator
+
+---
+
+I still see the screen share button
+
+---
+
+I see, got it
+
+---
+
+Make the Marvin in the Mac icon bigger. Consult the Apple design guide on proper sizing.
+
+---
+
+[Image #1] The keyboard help has inconsistent padding and its width is pointless.

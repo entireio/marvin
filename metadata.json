@@ -1,0 +1,48 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3FAWBRSTTBCSX369EG000RC",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 20,
+  "files_touched": [
+    "README.md",
+    "apps/simulator-macos/.gitignore",
+    "apps/simulator-macos/Info.plist",
+    "apps/simulator-macos/Launch Marvin.command",
+    "apps/simulator-macos/Package.swift",
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Resources/Icons/AppIconDark.icns",
+    "apps/simulator-macos/Resources/Icons/AppIconDark.png",
+    "apps/simulator-macos/Resources/Icons/AppIconDark.svg",
+    "apps/simulator-macos/Resources/Icons/AppIconLight.icns",
+    "apps/simulator-macos/Resources/Icons/AppIconLight.png",
+    "apps/simulator-macos/Resources/Icons/AppIconLight.svg",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/SimulatorView.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/World.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/main.swift",
+    "apps/simulator-macos/Sources/SimulationCore/HeadClearance.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "apps/simulator-macos/build-app.sh",
+    "scripts/make-marvin-app-icons.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 503390,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 21832704,
+    "output_tokens": 52437,
+    "api_call_count": 175,
+    "subagent_tokens_complete": true
+  }
+}
