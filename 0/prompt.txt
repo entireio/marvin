@@ -1,0 +1,9 @@
+commit/push
+
+---
+
+Instead of launching right into the sandbox level, add a main menu that has the 3D Marvin on the left and menu options on the right side, selectable with cursor keys and mouse. Options are Sandbox, Settings, and Quit. Position the 3D Marvin with it's body angled, the head looking around after random time windows, and the eyes blink every now and then. It should be cute.
+
+---
+
+The body is angled the wrong way. Also, add a shadow below or behind Marvin that matches MacOS guidelines.

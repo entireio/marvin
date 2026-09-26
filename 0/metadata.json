@@ -1,0 +1,73 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3FKCBK97JBD1GRZ7RPNFQX7",
+  "session_id": "01a0d9eb-5047-7503-9909-7a241ab001bf",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-26T19:34:36.05928Z",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "save_step_count": 2,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "5c23d7ed9989",
+  "checkpoint_transcript_start": 1912,
+  "transcript_lines_at_start": 1912,
+  "compact_transcript_start": 246,
+  "token_usage": {
+    "input_tokens": 140583,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 2763776,
+    "output_tokens": 8022,
+    "api_call_count": 46,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 32
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-26T19:34:35.626419Z",
+    "agent_lines": 198,
+    "agent_removed": 0,
+    "human_added": 12,
+    "human_modified": 14,
+    "human_removed": 0,
+    "total_committed": 217,
+    "total_lines_changed": 224,
+    "agent_percentage": 88.39285714285714,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 218,
+      "agent_lines_removed": 7
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 13,
+      "user_lines_removed": 7,
+      "agent_lines_added": 218,
+      "agent_lines_removed": 7,
+      "user_added_per_file": {
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 13
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 7
+      }
+    }
+  ]
+}
