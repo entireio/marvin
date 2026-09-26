@@ -165,8 +165,8 @@ final class Robot {
         }
     }
     func update(_ state: Simulation) {
-        root.position = SCNVector3(state.x, 0, state.z)
-        root.eulerAngles.y = CGFloat(state.heading)
+        root.position = SCNVector3(state.x, state.groundY, state.z)
+        root.eulerAngles = SCNVector3(state.bodyPitch, state.heading, state.bodyRoll)
         yawNode.eulerAngles.y = CGFloat(state.yaw)
         pitchNode.eulerAngles.x = CGFloat(-state.pitch)
         for track in tracks { track.update(travel: track.left ? state.leftTravel : state.rightTravel) }

@@ -15,6 +15,85 @@ func greater(_ a: Double, _ b: Double) { require(a > b) }
 func less(_ a: Double, _ b: Double) { require(a < b) }
 
 struct SimulationTests {
+    func testDirtRaceAndScores() {
+        var race = DirtRace()
+        let start = DirtCourse.point(0)
+        race.advance(x:start.x,z:start.z,dt:1)
+        equal(race.elapsed,0)
+        race.countDown(dt:3)
+        // Repeated forward/backward finish crossings cannot manufacture a lap.
+        for _ in 0..<30 {
+            for angle in [-0.02,0.02,0.0] {
+                let p = DirtCourse.point(angle); race.advance(x:p.x,z:p.z,dt:0.1)
+            }
+        }
+        equal(race.laps.count,0)
+        race = DirtRace(); race.countDown(dt:3)
+        for i in 1...1080 {
+            let p = DirtCourse.point(Double(i)*2*Double.pi/360)
+            race.advance(x:p.x,z:p.z,dt:0.1)
+        }
+        require(race.finished); equal(race.laps.count,3)
+        for lap in race.laps { near(lap,36,accuracy:0.003) }
+        near(race.elapsed,108,accuracy:0.003)
+        race.advance(x:0,z:-5,dt:2); near(race.elapsed,108,accuracy:0.003)
+        var reverse = DirtRace(); reverse.countDown(dt:3)
+        for i in 1...400 {
+            let p = DirtCourse.point(-Double(i)*0.02); reverse.advance(x:p.x,z:p.z,dt:0.1)
+        }
+        equal(reverse.laps.count,0); require(reverse.wrongWay)
+        require(!DirtCourse.contains(x:0,z:0)); require(!DirtCourse.contains(x:20,z:0))
+        for i in 0..<360 {
+            let p = DirtCourse.point(Double(i)*Double.pi/180)
+            require(DirtCourse.contains(x:p.x,z:p.z,margin:Simulation.radius))
+        }
+        var sim = Simulation(dirtTrack:true), input = DriveInput(); input.throttle = 1
+        for _ in 0..<1200 { sim.advance(input,dt:1.0/60) }
+        require(DirtCourse.projection(x:sim.x,z:sim.z).distance < DirtCourse.fenceOffset); require(sim.contacting)
+        sim.reset(); near(sim.z,-15,accuracy:1e-9); near(sim.heading,DirtCourse.heading(0),accuracy:1e-9)
+        let edge = DirtCourse.point(0,offset:1.35)
+        let edgeMove = DirtCourse.resolveMove(x:edge.x,z:edge.z,heading:DirtCourse.heading(0))
+        require(!edgeMove.contact)
+        less(DirtCourse.traction(x:edge.x,z:edge.z),0.5)
+        let outside = DirtCourse.point(0,offset:2)
+        require(DirtCourse.resolveMove(x:outside.x,z:outside.z,heading:DirtCourse.heading(0)).contact)
+        let retreat = DirtCourse.point(0,offset:1.2)
+        require(!DirtCourse.resolveMove(x:retreat.x,z:retreat.z,heading:DirtCourse.heading(0)).contact)
+        for i in 0..<160 {
+            let phase = Double(i)*2 * Double.pi/160
+            for offset in [-1.8,1.8] {
+                let p = DirtCourse.point(phase,offset:offset)
+                near(DirtCourse.height(x:p.x,z:p.z),DirtCourse.surfaceHeight(phase,offset:offset),accuracy:0.012)
+            }
+        }
+        var driver = Simulation(dirtTrack:true), drivenRace = DirtRace()
+        drivenRace.countDown(dt:3)
+        var maxHeight = 0.0, airborneFrames = 0
+        for _ in 0..<12000 {
+            if drivenRace.finished { break }
+            let phase = DirtCourse.phase(x:driver.x,z:driver.z)
+            let target = DirtCourse.point(phase+0.05)
+            let angle = atan2(target.x-driver.x,target.z-driver.z)
+            let error = atan2(sin(angle-driver.heading),cos(angle-driver.heading))
+            var command = DriveInput(); command.throttle = max(0.15,1-abs(error)*1.5); command.boost = abs(error)<0.08
+            command.turn = -error*3
+            driver.advance(command,dt:1.0/60)
+            drivenRace.advance(x:driver.x,z:driver.z,dt:1.0/60)
+            maxHeight = max(maxHeight,driver.groundY)
+            if driver.airborne { airborneFrames += 1 }
+        }
+        require(drivenRace.finished); greater(maxHeight,0.6); require(airborneFrames > 0)
+        near(drivenRace.laps.reduce(0,+),drivenRace.elapsed,accuracy:1e-8)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString).appendingPathComponent("scores.json")
+        defer { try? FileManager.default.removeItem(at:url.deletingLastPathComponent()) }
+        do {
+            equal(try DirtScores.load(url).count,0)
+            let scores = [DirtScore(laps:[40,39,38]),DirtScore(laps:[36,35,34]),DirtScore(laps:[0,1,2])]
+            try DirtScores.save(scores,to:url)
+            let loaded = try DirtScores.load(url)
+            equal(loaded.count,2); near(loaded[0].total,105,accuracy:1e-9)
+        } catch { fatalError("Score round trip failed: \(error)") }
+    }
     func testForwardReverseAndBrake() {
         var sim = Simulation(), input = DriveInput()
         let start = sim.z
@@ -230,6 +309,7 @@ struct SimulationTests {
 @main struct CheckRunner {
     static func main() {
         let checks = SimulationTests()
+        checks.testDirtRaceAndScores()
         checks.testForwardReverseAndBrake()
         checks.testTurningInPlace()
         checks.testCollisionAndCheckpoint()
@@ -240,6 +320,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 10 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 11 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

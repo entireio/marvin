@@ -24,6 +24,8 @@ final class MainMenuView: NSView {
     let hint = NSTextField(labelWithString: "↑ ↓ to choose   ·   Return to select")
     private var buttons: [MenuButton] = []
     var onSandbox: (() -> Void)?
+    var onDirtTrack: (() -> Void)?
+    private var optionCount: Int { settings ? 3 : 4 }
     var settings = false
     var selection = 0
     var idleAnimation: Bool {
@@ -70,7 +72,7 @@ final class MainMenuView: NSView {
         subtitle.font = .systemFont(ofSize: 18, weight: .regular)
         hint.font = .systemFont(ofSize: 12)
         for label in [title, subtitle, hint] { label.textColor = color(0x304e44); addSubview(label) }
-        for index in 0..<3 {
+        for index in 0..<4 {
             let button = MenuButton(title: "", target: self, action: #selector(activateButton(_:)))
             button.tag = index; button.isBordered = false; button.wantsLayer = true
             button.layer?.cornerRadius = 14
@@ -84,19 +86,21 @@ final class MainMenuView: NSView {
         super.layout()
         let split = bounds.width * 0.55, width = min(360, bounds.width - split - 50)
         portrait.frame = NSRect(x: 0, y: 0, width: split, height: bounds.height)
-        let top = bounds.height / 2 + 170
+        let top = bounds.height / 2 + 205
         title.frame = NSRect(x: split, y: top - 72, width: width, height: 76)
         subtitle.frame = NSRect(x: split + 3, y: top - 108, width: width, height: 30)
         for (i, button) in buttons.enumerated() {
             button.frame = NSRect(x: split, y: top - 198 - CGFloat(i)*72, width: width, height: 58)
         }
-        hint.frame = NSRect(x: split + 3, y: top - 386, width: width, height: 24)
+        hint.frame = NSRect(x: split + 3, y: top - (settings ? 386 : 458), width: width, height: 24)
     }
     func refresh() {
         title.stringValue = settings ? "Settings" : "Marvin"
         subtitle.stringValue = settings ? "Make yourself at home." : "A little room to explore."
-        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Back"] : ["Sandbox", "Settings", "Quit"]
+        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
         for (i, button) in buttons.enumerated() {
+            button.isHidden = i >= names.count
+            guard i < names.count else { continue }
             button.title = names[i]
             button.attributedTitle = NSAttributedString(string: names[i], attributes: [.font: NSFont.systemFont(ofSize: 21, weight: .medium), .foregroundColor: i == selection ? NSColor.white : color(0x304e44)])
             button.layer?.backgroundColor = (i == selection ? color(0x304e44) : color(0xe5e9df)).cgColor
@@ -109,22 +113,23 @@ final class MainMenuView: NSView {
             switch selection {
             case 0: idleAnimation.toggle()
             case 1: showGuide.toggle()
-            default: settings = false; selection = 1
+            default: settings = false; selection = 2
             }
         } else {
             switch selection {
             case 0: onSandbox?()
-            case 1: settings = true; selection = 0
+            case 1: onDirtTrack?()
+            case 2: settings = true; selection = 0
             default: NSApp.terminate(nil)
             }
         }
-        refresh(); if !isHidden { window?.makeFirstResponder(self) }
+        needsLayout = true; refresh(); if !isHidden { window?.makeFirstResponder(self) }
     }
     override func keyDown(with event: NSEvent) {
         guard !event.modifierFlags.contains(.command) else { super.keyDown(with: event); return }
         switch event.keyCode {
-        case 125, 124: selection = (selection + 1) % 3; refresh()
-        case 126, 123: selection = (selection + 2) % 3; refresh()
+        case 125, 124: selection = (selection + 1) % optionCount; refresh()
+        case 126, 123: selection = (selection + optionCount - 1) % optionCount; refresh()
         case 36, 76, 49: if !event.isARepeat { activate() }
         case 53: settings = false; selection = 0; refresh()
         default: break
@@ -141,7 +146,7 @@ final class MainMenuView: NSView {
         if clock >= nextBlink { blinkStart = clock; nextBlink = clock + Double.random(in: 2.5...6.0) }
         let blend = 1 - exp(-dt * 3)
         yaw += (targetYaw - yaw) * blend; pitch += (targetPitch - pitch) * blend
-        robot.root.position = SCNVector3Zero; robot.root.eulerAngles.y = 0.35
+        robot.root.position = SCNVector3Zero; robot.root.eulerAngles = SCNVector3(0,0.35,0)
         robot.yawNode.eulerAngles.y = CGFloat(idleAnimation ? yaw : -0.30)
         robot.pitchNode.eulerAngles.x = CGFloat(idleAnimation ? -pitch : 0)
         let blink = max(0, 1 - abs((clock - blinkStart) / 0.11 - 1))

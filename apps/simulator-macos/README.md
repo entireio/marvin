@@ -26,10 +26,42 @@ it does not change `xcode-select` or accept any license agreements.
 ## Main menu
 
 The app opens with a live 3D Marvin portrait. Use the cursor keys and Return,
-or hover and click, to select Sandbox, Settings, or Quit. Marvin looks around
+or hover and click, to select Sandbox, Dirt Track, Settings, or Quit. Marvin looks around
 and blinks at random intervals. Settings saves the idle-animation and keyboard-guide
 preferences. Use the Main Menu toolbar button or Command-M to return from the sandbox;
 entering Sandbox starts a fresh course.
+
+## Dirt Track
+
+A fixed, winding motocross circuit inspired by [Dirt Rider’s layout guide](https://www.dirtrider.com/understanding-motocross-track-layouts/):
+a start straight and tabletop, banked mixed-direction turns, rollers, rhythm
+jumps, a raised hill/step-up, and whoops. The route uses a closed spline and a
+single continuous height surface. Course shoulders slope down into the terrain.
+
+Select **Dirt Track**, watch the bird’s-eye fly-in, then wait for the three-second countdown, and complete **three
+laps** in the marked direction. The HUD shows current-lap time, best lap, total,
+a course map, and local best race totals. The finish panel lists all three splits.
+The timer uses monotonic elapsed time, excluding countdown, pauses, and time while the app is inactive; slow frames do not improve scores. Lap
+crossings interpolate within a frame; signed course progress prevents reverse
+finish crossings from awarding laps. Loose shoulders reduce speed; only the fence blocks Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
+Command-R starts a fresh race. The Main Menu toolbar button returns to the menu.
+
+The fastest ten complete races persist atomically in
+`~/Library/Application Support/Marvin Simulator/motocross-v2-scores.json`.
+Invalid records are excluded; load failures preserve the existing file and show
+an error instead of overwriting it. Smoke tests use a separate temporary file.
+
+Soil uses the CC0 [Poly Haven Dirt](https://polyhaven.com/a/dirt) scanned diffuse,
+OpenGL normal, and roughness maps, combined with procedural compacted lanes and
+ruts, warm sunlight, terrain normals, and distant haze. Attribution ships in
+`Resources/Dirt/ATTRIBUTION.md`. Resources are bundled for offline use.
+Track motion emits pooled world-space dust and gravity-driven clods in the
+correct forward/reverse direction; clods bounce and settle. Grounded travel leaves
+a bounded trail of tread marks. Airborne tracks stop throwing soil.
+
+Terrain pitch/roll, crest launch and gravity are an **approximate game model**;
+this is not calibrated granular-soil, suspension, or deformable-track physics.
+Boost and obstacles are scaled for a playable robot-sized course.
 
 ## Controls
 
@@ -69,7 +101,7 @@ records the source SHA-256. One scene unit represents 100 mm. The original CAD
 is not modified. Generated resources are ignored and rebuilt automatically.
 Hardware geometry remains under [CERN-OHL-S-2.0](../../LICENSE-hardware).
 
-This is a **flat-ground kinematic simulation**, not a calibrated digital twin:
+The sandbox is a **flat-ground kinematic simulation**; Dirt Track adds terrain following and simple ballistic jumps. Neither is a calibrated digital twin:
 
 - Differential drive with acceleration, braking, and circular-footprint collision
   checks against the course's rectangular obstacles and boundaries. Fixed-size
@@ -88,7 +120,7 @@ This is a **flat-ground kinematic simulation**, not a calibrated digital twin:
 - White curved eye strokes sit on the original CAD front panel and blink.
   The neck is shell-colored; the five-button row uses one red and four pale
   buttons, with a separate pale round button. Materials are curated for the simulator. The source electronics layout is not verified against today's robot.
-- No gravity, slopes, traction, deformable tracks, motor electrical model,
+- No calibrated traction, deformable tracks, motor electrical model,
   sensor emulation, firmware connection, or robot commands.
 
 ## Verification
@@ -121,3 +153,8 @@ when it changes. Finder and the app before launch use the light ICNS fallback.
 Both multi-resolution ICNS files and 1024px PNG/SVG artwork live in
 `Resources/Icons`. To regenerate them, run `python3 scripts/make-marvin-app-icons.py`
 from the repository root (requires `rsvg-convert` and macOS `iconutil`).
+
+Dirt checks cover a complete three-lap driven race with jumps, boundaries, reverse
+finish crossings, split timing, score sorting and disk round trips. Native smoke
+checks mode switching, rendering, debris emission, score recording, and reset;
+`dirt-overview.png` and `dirt-driving.png` capture the new scene.
