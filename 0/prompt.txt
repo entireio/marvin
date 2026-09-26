@@ -1,9 +1,1 @@
 commit/push
-
----
-
-The rings are sitting on top of the floor. Integrate them into the floor instead as groove.
-
----
-
-Put the ring number into the middle of the ring, make it bigger, and adjust the orientation in such a way that Marvin sees it from approaching from the shortest path.
