@@ -23,6 +23,14 @@ The build script uses an installed standalone Command Line Tools toolchain if
 the selected Xcode toolchain is unavailable. This only affects the build process;
 it does not change `xcode-select` or accept any license agreements.
 
+## Main menu
+
+The app opens with a live 3D Marvin portrait. Use the cursor keys and Return,
+or hover and click, to select Sandbox, Settings, or Quit. Marvin looks around
+and blinks at random intervals. Settings saves the idle-animation and keyboard-guide
+preferences. Use the Main Menu toolbar button or Command-M to return from the sandbox;
+entering Sandbox starts a fresh course.
+
 ## Controls
 
 | Action | Keyboard / mouse |

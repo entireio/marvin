@@ -5,6 +5,10 @@ import SimulationCore
 final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NSToolbarDelegate {
     var window: NSWindow!
     let view = SimulatorView(), hud = HUDView(), world = World()
+    let mainMenu = MainMenuView(frame: .zero)
+    var inSandbox = false
+    var menuSmokePassed = false
+    var menuSmokeFrames = 0
     var robot: Robot!
     var simulation = Simulation()
     var timer: Timer?, lastTime = ProcessInfo.processInfo.systemUptime
@@ -60,19 +64,22 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         }
         view.onFocusLost = { [weak self] in self?.simulation.stop() }
         view.onOrbit = { [weak self] dx, dy in
-            guard let self else { return }
+            guard let self, self.inSandbox else { return }
             self.cameraMode = 1
             self.orbitYaw += Double(dx)*0.008
             self.orbitPitch = max(0.15, min(1.35, self.orbitPitch+Double(dy)*0.008))
         }
         view.onZoom = { [weak self] delta in
-            guard let self else { return }
+            guard let self, self.inSandbox else { return }
             self.cameraDistance = max(1.6, min(9, self.cameraDistance+Double(delta)*0.035))
         }
+        mainMenu.frame = view.bounds; mainMenu.autoresizingMask = [.width, .height]
+        view.addSubview(mainMenu)
+        mainMenu.onSandbox = { [weak self] in self?.startSandbox() }
         makeMenu()
         window.center(); window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true)
-        robot.update(simulation); updateCamera(snap: true)
+        robot.update(simulation); showMainMenu(nil)
         timer = Timer(timeInterval: 1.0/60, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
         RunLoop.main.add(timer!, forMode: .common)
     }
@@ -89,6 +96,40 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     @objc func tick() {
         let now = ProcessInfo.processInfo.systemUptime
         let dt = min(now-lastTime, 0.1); lastTime = now
+        if !inSandbox {
+            mainMenu.animate(robot, dt: dt)
+            if let directory = smokeDirectory {
+                menuSmokeFrames += 1
+                guard menuSmokeFrames == 20 else { return }
+                // Capture the native controls and composite the Metal portrait for visual QA.
+                mainMenu.layoutSubtreeIfNeeded()
+                if let bitmap = mainMenu.bitmapImageRepForCachingDisplay(in: mainMenu.bounds) {
+                    mainMenu.cacheDisplay(in: mainMenu.bounds, to: bitmap)
+                    let image = NSImage(size: mainMenu.bounds.size)
+                    image.lockFocus()
+                    bitmap.draw(in: mainMenu.bounds)
+                    mainMenu.portrait.snapshot().draw(in: mainMenu.portrait.frame)
+                    image.unlockFocus()
+                    let url = URL(fileURLWithPath: directory, isDirectory: true)
+                    try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+                    if let tiff = image.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                        try? png.write(to: url.appendingPathComponent("main-menu.png"))
+                    }
+                }
+                menuSmokePassed = !mainMenu.isHidden && hud.isHidden && robot.root.parent === mainMenu.stage.rootNode
+                let down = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 125)!
+                let enter = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                    windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 36)!
+                mainMenu.keyDown(with: down); mainMenu.keyDown(with: enter)
+                menuSmokePassed = menuSmokePassed && mainMenu.settings
+                mainMenu.selection = 2; mainMenu.activate()
+                menuSmokePassed = menuSmokePassed && !mainMenu.settings
+                mainMenu.selection = 0; mainMenu.activate()
+                menuSmokePassed = menuSmokePassed && inSandbox && mainMenu.isHidden && !hud.isHidden
+            }
+            return
+        }
         // The automated renderer check uses a fixed clock and must not depend
         // on another app taking focus. Interactive play still pauses on blur.
         if active || smokeDirectory != nil {
@@ -98,6 +139,20 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
         hud.needsDisplay = true
         if smokeDirectory != nil { smokeTest() }
+    }
+    @objc func showMainMenu(_ sender: Any?) {
+        inSandbox = false; view.clearInput()
+        hud.isHidden = true; mainMenu.isHidden = false; window.toolbar?.isVisible = false
+        mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
+        mainMenu.stage.rootNode.addChildNode(robot.root)
+        mainMenu.animate(robot, dt: 0)
+        window.makeFirstResponder(mainMenu)
+    }
+    func startSandbox() {
+        inSandbox = true; mainMenu.isHidden = true; hud.isHidden = false
+        window.toolbar?.isVisible = true; hud.helpVisible = mainMenu.showGuide
+        world.scene.rootNode.addChildNode(robot.root)
+        reset(nil); robot.update(simulation); world.update(simulation)
     }
     func updateCamera(snap: Bool) {
         let target = SCNVector3(simulation.x, 0.35, simulation.z)
@@ -119,18 +174,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, -1))
     }
     @objc func togglePause(_ sender: Any?) {
+        guard inSandbox else { return }
         simulation.paused.toggle(); view.clearInput()
         pauseItem?.label = simulation.paused ? "Resume" : "Pause"
         pauseItem?.image = NSImage(systemSymbolName: simulation.paused ? "play.fill" : "pause.fill", accessibilityDescription: nil)
         window.makeFirstResponder(view)
     }
     @objc func reset(_ sender: Any?) {
+        guard inSandbox else { return }
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         simulation.reset(); view.clearInput(); pauseItem?.label = "Pause"
         pauseItem?.image = NSImage(systemSymbolName: "pause.fill", accessibilityDescription: nil)
         updateCamera(snap: true); window.makeFirstResponder(view)
     }
     @objc func cycleCamera(_ sender: Any?) {
+        guard inSandbox else { return }
         cameraMode = (cameraMode+1)%3; updateCamera(snap: true)
         window.makeFirstResponder(view)
     }
@@ -145,7 +203,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationWillTerminate(_ notification: Notification) { timer?.invalidate() }
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
+        [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
     }
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         toolbarAllowedItemIdentifiers(toolbar)
@@ -154,6 +212,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let item = NSToolbarItem(itemIdentifier: id)
         let config: (String, String, Selector)
         switch id.rawValue {
+        case "menu": config = ("Main Menu", "house", #selector(showMainMenu))
         case "camera": config = ("Camera", "video", #selector(cycleCamera))
         case "pause": config = ("Pause", "pause.fill", #selector(togglePause)); pauseItem = item
         case "reset": config = ("Reset", "arrow.counterclockwise", #selector(reset))
@@ -172,7 +231,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         appMenu.addItem(withTitle: "Quit Marvin Simulator", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu; bar.addItem(appItem)
         let simItem = NSMenuItem(), simMenu = NSMenu(title: "Simulation")
-        for (title, selector, key) in [("Reset playground", #selector(reset), "r"), ("Pause / resume", #selector(togglePause), "p"), ("Change camera", #selector(cycleCamera), "1")] {
+        for (title, selector, key) in [("Main Menu", #selector(showMainMenu), "m"), ("Reset playground", #selector(reset), "r"), ("Pause / resume", #selector(togglePause), "p"), ("Change camera", #selector(cycleCamera), "1")] {
             let item = simMenu.addItem(withTitle: title, action: selector, keyEquivalent: key); item.target = self
         }
         simItem.submenu = simMenu; bar.addItem(simItem); NSApp.mainMenu = bar
@@ -296,10 +355,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                         && abs(Double(bottom.z)/length-cos(angle)) < 0.00001
                         && abs(Double((bounds.max.y-bounds.min.y)*label.scale.y)-0.36) < 0.00001
                 }
-                let passed = robot.partCount == 23 && robot.triangleCount > 600_000
+                let passed = menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
                     && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
-                let report: [String: Any] = ["passed": passed, "parts": robot.partCount,
+                let report: [String: Any] = ["passed": passed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,
