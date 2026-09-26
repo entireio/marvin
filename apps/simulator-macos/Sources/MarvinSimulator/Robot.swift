@@ -26,6 +26,7 @@ struct MeshManifest: Decodable {
 final class Robot {
     let root = SCNNode(), yawNode = SCNNode(), pitchNode = SCNNode()
     var wheels: [(node: SCNNode, left: Bool)] = []
+    var tracks: [TrackBelt] = []
     var eyes: [SCNNode] = []
     var partCount = 0, triangleCount = 0
 
@@ -54,43 +55,11 @@ final class Robot {
                 throw NSError(domain: "MarvinModel", code: 1,
                     userInfo: [NSLocalizedDescriptionKey: "Invalid geometry for \(part.name)"])
             }
-            // Give the rubber a fuller visual profile inside the existing covers.
-            // Each belt widens about its own center, so track spacing stays fixed.
-            // Keep the contact plane at y=0. This is an appearance adjustment,
-            // not a measured revision to the authoritative CAD dimensions.
-            var meshData = data
-            if part.name == "09_track" {
-                let scale = SIMD3<Float>(1.20, 1.06, 1.045)
-                for i in 0..<part.vertexCount {
-                    let offset = part.vertexOffset + i * 24
-                    var position = data.withUnsafeBytes { bytes in
-                        SIMD3<Float>(
-                            bytes.loadUnaligned(fromByteOffset: offset, as: Float.self),
-                            bytes.loadUnaligned(fromByteOffset: offset+4, as: Float.self),
-                            bytes.loadUnaligned(fromByteOffset: offset+8, as: Float.self))
-                    }
-                    let center = SIMD3<Float>(position.x < 0 ? -0.262225 : 0.262225, 0, -0.02629)
-                    position = center + (position-center)*scale
-                    var normal = data.withUnsafeBytes { bytes in
-                        SIMD3<Float>(
-                            bytes.loadUnaligned(fromByteOffset: offset+12, as: Float.self),
-                            bytes.loadUnaligned(fromByteOffset: offset+16, as: Float.self),
-                            bytes.loadUnaligned(fromByteOffset: offset+20, as: Float.self))
-                    } / scale
-                    let length = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z)
-                    if length > 0 { normal /= length }
-                    for (j, var value) in [position.x, position.y, position.z, normal.x, normal.y, normal.z].enumerated() {
-                        withUnsafeBytes(of: &value) { bytes in
-                            meshData.replaceSubrange((offset+j*4)..<(offset+j*4+4), with: bytes)
-                        }
-                    }
-                }
-            }
-            let positions = SCNGeometrySource(data: meshData, semantic: .vertex,
+            let positions = SCNGeometrySource(data: data, semantic: .vertex,
                 vectorCount: part.vertexCount, usesFloatComponents: true,
                 componentsPerVector: 3, bytesPerComponent: 4,
                 dataOffset: part.vertexOffset, dataStride: 24)
-            let normals = SCNGeometrySource(data: meshData, semantic: .normal,
+            let normals = SCNGeometrySource(data: data, semantic: .normal,
                 vectorCount: part.vertexCount, usesFloatComponents: true,
                 componentsPerVector: 3, bytesPerComponent: 4,
                 dataOffset: part.vertexOffset+12, dataStride: 24)
@@ -143,7 +112,8 @@ final class Robot {
             // The source layer "Head" contains only an isolated 3 mm solid
             // below the shell, not the head assembly. Retain the imported data
             // but exclude this loose object from the visible simulator model.
-            node.isHidden = part.name == "Head"
+            // The static CAD belt is retained but replaced visually by TrackBelt.
+            node.isHidden = ["Head", "09_track"].contains(part.name)
             if ["05_head_base", "06_head_cover", "Display_and_electronics", "Head", "Top", "Battery"].contains(part.name) {
                 node.position.y = -0.56; pitchNode.addChildNode(node)
             } else if ["07_neck", "08_neck_mount", "Servo_Tilt", "Axis_Mount"].contains(part.name) {
@@ -178,8 +148,11 @@ final class Robot {
             node.castsShadow = false
             pitchNode.addChildNode(node); eyes.append(node)
         }
-        // Small drive markers turn on the four wheel hubs; the detailed original
-        // wheels and flexible tread meshes remain in their source assembly pose.
+        for x in [-0.262225, 0.262225] {
+            let belt = TrackBelt(x: x, rubber: rubber)
+            root.addChildNode(belt.node); tracks.append(belt)
+        }
+        // Hub markers rotate with the same signed travel as their belt.
         for x in [-0.337, 0.337] {
             for z in [-0.247, 0.164] {
                 let hub = SCNNode()
@@ -187,15 +160,16 @@ final class Robot {
                 let spoke = SCNBox(width: 0.008, height: 0.10, length: 0.022, chamferRadius: 0.004)
                 spoke.materials = [material(0xb4c8c0, metal: 0.5)]
                 hub.addChildNode(SCNNode(geometry: spoke))
-                root.addChildNode(hub); wheels.append((hub, x < 0))
+                root.addChildNode(hub); wheels.append((hub, x > 0))
             }
         }
     }
     func update(_ state: Simulation) {
-        root.position = SCNVector3(state.x, 0.015, state.z)
+        root.position = SCNVector3(state.x, 0, state.z)
         root.eulerAngles.y = CGFloat(state.heading)
         yawNode.eulerAngles.y = CGFloat(state.yaw)
         pitchNode.eulerAngles.x = CGFloat(-state.pitch)
+        for track in tracks { track.update(travel: track.left ? state.leftTravel : state.rightTravel) }
         for wheel in wheels {
             wheel.node.eulerAngles.x = CGFloat((wheel.left ? state.leftTravel : state.rightTravel) / 0.107)
         }

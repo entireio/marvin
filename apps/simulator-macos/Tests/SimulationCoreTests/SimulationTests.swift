@@ -91,6 +91,43 @@ struct SimulationTests {
             require(sim.yaw * direction < 0)
         }
     }
+    func testTrackTravelAndContact() {
+        let phase = TrackLoop.straight/2
+        let bottom = TrackLoop.sample(phase)
+        near(bottom.y-0.0055, 0, accuracy: 1e-9) // outer rib touches the floor
+        for throttle in [-1.0, 1.0] {
+            var sim = Simulation(), input = DriveInput()
+            input.throttle = throttle
+            sim.advance(input, dt: 0.1)
+            require(sim.leftTravel*throttle > 0 && sim.rightTravel*throttle > 0)
+            let tread = TrackLoop.sample(phase+sim.leftTravel)
+            // Ground-facing rubber travels opposite the chassis.
+            require((tread.z-bottom.z)*throttle < 0)
+            near(tread.z-bottom.z + sim.z+2.6, 0, accuracy: 1e-9)
+            input.brake = true
+            let stopped = sim.leftTravel
+            sim.advance(input, dt: 0.1)
+            equal(sim.leftTravel, stopped)
+            sim.reset(); equal(sim.leftTravel, 0); equal(sim.rightTravel, 0)
+        }
+        for turn in [-1.0, 1.0] {
+            var sim = Simulation(), input = DriveInput()
+            input.turn = turn
+            sim.advance(input, dt: 0.1)
+            require(sim.leftTravel*turn > 0 && sim.rightTravel*turn < 0)
+            require((TrackLoop.sample(phase+sim.leftTravel).z-bottom.z)*turn < 0)
+            require((TrackLoop.sample(phase+sim.rightTravel).z-bottom.z)*turn > 0)
+        }
+        for boundary in [0, TrackLoop.straight, TrackLoop.straight + .pi*TrackLoop.radius,
+                         2*TrackLoop.straight + .pi*TrackLoop.radius, TrackLoop.circumference] {
+            let a = TrackLoop.sample(boundary-1e-7), b = TrackLoop.sample(boundary+1e-7)
+            near(a.y, b.y, accuracy: 3e-7); near(a.z, b.z, accuracy: 3e-7)
+        }
+        for distance in [-10.0, -0.1, 0.0, 0.1, 10.0] {
+            let a = TrackLoop.sample(distance), b = TrackLoop.sample(distance+TrackLoop.circumference)
+            near(a.y, b.y, accuracy: 1e-9); near(a.z, b.z, accuracy: 1e-9)
+        }
+    }
     func testFrameRateIndependentAndStallBounded() {
         var a = Simulation(), b = Simulation(), input = DriveInput()
         input.throttle = 1; input.turn = 0.2
@@ -113,6 +150,7 @@ struct SimulationTests {
         checks.testPauseResetAndHeadLimits()
         checks.testFrameRateIndependentAndStallBounded()
         checks.testHeadClearanceSweepAndEscape()
-        print("PASS: 6 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        checks.testTrackTravelAndContact()
+        print("PASS: 7 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

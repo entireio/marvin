@@ -231,14 +231,31 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 NSApp.appearance = NSAppearance(named: .darkAqua)
                 let darkIconPassed = appliedIconName == "AppIconDark" && NSApp.applicationIconImage != nil
                 NSApp.appearance = originalAppearance
+                var tracksPassed = robot.tracks.count == 2
+                for (throttle, turn) in [(1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0)] {
+                    var sample = Simulation(), input = DriveInput()
+                    robot.update(sample)
+                    let initial = robot.tracks.map { $0.shoes[7].position.z }
+                    input.throttle = throttle; input.turn = turn
+                    sample.advance(input, dt: 0.1); robot.update(sample)
+                    for (i, track) in robot.tracks.enumerated() {
+                        let expected = throttle != 0 ? throttle : (track.left ? turn : -turn)
+                        tracksPassed = tracksPassed && Double(track.shoes[7].position.z-initial[i])*expected < 0
+                            && (track.left == (track.node.position.x > 0))
+                    }
+                }
+                robot.update(Simulation())
+                let groundContactPassed = robot.root.position.y == 0
+                    && abs(TrackLoop.sample(TrackLoop.straight/2).y-0.0055) < 0.000001
                 let passed = robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
-                    && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
+                    && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
                 let report: [String: Any] = ["passed": passed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,
                     "cameraPassed": cameraPassed, "lightIconPassed": lightIconPassed, "darkIconPassed": darkIconPassed,
+                    "tracksPassed": tracksPassed, "groundContactPassed": groundContactPassed,
                     "renderer": "SceneKit / Metal", "width": bitmap.pixelsWide,
                     "height": bitmap.pixelsHigh]
                 try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])

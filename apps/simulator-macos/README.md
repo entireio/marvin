@@ -65,11 +65,12 @@ This is a **flat-ground kinematic simulation**, not a calibrated digital twin:
   ±45° matching the firmware's logical bounds. CAD-derived oriented collision boxes conservatively stop pan and tilt before
   the head intersects the chassis. They approximate shell geometry; the neck
   joint and deformable parts are not collision meshes.
-- Wheels have rotating hub markers. The source wheels retain their original shape.
-  For a fuller appearance, each rubber track is widened 20% about its center,
-  with a 6% taller and 4.5% longer profile, keeping its ground contact height.
-  These visual proportions are not measured hardware dimensions; track-belt
-  deformation is not modeled.
+- Each track has 56 circulating tread shoes over a continuous rubber belt.
+  Belt phase follows that side's signed travel, including reverse and pivot turns;
+  the bottom run moves backward relative to the chassis when driving forward.
+  The original static CAD tracks are hidden. Animated belts approximate their
+  widened profile; these are visual proportions, not measured hardware dimensions.
+  The rubber meets the ground at zero chassis lift. The dock is a thin floor inlay.
 - White curved eye strokes sit on the original CAD front panel and blink.
   The neck is shell-colored; the five-button row uses one red and four pale
   buttons, with a separate pale round button. Materials are curated for the simulator. The source electronics layout is not verified against today's robot.
