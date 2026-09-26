@@ -1,0 +1,25 @@
+commit/push
+
+---
+
+commit/push
+
+---
+
+Add a new option to the main menu called "Dirt Track". When selected, put Marvin on a dirt track, like in Motorcycle dirt tracking racing. Do research on how to render such a track. I want it as realistic as possible, including that Marvin's tracks throw up dirt and debris. The player should complete 3 laps and you measure the time per lap and total. The high scores should be tracked as well.
+
+---
+
+I don't want an oval. Study this: https://www.dirtrider.com/understanding-motocross-track-layouts/
+
+---
+
+Not bad. In dirt track mode, start with a camera that looks in the driving direction, make Marvin 3 times as fast, improve the collision detection on the edges by not making him stuck in the dirt, but slow him down and only stuck on the fence. Also, the fence is hovering above the gound; correctly adjust the lenght of the posts for the terrain. Also also, the course map is mirrored to the course itself, see screenshot. [Image #1]
+
+---
+
+Try again
+
+---
+
+No, just start the simulator, it
