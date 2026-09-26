@@ -1,0 +1,81 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3FFZGH6C8Q5T07KMC22YCWK",
+  "session_id": "01a0d9eb-5047-7503-9909-7a241ab001bf",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-26T18:35:04.47133Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "save_step_count": 3,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/SimulatorView.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/World.swift",
+    "apps/simulator-macos/Sources/SimulationCore/CourseLayout.swift",
+    "apps/simulator-macos/Sources/SimulationCore/HeadClearance.swift",
+    "apps/simulator-macos/Sources/SimulationCore/HeadRig.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "73cc448deaa2",
+  "checkpoint_transcript_start": 1438,
+  "transcript_lines_at_start": 1438,
+  "compact_transcript_start": 184,
+  "token_usage": {
+    "input_tokens": 57703,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 5378560,
+    "output_tokens": 8783,
+    "api_call_count": 33,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 26
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-26T18:35:04.130774Z",
+    "agent_lines": 200,
+    "agent_removed": 34,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 200,
+    "total_lines_changed": 234,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 5
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 69,
+      "agent_lines_removed": 19
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 200,
+      "agent_lines_removed": 34
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+commit/push
+
+---
+
+Each of the obstacles has the launch pad on the top. Remove that.
+
+---
+
+[Image #1] [Image #2] When rotating the head, it looks like the neck is intersecting with the lower body or it's not symmetric?
+
+---
+
+Positing the 5 rings randomly and make sure they don't collide with the obstacles, with the launch position, or with the edge.

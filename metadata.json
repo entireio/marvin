@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3FFZGH6C8Q5T07KMC22YCWK",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/SimulatorView.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/World.swift",
+    "apps/simulator-macos/Sources/SimulationCore/CourseLayout.swift",
+    "apps/simulator-macos/Sources/SimulationCore/HeadClearance.swift",
+    "apps/simulator-macos/Sources/SimulationCore/HeadRig.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 57703,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 5378560,
+    "output_tokens": 8783,
+    "api_call_count": 33,
+    "subagent_tokens_complete": true
+  }
+}
