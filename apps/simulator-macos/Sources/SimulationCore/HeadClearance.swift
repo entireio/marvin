@@ -23,17 +23,14 @@ public enum HeadClearance {
     ]
     public static func isClear(yaw: Double, pitch: Double) -> Bool {
         guard yaw.isFinite, pitch.isFinite else { return false }
-        let cy = cos(yaw), sy = sin(yaw), cp = cos(pitch), sp = sin(pitch)
         func rotate(_ v: SIMD3<Double>) -> SIMD3<Double> {
-            let y = cp*v.y + sp*v.z, z = -sp*v.y + cp*v.z
-            return [cy*v.x + sy*z, y, -sy*v.x + cy*z]
+            HeadRig.rotate(v, yaw: yaw, pitch: pitch)
         }
         let world: [SIMD3<Double>] = [[1,0,0], [0,1,0], [0,0,1]]
         let axes = world.map(rotate)
         let candidates = world + axes + world.flatMap { a in axes.map { simd_cross(a, $0) } }
-        let pivot = SIMD3<Double>(0, 0.56, 0)
         for head in heads {
-            let center = rotate(head.center-pivot)+pivot
+            let center = HeadRig.headPoint(head.center, yaw: yaw, pitch: pitch)
             // Half-millimeter clearance, including the physical button height.
             let headHalf = head.half + SIMD3<Double>(repeating: 0.005)
             for body in bodies {

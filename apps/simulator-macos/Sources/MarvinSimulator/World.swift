@@ -5,6 +5,7 @@ import SimulationCore
 final class World {
     let scene = SCNScene(), camera = SCNNode()
     var beacons: [SCNNode] = []
+    var beaconLabels: [SCNNode] = []
     let teal = material(0x2b8e7f), orange = material(0xd89c64)
 
     init() {
@@ -48,27 +49,22 @@ final class World {
             let body = box(o.x, o.height/2, o.z, o.width, o.height, o.depth,
                           material(i.isMultiple(of: 2) ? 0x96b4a7 : 0xd2b59a), radius: 0.07)
             body.name = "Obstacle \(i+1)"
-            box(o.x, o.height+0.006, o.z, o.width*0.88, 0.02, o.depth*0.88,
-                material(i.isMultiple(of: 2) ? 0xc7d6c8 : 0xe7d6bf), radius: 0.025)
-            for offset in [-0.3, 0.3] {
-                box(o.x+o.width*offset, o.height+0.019, o.z, 0.035, 0.008, o.depth*0.85, teal)
-            }
         }
         // Dock and course markers are painted on the floor, not collision solids.
         box(0, 0, -2.6, 1.35, 0.001, 1.25, material(0xb7cdc0), radius: 0.08).castsShadow = false
         for x in [-0.6, 0.6] { box(x, 0.0005, -2.6, 0.025, 0.001, 1.1, teal).castsShadow = false }
-        for (i, p) in Simulation.checkpoints.enumerated() {
-            let ring = SCNTorus(ringRadius: 0.54, pipeRadius: 0.018)
+        for i in 0..<CourseLayout.count {
+            let ring = SCNTorus(ringRadius: CGFloat(CourseLayout.ringRadius), pipeRadius: CGFloat(CourseLayout.pipeRadius))
             ring.materials = [material(0xa3b8ae)]
-            let node = SCNNode(geometry: ring); node.position = SCNVector3(p.x, 0.028, p.z)
+            let node = SCNNode(geometry: ring); node.position = SCNVector3(0, 0.028, 0)
             scene.rootNode.addChildNode(node); beacons.append(node)
             let text = SCNText(string: String(format: "%02d", i+1), extrusionDepth: 0.002)
             text.font = NSFont.monospacedSystemFont(ofSize: 1, weight: .medium)
             text.flatness = 0.2; text.materials = [material(0x4e756a)]
             let label = SCNNode(geometry: text); label.scale = SCNVector3(0.16, 0.16, 0.16)
-            label.eulerAngles.x = -.pi/2; label.position = SCNVector3(p.x-0.10, 0.012, p.z+0.07)
+            label.eulerAngles.x = -.pi/2; label.position = SCNVector3(-0.10, 0.012, 0.07)
             label.castsShadow = false
-            scene.rootNode.addChildNode(label)
+            scene.rootNode.addChildNode(label); beaconLabels.append(label)
         }
     }
     @discardableResult
@@ -81,9 +77,12 @@ final class World {
     }
     func update(_ state: Simulation) {
         for (i, node) in beacons.enumerated() {
+            let point = state.checkpoints[i]
+            node.position = SCNVector3(point.x, 0.028, point.z)
+            beaconLabels[i].position = SCNVector3(point.x-0.10, 0.012, point.z+0.07)
             node.geometry?.firstMaterial?.diffuse.contents = color(i < state.checkpoint ? 0x2b8e7f : i == state.checkpoint ? 0xe0a568 : 0xa3b8ae)
             node.geometry?.firstMaterial?.emission.contents = color(i == state.checkpoint ? 0x3d2513 : 0x000000)
-            let scale = i == state.checkpoint ? 1 + sin(state.elapsed*2)*0.06 : 1
+            let scale = i == state.checkpoint ? 1 + sin(state.elapsed*2)*(CourseLayout.pulseScale-1) : 1
             node.scale = SCNVector3(scale, 1, scale)
         }
     }

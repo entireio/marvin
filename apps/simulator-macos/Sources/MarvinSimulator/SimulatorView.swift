@@ -80,7 +80,7 @@ final class HUDView: NSView {
             NSBezierPath(roundedRect: NSRect(x: p.x, y: p.y, width: o.width/12*map.width,
                                             height: o.depth/10*map.height), xRadius: 2, yRadius: 2).fill()
         }
-        for (i, p) in Simulation.checkpoints.enumerated() {
+        for (i, p) in state.checkpoints.enumerated() {
             let at = point(p.x, p.z)
             color(i < state.checkpoint ? 0x2b8e7f : i == state.checkpoint ? 0xc88547 : 0xa3b8ae).setFill()
             NSBezierPath(ovalIn: NSRect(x: at.x-4, y: at.y-4, width: 8, height: 8)).fill()

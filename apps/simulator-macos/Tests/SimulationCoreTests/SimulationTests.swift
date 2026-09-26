@@ -43,7 +43,7 @@ struct SimulationTests {
         input.throttle = 1; input.boost = true
         for _ in 0..<600 { sim.advance(input, dt: 1.0/60) }
         require(sim.contacting)
-        equal(sim.checkpoint, 1)
+        require(sim.checkpoint >= 0 && sim.checkpoint <= CourseLayout.count)
         less(sim.z, 3.3-0.65/2-Simulation.radius+0.01)
         require(Simulation.isFree(x: sim.x, z: sim.z))
         require(!Simulation.isFree(x: 6, z: 0))
@@ -90,6 +90,68 @@ struct SimulationTests {
             require(sim.heading * direction < 0)
             require(sim.yaw * direction < 0)
         }
+    }
+    func testRandomCourseClearancesAndReset() {
+        var layouts = Set<String>()
+        for seed in UInt64(0)..<1000 {
+            let sim = Simulation(seed: seed)
+            equal(sim.checkpoints.count, 5)
+            equal(sim.checkpoints, Simulation(seed: seed).checkpoints)
+            layouts.insert(sim.checkpoints.map { "\($0.x),\($0.z)" }.joined(separator: ";"))
+            for (i, p) in sim.checkpoints.enumerated() {
+                require(CourseLayout.isClear(p, among: Array(sim.checkpoints.prefix(i))))
+                require(Simulation.isFree(x: p.x, z: p.z))
+                // Independently sample the full clearance perimeter, including
+                // the maximum pulse, against walls, rectangles, and prior rings.
+                for step in 0..<72 {
+                    let angle = Double(step)*2*Double.pi/72
+                    let r = CourseLayout.outerRadius+CourseLayout.clearance
+                    let x = p.x+cos(angle)*r, z = p.z+sin(angle)*r
+                    require(abs(x) < Simulation.halfWidth && abs(z) < Simulation.halfDepth)
+                    for box in Simulation.obstacles+[CourseLayout.launch] {
+                        require(abs(x-box.x) > box.width/2 || abs(z-box.z) > box.depth/2)
+                    }
+                    for other in sim.checkpoints.prefix(i) {
+                        require(hypot(x-other.x, z-other.z) > CourseLayout.outerRadius)
+                    }
+                }
+            }
+        }
+        equal(layouts.count, 1000)
+        var sim = Simulation(seed: 42)
+        let original = sim.checkpoints
+        sim.reset()
+        require(sim.checkpoints != original)
+        equal(sim.checkpoint, 0)
+        // Choose a reproducible first target in the unobstructed forward lane.
+        let seed = (UInt64(0)..<1000).first {
+            let p = Simulation(seed: $0).checkpoints[0]
+            return abs(p.x) < 0.3 && p.z > -1 && p.z < 1
+        }!
+        sim = Simulation(seed: seed)
+        var input = DriveInput(); input.throttle = 1
+        for _ in 0..<240 { sim.advance(input, dt: 1.0/60) }
+        require(sim.checkpoint >= 1)
+    }
+    func testNeckConcentricDuringPan() {
+        // Compare opposite points on the CAD's lower circular neck section.
+        let left = SIMD3<Double>(-0.1325, 0.295, -0.01886)
+        let right = SIMD3<Double>(0.1325, 0.295, -0.01886)
+        for degrees in stride(from: -80.0, through: 80.0, by: 5.0) {
+            let angle = degrees * .pi/180
+            let a = HeadRig.headPoint(left, yaw: angle, pitch: 0)
+            let b = HeadRig.headPoint(right, yaw: angle, pitch: 0)
+            let center = (a+b)/2
+            near(center.x, 0, accuracy: 1e-9)
+            near(center.y, 0.295, accuracy: 1e-9)
+            near(center.z, -0.01886, accuracy: 1e-9)
+            near(hypot(a.x, a.z+0.01886), 0.1325, accuracy: 1e-9)
+            require(HeadClearance.isClear(yaw: angle, pitch: 0))
+        }
+        let neutral = HeadRig.headPoint([0.2, 0.6, 0.3], yaw: 0, pitch: 0)
+        near(neutral.x, 0.2, accuracy: 1e-9)
+        near(neutral.y, 0.6, accuracy: 1e-9)
+        near(neutral.z, 0.3, accuracy: 1e-9)
     }
     func testTrackTravelAndContact() {
         let phase = TrackLoop.straight/2
@@ -151,6 +213,8 @@ struct SimulationTests {
         checks.testFrameRateIndependentAndStallBounded()
         checks.testHeadClearanceSweepAndEscape()
         checks.testTrackTravelAndContact()
-        print("PASS: 7 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        checks.testNeckConcentricDuringPan()
+        checks.testRandomCourseClearancesAndReset()
+        print("PASS: 9 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

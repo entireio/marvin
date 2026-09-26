@@ -247,15 +247,41 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 robot.update(Simulation())
                 let groundContactPassed = robot.root.position.y == 0
                     && abs(TrackLoop.sample(TrackLoop.straight/2).y-0.0055) < 0.000001
+                var neckPassed = true
+                let neck = robot.root.childNode(withName: "07_neck", recursively: true)!
+                for degrees in [-80.0, 0.0, 80.0] {
+                    robot.yawNode.eulerAngles.y = CGFloat(degrees * .pi/180)
+                    let center = neck.convertPosition(SCNVector3(0, 0.295, -0.01886), to: robot.root)
+                    neckPassed = neckPassed && abs(center.x) < 0.000001
+                        && abs(center.y-0.295) < 0.000001 && abs(center.z+0.01886) < 0.000001
+                    world.camera.position = SCNVector3(0.85, 0.8, -1.1)
+                    world.camera.look(at: SCNVector3(0, 0.37, -2.6), up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, -1))
+                    if let tiff = view.snapshot().tiffRepresentation,
+                       let image = NSBitmapImageRep(data: tiff),
+                       let png = image.representation(using: .png, properties: [:]) {
+                        try png.write(to: url.appendingPathComponent("neck-pan-\(Int(degrees)).png"))
+                    }
+                }
+                robot.update(Simulation()); updateCamera(snap: true)
+                let previousCourse = simulation.checkpoints
+                reset(nil); world.update(simulation)
+                let coursePassed = previousCourse != simulation.checkpoints
+                    && world.beacons.count == 5 && world.beaconLabels.count == 5
+                    && simulation.checkpoints.enumerated().allSatisfy { i, point in
+                        let ring = world.beacons[i].position, label = world.beaconLabels[i].position
+                        return abs(Double(ring.x)-point.x) < 0.00001 && abs(Double(ring.z)-point.z) < 0.00001
+                            && abs(Double(label.x)-(point.x-0.1)) < 0.00001
+                            && CourseLayout.isClear(point, among: Array(simulation.checkpoints.prefix(i)))
+                    }
                 let passed = robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
-                    && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
+                    && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
                 let report: [String: Any] = ["passed": passed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,
                     "cameraPassed": cameraPassed, "lightIconPassed": lightIconPassed, "darkIconPassed": darkIconPassed,
-                    "tracksPassed": tracksPassed, "groundContactPassed": groundContactPassed,
+                    "coursePassed": coursePassed, "neckPassed": neckPassed, "tracksPassed": tracksPassed, "groundContactPassed": groundContactPassed,
                     "renderer": "SceneKit / Metal", "width": bitmap.pixelsWide,
                     "height": bitmap.pixelsHigh]
                 try JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys])

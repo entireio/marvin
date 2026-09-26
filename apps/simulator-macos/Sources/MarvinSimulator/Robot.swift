@@ -36,9 +36,9 @@ final class Robot {
             from: Data(contentsOf: directory.appendingPathComponent("manifest.json")))
         let data = try Data(contentsOf: directory.appendingPathComponent("geometry.bin"))
         root.name = "Marvin CAD assembly"
-        // Approximate articulation centers inferred from the assembled servo geometry.
-        yawNode.position = SCNVector3(0, 0.30, 0)
-        pitchNode.position = SCNVector3(0, 0.26, 0)
+        // Keep the circular neck concentric with the body's socket during pan.
+        yawNode.position = SCNVector3(HeadRig.yawPivot)
+        pitchNode.position = SCNVector3(HeadRig.pitchPivot-HeadRig.yawPivot)
         root.addChildNode(yawNode); yawNode.addChildNode(pitchNode)
         let shell = material(0xe5e5e2, metal: 0.05, roughness: 0.4)
         let rubber = material(0x202a29, roughness: 0.88)
@@ -115,9 +115,9 @@ final class Robot {
             // The static CAD belt is retained but replaced visually by TrackBelt.
             node.isHidden = ["Head", "09_track"].contains(part.name)
             if ["05_head_base", "06_head_cover", "Display_and_electronics", "Head", "Top", "Battery"].contains(part.name) {
-                node.position.y = -0.56; pitchNode.addChildNode(node)
+                node.position = SCNVector3(-HeadRig.pitchPivot); pitchNode.addChildNode(node)
             } else if ["07_neck", "08_neck_mount", "Servo_Tilt", "Axis_Mount"].contains(part.name) {
-                node.position.y = -0.30; yawNode.addChildNode(node)
+                node.position = SCNVector3(-HeadRig.yawPivot); yawNode.addChildNode(node)
             } else { root.addChildNode(node) }
             partCount += 1; triangleCount += part.triangleCount
         }

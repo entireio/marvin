@@ -42,7 +42,9 @@ it does not change `xcode-select` or accept any license agreements.
 | Show / hide controls | ? or Controls toolbar button |
 | Quit | Command-Q |
 
-Drive through the five amber beacons in order. The minimap shows the current
+Drive through the five amber beacons in order. Each launch or reset places a new
+random course, keeping the full pulsing rings clear of obstacles, the launch pad,
+the arena edges, and each other. The minimap shows the current
 objective, obstacles, and Marvin's heading. Driving into an obstacle stops
 translation; turn or reverse to get free. Input and drive velocity clear when
 the window loses focus. The simulation freezes while the app is inactive.
@@ -61,7 +63,8 @@ This is a **flat-ground kinematic simulation**, not a calibrated digital twin:
 - Differential drive with acceleration, braking, and circular-footprint collision
   checks against the course's rectangular obstacles and boundaries. Fixed-size
   integration substeps prevent wall tunneling; delayed frames are clamped.
-- Head articulation centers are inferred from the CAD, with yaw ±80° and pitch
+- The pan axis follows the CAD neck ring center (Z = −1.886 mm); the pitch
+  pivot is inferred from the assembly, with yaw ±80° and pitch
   ±45° matching the firmware's logical bounds. CAD-derived oriented collision boxes conservatively stop pan and tilt before
   the head intersects the chassis. They approximate shell geometry; the neck
   joint and deformable parts are not collision meshes.

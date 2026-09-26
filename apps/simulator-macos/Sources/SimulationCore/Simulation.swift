@@ -24,9 +24,7 @@ public struct Simulation: Sendable {
         Obstacle(3.5, -2.3, 1.2, 0.8, 0.45),
         Obstacle(0.0, 3.3, 1.6, 0.65, 0.35),
     ]
-    public static let checkpoints: [(x: Double, z: Double)] = [
-        (0, 1.5), (-2, 3), (-4, -2.5), (1, -3.2), (3.8, 2.5),
-    ]
+    public private(set) var checkpoints: [Checkpoint]
     public private(set) var x = 0.0, z = -2.6, heading = 0.0
     public private(set) var leftSpeed = 0.0, rightSpeed = 0.0
     public private(set) var leftTravel = 0.0, rightTravel = 0.0
@@ -35,8 +33,10 @@ public struct Simulation: Sendable {
     public private(set) var contacting = false
     public var paused = false
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
-    public var complete: Bool { checkpoint == Self.checkpoints.count }
-    public init() {}
+    public var complete: Bool { checkpoint == checkpoints.count }
+    public init(seed: UInt64 = UInt64.random(in: UInt64.min...UInt64.max)) {
+        checkpoints = CourseLayout.generate(seed: seed)
+    }
 
     public mutating func stop() { leftSpeed = 0; rightSpeed = 0 }
     public mutating func reset() { self = Simulation() }
@@ -100,7 +100,7 @@ public struct Simulation: Sendable {
         if HeadClearance.isClear(yaw: nextYaw, pitch: pitch) { yaw = nextYaw }
         if HeadClearance.isClear(yaw: yaw, pitch: nextPitch) { pitch = nextPitch }
         if !complete {
-            let target = Self.checkpoints[checkpoint]
+            let target = checkpoints[checkpoint]
             if hypot(x-target.x, z-target.z) < 0.7 { checkpoint += 1 }
         }
     }
