@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3FH5DW56M3Y1P9P8RMBE9RW",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/FloorGroove.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/World.swift",
+    "apps/simulator-macos/Sources/SimulationCore/CourseRoute.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 47550,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 6314624,
+    "output_tokens": 9934,
+    "api_call_count": 30,
+    "subagent_tokens_complete": true
+  }
+}
