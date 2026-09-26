@@ -19,6 +19,7 @@ controller, and firmware are historical rather than parallel implementations.
 | --- | --- |
 | [`apps/server`](apps/server/README.md) | Fastify API, authentication, device gateway, voice, and web serving |
 | [`apps/web`](apps/web/README.md) | React/Vite personal workspace and pet controls |
+| [`apps/simulator-macos`](apps/simulator-macos/README.md) | Native macOS 3D playground with keyboard driving |
 | [`apps/build-docs`](apps/build-docs/README.md) | Static public build website, including the Pet v1 guide |
 | [`packages`](packages) | Contracts, persistence, runtime, provisioning, and operations |
 | [`firmware`](firmware/README.md) | Current ESP-IDF firmware for the Waveshare ESP32-S3 audio board |
