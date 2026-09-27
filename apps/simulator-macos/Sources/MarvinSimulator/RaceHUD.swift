@@ -2,7 +2,10 @@ import AppKit
 import SimulationCore
 
 final class RaceHUD: NSView {
-    var opponent = DirtOpponent()
+    var opponents: [DirtOpponent] = []
+    let racerNames = ["R2-D2", "BB-8", "WALL-E"]
+    let racerColors: [UInt32] = [0x58baff, 0xff914b, 0x8cdbba]
+    var position: Int { 1 + opponents.filter { $0.playerPosition(race) == 2 }.count }
     var race = DirtRace(), scores: [DirtScore] = []
     var x = 0.0, z = -10.0, heading = 0.0
     var introducing = false
@@ -20,17 +23,21 @@ final class RaceHUD: NSView {
         color(0x263029,alpha:0.9).setFill(); NSBezierPath(roundedRect:NSRect(x:x,y:y,width:w,height:h),xRadius:12,yRadius:12).fill()
     }
     override func draw(_ rect:NSRect) {
-        panel(22,22,280,264)
+        panel(22,22,280,306)
         text("DIRT TRACK",40,38,23,true)
         text("LAP \(min(3,race.laps.count+1)) / 3",40,76,18,true)
         text("CURRENT  \(Self.time(race.currentLap))",40,111)
         text("TOTAL    \(Self.time(race.elapsed))",40,140)
         let best = race.laps.min().map(Self.time) ?? "—"
         text("BEST LAP \(best)",40,169)
-        text("POSITION \(opponent.playerPosition(race)) / 2",40,202,18,true)
-        let rival = opponent.race.finished ? "FINISHED" : "LAP \(min(3,opponent.race.laps.count+1)) / 3"
-        text("R2-D2    \(rival)",40,235,13)
-        text("YOU · GOLD    R2-D2 · BLUE",40,262,10)
+        text("POSITION \(position) / 4",40,202,18,true)
+        for (i, opponent) in opponents.enumerated() {
+            let rival = opponent.race.finished ? "FINISHED" : "LAP \(min(3,opponent.race.laps.count+1)) / 3"
+            color(racerColors[i]).setFill()
+            NSBezierPath(ovalIn:NSRect(x:40,y:239+CGFloat(i)*22,width:7,height:7)).fill()
+            text("\(racerNames[i].padding(toLength:8,withPad:" ",startingAt:0))\(rival)",55,235+CGFloat(i)*22,13)
+        }
+        text("YOU · GOLD",40,305,10)
         let x = bounds.width-292
         panel(x,22,270,250)
         text("LOCAL HIGH SCORES",x+18,40,17,true)
@@ -82,9 +89,11 @@ final class RaceHUD: NSView {
         border.lineWidth = 1; border.stroke()
         NSGraphicsContext.restoreGraphicsState()
         text("START / FINISH",finishAt.x-38,finishAt.y+12,9,true)
-        let rivalAt = marker(opponent.simulation.x,opponent.simulation.z)
-        color(0x58baff).setFill()
-        NSBezierPath(ovalIn:NSRect(x:rivalAt.x-4,y:rivalAt.y-4,width:8,height:8)).fill()
+        for (i, opponent) in opponents.enumerated() {
+            let rivalAt = marker(opponent.simulation.x,opponent.simulation.z)
+            color(racerColors[i]).setFill()
+            NSBezierPath(ovalIn:NSRect(x:rivalAt.x-4,y:rivalAt.y-4,width:8,height:8)).fill()
+        }
         let at = marker(self.x,z)
         color(0xffd78d).setFill(); NSBezierPath(ovalIn:NSRect(x:at.x-4,y:at.y-4,width:8,height:8)).fill()
         let direction = NSBezierPath(); direction.move(to:at)
@@ -106,7 +115,7 @@ final class RaceHUD: NSView {
         }
         if race.finished {
             panel(middle-210,bounds.height/2-155,420,310)
-            text(opponent.playerPosition(race) == 1 ? "1ST · YOU WIN!" : "2ND · R2-D2 WINS",middle-182,bounds.height/2-131,26,true)
+            text(position == 1 ? "1ST · YOU WIN!" : "\(["1ST","2ND","3RD","4TH"][position-1]) · RACE FINISHED",middle-182,bounds.height/2-131,26,true)
             for (i,lap) in race.laps.enumerated() { text("Lap \(i+1)       \(Self.time(lap))",middle-182,bounds.height/2-75+CGFloat(i)*32,19) }
             text("TOTAL       \(Self.time(race.elapsed))",middle-182,bounds.height/2+37,21,true)
             text(saveError ?? "Saved to local high scores",middle-182,bounds.height/2+82,12)

@@ -8,13 +8,13 @@ final class DirtWorld {
     let scene = SCNScene()
     private let effects = SCNNode()
     private var flecks: [(node: SCNNode, velocity: SIMD3<Double>, life: Double, dust: Bool)] = []
-    private let trails = [DirtTrail(style:.tracks), DirtTrail(style:.tires)]
-    private var emission = [[0.0, 0.0], [0.0, 0.0, 0.0]]
-    private(set) var racerEmittedCount = [0, 0]
+    private let trails = [DirtTrail(style:.tracks), DirtTrail(style:.tires), DirtTrail(style:.tires), DirtTrail(style:.tracks)]
+    private var emission = [[0.0, 0.0], [0.0, 0.0, 0.0], [0.0], [0.0,0.0]]
+    private(set) var racerEmittedCount = [0, 0, 0, 0]
     var trailCounts: [Int] { trails.map { $0.count } }
     private let dustMaterial = SCNMaterial()
     private let clodGeometry = SCNSphere(radius: 0.012)
-    private let poolSize = 960
+    private let poolSize = 1600
     private var poolIndex = 0
     private(set) var emittedCount = 0
 
@@ -107,7 +107,7 @@ final class DirtWorld {
             tile.castsShadow = false
         }}
         // Staggered two-column starting boxes, open at the rear.
-        for slot in [DirtCourse.playerGrid, DirtCourse.opponentGrid] {
+        for slot in DirtCourse.startingGrid {
             let p = DirtCourse.point(slot.phase,offset:slot.offset), heading = DirtCourse.heading(slot.phase)
             var vertices: [SCNVector3] = [], indices: [Int32] = []
             for (cx,cz,w,l) in [(-0.43,0.0,0.025,0.95),(0.43,0.0,0.025,0.95),(0.0,0.475,0.86,0.025)] {
@@ -230,10 +230,11 @@ final class DirtWorld {
     }
     func reset() {
         for i in flecks.indices { flecks[i].life = 0; flecks[i].node.isHidden = true }
-        trails.forEach { $0.reset() }; emission = [[0,0],[0,0,0]]
-        racerEmittedCount = [0,0]; emittedCount = 0; poolIndex = 0
+        trails.forEach { $0.reset() }; emission = [[0,0],[0,0,0],[0],[0,0]]
+        racerEmittedCount = [0,0,0,0]; emittedCount = 0; poolIndex = 0
     }
-    func update(_ state: Simulation, opponent: Simulation, dt: Double, modelScale: Double) {
+    var additionalContacts: [[(x: Double,z: Double,width: Double)]] = []
+    func update(_ state: Simulation, opponent: Simulation, dt: Double, modelScale: Double, additional: [Simulation]) {
         guard dt > 0 else { return }
         for i in flecks.indices where flecks[i].life > 0 {
             flecks[i].life -= dt
@@ -252,7 +253,10 @@ final class DirtWorld {
         emit(state, racer:0, dt:dt, contacts:[
             (0.262225*modelScale, -0.23*modelScale, 0.155*modelScale),
             (-0.262225*modelScale, -0.23*modelScale, 0.155*modelScale)])
-        emit(opponent, racer:1, dt:dt, contacts:[(0.205,-0.205,0.13),(-0.205,-0.205,0.13),(0,0.103,0.085)])
+        emit(opponent, racer:1, dt:dt, contacts:R2D2.groundContacts)
+        for (i, racer) in additional.enumerated() {
+            emit(racer,racer:i+2,dt:dt,contacts:additionalContacts[i])
+        }
     }
     private func emit(_ state: Simulation, racer: Int, dt: Double,
                       contacts: [(x: Double, z: Double, width: Double)]) {
@@ -261,7 +265,7 @@ final class DirtWorld {
         let lateral = SIMD3<Double>(cos(state.heading),0,-sin(state.heading))
         let origin = SIMD3<Double>(state.x,state.groundY+0.035,state.z)
         for (side, contact) in contacts.enumerated() {
-            let speed = side == 0 ? state.leftSpeed : side == 1 ? state.rightSpeed : state.speed
+            let speed = contacts.count == 1 ? state.speed : side == 0 ? state.leftSpeed : side == 1 ? state.rightSpeed : state.speed
             let magnitude = abs(speed)
             guard magnitude > 0.08, !state.contacting, !state.airborne else { continue }
             let sign = speed > 0 ? 1.0 : -1.0

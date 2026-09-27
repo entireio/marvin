@@ -52,25 +52,40 @@ crossings interpolate within a frame; signed course progress prevents reverse
 finish crossings from awarding laps. Loose shoulders reduce speed; only the fence blocks Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
 Command-R starts a fresh race. The Main Menu toolbar button returns to the menu.
 
-Race against one autonomous **R2-D2** opponent. He starts alongside Marvin,
-steers toward a look-ahead point, slows for turns, and boosts on straights using
-the same acceleration, steering, fence, terrain and jump simulation. The HUD
-shows position out of two, R2-D2's lap, and a blue opponent marker (Marvin is
-gold). Three-lap finish order determines the winner; local high scores still
-record only your time. Both racers wait for the fly-in/countdown, freeze on pause
-or app inactivity, and reset with Command-R. This first opponent uses non-contact
-racing: robots can pass through each other; robot-to-robot collisions and
-avoidance are not implemented.
+Race against autonomous **R2-D2, BB-8 and WALL-E**. All four racers are randomly
+assigned distinct staggered starting boxes on every new race and Command-R reset.
+The AI steers toward look-ahead points in separate lanes, slows for turns, and
+boosts on straights using the same acceleration, steering, fence, terrain and jump
+simulation. The HUD shows position out of four, every opponent's lap, and map
+markers: Marvin gold, R2-D2 blue, BB-8 orange, WALL-E green. Markers stay on the
+course polyline. Three-lap finish order determines position; local scores record
+your time. All racers wait for the fly-in/countdown, freeze on pause or app
+inactivity, and reset together. Racing remains non-contact: robot-to-robot
+collisions and avoidance are not implemented.
 
 The bundled [R2-D2 model by LordDiego](https://sketchfab.com/3d-models/r2-d2-9e6b5bc13f7943d08e657bffce78fc90)
 is a detailed 25,158-triangle textured model under CC BY 4.0. It uses the
 original animation's deployed third-leg driving pose and smooth surface normals.
-Six added treaded tires sit beneath the three foot housings; they rotate from
+Four outer drive wheels and one center caster use documented Colson dimensions
+from a replica-builder configuration ([wheel references](Resources/R2D2/WHEEL_REFERENCE.md)).
+They rotate from
 signed wheel travel, stop under braking/pause, and reverse with the drivetrain.
 Marvin is scaled to 0.60 m relative to R2-D2’s 1.08 m height (55.6% as tall),
 with matching tread travel and dirt-effect spacing. The dome gently turns on its inclined pivot. The source archives, conversion
 credits and modification notes ship in `Resources/R2D2`; the exporter runs
 offline without Blender. This is an artistic mesh, not engineering CAD.
+
+
+[BB-8 by Willy Decarpentrie](Resources/BB8/ATTRIBUTION.md) retains 7,198 triangles
+and is scaled to the official **0.67 m** height. Its spherical shell rolls by
+actual ground displacement while its head stays upright and turns independently.
+[WALL-E by Janis Zeps](Resources/WallE/ATTRIBUTION.md) retains 40,158 triangles.
+His **1.016 m** height is based on a builder's firsthand report of a Pixar call,
+not an official published specification. His two articulated tread loops and
+gears follow signed left/right travel independently, including turns, braking,
+and reverse. The binocular head subtly looks around. Both models are CC BY 4.0;
+creator credits, pinned sources, measurement references and modification notes
+ship with the app. Offline conversion uses Python's standard library.
 
 
 The fastest ten complete races persist atomically in
@@ -85,17 +100,18 @@ ruts, warm sunlight, terrain normals, and distant haze. Attribution ships in
 `Resources/Dirt/ATTRIBUTION.md`. Resources are bundled for offline use.
 Track motion emits pooled world-space dust and gravity-driven clods in the
 correct forward/reverse direction; clods bounce and settle. Grounded travel leaves
-persistent terrain-following tread marks for Marvin and three continuous, grooved
-tire impressions for R2-D2.
-Both racers throw the same dust and clods. Marks are spaced by distance, including
+persistent terrain-following tread marks for Marvin and three continuous, smooth
+tire impressions for R2-D2, one smooth rolling contact trace for BB-8, and wider
+mesh-sized tread impressions for WALL-E. All four racers throw dust and clods. Marks are spaced by distance, including
 at boost speed, and retained in bounded mesh batches for a full three-lap race.
-Airborne racers leave no marks or soil spray; restarting clears both trails. Both robots
+Airborne racers leave no marks or soil spray; restarting clears all trails. All robots
 also accumulate surface-attached dirt with distance driven: patchy mud around
 running gear and lower panels, stronger wheel/rear spray exposure, and light
 dust higher up. Coated areas become rougher and less reflective; restart cleans
-the models. This is a procedural visual treatment, not particle-level deposition.
+the models. BB-8 collects dirt across its rolling shell while its head remains
+relatively clean. This is a procedural visual treatment, not particle-level deposition.
 
-Racers start in staggered, opposite-side grid boxes behind the finish line.
+Racers shuffle between four staggered, opposite-side grid boxes behind the finish line.
 Lap progress starts at each grid position so the first start-line crossing cannot
 count as a completed lap.
 
@@ -201,7 +217,12 @@ checks mode switching, rendering, debris emission, score recording, and reset;
 
 Opponent checks run complete three-lap AI races at 30, 60 and 120 fps, checking
 finish timing, terrain containment, jumps, stopping and reset. Native smoke also
-checks the imported model and opponent motion; `dirt-grid.png` captures both racers.
+checks all imported models and opponent motion; `dirt-grid.png` captures the start.
+The grid checks cover every AI lane and slot at all three frame rates.
 
 Native smoke captures `r2d2-front.png` and `r2d2-wheels.png` for model inspection
 and verifies forward/reverse wheel rotation, braking, ground contact and reset.
+`bb8-front.png`, `walle-front.png` and corresponding `*-dirty.png` captures check
+new model appearance. Node checks verify sphere rolling direction, independent
+tread movement, braking, reverse, scale and reset; all four dirt emitters and
+trail histories are checked for emission, airborne behavior, pause and cleanup.

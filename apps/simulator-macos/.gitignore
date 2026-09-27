@@ -4,3 +4,6 @@ Resources/Marvin/
 # Rebuilt offline from the attributed, bundled source archives.
 Resources/R2D2/mesh.json
 Resources/R2D2/Textures/
+
+Resources/BB8/Generated/
+Resources/WallE/Generated/

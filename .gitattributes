@@ -13,6 +13,7 @@
 *.stl   filter=lfs diff=lfs merge=lfs -text
 *.3mf   filter=lfs diff=lfs merge=lfs -text
 *.obj   filter=lfs diff=lfs merge=lfs -text
+*.glb   filter=lfs diff=lfs merge=lfs -text
 
 # CAD sources and interchange formats
 *.3dm   filter=lfs diff=lfs merge=lfs -text

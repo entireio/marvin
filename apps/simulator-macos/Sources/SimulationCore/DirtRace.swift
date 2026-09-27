@@ -5,6 +5,13 @@ public enum DirtCourse {
     /// Half the compacted lane width; centerline control points stay unchanged.
     public static let playerGrid = (phase: -0.055, offset: -0.72)
     public static let opponentGrid = (phase: -0.14, offset: 0.72)
+    public static let startingGrid = [playerGrid, opponentGrid,
+        (phase: -0.225, offset: -0.72), (phase: -0.31, offset: 0.72)]
+
+    /// One distinct staggered slot per racer; caller owns the random generator.
+    public static func shuffledGrid<R: RandomNumberGenerator>(using random: inout R) -> [(phase: Double, offset: Double)] {
+        startingGrid.shuffled(using: &random)
+    }
     public static let width = 1.3 * 1.5
     public static let bermWidth = 0.35
     public static let fenceOffset = width + 0.5

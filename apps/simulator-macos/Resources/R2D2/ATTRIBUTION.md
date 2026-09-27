@@ -25,8 +25,10 @@ Simulator modifications: bake the source animation's four-second deployed
 three-leg pose, keep the head facing forward, exclude the presentation floor,
 preserve the 25,158 robot triangles and smooth normals/UVs, scale the robot to
 0.85 scene units, and lift its foot housings 0.035 units for added rolling tires.
-Six procedural treaded tires (two per foot) rotate from signed simulation travel;
-these wheels are simulator additions, not original artist geometry. The dome
+Four outer drive wheels and one center caster rotate from signed simulation travel;
+these wheels are simulator additions, not original artist geometry. Dimensions
+follow the documented Colson builder setup in [WHEEL_REFERENCE.md](WHEEL_REFERENCE.md).
+The dome
 turns gently about its original inclined pivot. Original base-color, emission,
 metalness, roughness and barrel normal textures are used.
 

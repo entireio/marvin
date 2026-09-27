@@ -6,7 +6,13 @@ public struct DirtOpponent: Sendable {
     public private(set) var simulation = Simulation(seed: 0, dirtTrack: true, dirtStartOffset: DirtCourse.opponentGrid.offset, dirtStartPhase: DirtCourse.opponentGrid.phase)
     public private(set) var race = DirtRace(startPhase:DirtCourse.opponentGrid.phase)
     private var pendingTime = 0.0, pendingRaceTime = 0.0
-    public init() { race.countDown(dt: 3) }
+    private let laneOffset: Double
+    public init(slot: (phase: Double, offset: Double) = DirtCourse.opponentGrid, laneOffset: Double = 0.65) {
+        simulation = Simulation(seed:0,dirtTrack:true,dirtStartOffset:slot.offset,dirtStartPhase:slot.phase)
+        race = DirtRace(startPhase:slot.phase)
+        self.laneOffset = laneOffset
+        race.countDown(dt:3)
+    }
 
     /// Caller gates this on the shared countdown, pause, focus and race finish.
     public mutating func advance(dt: Double, raceDT: Double) {
@@ -26,7 +32,7 @@ public struct DirtOpponent: Sendable {
 
     private mutating func step(dt: Double, raceDT: Double) {
         let phase = DirtCourse.phase(x: simulation.x, z: simulation.z)
-        let target = DirtCourse.point(phase+0.05, offset: 0.65)
+        let target = DirtCourse.point(phase+0.05, offset: laneOffset)
         let desired = atan2(target.x-simulation.x, target.z-simulation.z)
         let error = atan2(sin(desired-simulation.heading), cos(desired-simulation.heading))
         var input = DriveInput()

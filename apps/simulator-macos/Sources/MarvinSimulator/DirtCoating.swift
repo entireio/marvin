@@ -7,7 +7,7 @@ final class DirtCoating {
     private var lastDistance = 0.0
     private(set) var amount = 0.0
 
-    func install(on root: SCNNode, height: Double, wheelOffset: Double) {
+    func install(on root: SCNNode, height: Double, wheelOffset: Double, rolling: Bool = false) {
         root.enumerateChildNodes { node, _ in
             guard !node.isHidden, let source = node.geometry,
                   !source.materials.allSatisfy({ $0.lightingModel == .constant }) else { return }
@@ -18,6 +18,7 @@ final class DirtCoating {
             geometry.setValue(height,forKey:"dirtHeight")
             geometry.setValue(wheelOffset/height,forKey:"dirtWheelX")
             geometry.setValue(0.0,forKey:"dirtAmount")
+            geometry.setValue((rolling && node.name?.hasPrefix("ball:") == true) || node.name?.hasPrefix("link:") == true ? 1.0 : 0.0,forKey:"dirtRolling")
             surfaces.append(geometry)
         }
     }
@@ -36,6 +37,7 @@ final class DirtCoating {
     float dirtHeight;
     float dirtWheelX;
     float dirtAmount;
+    float dirtRolling;
     #pragma declaration
     float dirtHash(float3 p) { return fract(sin(dot(p,float3(127.1,311.7,74.7)))*43758.5453); }
     float dirtNoise(float3 p) {
@@ -48,7 +50,7 @@ final class DirtCoating {
     #pragma body
     float3 local = (scn_node.inverseModelViewTransform * float4(_surface.position,1.0)).xyz;
     float3 p = (dirtToBody * float4(local,1.0)).xyz / dirtHeight;
-    float low = 1.0-smoothstep(0.08,0.58,p.y);
+    float low = mix(1.0-smoothstep(0.08,0.58,p.y),1.0,dirtRolling);
     float nearWheel = exp(-pow((abs(p.x)-dirtWheelX)*9.0,2.0));
     float rear = 1.0-smoothstep(-0.22,0.24,p.z);
     float patches = dirtNoise(p*28.0);

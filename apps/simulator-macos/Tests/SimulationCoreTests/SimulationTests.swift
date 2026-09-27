@@ -34,6 +34,40 @@ struct SimulationTests {
         require(race.laps.isEmpty && !race.wrongWay)
         near(race.progress,0.04,accuracy:0.001)
     }
+    func testFourRacerGrid() {
+        struct Random: RandomNumberGenerator {
+            var seed: UInt64 = 42
+            mutating func next() -> UInt64 { seed = seed &* 6364136223846793005 &+ 1442695040888963407; return seed }
+        }
+        var rng = Random(), allocations = Set<String>()
+        for _ in 0..<60 {
+            let slots = DirtCourse.shuffledGrid(using:&rng)
+            equal(Set(slots.map { $0.phase }).count,4)
+            equal(Set(slots.map { $0.phase }),Set(DirtCourse.startingGrid.map { $0.phase }))
+            allocations.insert(slots.map { String($0.phase) }.joined(separator:","))
+            let racers = slots.map { Simulation(dirtTrack:true,dirtStartOffset:$0.offset,dirtStartPhase:$0.phase) }
+            for i in 0..<4 { for j in 0..<i {
+                greater(hypot(racers[i].x-racers[j].x,racers[i].z-racers[j].z),1.0)
+            } }
+        }
+        greater(Double(allocations.count),12)
+        for lane in [-0.65,0,0.65] {
+            for slot in DirtCourse.startingGrid {
+                var times: [Double] = []
+                for fps in [30.0,60.0,120.0] {
+                    var rival = DirtOpponent(slot:slot,laneOffset:lane)
+                    for _ in 0..<Int(180*fps) {
+                        rival.advance(dt:1/fps,raceDT:1/fps)
+                        require(DirtCourse.projection(x:rival.simulation.x,z:rival.simulation.z).distance < DirtCourse.fenceOffset)
+                        if rival.race.finished { break }
+                    }
+                    require(rival.race.finished); equal(rival.race.laps.count,3)
+                    times.append(rival.race.elapsed)
+                }
+                near(times.min()!,times.max()!,accuracy:0.001)
+            }
+        }
+    }
     func testBoostSteeringDuringAcceleration() {
         for fps in [30.0, 60.0, 120.0] {
             for throttle in [-1.0, 1.0] {
@@ -423,6 +457,7 @@ struct SimulationTests {
     static func main() {
         let checks = SimulationTests()
         checks.testStaggeredGrid()
+        checks.testFourRacerGrid()
         checks.testBoostSteeringDuringAcceleration()
         checks.testWiderTerrainAndFence()
         checks.testDirtOpponent()
@@ -437,6 +472,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 15 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 16 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

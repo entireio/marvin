@@ -19,15 +19,7 @@ final class DirtTrail {
     init(style: Style = .tracks) {
         self.style = style
         ink.transparency = style == .tracks ? 0.65 : 0.48
-        if style == .tires {
-            ink.shaderModifiers = [.surface: """
-            #pragma body
-            float across = _surface.diffuseTexcoord.x;
-            float grooves = smoothstep(0.025,0.045,abs(across-0.28)) * smoothstep(0.025,0.045,abs(across-0.72));
-            float tread = step(0.20,fract(_surface.diffuseTexcoord.y*2.0 + abs(across-0.5)*1.8));
-            _surface.diffuse.a *= (0.35 + 0.65*grooves) * (0.72 + 0.28*tread);
-            """]
-        }
+        // The referenced Performa wheels have smooth, flat rubber tread.
         ink.isDoubleSided = true
         ink.writesToDepthBuffer = false
     }
