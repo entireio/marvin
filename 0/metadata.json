@@ -1,0 +1,173 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3J6YQK1CFQTE3YQG2HGRGG2",
+  "session_id": "01a0e3e2-9195-7b33-bbc3-e3b6282b1103",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-27T19:55:09.695269Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "save_step_count": 7,
+  "files_touched": [
+    "apps/simulator-macos/.gitignore",
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/R2D2/source-gltf.zip",
+    "apps/simulator-macos/Resources/R2D2/source-original.zip",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtWorld.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtOpponent.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRace.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "apps/simulator-macos/build-app.sh",
+    "scripts/export-r2d2-simulator.py"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "bbfe9a933691",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 316687,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 14780928,
+    "output_tokens": 45754,
+    "api_call_count": 123,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 7
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-27T19:55:09.605658Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 1055,
+    "human_modified": 413,
+    "human_removed": 0,
+    "total_committed": 1055,
+    "total_lines_changed": 1468,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 304,
+      "agent_lines_removed": 23
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 208,
+      "user_lines_removed": 59,
+      "agent_lines_added": 341,
+      "agent_lines_removed": 23,
+      "user_added_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 31,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 99,
+        "scripts/export-r2d2-simulator.py": 78
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 13,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 16,
+        "scripts/export-r2d2-simulator.py": 30
+      }
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 208,
+      "user_lines_removed": 59,
+      "agent_lines_added": 360,
+      "agent_lines_removed": 23,
+      "user_added_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 31,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 99,
+        "scripts/export-r2d2-simulator.py": 78
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 13,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 16,
+        "scripts/export-r2d2-simulator.py": 30
+      }
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 208,
+      "user_lines_removed": 59,
+      "agent_lines_added": 554,
+      "agent_lines_removed": 78,
+      "user_added_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 31,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 99,
+        "scripts/export-r2d2-simulator.py": 78
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 13,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 16,
+        "scripts/export-r2d2-simulator.py": 30
+      }
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 211,
+      "user_lines_removed": 59,
+      "agent_lines_added": 577,
+      "agent_lines_removed": 87,
+      "user_added_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 31,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 102,
+        "scripts/export-r2d2-simulator.py": 78
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 13,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 16,
+        "scripts/export-r2d2-simulator.py": 30
+      }
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 211,
+      "user_lines_removed": 59,
+      "agent_lines_added": 641,
+      "agent_lines_removed": 90,
+      "user_added_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 31,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 102,
+        "scripts/export-r2d2-simulator.py": 78
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 13,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 16,
+        "scripts/export-r2d2-simulator.py": 30
+      }
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 211,
+      "user_lines_removed": 59,
+      "agent_lines_added": 656,
+      "agent_lines_removed": 93,
+      "user_added_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 31,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 102,
+        "scripts/export-r2d2-simulator.py": 78
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md": 13,
+        "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift": 16,
+        "scripts/export-r2d2-simulator.py": 30
+      }
+    }
+  ]
+}
