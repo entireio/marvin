@@ -1,17 +1,1 @@
 commit/push
-
----
-
-Why is R2D2's middle wheel's footprint smaller?
-
----
-
-But why? Is that what the internet told you?
-
----
-
-Fix it based on proper data
-
----
-
-THen next, add BB8 and Wall-E in the same way you added R2D2. Make sure they move properly as they do in their universe, have the right size, get dirty, etc. Put all 4 in random start positions.
