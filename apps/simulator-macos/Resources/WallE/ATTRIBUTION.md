@@ -10,6 +10,9 @@ Source GLB metadata and the mirror's README identify the original creator and
 license. Conversion retains the original 40,158 triangles and textures, splits
 the left/right running gear, retimes the authored track animation by signed
 travel, normalizes scale, and adds simulator-driven motion and surface dirt.
+The original arm/gripper meshes are grouped under their shoulder pivots for a
+lowered driving pose, turn-indicating gestures and brief passing greetings.
+Context-driven head yaw, tilt and roll anticipate bends and acknowledge rivals.
 Run `scripts/export-racers-simulator.py` to regenerate the offline SceneKit data.
 
 ## Scale and movement references

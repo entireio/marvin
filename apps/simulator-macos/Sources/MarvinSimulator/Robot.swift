@@ -188,4 +188,14 @@ final class Robot {
         let blink = state.elapsed.truncatingRemainder(dividingBy: 4.6) > 4.43
         for eye in eyes { eye.scale.y = blink ? 0.12 : 1 }
     }
+    func applyExpression(_ pose: RacePerformance.Pose, state: Simulation) {
+        let yaw = max(-80 * .pi/180,min(80 * .pi/180,state.yaw+pose.yaw))
+        let pitch = max(-45 * .pi/180,min(45 * .pi/180,state.pitch+pose.pitch))
+        // Retain manual head input and the CAD head/body clearance constraint.
+        if HeadClearance.isClear(yaw:yaw,pitch:pitch) {
+            yawNode.eulerAngles.y = CGFloat(yaw); pitchNode.eulerAngles.x = CGFloat(-pitch)
+        }
+        for eye in eyes { eye.scale.y *= CGFloat(1-pose.focus*0.12) }
+    }
+
 }

@@ -9,6 +9,8 @@
 Source GLB metadata also identifies the original creator, model URL and license.
 Conversion retains the original 7,198 triangles and textures, separates the ball
 from the head, normalizes the scale, and adds simulator-driven movement and dirt.
+The head mount pivots around the shell center for a contact-preserving head cock;
+independent yaw anticipates bends and briefly follows passing rivals.
 Run `scripts/export-racers-simulator.py` to regenerate the offline SceneKit data.
 
 ## Scale and movement references

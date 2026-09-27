@@ -19,10 +19,12 @@ final class ImportedRacer {
         }
         let parts: [Part], materials: [Surface]
         let height: Double, ballRadius: Double, beltLength: Double
-        let ballCenter: [Double], headCenter: [Double], contacts: [[Double]]
+        let ballCenter: [Double], headCenter: [Double], contacts: [[Double]], armPivots: [[Double]]
     }
     let kind: Kind, root = SCNNode(), ball = SCNNode(), head = SCNNode()
     let dirtCoating = DirtCoating()
+    let headMount = SCNNode()
+    private(set) var arms: [SCNNode] = []
     let height: Double, ballRadius: Double, beltLength: Double
     let contacts: [(x: Double,z: Double,width: Double)]
     private(set) var triangleCount = 0
@@ -57,7 +59,16 @@ final class ImportedRacer {
         }
         ball.position = SCNVector3(mesh.ballCenter[0],mesh.ballCenter[1],mesh.ballCenter[2])
         head.position = SCNVector3(mesh.headCenter[0],mesh.headCenter[1],mesh.headCenter[2])
-        root.addChildNode(ball); root.addChildNode(head)
+        root.addChildNode(ball)
+        if kind == .bb8 {
+            headMount.position = ball.position
+            head.position = SCNVector3(head.position.x-ball.position.x,head.position.y-ball.position.y,head.position.z-ball.position.z)
+            root.addChildNode(headMount); headMount.addChildNode(head)
+        } else { root.addChildNode(head) }
+        for pivot in mesh.armPivots {
+            let arm = SCNNode(); arm.position = SCNVector3(pivot[0],pivot[1],pivot[2])
+            root.addChildNode(arm); arms.append(arm)
+        }
         for part in mesh.parts {
             guard part.positions.count == part.normals.count, part.positions.count == part.texcoords.count,
                   part.indices.allSatisfy({ Int($0)<part.positions.count }), materials.indices.contains(part.material) else { throw CocoaError(.fileReadCorruptFile) }
@@ -69,6 +80,7 @@ final class ImportedRacer {
             let node = SCNNode(geometry:geometry); node.name = part.role+":"+part.name; node.castsShadow = true
             if part.role == "ball" { ball.addChildNode(node) }
             else if part.role == "head" { head.addChildNode(node) }
+            else if part.role == "arm" { arms[part.side > 0 ? 0 : 1].addChildNode(node) }
             else {
                 node.position = SCNVector3(part.pivot[0],part.pivot[1],part.pivot[2]); root.addChildNode(node)
             }
@@ -99,7 +111,8 @@ final class ImportedRacer {
                 }
             }
             // Head steers independently and remains above the rolling sphere.
-            head.eulerAngles = SCNVector3(0,state.heading,0)
+            headMount.eulerAngles = SCNVector3(0,state.heading,0)
+            head.eulerAngles = SCNVector3Zero
         } else {
             root.eulerAngles = SCNVector3(state.bodyPitch,state.heading,state.bodyRoll)
             for link in links {
@@ -112,10 +125,28 @@ final class ImportedRacer {
                 link.node.simdOrientation = simd_slerp(simd_quatf(a),simd_quatf(b),f)
             }
             for gear in gears { gear.node.eulerAngles.x = CGFloat((gear.side > 0 ? state.leftTravel : state.rightTravel)/max(gear.radius,0.01)) }
-            // Subtle binocular glance; it pauses with the simulation clock.
-            head.eulerAngles.y = CGFloat(0.10*sin(state.elapsed*0.7))
+            head.eulerAngles = SCNVector3Zero
+            applyArms(RacePerformance.Pose())
         }
         previous = (state.x,state.z,state.distance)
+    }
+    func applyExpression(_ pose: RacePerformance.Pose, heading: Double) {
+        if kind == .bb8 {
+            // Orbit the head around the shell center, keeping the contact point
+            // on the sphere while the shell rolls independently beneath it.
+            headMount.eulerAngles = SCNVector3(-pose.pitch,heading,pose.roll)
+            head.eulerAngles.y = CGFloat(pose.yaw)
+        } else {
+            head.eulerAngles = SCNVector3(-pose.pitch,pose.yaw,pose.roll)
+            applyArms(pose)
+        }
+    }
+    private func applyArms(_ pose: RacePerformance.Pose) {
+        guard arms.count == 2 else { return }
+        // Lower the source model's permanently raised hand into a driving pose.
+        // Positive gesture values lift the appropriate arm from its shoulder.
+        arms[0].eulerAngles = SCNVector3(-0.15-pose.leftArm,0,pose.leftArm*0.25)
+        arms[1].eulerAngles = SCNVector3(1.20-pose.rightArm,0,-pose.rightArm*0.25)
     }
     /// Native smoke checks the actual scene nodes, including signed motion.
     func checkMotion() -> Bool {

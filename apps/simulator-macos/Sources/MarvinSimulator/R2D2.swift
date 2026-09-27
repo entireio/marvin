@@ -139,4 +139,8 @@ final class R2D2 {
         }
         head.rotation = SCNVector4(headAxis.x,headAxis.y,headAxis.z,0.14*sin(state.elapsed*0.7))
     }
+    func applyExpression(_ pose: RacePerformance.Pose) {
+        head.rotation = SCNVector4(headAxis.x,headAxis.y,headAxis.z,pose.yaw)
+    }
+
 }

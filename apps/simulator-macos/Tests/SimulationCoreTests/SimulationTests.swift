@@ -34,6 +34,59 @@ struct SimulationTests {
         require(race.laps.isEmpty && !race.wrongWay)
         near(race.progress,0.04,accuracy:0.001)
     }
+    func testRacePerformance() {
+        typealias Actor = RacePerformance.Actor
+        for character in [RacePerformance.Character.marvin,.r2d2,.bb8,.wallE] {
+            // Both bend directions, before the chassis has started turning.
+            for direction in [-1.0,1.0] {
+                let phase = (0..<360).map { Double($0)*2 * .pi/360 }.first { phase in
+                    let delta = DirtCourse.heading(phase+0.172)-DirtCourse.heading(phase)
+                    return atan2(sin(delta),cos(delta))*direction > 0.35
+                }!
+                let p = DirtCourse.point(phase), heading = DirtCourse.heading(phase)
+                var results: [Double] = []
+                for fps in [30.0,60.0,120.0] {
+                    var actor = RacePerformance(character)
+                    for frame in 1...Int(fps) {
+                        actor.update(index:0,actors:[Actor(x:p.x,z:p.z,heading:heading,speed:6,elapsed:Double(frame)/fps)])
+                    }
+                    require(actor.pose.yaw*direction > 0.25)
+                    results.append(actor.pose.yaw)
+                    if character == .wallE {
+                        require((actor.pose.leftArm-actor.pose.rightArm)*direction > 0.1)
+                    }
+                    if character == .r2d2 { equal(actor.pose.pitch,0); equal(actor.pose.roll,0) }
+                }
+                near(results.min()!,results.max()!,accuracy:1e-8)
+            }
+            for side in [-1.0,1.0] {
+                var actor = RacePerformance(character)
+                let p = DirtCourse.point(0), heading = DirtCourse.heading(0)
+                func scene(_ time: Double) -> [Actor] {
+                    let along = 2.4-time*3
+                    return [Actor(x:p.x,z:p.z,heading:heading,speed:5,elapsed:time),
+                        Actor(x:p.x+cos(heading)*side+sin(heading)*along,z:p.z-sin(heading)*side+cos(heading)*along,heading:heading,speed:2,elapsed:time)]
+                }
+                var glanced = false
+                for frame in 1...50 {
+                    actor.update(index:0,actors:scene(Double(frame)/60))
+                    if actor.lookingAt == 1, frame > 25 { glanced = true; require(actor.pose.yaw*side > 0.2) }
+                }
+                require(glanced)
+                let held = actor.pose
+                actor.update(index:0,actors:scene(50.0/60)); equal(actor.pose,held)
+                for frame in 51...120 { actor.update(index:0,actors:scene(Double(frame)/60)) }
+                require(actor.lookingAt == nil)
+                actor.update(index:0,actors:scene(0)); equal(actor.pose,RacePerformance.Pose())
+                require(actor.lookingAt == nil)
+            }
+            var parked = RacePerformance(character)
+            for frame in 1...120 {
+                parked.update(index:0,actors:[Actor(x:0,z:0,heading:0,speed:0,elapsed:Double(frame)/60),Actor(x:1,z:0,heading:0,speed:0,elapsed:Double(frame)/60)])
+            }
+            equal(parked.pose,RacePerformance.Pose()); require(parked.lookingAt == nil)
+        }
+    }
     func testFourRacerGrid() {
         struct Random: RandomNumberGenerator {
             var seed: UInt64 = 42
@@ -458,6 +511,7 @@ struct SimulationTests {
         let checks = SimulationTests()
         checks.testStaggeredGrid()
         checks.testFourRacerGrid()
+        checks.testRacePerformance()
         checks.testBoostSteeringDuringAcceleration()
         checks.testWiderTerrainAndFence()
         checks.testDirtOpponent()
@@ -472,6 +526,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 16 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 17 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

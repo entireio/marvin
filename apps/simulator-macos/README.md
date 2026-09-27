@@ -63,6 +63,19 @@ your time. All racers wait for the fly-in/countdown, freeze on pause or app
 inactivity, and reset together. Racing remains non-contact: robot-to-robot
 collisions and avoidance are not implemented.
 
+Race acting looks ahead into the next bend before the chassis turns. When a
+rival enters the nearby passing zone, the robot briefly looks toward it, then
+returns its attention to the course. A short cooldown prevents repeated staring
+at the same neighbor. Marvin gives a focused glance and small acknowledging nod;
+R2-D2 makes deliberate dome swivels; BB-8 cocks its independently balanced head;
+WALL-E tilts his binocular head and raises the inside hand to indicate a turn,
+with a brief greeting toward a passing robot. His source-model raised arm rests
+in a lowered driving pose between gestures. These are authored character
+performances, driven by race context rather than a repeating idle animation.
+Manual Marvin head controls remain additive and respect the CAD clearance limits.
+All acting follows simulation time, freezes on pause/focus loss, and resets with
+the race. Sandbox head controls and menu animation are unchanged.
+
 The bundled [R2-D2 model by LordDiego](https://sketchfab.com/3d-models/r2-d2-9e6b5bc13f7943d08e657bffce78fc90)
 is a detailed 25,158-triangle textured model under CC BY 4.0. It uses the
 original animation's deployed third-leg driving pose and smooth surface normals.
@@ -86,6 +99,14 @@ gears follow signed left/right travel independently, including turns, braking,
 and reverse. The binocular head subtly looks around. Both models are CC BY 4.0;
 creator credits, pinned sources, measurement references and modification notes
 ship with the app. Offline conversion uses Python's standard library.
+
+Model credits and licenses:
+
+| Model | Creator | License | Bundled attribution and modifications |
+| --- | --- | --- | --- |
+| [R2-D2](https://sketchfab.com/3d-models/r2-d2-9e6b5bc13f7943d08e657bffce78fc90) | LordDiego | [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) | [R2-D2 attribution](Resources/R2D2/ATTRIBUTION.md) |
+| [BB8](https://sketchfab.com/3d-models/bb8-6aff787c459a4e00a26ed11ac8f148a1) | Willy Decarpentrie (skudgee) | [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) | [BB-8 attribution](Resources/BB8/ATTRIBUTION.md) |
+| [Wall-E(Animated)](https://sketchfab.com/3d-models/wall-eanimated-a6758de2e5a04f9e821596592ef4279c) | Janis Zeps (Zeps3D) | [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/) | [WALL-E attribution](Resources/WallE/ATTRIBUTION.md) |
 
 
 The fastest ten complete races persist atomically in
@@ -223,6 +244,9 @@ The grid checks cover every AI lane and slot at all three frame rates.
 Native smoke captures `r2d2-front.png` and `r2d2-wheels.png` for model inspection
 and verifies forward/reverse wheel rotation, braking, ground contact and reset.
 `bb8-front.png`, `walle-front.png` and corresponding `*-dirty.png` captures check
-new model appearance. Node checks verify sphere rolling direction, independent
+new model appearance. `acting-neutral.png`, `acting-curve.png` and
+`acting-passing.png` show all four characters with their articulated poses.
+Attention checks cover both turn/passing directions, cooldown, parked behavior,
+frame rates, pause and reset. Node checks verify sphere rolling direction, independent
 tread movement, braking, reverse, scale and reset; all four dirt emitters and
 trail histories are checked for emission, airborne behavior, pause and cleanup.

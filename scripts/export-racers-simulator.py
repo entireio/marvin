@@ -54,7 +54,8 @@ for name,height,sha in [('BB8',0.67,'c813327f3abdb1e4823e7ff217a7e93d77b8d02dc18
     if name=='BB8':role='ball' if max(ps[k][1] for k in ids)<18.3 else 'head';side=0
     else:
      label=n['name'];role='link' if label.startswith('track_low') else 'gear' if label.startswith('trackGears') else 'head' if label.startswith('eyes') or label.startswith('neck') else 'body'
-     side=(1 if center[0]>0 else -1) if role in ['link','gear'] else 0
+     if label.startswith('hand'):role='arm'
+     side=(1 if center[0]>0 else -1) if role in ['link','gear','arm'] else 0
     groups.setdefault((role,side),[]).extend(ids)
    for (role,side),ids in groups.items():
     unique=sorted(set(ids));remap={old:new for new,old in enumerate(unique)}
@@ -69,11 +70,18 @@ for name,height,sha in [('BB8',0.67,'c813327f3abdb1e4823e7ff217a7e93d77b8d02dc18
   # Turn the binocular head/neck around its attachment to the chassis.
   bottom=min(v[1] for v in neck)
   headCenter=normalize(middle([v for v in neck if v[1]<bottom+0.03]))
+ armPivots=[]
+ if name=='WallE':
+  # Original shoulder origins; the separate raised gripper follows its arm.
+  for label in ['hand_low.001','hand_low']:
+   node=next(i for i,n in enumerate(m['nodes']) if n.get('name')==label)
+   armPivots.append(normalize(vec(g.matrix(node,first),[0,0,0])))
  parts=[];beltLength=0;contacts=[]
  for p in raw:
   ps=p['positions'];pivot=middle(ps)
   if name=='BB8':pivot=[ballCenter[k]/scale+origin[k] for k in range(3)] if p['role']=='ball' else [headCenter[k]/scale+origin[k] for k in range(3)]
   elif p['role']=='head':pivot=[headCenter[k]/scale+origin[k] for k in range(3)]
+  elif p['role']=='arm':pivot=[armPivots[0 if p['side']>0 else 1][k]/scale+origin[k] for k in range(3)]
   frames=[]
   if p['role']=='link':
    parent=g.parents[p['source']];a0=g.matrix(p['source'],first);inv=inverse_rigid(a0)
@@ -93,6 +101,6 @@ for name,height,sha in [('BB8',0.67,'c813327f3abdb1e4823e7ff217a7e93d77b8d02dc18
    ps=[normalize(v) for p in raw if p['role']=='link' and p['side']==side for v in p['positions']];l,h=bounds(ps)
    contacts.append([(l[0]+h[0])/2,0,h[0]-l[0]])
  else:contacts=[[0,0,0.045]] # Visual contact patch; deformation is not simulated.
- result=dict(parts=parts,materials=materials,height=height*.885/1.08,ballCenter=ballCenter,ballRadius=ballCenter[1],headCenter=headCenter,beltLength=beltLength,contacts=contacts)
+ result=dict(armPivots=armPivots,parts=parts,materials=materials,height=height*.885/1.08,ballCenter=ballCenter,ballRadius=ballCenter[1],headCenter=headCenter,beltLength=beltLength,contacts=contacts)
  (generated/'mesh.json').write_text(json.dumps(result,separators=(',',':')))
  print(name,sum(len(p['indices'])//3 for p in parts),'triangles',len(parts),'parts','height',result['height'],'belt',beltLength,'contacts',contacts)

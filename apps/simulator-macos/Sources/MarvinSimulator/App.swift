@@ -18,11 +18,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var bb8Opponent = DirtOpponent(laneOffset:0)
     var wallEOpponent = DirtOpponent(laneOffset:-0.65)
     var bb8: ImportedRacer!, wallE: ImportedRacer!
+    var performances = [RacePerformance(.marvin),RacePerformance(.r2d2),RacePerformance(.bb8),RacePerformance(.wallE)]
     var opponents: [DirtOpponent] { [opponent,bb8Opponent,wallEOpponent] }
     func updateOpponents() {
         r2d2.update(opponent.simulation)
         bb8.update(bb8Opponent.simulation); wallE.update(wallEOpponent.simulation)
         raceHUD.opponents = opponents
+        let actors = ([simulation]+opponents.map { $0.simulation }).map { RacePerformance.Actor($0) }
+        for i in performances.indices { performances[i].update(index:i,actors:actors) }
+        robot.applyExpression(performances[0].pose,state:simulation)
+        r2d2.applyExpression(performances[1].pose)
+        bb8.applyExpression(performances[2].pose,heading:bb8Opponent.simulation.heading)
+        wallE.applyExpression(performances[3].pose,heading:wallEOpponent.simulation.heading)
     }
     func advanceOpponents(dt: Double, raceDT: Double) {
         opponent.advance(dt:dt,raceDT:raceDT)
@@ -312,6 +319,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             opponent = DirtOpponent(slot:slots[1])
             bb8Opponent = DirtOpponent(slot:slots[2],laneOffset:0)
             wallEOpponent = DirtOpponent(slot:slots[3],laneOffset:-0.65)
+            performances = [RacePerformance(.marvin),RacePerformance(.r2d2),RacePerformance(.bb8),RacePerformance(.wallE)]
             updateOpponents()
             race = DirtRace(startPhase:slots[0].phase); scoreSaved = false
             dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
@@ -540,6 +548,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 r2d2.update(opponent.simulation)
                 let bb8MotionPassed = bb8.checkMotion(), wallEMotionPassed = wallE.checkMotion()
                 updateOpponents()
+                let actingPassed = try checkRaceActing(at:url)
                 let newModelsPassed = bb8MotionPassed && wallEMotionPassed
                     && abs(bb8.height/R2D2.sceneHeight-0.67/1.08) < 1e-7
                     && abs(wallE.height/R2D2.sceneHeight-1.016/1.08) < 1e-7
@@ -588,9 +597,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     var input = DriveInput(); input.throttle = 1; input.boost = true; input.turn = -error*1.5
                     simulation.advance(input,dt:1.0/60)
                     race.advance(x:simulation.x,z:simulation.z,dt:1.0/60)
-                    advanceOpponents(dt:1.0/60,raceDT:1.0/60); updateOpponents()
+                    advanceOpponents(dt:1.0/60,raceDT:1.0/60)
                     let beforeTrails = dirtWorld.trailCounts
-                    robot.update(simulation); dirtWorld.update(simulation,opponent:opponent.simulation,dt:1.0/60,modelScale:robot.modelScale,additional:[bb8Opponent.simulation,wallEOpponent.simulation])
+                    robot.update(simulation); updateOpponents(); dirtWorld.update(simulation,opponent:opponent.simulation,dt:1.0/60,modelScale:robot.modelScale,additional:[bb8Opponent.simulation,wallEOpponent.simulation])
                     if simulation.airborne { airborneTrailsPassed = airborneTrailsPassed && dirtWorld.trailCounts[0] == beforeTrails[0] }
                     for (i,rival) in opponents.enumerated() where rival.simulation.airborne {
                         airborneTrailsPassed = airborneTrailsPassed && dirtWorld.trailCounts[i+1] == beforeTrails[i+1]
@@ -707,10 +716,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let dirtResetPassed = opponent.race.elapsed == 0 && opponent.simulation.distance == 0 && race.laps.isEmpty && race.countdown == 3 && dirtWorld.emittedCount == 0 && robot.dirtCoating.amount == 0 && r2d2.dirtCoating.amount == 0 && dirtWorld.trailCounts == [0,0,0,0] && dirtWorld.racerEmittedCount == [0,0,0,0] && bb8.dirtCoating.amount == 0 && wallE.dirtCoating.amount == 0 && opponents.allSatisfy { $0.race.elapsed == 0 && $0.simulation.distance == 0 }
                 showMainMenu(nil); startSandbox()
                 let modeReturnPassed = !isDirtTrack && view.scene === world.scene && raceHUD.isHidden && !hud.isHidden
-                let passed = newModelsPassed && coatingPassed && boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
+                let passed = actingPassed && newModelsPassed && coatingPassed && boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
                     && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
-                let report: [String: Any] = ["passed": passed, "bb8MotionPassed":bb8MotionPassed, "wallEMotionPassed":wallEMotionPassed, "newModelsPassed":newModelsPassed, "coatingPassed": coatingPassed, "bodyDirtAmounts": dirtAmounts, "dirtEffectsPassed": dirtEffectsPassed, "racerTrailMarks": trailCounts, "racerDirtParticles": racerEmissions, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "fencePassed": fencePassed, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
+                let report: [String: Any] = ["passed": passed, "actingPassed":actingPassed, "bb8MotionPassed":bb8MotionPassed, "wallEMotionPassed":wallEMotionPassed, "newModelsPassed":newModelsPassed, "coatingPassed": coatingPassed, "bodyDirtAmounts": dirtAmounts, "dirtEffectsPassed": dirtEffectsPassed, "racerTrailMarks": trailCounts, "racerDirtParticles": racerEmissions, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "fencePassed": fencePassed, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,

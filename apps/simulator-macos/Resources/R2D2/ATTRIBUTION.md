@@ -29,7 +29,7 @@ Four outer drive wheels and one center caster rotate from signed simulation trav
 these wheels are simulator additions, not original artist geometry. Dimensions
 follow the documented Colson builder setup in [WHEEL_REFERENCE.md](WHEEL_REFERENCE.md).
 The dome
-turns gently about its original inclined pivot. Original base-color, emission,
+swivels about its original inclined pivot to anticipate bends and glance at passing rivals. Original base-color, emission,
 metalness, roughness and barrel normal textures are used.
 
 This replaces the earlier low-poly Eric Finn model. R2-D2 and Star Wars are
