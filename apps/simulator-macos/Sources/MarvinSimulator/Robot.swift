@@ -24,6 +24,7 @@ struct MeshManifest: Decodable {
 }
 
 final class Robot {
+    let dirtCoating = DirtCoating()
     let root = SCNNode(), yawNode = SCNNode(), pitchNode = SCNNode()
     var wheels: [(node: SCNNode, left: Bool)] = []
     var tracks: [TrackBelt] = []
@@ -171,9 +172,11 @@ final class Robot {
         // Both assets keep their ground origin. Match real heights without
         // changing course dimensions or the imported head/track pivots.
         modelScale = R2D2.sceneHeight * (0.60 / R2D2.heightMeters) / neutralHeight
+        dirtCoating.install(on:root,height:neutralHeight,wheelOffset:0.262225)
         root.scale = SCNVector3(modelScale, modelScale, modelScale)
     }
     func update(_ state: Simulation) {
+        dirtCoating.update(state)
         root.position = SCNVector3(state.x, state.groundY, state.z)
         root.eulerAngles = SCNVector3(state.bodyPitch, state.heading, state.bodyRoll)
         yawNode.eulerAngles.y = CGFloat(state.yaw)

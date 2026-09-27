@@ -18,6 +18,7 @@ final class R2D2 {
     struct Wheel {
         let node: SCNNode, side: Int, radius: Double
     }
+    let dirtCoating = DirtCoating()
     let root = SCNNode(), head = SCNNode()
     private(set) var wheels: [Wheel] = []
     private(set) var triangleCount = 0
@@ -80,6 +81,7 @@ final class R2D2 {
             for z in [-0.205, -0.045] { addWheel(x:Double(side)*0.205, z:z, width:0.13, side:side) }
         }
         for z in [0.103, 0.191] { addWheel(x:0, z:z, width:0.085, side:0) }
+        dirtCoating.install(on:root,height:Self.sceneHeight,wheelOffset:0.205)
     }
 
     private func addWheel(x: Double, z: Double, width: Double, side: Int) {
@@ -120,6 +122,7 @@ final class R2D2 {
     }
 
     func update(_ state: Simulation) {
+        dirtCoating.update(state)
         root.position = SCNVector3(state.x, state.groundY, state.z)
         root.eulerAngles = SCNVector3(state.bodyPitch, state.heading, state.bodyRoll)
         for wheel in wheels {

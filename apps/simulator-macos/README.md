@@ -85,7 +85,19 @@ ruts, warm sunlight, terrain normals, and distant haze. Attribution ships in
 `Resources/Dirt/ATTRIBUTION.md`. Resources are bundled for offline use.
 Track motion emits pooled world-space dust and gravity-driven clods in the
 correct forward/reverse direction; clods bounce and settle. Grounded travel leaves
-a bounded trail of tread marks. Airborne tracks stop throwing soil.
+persistent terrain-following tread marks for Marvin and three continuous, grooved
+tire impressions for R2-D2.
+Both racers throw the same dust and clods. Marks are spaced by distance, including
+at boost speed, and retained in bounded mesh batches for a full three-lap race.
+Airborne racers leave no marks or soil spray; restarting clears both trails. Both robots
+also accumulate surface-attached dirt with distance driven: patchy mud around
+running gear and lower panels, stronger wheel/rear spray exposure, and light
+dust higher up. Coated areas become rougher and less reflective; restart cleans
+the models. This is a procedural visual treatment, not particle-level deposition.
+
+Racers start in staggered, opposite-side grid boxes behind the finish line.
+Lap progress starts at each grid position so the first start-line crossing cannot
+count as a completed lap.
 
 Terrain pitch/roll, crest launch and gravity are an **approximate game model**;
 this is not calibrated granular-soil, suspension, or deformable-track physics.

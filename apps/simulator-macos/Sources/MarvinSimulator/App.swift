@@ -177,7 +177,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         robot.update(simulation)
         if isDirtTrack {
             if race.finished { simulation.stop() }
-            dirtWorld.update(simulation, dt: advancing ? step : 0, modelScale: robot.modelScale)
+            dirtWorld.update(simulation, opponent: opponent.simulation, dt: advancing ? step : 0, modelScale: robot.modelScale)
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
@@ -221,7 +221,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     func startDirtTrack() {
         window.title = "Marvin · Dirt Track"; world.camera.camera?.zFar = 250
-        isDirtTrack = true; inSandbox = true; simulation = Simulation(dirtTrack: true)
+        isDirtTrack = true; inSandbox = true; simulation = Simulation(dirtTrack: true, dirtStartOffset:DirtCourse.playerGrid.offset, dirtStartPhase:DirtCourse.playerGrid.phase)
         hud.isHidden = true; raceHUD.isHidden = true
         view.isHidden = true
         SCNTransaction.begin(); SCNTransaction.disableActions = true
@@ -286,10 +286,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         guard inSandbox else { return }
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil
-        simulation.reset()
+        simulation.reset(); robot.update(simulation)
         if isDirtTrack {
             opponent = DirtOpponent(); r2d2.update(opponent.simulation)
-            raceHUD.opponent = opponent; race = DirtRace(); scoreSaved = false
+            raceHUD.opponent = opponent; race = DirtRace(startPhase:DirtCourse.playerGrid.phase); scoreSaved = false
             dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
         }
         view.clearInput(); pauseItem?.label = "Pause"
@@ -535,6 +535,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     try image.write(to:url.appendingPathComponent("dirt-grid.png"))
                 }
                 race.countDown(dt:3)
+                var airborneTrailsPassed = true
                 for _ in 0..<240 {
                     let phase = DirtCourse.phase(x:simulation.x,z:simulation.z)
                     let target = DirtCourse.point(phase+0.055)
@@ -544,7 +545,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     simulation.advance(input,dt:1.0/60)
                     race.advance(x:simulation.x,z:simulation.z,dt:1.0/60)
                     opponent.advance(dt:1.0/60,raceDT:1.0/60); r2d2.update(opponent.simulation)
-                    robot.update(simulation); dirtWorld.update(simulation,dt:1.0/60,modelScale:robot.modelScale)
+                    let beforeTrails = dirtWorld.trailCounts
+                    robot.update(simulation); dirtWorld.update(simulation,opponent:opponent.simulation,dt:1.0/60,modelScale:robot.modelScale)
+                    if simulation.airborne { airborneTrailsPassed = airborneTrailsPassed && dirtWorld.trailCounts[0] == beforeTrails[0] }
+                    if opponent.simulation.airborne { airborneTrailsPassed = airborneTrailsPassed && dirtWorld.trailCounts[1] == beforeTrails[1] }
                 }
                 let opponentPassed = wheelsPassed && opponentGatePassed && r2d2.triangleCount == 25158 && r2d2.hasCenterLeg && r2d2.wheels.count == 6 && r2d2.root.parent === dirtWorld.scene.rootNode
                     && opponent.simulation.distance > 10 && opponent.race.elapsed > 3.9
@@ -590,10 +594,45 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     }
                 }
                 fencePassed = fencePassed && fencePosts > 300 && fenceRails == 2
-                let dirtPassed = fencePassed && opponentPassed && dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
+                let trailCounts = dirtWorld.trailCounts, racerEmissions = dirtWorld.racerEmittedCount
+                dirtWorld.update(simulation,opponent:opponent.simulation,dt:0,modelScale:robot.modelScale)
+                let effectsPaused = trailCounts == dirtWorld.trailCounts && racerEmissions == dirtWorld.racerEmittedCount
+                var stoppedPlayer = simulation, stoppedRival = opponent.simulation
+                stoppedPlayer.stop(); stoppedRival.stop()
+                dirtWorld.update(stoppedPlayer,opponent:stoppedRival,dt:0.1,modelScale:robot.modelScale)
+                let dirtEffectsPassed = airborneTrailsPassed && effectsPaused && trailCounts.allSatisfy { $0 > 40 }
+                    && racerEmissions.allSatisfy { $0 > 20 } && trailCounts == dirtWorld.trailCounts
+                    && racerEmissions == dirtWorld.racerEmittedCount
+                let dirtPassed = dirtEffectsPassed && fencePassed && opponentPassed && dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
                     && DirtCourse.projection(x:simulation.x,z:simulation.z).distance < DirtCourse.fenceOffset
                 for (mode,name) in [(2,"dirt-overview.png"),(0,"dirt-driving.png")] {
                     cameraMode = mode; updateCamera(snap:true)
+                    if let tiff = view.snapshot().tiffRepresentation,
+                       let image = NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
+                        try image.write(to:url.appendingPathComponent(name))
+                    }
+                }
+                let trailView = DirtCourse.point(0.18)
+                world.camera.position = SCNVector3(trailView.x+1.8,3.8,trailView.z+2.5)
+                world.camera.look(at:SCNVector3(trailView.x,0,trailView.z),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+                if let tiff = view.snapshot().tiffRepresentation,
+                   let image = NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
+                    try image.write(to:url.appendingPathComponent("dirt-trails.png"))
+                }
+                // Accumulate a representative stretch of driving, then inspect
+                // the surface treatment on the two independently posed models.
+                var dustyDrive = DirtOpponent()
+                for _ in 0..<1800 {
+                    dustyDrive.advance(dt:1.0/60,raceDT:1.0/60)
+                    robot.dirtCoating.update(dustyDrive.simulation)
+                    r2d2.dirtCoating.update(dustyDrive.simulation)
+                }
+                let dirtAmounts = [robot.dirtCoating.amount,r2d2.dirtCoating.amount]
+                let coatingPassed = dirtAmounts.allSatisfy { $0 > 0.5 }
+                for (name,state,height) in [("marvin-dirty.png",simulation,0.28),("r2d2-dirty.png",opponent.simulation,0.44)] {
+                    let angle = state.heading
+                    world.camera.position = SCNVector3(state.x+cos(angle)*0.95+sin(angle)*1.4,state.groundY+0.8,state.z-sin(angle)*0.95+cos(angle)*1.4)
+                    world.camera.look(at:SCNVector3(state.x,state.groundY+height,state.z),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
                     if let tiff = view.snapshot().tiffRepresentation,
                        let image = NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
                         try image.write(to:url.appendingPathComponent(name))
@@ -617,13 +656,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let stored = try DirtScores.load(scoreURL)
                 let scoresPassed = race.finished && scores.count == min(10,scoreCount+1) && stored.count == scores.count
                 reset(nil)
-                let dirtResetPassed = opponent.race.elapsed == 0 && opponent.simulation.distance == 0 && race.laps.isEmpty && race.countdown == 3 && dirtWorld.emittedCount == 0
+                let dirtResetPassed = opponent.race.elapsed == 0 && opponent.simulation.distance == 0 && race.laps.isEmpty && race.countdown == 3 && dirtWorld.emittedCount == 0 && robot.dirtCoating.amount == 0 && r2d2.dirtCoating.amount == 0 && dirtWorld.trailCounts == [0,0] && dirtWorld.racerEmittedCount == [0,0]
                 showMainMenu(nil); startSandbox()
                 let modeReturnPassed = !isDirtTrack && view.scene === world.scene && raceHUD.isHidden && !hud.isHidden
-                let passed = boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
+                let passed = coatingPassed && boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
                     && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
-                let report: [String: Any] = ["passed": passed, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "fencePassed": fencePassed, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
+                let report: [String: Any] = ["passed": passed, "coatingPassed": coatingPassed, "bodyDirtAmounts": dirtAmounts, "dirtEffectsPassed": dirtEffectsPassed, "racerTrailMarks": trailCounts, "racerDirtParticles": racerEmissions, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "fencePassed": fencePassed, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,

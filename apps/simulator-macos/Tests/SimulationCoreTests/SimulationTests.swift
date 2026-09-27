@@ -16,6 +16,24 @@ func greater(_ a: Double, _ b: Double) { require(a > b) }
 func less(_ a: Double, _ b: Double) { require(a < b) }
 
 struct SimulationTests {
+    func testStaggeredGrid() {
+        let a = DirtCourse.playerGrid, b = DirtCourse.opponentGrid
+        var player = Simulation(dirtTrack:true,dirtStartOffset:a.offset,dirtStartPhase:a.phase)
+        let rival = DirtOpponent().simulation
+        require(a.phase < 0 && b.phase < a.phase && a.offset*b.offset < 0)
+        greater(hypot(player.x-rival.x,player.z-rival.z),1.2)
+        let start = player
+        var input = DriveInput(); input.throttle = 1
+        player.advance(input,dt:0.1); player.reset()
+        equal(player.x,start.x); equal(player.z,start.z)
+        var race = DirtRace(startPhase:a.phase); race.countDown(dt:3)
+        for i in 0...20 {
+            let p = DirtCourse.point(a.phase + (0.04-a.phase)*Double(i)/20)
+            race.advance(x:p.x,z:p.z,dt:0.1)
+        }
+        require(race.laps.isEmpty && !race.wrongWay)
+        near(race.progress,0.04,accuracy:0.001)
+    }
     func testBoostSteeringDuringAcceleration() {
         for fps in [30.0, 60.0, 120.0] {
             for throttle in [-1.0, 1.0] {
@@ -404,6 +422,7 @@ struct SimulationTests {
 @main struct CheckRunner {
     static func main() {
         let checks = SimulationTests()
+        checks.testStaggeredGrid()
         checks.testBoostSteeringDuringAcceleration()
         checks.testWiderTerrainAndFence()
         checks.testDirtOpponent()
@@ -418,6 +437,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 14 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 15 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

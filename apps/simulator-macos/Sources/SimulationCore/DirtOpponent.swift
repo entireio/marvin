@@ -3,8 +3,8 @@ import Foundation
 /// A deterministic look-ahead driver using the same drive, terrain and fence
 /// physics as Marvin. No teleports, scripted lap awards or catch-up speed boost.
 public struct DirtOpponent: Sendable {
-    public private(set) var simulation = Simulation(seed: 0, dirtTrack: true, dirtStartOffset: 0.8)
-    public private(set) var race = DirtRace()
+    public private(set) var simulation = Simulation(seed: 0, dirtTrack: true, dirtStartOffset: DirtCourse.opponentGrid.offset, dirtStartPhase: DirtCourse.opponentGrid.phase)
+    public private(set) var race = DirtRace(startPhase:DirtCourse.opponentGrid.phase)
     private var pendingTime = 0.0, pendingRaceTime = 0.0
     public init() { race.countDown(dt: 3) }
 

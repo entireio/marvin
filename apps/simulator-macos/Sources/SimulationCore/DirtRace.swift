@@ -3,6 +3,8 @@ import Foundation
 /// Closed motocross spline with a start straight, mixed turns and jump sections.
 public enum DirtCourse {
     /// Half the compacted lane width; centerline control points stay unchanged.
+    public static let playerGrid = (phase: -0.055, offset: -0.72)
+    public static let opponentGrid = (phase: -0.14, offset: 0.72)
     public static let width = 1.3 * 1.5
     public static let bermWidth = 0.35
     public static let fenceOffset = width + 0.5
@@ -155,7 +157,7 @@ public struct DirtRace: Sendable {
     public var finished: Bool { laps.count == 3 }
     public var currentLap: Double { elapsed - lapStart }
     public var wrongWay = false
-    public init() {}
+    public init(startPhase: Double = 0) { previousPhase = startPhase; progress = startPhase }
     public mutating func countDown(dt: Double) { countdown = max(0, countdown - max(0, dt)) }
     public mutating func advance(x: Double, z: Double, dt: Double) {
         guard countdown == 0, !finished, dt > 0, dt.isFinite else { return }

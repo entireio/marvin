@@ -8,12 +8,13 @@ final class DirtWorld {
     let scene = SCNScene()
     private let effects = SCNNode()
     private var flecks: [(node: SCNNode, velocity: SIMD3<Double>, life: Double, dust: Bool)] = []
-    private var marks: [SCNNode] = []
-    private var markIndex = 0, markDistance = 0.0, emission = [0.0, 0.0]
+    private let trails = [DirtTrail(style:.tracks), DirtTrail(style:.tires)]
+    private var emission = [[0.0, 0.0], [0.0, 0.0, 0.0]]
+    private(set) var racerEmittedCount = [0, 0]
+    var trailCounts: [Int] { trails.map { $0.count } }
     private let dustMaterial = SCNMaterial()
     private let clodGeometry = SCNSphere(radius: 0.012)
-    private let markGeometry = SCNPlane(width: 0.155, height: 0.048)
-    private let poolSize = 480
+    private let poolSize = 960
     private var poolIndex = 0
     private(set) var emittedCount = 0
 
@@ -105,6 +106,24 @@ final class DirtWorld {
                            0.15, 0.004, DirtCourse.width*2/10, material((row+cell)%2 == 0 ? 0xddd2b9 : 0x393a32))
             tile.castsShadow = false
         }}
+        // Staggered two-column starting boxes, open at the rear.
+        for slot in [DirtCourse.playerGrid, DirtCourse.opponentGrid] {
+            let p = DirtCourse.point(slot.phase,offset:slot.offset), heading = DirtCourse.heading(slot.phase)
+            var vertices: [SCNVector3] = [], indices: [Int32] = []
+            for (cx,cz,w,l) in [(-0.43,0.0,0.025,0.95),(0.43,0.0,0.025,0.95),(0.0,0.475,0.86,0.025)] {
+                let base = Int32(vertices.count)
+                for (sx,sz) in [(-1.0,-1.0),(1,-1),(1,1),(-1,1)] {
+                    let x = p.x+cos(heading)*(cx+sx*w/2)+sin(heading)*(cz+sz*l/2)
+                    let z = p.z-sin(heading)*(cx+sx*w/2)+cos(heading)*(cz+sz*l/2)
+                    vertices.append(SCNVector3(x,DirtCourse.height(x:x,z:z)+0.009,z))
+                }
+                indices += [base,base+2,base+1,base,base+3,base+2]
+            }
+            let geometry = SCNGeometry(sources:[SCNGeometrySource(vertices:vertices)],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
+            geometry.materials = [material(0xe7dcc4,roughness:1)]
+            let node = SCNNode(geometry:geometry); node.name = "Starting grid box"; node.castsShadow = false
+            scene.rootNode.addChildNode(node)
+        }
         for t in [0.5, 1.8, 3.5, 5.0] {
             let p = DirtCourse.point(t)
             let path = NSBezierPath(); path.move(to: NSPoint(x: -0.15,y: -0.12))
@@ -129,8 +148,6 @@ final class DirtWorld {
         clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0x705033,roughness:1)]
         dustMaterial.lightingModel = .constant; dustMaterial.diffuse.contents = dustTexture()
         dustMaterial.writesToDepthBuffer = false; dustMaterial.isDoubleSided = true
-        let ink = material(0x473522,roughness:1); ink.transparency = 0.30
-        markGeometry.materials = [ink]
         for i in 0..<poolSize {
             let dust = i % 3 == 0
             let node = SCNNode(geometry: dust ? SCNPlane(width: 0.18,height: 0.18) : clodGeometry)
@@ -138,10 +155,7 @@ final class DirtWorld {
             node.castsShadow = false; node.isHidden = true; effects.addChildNode(node)
             flecks.append((node,.zero,0,dust))
         }
-        for _ in 0..<1000 {
-            let node = SCNNode(geometry: markGeometry); node.isHidden = true; node.castsShadow = false
-            effects.addChildNode(node); marks.append(node)
-        }
+        for trail in trails { effects.addChildNode(trail.root) }
     }
 
     private func courseSurface(inner: Double, outer: Double, y: Double) -> SCNGeometry {
@@ -216,9 +230,10 @@ final class DirtWorld {
     }
     func reset() {
         for i in flecks.indices { flecks[i].life = 0; flecks[i].node.isHidden = true }
-        marks.forEach { $0.isHidden = true }; emission = [0,0]; markDistance = 0; emittedCount = 0
+        trails.forEach { $0.reset() }; emission = [[0,0],[0,0,0]]
+        racerEmittedCount = [0,0]; emittedCount = 0; poolIndex = 0
     }
-    func update(_ state: Simulation, dt: Double, modelScale: Double) {
+    func update(_ state: Simulation, opponent: Simulation, dt: Double, modelScale: Double) {
         guard dt > 0 else { return }
         for i in flecks.indices where flecks[i].life > 0 {
             flecks[i].life -= dt
@@ -234,35 +249,33 @@ final class DirtWorld {
             if f.dust { let size = CGFloat(1+(1.6-f.life)*1.5); f.node.scale = SCNVector3(size,size,size) }
             f.node.isHidden = f.life <= 0; flecks[i] = f
         }
+        emit(state, racer:0, dt:dt, contacts:[
+            (0.262225*modelScale, -0.23*modelScale, 0.155*modelScale),
+            (-0.262225*modelScale, -0.23*modelScale, 0.155*modelScale)])
+        emit(opponent, racer:1, dt:dt, contacts:[(0.205,-0.205,0.13),(-0.205,-0.205,0.13),(0,0.103,0.085)])
+    }
+    private func emit(_ state: Simulation, racer: Int, dt: Double,
+                      contacts: [(x: Double, z: Double, width: Double)]) {
+        trails[racer].update(state, contacts:contacts)
         let forward = SIMD3<Double>(sin(state.heading),0,cos(state.heading))
         let lateral = SIMD3<Double>(cos(state.heading),0,-sin(state.heading))
-        let origin = SIMD3<Double>(state.x,state.groundY+0.035*modelScale,state.z)
-        for side in 0..<2 {
-            let speed = side == 0 ? state.leftSpeed : state.rightSpeed
+        let origin = SIMD3<Double>(state.x,state.groundY+0.035,state.z)
+        for (side, contact) in contacts.enumerated() {
+            let speed = side == 0 ? state.leftSpeed : side == 1 ? state.rightSpeed : state.speed
             let magnitude = abs(speed)
             guard magnitude > 0.08, !state.contacting, !state.airborne else { continue }
             let sign = speed > 0 ? 1.0 : -1.0
-            emission[side] += dt*magnitude*42
-            while emission[side] >= 1 {
-                emission[side] -= 1
+            emission[racer][side] += dt*magnitude*42
+            while emission[racer][side] >= 1 {
+                emission[racer][side] -= 1
                 let i = poolIndex; poolIndex = (poolIndex+1)%poolSize
-                let position = origin + lateral*(side == 0 ? 0.262 : -0.262)*modelScale - forward*sign*0.23*modelScale
+                let position = origin + lateral*contact.x + forward*contact.z
                 let velocity = -forward*sign*magnitude*Double.random(in:0.35...0.85) + lateral*Double.random(in:-0.35...0.35)
                 flecks[i].velocity = velocity + SIMD3<Double>(0,Double.random(in:0.4...1.1)*sqrt(magnitude),0)
                 flecks[i].life = flecks[i].dust ? 1.6 : 0.9
                 flecks[i].node.position = SCNVector3(position.x,position.y,position.z)
                 flecks[i].node.scale = SCNVector3(1,1,1); flecks[i].node.opacity = 1; flecks[i].node.isHidden = false
-                emittedCount += 1
-            }
-        }
-        if !state.airborne && state.distance - markDistance > 0.065 {
-            markDistance = state.distance
-            for side in [-1.0,1.0] {
-                let node = marks[markIndex]; markIndex = (markIndex+1)%marks.count
-                node.scale = SCNVector3(modelScale,1,1)
-                let p = origin + lateral*side*0.262*modelScale
-                node.position = SCNVector3(p.x,DirtCourse.height(x:p.x,z:p.z)+0.008,p.z)
-                node.eulerAngles = SCNVector3(-Double.pi/2+state.bodyPitch,state.heading,state.bodyRoll); node.isHidden = false
+                emittedCount += 1; racerEmittedCount[racer] += 1
             }
         }
     }
