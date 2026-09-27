@@ -1,0 +1,86 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3JH2597NNAN1YAH91BNQZDH",
+  "session_id": "01a0e3e2-9195-7b33-bbc3-e3b6282b1103",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-27T22:52:04.735028Z",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "save_step_count": 2,
+  "files_touched": [
+    ".gitattributes",
+    "apps/simulator-macos/.gitignore",
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Resources/BB8/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/BB8/source.glb",
+    "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/R2D2/WHEEL_REFERENCE.md",
+    "apps/simulator-macos/Resources/WallE/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/WallE/source.glb",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtCoating.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtTrail.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtWorld.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/ImportedRacer.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtOpponent.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRace.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "apps/simulator-macos/build-app.sh",
+    "scripts/export-racers-simulator.py",
+    "scripts/racer_gltf.py"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "fe2d8ccf8b43",
+  "checkpoint_transcript_start": 1174,
+  "transcript_lines_at_start": 1174,
+  "compact_transcript_start": 157,
+  "token_usage": {
+    "input_tokens": 215876,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 7375360,
+    "output_tokens": 29503,
+    "api_call_count": 59,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 15
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-27T22:52:04.531081Z",
+    "agent_lines": 619,
+    "agent_removed": 100,
+    "human_added": 6,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 625,
+    "total_lines_changed": 725,
+    "agent_percentage": 99.17241379310346,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 81,
+      "agent_lines_removed": 37
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 619,
+      "agent_lines_removed": 100
+    }
+  ]
+}
