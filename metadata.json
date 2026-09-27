@@ -1,0 +1,37 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3JF5EYVAFYN9QEN1D2Z2KJW",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 3,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtCoating.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtTrail.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtWorld.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtOpponent.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRace.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 373371,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 17651200,
+    "output_tokens": 58696,
+    "api_call_count": 155,
+    "subagent_tokens_complete": true
+  }
+}

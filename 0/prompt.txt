@@ -1,0 +1,37 @@
+I want to extend the dirt track race in the MacOS simulator with AI controlled opponents. Let's start with 1. Can you find a CAD model of R2D2 online and add it to the game?
+
+---
+
+R2D2s wheels are missing and don't move. His third leg is also missing. And his model seems a bit edgy. Is that the best you found?
+
+---
+
+Also, make the start/finish line on the map.
+
+---
+
+Also also, make the 50% track wider without changing it's length. Add more height differences as well. And look at the fence again: the red-line horizontal barrier should always have the same height above the track, while the poles need to stick in the ground.
+
+---
+
+In real life, R2D2 is 1.08m high. Marvin should be 0.6m high. Scale him down appropriately.
+
+---
+
+When holding down shift, Marvin can't be steered anymore.
+
+---
+
+[Image #1] Always keep the player markers on the track
+
+---
+
+commit/push
+
+---
+
+R2D2 doesn't have the same dirt effect as Marvin. Also, can you show on the track markings from where Marvin and R2D2 have driven in the dirt, i.e. their "footprints"?
+
+---
+
+Not bad, but R2D2s footprint's aren't correct. He doesn't have tracks, but wheels, so the footprint should be different than Marvin's. Also, position them like an F1 starter grid. Also also, can you let them get dirty from the dust when driving? Make it realistic on where the dirt gets stuck on their body.
