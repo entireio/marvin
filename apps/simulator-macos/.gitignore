@@ -1,2 +1,6 @@
 # Reproducible CAD derivatives; build-app.sh regenerates these from the STEP master.
 Resources/Marvin/
+
+# Rebuilt offline from the attributed, bundled source archives.
+Resources/R2D2/mesh.json
+Resources/R2D2/Textures/

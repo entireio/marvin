@@ -60,37 +60,49 @@ final class DirtWorld {
         let ring = courseSurface(inner: -DirtCourse.width, outer: DirtCourse.width, y: 0)
         ring.materials = [clay]; scene.rootNode.addChildNode(SCNNode(geometry: ring))
         // Raised loose-soil berms stay outside the driveable surface.
-        let berm = courseSurface(inner: DirtCourse.width, outer: DirtCourse.width+0.35, y: 0.10)
+        let berm = courseSurface(inner: DirtCourse.width, outer: DirtCourse.width+DirtCourse.bermWidth, y: 0.10)
         berm.materials = [clay]
         scene.rootNode.addChildNode(SCNNode(geometry: berm))
-        let inner = courseSurface(inner: -DirtCourse.width-0.35, outer: -DirtCourse.width, y: 0.055)
+        let inner = courseSurface(inner: -DirtCourse.width-DirtCourse.bermWidth, outer: -DirtCourse.width, y: 0.055)
         inner.materials = [clay]
         scene.rootNode.addChildNode(SCNNode(geometry: inner))
-        for (innerEdge,outerEdge) in [(-1.95,-1.65),(1.65,1.95)] {
+        for (innerEdge,outerEdge) in [(-DirtCourse.terrainEdge,-DirtCourse.width-DirtCourse.bermWidth),(DirtCourse.width+DirtCourse.bermWidth,DirtCourse.terrainEdge)] {
             let shoulder = courseSurface(inner:innerEdge,outer:outerEdge,y:-1)
             shoulder.materials = [clay]; scene.rootNode.addChildNode(SCNNode(geometry:shoulder))
         }
-        // Stake-and-rope course boundaries follow the winding route.
-        for i in 0..<160 {
-            let t = Double(i)*2 * Double.pi/160
-            for offset in [-DirtCourse.fenceOffset,DirtCourse.fenceOffset] {
-                let p = DirtCourse.point(t,offset:offset)
-                let h = DirtCourse.surfaceHeight(t,offset:offset)
-                let top = DirtCourse.elevation(t,offset:max(-DirtCourse.width,min(DirtCourse.width,offset)))+0.40
-                let postHeight = top-h+0.035
-                box(p.x,h-0.035+postHeight/2,p.z,0.035,postHeight,0.035,material(0xe4c5a0))
-                let next = Double(i+1)*2 * Double.pi/160
-                let q = DirtCourse.point(next,offset:offset)
-                let qh = DirtCourse.surfaceHeight(next,offset:offset)
-                let rail = box((p.x+q.x)/2,(h+qh)/2+0.31,(p.z+q.z)/2,0.015,0.045,hypot(q.x-p.x,q.z-p.z),material(i%2 == 0 ? 0xe8ddd0 : 0xa24d32))
-                rail.eulerAngles = SCNVector3(-atan2(qh-h,hypot(q.x-p.x,q.z-p.z)),atan2(q.x-p.x,q.z-p.z),0)
+        // Dense continuous tape follows the ground, including between posts.
+        // Posts use the very same terrain height and extend below its surface.
+        for side in [-1.0,1.0] {
+            let boundary = DirtCourse.surfacePoints(offset:side*DirtCourse.fenceOffset)
+            var vertices: [SCNVector3] = [], red: [Int32] = [], white: [Int32] = []
+            for (i,p) in boundary.enumerated() {
+                let ground = DirtCourse.height(x:p.x,z:p.y)
+                for edge in [-0.0225,0.0225] {
+                    vertices.append(SCNVector3(p.x,ground+DirtCourse.railClearance+edge,p.y))
+                }
+                if i < boundary.count-1 {
+                    let a = Int32(i*2)
+                    let indices: [Int32] = [a,a+2,a+1,a+1,a+2,a+3]
+                    if (i/5)%2 == 0 { red += indices } else { white += indices }
+                }
+                if i%4 == 0 && i < boundary.count-1 && (i == 0 || p != boundary[i-1]) {
+                    let height = DirtCourse.postHeight+DirtCourse.postEmbed
+                    let post = box(p.x,ground-DirtCourse.postEmbed+height/2,p.y,0.035,height,0.035,material(0xe4c5a0))
+                    post.name = "Dirt fence post"
+                }
             }
+            let rail = SCNGeometry(sources:[SCNGeometrySource(vertices:vertices)],elements:[
+                SCNGeometryElement(indices:red,primitiveType:.triangles),
+                SCNGeometryElement(indices:white,primitiveType:.triangles)])
+            rail.materials = [material(0xa24d32),material(0xe8ddd0)]
+            let node = SCNNode(geometry:rail); node.name = "Dirt fence rail"
+            scene.rootNode.addChildNode(node)
         }
         // Start / finish checker paint, across the full lane at phase zero.
         let start = DirtCourse.point(0)
         for row in 0..<2 { for cell in 0..<10 {
-            let tile = box(start.x+Double(row)*0.15-0.15, 0.003, start.z-1.25+Double(cell)*0.25+0.125,
-                           0.15, 0.004, 0.25, material((row+cell)%2 == 0 ? 0xddd2b9 : 0x393a32))
+            let tile = box(start.x+Double(row)*0.15-0.15, 0.003, start.z-DirtCourse.width+(Double(cell)+0.5)*(DirtCourse.width*2/10),
+                           0.15, 0.004, DirtCourse.width*2/10, material((row+cell)%2 == 0 ? 0xddd2b9 : 0x393a32))
             tile.castsShadow = false
         }}
         for t in [0.5, 1.8, 3.5, 5.0] {
@@ -104,10 +116,10 @@ final class DirtWorld {
             arrow.castsShadow = false; scene.rootNode.addChildNode(arrow)
         }
         // Race furnishings give the course a sense of scale and purpose.
-        for x in [-0.3, 0.3] { box(x,0.9,-17.4,0.045,1.8,0.045,material(0x494c43)) }
+        for x in [-0.3, 0.3] { box(x,0.9,start.z-DirtCourse.terrainEdge-0.5,0.045,1.8,0.045,material(0x494c43)) }
         let sign = SCNText(string: "DIRT TRACK", extrusionDepth: 0.002)
         sign.font = .systemFont(ofSize: 0.18, weight: .heavy); sign.materials = [material(0xeee6cf)]
-        let board = box(0,1.6,-17.4,1.65,0.38,0.055,material(0x34473a))
+        let board = box(0,1.6,start.z-DirtCourse.terrainEdge-0.5,1.65,0.38,0.055,material(0x34473a))
         let label = SCNNode(geometry: sign); label.position = SCNVector3(-0.69, -0.10, 0.035); board.addChildNode(label)
         // Low bleachers beyond the back straight.
         for row in 0..<4 {
@@ -135,14 +147,17 @@ final class DirtWorld {
     private func courseSurface(inner: Double, outer: Double, y: Double) -> SCNGeometry {
         var points: [SCNVector3] = [], uv: [CGPoint] = [], indices: [Int32] = []
         let segments = DirtCourse.sampleCount, strips = 32
+        let outlines = (0...strips).map { j in
+            DirtCourse.surfacePoints(offset:inner+(outer-inner)*Double(j)/Double(strips))
+        }
         for i in 0...segments {
             let phase = Double(i)/Double(segments)*2*Double.pi
             for j in 0...strips {
-                let across = Double(j)/Double(strips), offset = inner + (outer-inner)*across
-                let p = DirtCourse.point(phase, offset: offset)
+                let across = Double(j)/Double(strips)
+                let p = outlines[j][i]
                 let rut = y < 0 ? 0 : y == 0 ? 0.0015*sin(across*180 + sin(phase*9)*0.8) : sin(across * .pi)*y
-                let height = DirtCourse.surfaceHeight(phase,offset:offset) + (y == 0 ? rut : 0)
-                points.append(SCNVector3(p.x, height, p.z)); uv.append(CGPoint(x: Double(i)/Double(segments),y:across))
+                let height = DirtCourse.height(x:p.x,z:p.y) + (y == 0 ? rut : 0)
+                points.append(SCNVector3(p.x, height, p.y)); uv.append(CGPoint(x: Double(i)/Double(segments),y:across))
                 if i < segments && j < strips {
                     let a = Int32(i*(strips+1)+j), b = a+Int32(strips+1)
                     indices += [a,b,a+1,a+1,b,b+1]
@@ -156,7 +171,9 @@ final class DirtWorld {
             let along = SIMD3<Double>(Double(a.x-b.x),Double(a.y-b.y),Double(a.z-b.z))
             let across = SIMD3<Double>(Double(c.x-d.x),Double(c.y-d.y),Double(c.z-d.z))
             var n = SIMD3<Double>(along.y*across.z-along.z*across.y,along.z*across.x-along.x*across.z,along.x*across.y-along.y*across.x)
-            if n.y < 0 { n = -n }; n /= sqrt(n.x*n.x+n.y*n.y+n.z*n.z)
+            if n.y < 0 { n = -n }
+            let length = sqrt(n.x*n.x+n.y*n.y+n.z*n.z)
+            n = length > 1e-12 ? n/length : SIMD3<Double>(0,1,0)
             normals.append(SCNVector3(n.x,n.y,n.z))
         }}
         let geometry = SCNGeometry(sources:[SCNGeometrySource(vertices:points), SCNGeometrySource(normals: normals),SCNGeometrySource(textureCoordinates:uv)],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
@@ -201,7 +218,7 @@ final class DirtWorld {
         for i in flecks.indices { flecks[i].life = 0; flecks[i].node.isHidden = true }
         marks.forEach { $0.isHidden = true }; emission = [0,0]; markDistance = 0; emittedCount = 0
     }
-    func update(_ state: Simulation, dt: Double) {
+    func update(_ state: Simulation, dt: Double, modelScale: Double) {
         guard dt > 0 else { return }
         for i in flecks.indices where flecks[i].life > 0 {
             flecks[i].life -= dt
@@ -219,7 +236,7 @@ final class DirtWorld {
         }
         let forward = SIMD3<Double>(sin(state.heading),0,cos(state.heading))
         let lateral = SIMD3<Double>(cos(state.heading),0,-sin(state.heading))
-        let origin = SIMD3<Double>(state.x,state.groundY+0.035,state.z)
+        let origin = SIMD3<Double>(state.x,state.groundY+0.035*modelScale,state.z)
         for side in 0..<2 {
             let speed = side == 0 ? state.leftSpeed : state.rightSpeed
             let magnitude = abs(speed)
@@ -229,7 +246,7 @@ final class DirtWorld {
             while emission[side] >= 1 {
                 emission[side] -= 1
                 let i = poolIndex; poolIndex = (poolIndex+1)%poolSize
-                let position = origin + lateral*(side == 0 ? 0.262 : -0.262) - forward*sign*0.23
+                let position = origin + lateral*(side == 0 ? 0.262 : -0.262)*modelScale - forward*sign*0.23*modelScale
                 let velocity = -forward*sign*magnitude*Double.random(in:0.35...0.85) + lateral*Double.random(in:-0.35...0.35)
                 flecks[i].velocity = velocity + SIMD3<Double>(0,Double.random(in:0.4...1.1)*sqrt(magnitude),0)
                 flecks[i].life = flecks[i].dust ? 1.6 : 0.9
@@ -242,7 +259,8 @@ final class DirtWorld {
             markDistance = state.distance
             for side in [-1.0,1.0] {
                 let node = marks[markIndex]; markIndex = (markIndex+1)%marks.count
-                let p = origin + lateral*side*0.262
+                node.scale = SCNVector3(modelScale,1,1)
+                let p = origin + lateral*side*0.262*modelScale
                 node.position = SCNVector3(p.x,DirtCourse.height(x:p.x,z:p.z)+0.008,p.z)
                 node.eulerAngles = SCNVector3(-Double.pi/2+state.bodyPitch,state.heading,state.bodyRoll); node.isHidden = false
             }

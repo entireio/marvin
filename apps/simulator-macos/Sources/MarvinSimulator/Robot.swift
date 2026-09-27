@@ -29,6 +29,8 @@ final class Robot {
     var tracks: [TrackBelt] = []
     var eyes: [SCNNode] = []
     var partCount = 0, triangleCount = 0
+    private(set) var modelScale = 1.0
+    private(set) var neutralHeight = 0.0
 
     init(resources: URL) throws {
         let directory = resources.appendingPathComponent("Marvin")
@@ -67,6 +69,9 @@ final class Robot {
             let elements = SCNGeometryElement(data: indexData, primitiveType: .triangles,
                 primitiveCount: part.triangleCount, bytesPerIndex: 4)
             let geometry = SCNGeometry(sources: [positions, normals], elements: [elements])
+            if !["Head", "09_track"].contains(part.name) {
+                neutralHeight = max(neutralHeight, Double(geometry.boundingBox.max.y))
+            }
             if part.name == "09_track" { geometry.materials = [rubber] }
             else if ["04_wheel", "Top", "Servo_Head", "Servo_Tilt"].contains(part.name) {
                 geometry.materials = [graphite]
@@ -163,15 +168,19 @@ final class Robot {
                 root.addChildNode(hub); wheels.append((hub, x > 0))
             }
         }
+        // Both assets keep their ground origin. Match real heights without
+        // changing course dimensions or the imported head/track pivots.
+        modelScale = R2D2.sceneHeight * (0.60 / R2D2.heightMeters) / neutralHeight
+        root.scale = SCNVector3(modelScale, modelScale, modelScale)
     }
     func update(_ state: Simulation) {
         root.position = SCNVector3(state.x, state.groundY, state.z)
         root.eulerAngles = SCNVector3(state.bodyPitch, state.heading, state.bodyRoll)
         yawNode.eulerAngles.y = CGFloat(state.yaw)
         pitchNode.eulerAngles.x = CGFloat(-state.pitch)
-        for track in tracks { track.update(travel: track.left ? state.leftTravel : state.rightTravel) }
+        for track in tracks { track.update(travel: (track.left ? state.leftTravel : state.rightTravel) / modelScale) }
         for wheel in wheels {
-            wheel.node.eulerAngles.x = CGFloat((wheel.left ? state.leftTravel : state.rightTravel) / 0.107)
+            wheel.node.eulerAngles.x = CGFloat((wheel.left ? state.leftTravel : state.rightTravel) / (0.107 * modelScale))
         }
         let blink = state.elapsed.truncatingRemainder(dividingBy: 4.6) > 4.43
         for eye in eyes { eye.scale.y = blink ? 0.12 : 1 }

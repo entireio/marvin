@@ -1,0 +1,131 @@
+import AppKit
+import SceneKit
+import SimulationCore
+
+/// LordDiego's detailed CC BY model in its deployed three-leg driving pose.
+final class R2D2 {
+    static let heightMeters = 1.08
+    // Exported body height 0.85 plus the 0.035 wheel clearance.
+    static let sceneHeight = 0.885
+    private struct Mesh: Decodable {
+        struct Part: Decodable {
+            let name: String, head: Bool
+            let positions: [[Float]], normals: [[Float]], texcoords: [[Float]], indices: [UInt32]
+            let material: Int
+        }
+        let parts: [Part], headPivot: [Float], headAxis: [Float]
+    }
+    struct Wheel {
+        let node: SCNNode, side: Int, radius: Double
+    }
+    let root = SCNNode(), head = SCNNode()
+    private(set) var wheels: [Wheel] = []
+    private(set) var triangleCount = 0
+    private(set) var hasCenterLeg = false
+    private var headAxis = SCNVector3(0, 1, 0)
+
+    init(resources: URL) throws {
+        let directory = resources.appendingPathComponent("R2D2")
+        let mesh = try JSONDecoder().decode(Mesh.self, from: Data(contentsOf: directory.appendingPathComponent("mesh.json")))
+        guard mesh.headPivot.count == 3, mesh.headAxis.count == 3 else { throw CocoaError(.fileReadCorruptFile) }
+        root.name = "R2-D2 · LordDiego · CC BY 4.0"
+        let pivot = SCNVector3(mesh.headPivot[0], mesh.headPivot[1], mesh.headPivot[2])
+        headAxis = SCNVector3(mesh.headAxis[0], mesh.headAxis[1], mesh.headAxis[2])
+        head.position = pivot; root.addChildNode(head)
+        func texture(_ name: String) throws -> NSImage {
+            guard let image = NSImage(contentsOf: directory.appendingPathComponent("Textures/\(name).png")) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return image
+        }
+        let shell = SCNMaterial()
+        shell.lightingModel = .physicallyBased
+        shell.diffuse.contents = try texture("R2D2_Base_Color")
+        shell.metalness.contents = try texture("R2D2_Metalness")
+        shell.roughness.contents = try texture("R2D2_Roughness")
+        shell.emission.contents = try texture("R2D2_Emission")
+        let panels = SCNMaterial()
+        panels.lightingModel = .physicallyBased
+        panels.diffuse.contents = try texture("R2D2_Barrel_Base")
+        panels.roughness.contents = try texture("R2D2_Barrel_Roughness")
+        panels.normal.contents = try texture("R2D2_Barrel_Normal")
+        panels.metalness.contents = 0.15
+        let surfaces = [shell, panels]
+        for part in mesh.parts {
+            guard !part.positions.isEmpty, part.positions.count == part.normals.count,
+                  part.positions.count == part.texcoords.count,
+                  part.positions.allSatisfy({ $0.count == 3 }), part.normals.allSatisfy({ $0.count == 3 }),
+                  part.texcoords.allSatisfy({ $0.count == 2 }), surfaces.indices.contains(part.material),
+                  part.indices.count % 3 == 0,
+                  part.indices.allSatisfy({ Int($0) < part.positions.count }) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            let vertices = SCNGeometrySource(vertices: part.positions.map {
+                part.head ? SCNVector3(CGFloat($0[0])-pivot.x, CGFloat($0[1])-pivot.y, CGFloat($0[2])-pivot.z)
+                    : SCNVector3($0[0], $0[1], $0[2])
+            })
+            let normals = SCNGeometrySource(normals: part.normals.map { SCNVector3($0[0], $0[1], $0[2]) })
+            let uv = SCNGeometrySource(textureCoordinates: part.texcoords.map { CGPoint(x:CGFloat($0[0]), y:CGFloat($0[1])) })
+            let elements = SCNGeometryElement(indices: part.indices, primitiveType: .triangles)
+            let geometry = SCNGeometry(sources: [vertices, normals, uv], elements: [elements])
+            geometry.materials = [surfaces[part.material]]
+            let node = SCNNode(geometry: geometry); node.name = part.name
+            (part.head ? head : root).addChildNode(node)
+            triangleCount += part.indices.count/3
+            if part.name == "R2D2_Leg_Center" { hasCenterLeg = true }
+        }
+        // Two rolling tires beneath each foot housing. The source models the
+        // housings, not functional rolling tires. Axles run across local X.
+        for side in [-1, 1] {
+            for z in [-0.205, -0.045] { addWheel(x:Double(side)*0.205, z:z, width:0.13, side:side) }
+        }
+        for z in [0.103, 0.191] { addWheel(x:0, z:z, width:0.085, side:0) }
+    }
+
+    private func addWheel(x: Double, z: Double, width: Double, side: Int) {
+        let radius = 0.048
+        let axle = SCNNode(); axle.name = "R2-D2 rolling tire"
+        axle.position = SCNVector3(x, radius, z)
+        let rubber = material(0x202326, roughness:0.94)
+        let hub = material(0x8b969e, metal:0.75, roughness:0.38)
+        func cylinder(radius:Double, width:Double, surface:SCNMaterial) -> SCNNode {
+            let shape = SCNCylinder(radius:radius,height:width); shape.radialSegmentCount = 48
+            shape.materials = [surface]
+            let node = SCNNode(geometry:shape); node.eulerAngles.z = .pi/2
+            return node
+        }
+        axle.addChildNode(cylinder(radius:radius,width:width,surface:rubber))
+        axle.addChildNode(cylinder(radius:radius*0.52,width:width+0.002,surface:hub))
+        // Raised tread bars and spokes make rotation visible from behind and
+        // from the sides; the entire assembly rotates about the ground axle.
+        for i in 0..<16 {
+            let angle = Double(i)*2 * .pi/16
+            let bar = SCNBox(width:width*0.96,height:0.003,length:0.009,chamferRadius:0.001)
+            bar.materials = [rubber]
+            let node = SCNNode(geometry:bar)
+            node.position = SCNVector3(0,cos(angle)*(radius-0.0015),sin(angle)*(radius-0.0015))
+            node.eulerAngles.x = angle; axle.addChildNode(node)
+        }
+        for face in [-1.0,1.0] {
+            for i in 0..<5 {
+                let angle = Double(i)*2 * .pi/5
+                let spoke = SCNBox(width:0.003,height:0.026,length:0.006,chamferRadius:0.001)
+                spoke.materials = [hub]
+                let node = SCNNode(geometry:spoke)
+                node.position = SCNVector3(face*(width/2+0.001),cos(angle)*0.018,sin(angle)*0.018)
+                node.eulerAngles.x = angle; axle.addChildNode(node)
+            }
+        }
+        root.addChildNode(axle); wheels.append(Wheel(node:axle,side:side,radius:radius))
+    }
+
+    func update(_ state: Simulation) {
+        root.position = SCNVector3(state.x, state.groundY, state.z)
+        root.eulerAngles = SCNVector3(state.bodyPitch, state.heading, state.bodyRoll)
+        for wheel in wheels {
+            let travel = wheel.side > 0 ? state.leftTravel : wheel.side < 0 ? state.rightTravel : (state.leftTravel+state.rightTravel)/2
+            wheel.node.eulerAngles.x = CGFloat((travel/wheel.radius).truncatingRemainder(dividingBy:2 * .pi))
+        }
+        head.rotation = SCNVector4(headAxis.x,headAxis.y,headAxis.z,0.14*sin(state.elapsed*0.7))
+    }
+}

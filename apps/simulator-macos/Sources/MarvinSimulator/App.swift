@@ -13,13 +13,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     lazy var dirtWorld = DirtWorld()
     let raceHUD = RaceHUD()
     var race = DirtRace()
+    var opponent = DirtOpponent()
+    var r2d2: R2D2!
     var scores: [DirtScore] = []
     var scoreSaved = false
     var scoreLoadFailed = false
     var scoreURL: URL {
         if let directory = smokeDirectory { return URL(fileURLWithPath: directory).appendingPathComponent("test-scores.json") }
         return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("Marvin Simulator/motocross-v2-scores.json")
+            .appendingPathComponent("Marvin Simulator/motocross-v3-scores.json")
     }
     var menuSmokePassed = false
     var menuSmokeFrames = 0
@@ -45,8 +47,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         do {
             guard let resources = Bundle.main.resourceURL else { throw CocoaError(.fileNoSuchFile) }
             robot = try Robot(resources: resources)
+            r2d2 = try R2D2(resources: resources)
         } catch {
-            let alert = NSAlert(); alert.messageText = "Marvin’s model could not be loaded"
+            let alert = NSAlert(); alert.messageText = "A simulator model could not be loaded"
             alert.informativeText = "\(error.localizedDescription)\nRebuild with apps/simulator-macos/build-app.sh."
             alert.runModal(); NSApp.terminate(nil); return
         }
@@ -110,6 +113,23 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         appliedIconName = name
     }
 
+    /// Shared lifecycle gate for both racers (also exercised by native smoke).
+    func advanceRaceFrame(step: Double, raceDelta: Double, advancing: Bool) {
+        if advancing {
+            if let intro = dirtIntro {
+                dirtIntro = intro + step
+                if dirtIntro! >= dirtIntroDuration { dirtIntro = nil; view.clearInput() }
+            } else if isDirtTrack && race.countdown > 0 { race.countDown(dt: raceDelta) }
+            else if !isDirtTrack || !race.finished {
+                simulation.advance(view.driveInput, dt: step)
+                if isDirtTrack {
+                    race.advance(x: simulation.x, z: simulation.z, dt: raceDelta)
+                    opponent.advance(dt: step, raceDT: raceDelta)
+                }
+            }
+        }
+    }
+
     @objc func tick() {
         let now = ProcessInfo.processInfo.systemUptime
         let wallDelta = max(0, now-lastTime)
@@ -153,23 +173,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let step = smokeDirectory == nil ? dt : 1.0/60
         let raceDelta = smokeDirectory == nil ? wallDelta : step
         let advancing = (active || smokeDirectory != nil) && !simulation.paused
-        if advancing {
-            if let intro = dirtIntro {
-                dirtIntro = intro + step
-                if dirtIntro! >= dirtIntroDuration { dirtIntro = nil; view.clearInput() }
-            } else if isDirtTrack && race.countdown > 0 { race.countDown(dt: raceDelta) }
-            else if !isDirtTrack || !race.finished {
-                simulation.advance(view.driveInput, dt: step)
-                if isDirtTrack { race.advance(x: simulation.x, z: simulation.z, dt: raceDelta) }
-            }
-        }
+        advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
         robot.update(simulation)
         if isDirtTrack {
             if race.finished { simulation.stop() }
-            dirtWorld.update(simulation, dt: advancing ? step : 0)
+            dirtWorld.update(simulation, dt: advancing ? step : 0, modelScale: robot.modelScale)
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
+            r2d2.update(opponent.simulation)
+            raceHUD.opponent = opponent
             raceHUD.race = race; raceHUD.scores = scores; raceHUD.paused = simulation.paused
             raceHUD.needsDisplay = true
         } else { world.update(simulation) }
@@ -214,7 +227,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         SCNTransaction.begin(); SCNTransaction.disableActions = true
         raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = true
         view.scene = dirtWorld.scene; dirtWorld.scene.rootNode.addChildNode(world.camera)
-        dirtWorld.scene.rootNode.addChildNode(robot.root); view.pointOfView = world.camera
+        dirtWorld.scene.rootNode.addChildNode(robot.root)
+        dirtWorld.scene.rootNode.addChildNode(r2d2.root); view.pointOfView = world.camera
         scoreLoadFailed = false; raceHUD.saveError = nil
         do { scores = try DirtScores.load(scoreURL) }
         catch { scores = []; scoreLoadFailed = true; raceHUD.saveError = "Could not load scores; file preserved" }
@@ -273,7 +287,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil
         simulation.reset()
-        if isDirtTrack { race = DirtRace(); scoreSaved = false; dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5 }
+        if isDirtTrack {
+            opponent = DirtOpponent(); r2d2.update(opponent.simulation)
+            raceHUD.opponent = opponent; race = DirtRace(); scoreSaved = false
+            dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
+        }
         view.clearInput(); pauseItem?.label = "Pause"
         pauseItem?.image = NSImage(systemSymbolName: "pause.fill", accessibilityDescription: nil)
         updateCamera(snap: true); window.makeFirstResponder(view)
@@ -330,9 +348,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     func smokeTest() {
         guard let directory = smokeDirectory else { return }
         smokeFrames += 1
-        func key(_ code: UInt16, down: Bool) {
+        func key(_ code: UInt16, down: Bool, modifiers: NSEvent.ModifierFlags = []) {
             let event = NSEvent.keyEvent(with: down ? .keyDown : .keyUp, location: .zero,
-                modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                modifierFlags: modifiers, timestamp: ProcessInfo.processInfo.systemUptime,
                 windowNumber: window.windowNumber, context: nil, characters: "",
                 charactersIgnoringModifiers: "", isARepeat: false, keyCode: code)!
             if down { view.keyDown(with: event) } else { view.keyUp(with: event) }
@@ -348,6 +366,26 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                       let bitmap = NSBitmapImageRep(data: tiff),
                       let png = bitmap.representation(using: .png, properties: [:]) else { throw CocoaError(.fileWriteUnknown) }
                 try png.write(to: url.appendingPathComponent("native-scene.png"))
+                var boostInputPassed = true
+                for (forward, turn) in [(UInt16(13), UInt16(0)), (13, 2), (126, 123), (126, 124)] {
+                    view.clearInput()
+                    let shift = NSEvent.keyEvent(with: .flagsChanged, location: .zero,
+                        modifierFlags: .shift, timestamp: 0, windowNumber: window.windowNumber,
+                        context: nil, characters: "", charactersIgnoringModifiers: "",
+                        isARepeat: false, keyCode: 56)!
+                    view.flagsChanged(with: shift)
+                    key(forward, down: true, modifiers: .shift); key(turn, down: true, modifiers: .shift)
+                    let input = view.driveInput
+                    var sample = Simulation(dirtTrack: true)
+                    let startHeading = sample.heading
+                    sample.advance(input, dt: 0.1); sample.advance(input, dt: 0.1)
+                    let angle = atan2(sin(sample.heading-startHeading), cos(sample.heading-startHeading))
+                    boostInputPassed = boostInputPassed && input.boost && input.throttle == 1
+                        && abs(input.turn) == 1 && angle * input.turn < -0.04
+                    key(turn, down: false, modifiers: .shift)
+                    boostInputPassed = boostInputPassed && view.driveInput.turn == 0 && view.driveInput.boost
+                }
+                view.clearInput()
                 let traveled = simulation.distance, heading = simulation.heading
                 togglePause(nil)
                 let elapsed = simulation.elapsed
@@ -399,6 +437,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     }
                 }
                 robot.update(Simulation())
+                let modelHeightRatio = robot.neutralHeight * Double(robot.root.scale.y) / R2D2.sceneHeight
+                let modelScalePassed = abs(modelHeightRatio - 0.60/1.08) < 0.000001
+                    && robot.root.scale.x == robot.root.scale.y && robot.root.scale.y == robot.root.scale.z
                 let groundContactPassed = robot.root.position.y == 0
                     && abs(TrackLoop.sample(TrackLoop.straight/2).y-0.0055) < 0.000001
                 var neckPassed = true
@@ -453,6 +494,46 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 dirtIntro = dirtIntroDuration/2; updateCamera(snap:true)
                 let introMidPassed = world.camera.position.y > 3 && world.camera.position.y < 38
                 dirtIntro = nil; updateCamera(snap:true)
+                // Verify wheel motion from signed travel, including brake,
+                // reverse, and reset. These checks exercise the rendered nodes.
+                var wheelState = Simulation(seed:0,dirtTrack:true), wheelInput = DriveInput()
+                wheelInput.throttle = 1; wheelState.advance(wheelInput,dt:0.1); r2d2.update(wheelState)
+                let forwardWheel = r2d2.wheels[0].node.eulerAngles.x
+                wheelInput.brake = true; wheelState.advance(wheelInput,dt:0.1); r2d2.update(wheelState)
+                let wheelsBrake = r2d2.wheels.allSatisfy { abs($0.node.eulerAngles.x-forwardWheel) < 0.000001 }
+                wheelState.reset(); wheelInput.brake = false; wheelInput.throttle = -1
+                wheelState.advance(wheelInput,dt:0.1); r2d2.update(wheelState)
+                let wheelsReverse = r2d2.wheels.allSatisfy { $0.node.eulerAngles.x < 0 }
+                wheelState.reset(); r2d2.update(wheelState)
+                let wheelsReset = r2d2.wheels.allSatisfy { $0.node.eulerAngles.x == 0 && abs(Double($0.node.position.y)-$0.radius) < 0.000001 }
+                let wheelsPassed = forwardWheel > 0 && wheelsBrake && wheelsReverse && wheelsReset
+                r2d2.update(opponent.simulation)
+                let r2 = opponent.simulation, angle = r2.heading
+                for (name,side,height,front,lookHeight) in [
+                    ("r2d2-front.png",0.85,0.7,1.5,0.43),
+                    ("r2d2-wheels.png",0.65,0.16,0.85,0.15)] {
+                    world.camera.position = SCNVector3(r2.x+cos(angle)*side+sin(angle)*front,
+                        r2.groundY+height,r2.z-sin(angle)*side+cos(angle)*front)
+                    world.camera.look(at:SCNVector3(r2.x,r2.groundY+lookHeight,r2.z),
+                        up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+                    if let tiff = view.snapshot().tiffRepresentation,
+                       let image = NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
+                        try image.write(to:url.appendingPathComponent(name))
+                    }
+                }
+                updateCamera(snap:true)
+                // Neither racer moves during countdown, pause or inactive frames.
+                advanceRaceFrame(step:1.0/60,raceDelta:1.0/60,advancing:true)
+                let heldAtStart = opponent.simulation.distance == 0 && opponent.race.elapsed == 0
+                race.countDown(dt:3)
+                advanceRaceFrame(step:1.0/60,raceDelta:1.0/60,advancing:false)
+                let opponentGatePassed = heldAtStart && opponent.simulation.distance == 0 && opponent.race.elapsed == 0
+                raceHUD.introducing = false; raceHUD.needsDisplay = true
+                view.displayIfNeeded()
+                if let tiff = view.snapshot().tiffRepresentation,
+                   let image = NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
+                    try image.write(to:url.appendingPathComponent("dirt-grid.png"))
+                }
                 race.countDown(dt:3)
                 for _ in 0..<240 {
                     let phase = DirtCourse.phase(x:simulation.x,z:simulation.z)
@@ -462,9 +543,54 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     var input = DriveInput(); input.throttle = 1; input.boost = true; input.turn = -error*1.5
                     simulation.advance(input,dt:1.0/60)
                     race.advance(x:simulation.x,z:simulation.z,dt:1.0/60)
-                    robot.update(simulation); dirtWorld.update(simulation,dt:1.0/60)
+                    opponent.advance(dt:1.0/60,raceDT:1.0/60); r2d2.update(opponent.simulation)
+                    robot.update(simulation); dirtWorld.update(simulation,dt:1.0/60,modelScale:robot.modelScale)
                 }
-                let dirtPassed = dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
+                let opponentPassed = wheelsPassed && opponentGatePassed && r2d2.triangleCount == 25158 && r2d2.hasCenterLeg && r2d2.wheels.count == 6 && r2d2.root.parent === dirtWorld.scene.rootNode
+                    && opponent.simulation.distance > 10 && opponent.race.elapsed > 3.9
+                raceHUD.opponent = opponent; raceHUD.race = race
+                raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
+                raceHUD.introducing = false; raceHUD.needsDisplay = true
+                // SCNView.snapshot excludes AppKit subviews; capture the HUD
+                // separately for layout QA at the minimum supported window size.
+                let hudFrame = raceHUD.frame
+                raceHUD.frame = NSRect(x:0,y:0,width:900,height:550)
+                if let bitmap = raceHUD.bitmapImageRepForCachingDisplay(in:raceHUD.bounds) {
+                    raceHUD.cacheDisplay(in:raceHUD.bounds,to:bitmap)
+                    if let png = bitmap.representation(using:.png,properties:[:]) {
+                        try png.write(to:url.appendingPathComponent("dirt-hud.png"))
+                    }
+                }
+                raceHUD.frame = hudFrame
+                var fencePosts = 0, fenceRails = 0
+                var fencePassed = true
+                dirtWorld.scene.rootNode.enumerateChildNodes { node, _ in
+                    if node.name == "Dirt fence post", let box = node.geometry as? SCNBox {
+                        fencePosts += 1
+                        let ground = DirtCourse.height(x:Double(node.position.x),z:Double(node.position.z))
+                        let bottom = Double(node.position.y)-Double(box.height)/2
+                        let top = Double(node.position.y)+Double(box.height)/2
+                        fencePassed = fencePassed && abs(bottom-(ground-DirtCourse.postEmbed)) < 1e-5
+                            && abs(top-(ground+DirtCourse.postHeight)) < 1e-5
+                    }
+                    if node.name == "Dirt fence rail", let source = node.geometry?.sources(for:.vertex).first {
+                        fenceRails += 1
+                        for i in 0..<source.vectorCount {
+                            let values: [Double] = (0..<3).map { component in
+                                source.data.withUnsafeBytes { bytes in
+                                    let offset = source.dataOffset+i*source.dataStride+component*source.bytesPerComponent
+                                    return source.bytesPerComponent == 4 ? Double(bytes.loadUnaligned(fromByteOffset:offset,as:Float.self))
+                                        : bytes.loadUnaligned(fromByteOffset:offset,as:Double.self)
+                                }
+                            }
+                            let ground = DirtCourse.height(x:values[0],z:values[2])
+                            let clearance = DirtCourse.railClearance+(i%2 == 0 ? -0.0225 : 0.0225)
+                            fencePassed = fencePassed && abs(values[1]-ground-clearance) < 0.002
+                        }
+                    }
+                }
+                fencePassed = fencePassed && fencePosts > 300 && fenceRails == 2
+                let dirtPassed = fencePassed && opponentPassed && dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
                     && DirtCourse.projection(x:simulation.x,z:simulation.z).distance < DirtCourse.fenceOffset
                 for (mode,name) in [(2,"dirt-overview.png"),(0,"dirt-driving.png")] {
                     cameraMode = mode; updateCamera(snap:true)
@@ -472,6 +598,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                        let image = NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
                         try image.write(to:url.appendingPathComponent(name))
                     }
+                }
+                let hill = DirtCourse.point(0.69*2 * .pi)
+                let hillside = DirtCourse.point(0.64*2 * .pi,offset:6)
+                world.camera.position = SCNVector3(hillside.x,3.6,hillside.z)
+                world.camera.look(at:SCNVector3(hill.x,0.9,hill.z),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+                if let tiff = view.snapshot().tiffRepresentation,
+                   let image = NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
+                    try image.write(to:url.appendingPathComponent("dirt-fence.png"))
                 }
                 race = DirtRace(); race.countDown(dt:3)
                 for i in 1...1080 {
@@ -483,13 +617,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let stored = try DirtScores.load(scoreURL)
                 let scoresPassed = race.finished && scores.count == min(10,scoreCount+1) && stored.count == scores.count
                 reset(nil)
-                let dirtResetPassed = race.laps.isEmpty && race.countdown == 3 && dirtWorld.emittedCount == 0
+                let dirtResetPassed = opponent.race.elapsed == 0 && opponent.simulation.distance == 0 && race.laps.isEmpty && race.countdown == 3 && dirtWorld.emittedCount == 0
                 showMainMenu(nil); startSandbox()
                 let modeReturnPassed = !isDirtTrack && view.scene === world.scene && raceHUD.isHidden && !hud.isHidden
-                let passed = introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
+                let passed = boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
                     && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
-                let report: [String: Any] = ["passed": passed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
+                let report: [String: Any] = ["passed": passed, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "fencePassed": fencePassed, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,

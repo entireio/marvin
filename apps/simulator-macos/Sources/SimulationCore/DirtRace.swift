@@ -2,8 +2,15 @@ import Foundation
 
 /// Closed motocross spline with a start straight, mixed turns and jump sections.
 public enum DirtCourse {
-    public static let width = 1.3
-    public static let fenceOffset = 1.8
+    /// Half the compacted lane width; centerline control points stay unchanged.
+    public static let width = 1.3 * 1.5
+    public static let bermWidth = 0.35
+    public static let fenceOffset = width + 0.5
+    public static let shoulderEdge = fenceOffset + 0.1
+    public static let terrainEdge = shoulderEdge + 0.45
+    public static let railClearance = 0.31
+    public static let postHeight = 0.40
+    public static let postEmbed = 0.08
     private static let controls: [SIMD2<Double>] = [
         .init(0,-10),.init(8,-10),.init(12,-6),.init(10,0),
         .init(5,0),.init(4,-4),.init(-1,-4),.init(-2,3),
@@ -27,6 +34,36 @@ public enum DirtCourse {
         let p = center(phase), d = center(phase+0.0001)-center(phase-0.0001)
         let length = hypot(d.x,d.y)
         return (p.x + d.y/length*offset,p.y - d.x/length*offset)
+    }
+    /// Trim loops in parallel offsets at tight inside bends. Collapsing the
+    /// removed samples to their intersection preserves the centerline and phase
+    /// indexing while preventing folded terrain and crossing fence segments.
+    public static func surfacePoints(offset: Double) -> [SIMD2<Double>] {
+        var points = (0..<sampleCount).map { i -> SIMD2<Double> in
+            let p = point(Double(i)*2 * .pi/Double(sampleCount),offset:offset)
+            return SIMD2(p.x,p.z)
+        }
+        if abs(offset) > 1.85 {
+            func cross(_ a:SIMD2<Double>,_ b:SIMD2<Double>) -> Double { a.x*b.y-a.y*b.x }
+            for i in 0..<sampleCount-2 {
+                let a = points[i], r = points[i+1]-a
+                if r.x*r.x+r.y*r.y < 1e-16 { continue }
+                for j in i+2..<sampleCount {
+                    if i == 0 && j == sampleCount-1 { continue }
+                    let b = points[j], s = points[(j+1)%sampleCount]-b
+                    let denominator = cross(r,s)
+                    if abs(denominator) < 1e-12 { continue }
+                    let t = cross(b-a,s)/denominator, u = cross(b-a,r)/denominator
+                    if t > 1e-8 && t < 1-1e-8 && u > 1e-8 && u < 1-1e-8 {
+                        let intersection = a+r*t
+                        for k in i+1...j { points[k] = intersection }
+                        break
+                    }
+                }
+            }
+        }
+        points.append(points[0])
+        return points
     }
     public static func heading(_ phase: Double) -> Double {
         let a = center(phase-0.0001), b = center(phase+0.0001)
@@ -60,26 +97,32 @@ public enum DirtCourse {
         }
         // Filled tabletop, rounded rollers, rhythm doubles, raised step-up,
         // then a run of smaller whoops. Features blend into the same mesh.
-        let table = max(0,min(1,min((u-0.025)/0.015,(0.085-u)/0.015)))*0.48
-        let rollers = bump(0.26,0.016,0.16)+bump(0.30,0.016,0.20)+bump(0.34,0.016,0.16)
-        let rhythm = bump(0.49,0.020,0.42)+bump(0.54,0.020,0.38)
-        let hill = bump(0.69,0.075,0.75)
-        let whoops = (0..<6).reduce(0.0) { $0+bump(0.82+Double($1)*0.015,0.0075,0.10) }
+        let table = max(0,min(1,min((u-0.025)/0.015,(0.085-u)/0.015)))*0.70
+        let rollers = bump(0.26,0.020,0.24)+bump(0.30,0.020,0.32)+bump(0.34,0.020,0.24)
+        let rhythm = bump(0.49,0.025,0.62)+bump(0.54,0.025,0.56)
+        let hill = bump(0.69,0.095,1.30)
+        let whoops = (0..<6).reduce(0.0) { $0+bump(0.82+Double($1)*0.015,0.0075,0.16) }
         let h0 = heading(phase-0.01), h1 = heading(phase+0.01)
         let turn = atan2(sin(h1-h0),cos(h1-h0))
         let bank = min(0.35,abs(turn)*3)*pow(max(0,offset*(turn > 0 ? -1 : 1)/width),2)
-        return table+rollers+rhythm+hill+whoops+bank
+        // Broad climbs and descents under the jump features leave the grid flat.
+        let terrain = bump(0.17,0.065,0.65)+bump(0.40,0.065,0.90)+bump(0.91,0.065,0.55)
+        return table+rollers+rhythm+hill+whoops+terrain+bank
     }
     public static func surfaceHeight(_ phase: Double, offset: Double) -> Double {
         let distance = abs(offset)
         let base = elevation(phase,offset:max(-width,min(width,offset)))
         if distance <= width { return base }
-        if distance <= 1.65 {
+        if distance <= width+bermWidth {
             let crest = offset > 0 ? 0.10 : 0.055
-            return base + sin((distance-width)/0.35 * .pi)*crest
+            return base + sin((distance-width)/bermWidth * .pi)*crest
         }
-        let blend = max(0,min(1,(1.95-distance)/0.30))
-        return (base+0.005)*blend - 0.025*(1-blend)
+        // Keep a shelf beneath the fence; descend to the surrounding field
+        // outside it, so the rail follows the same elevation as the lane edge.
+        if distance <= shoulderEdge { return base }
+        let t = max(0,min(1,(distance-shoulderEdge)/(terrainEdge-shoulderEdge)))
+        let blend = t*t*(3-2*t)
+        return base*(1-blend) - 0.025*blend
     }
     /// Project only against the fence. The robot can slide along it and reverse
     /// away; the compacted lane edge is a traction change, not a collision wall.

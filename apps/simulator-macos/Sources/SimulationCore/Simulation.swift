@@ -27,6 +27,7 @@ public struct Simulation: Sendable {
     public private(set) var dirtTrack = false
     public private(set) var groundY = 0.0, bodyPitch = 0.0, bodyRoll = 0.0
     public private(set) var airborne = false
+    private var dirtStartOffset = 0.0
     private var steering = 0.0
     private var verticalSpeed = 0.0, previousGround = 0.0
     public private(set) var checkpoints: [Checkpoint]
@@ -39,14 +40,15 @@ public struct Simulation: Sendable {
     public var paused = false
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
     public var complete: Bool { checkpoint == checkpoints.count }
-    public init(seed: UInt64 = UInt64.random(in: UInt64.min...UInt64.max), dirtTrack: Bool = false) {
+    public init(seed: UInt64 = UInt64.random(in: UInt64.min...UInt64.max), dirtTrack: Bool = false, dirtStartOffset: Double = 0) {
         self.dirtTrack = dirtTrack
-        if dirtTrack { let start = DirtCourse.point(0); x = start.x; z = start.z; heading = DirtCourse.heading(0) }
+        self.dirtStartOffset = dirtStartOffset
+        if dirtTrack { let start = DirtCourse.point(0, offset: dirtStartOffset); x = start.x; z = start.z; heading = DirtCourse.heading(0) }
         checkpoints = CourseLayout.generate(seed: seed)
     }
 
     public mutating func stop() { leftSpeed = 0; rightSpeed = 0 }
-    public mutating func reset() { self = Simulation(dirtTrack: dirtTrack) }
+    public mutating func reset() { self = Simulation(dirtTrack: dirtTrack, dirtStartOffset: dirtStartOffset) }
     public mutating func centerHead() { yaw = 0; pitch = 0 }
 
     public static func isFree(x: Double, z: Double) -> Bool {
@@ -88,7 +90,18 @@ public struct Simulation: Sendable {
             value + max(-acceleration*dt, min(acceleration*dt, target-value))
         }
         if input.brake { stop() }
-        else {
+        else if dirtTrack {
+            // Reserve acceleration for the track-speed difference first. Two
+            // independent saturated ramps erase steering while boost accelerates.
+            let currentDifference = (leftSpeed-rightSpeed)/2
+            let targetDifference = (leftTarget-rightTarget)/(2*normalization)
+            let difference = approach(currentDifference, targetDifference)
+            let driveBudget = max(0, acceleration*dt-abs(difference-currentDifference))
+            let targetSpeed = (leftTarget+rightTarget)/(2*normalization)
+            let driveSpeed = speed + max(-driveBudget, min(driveBudget, targetSpeed-speed))
+            leftSpeed = driveSpeed+difference
+            rightSpeed = driveSpeed-difference
+        } else {
             leftSpeed = approach(leftSpeed, leftTarget / normalization)
             rightSpeed = approach(rightSpeed, rightTarget / normalization)
         }

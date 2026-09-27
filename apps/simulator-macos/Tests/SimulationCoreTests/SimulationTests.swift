@@ -3,18 +3,120 @@ import SimulationCore
 
 // Dependency-free checks also run with standalone Apple Command Line Tools.
 func require(_ value: Bool, file: StaticString = #filePath, line: UInt = #line) {
-    if !value { fatalError("Check failed", file: file, line: line) }
+    if !value { fputs("Check failed at \(file):\(line)\n",stderr); exit(1) }
 }
 func equal<T: Equatable>(_ a: T, _ b: T, file: StaticString = #filePath, line: UInt = #line) {
     require(a == b, file: file, line: line)
 }
 func near(_ a: Double, _ b: Double, accuracy: Double, file: StaticString = #filePath, line: UInt = #line) {
+    if abs(a-b) > accuracy { fputs("Expected \(a) near \(b), tolerance \(accuracy)\n",stderr) }
     require(abs(a-b) <= accuracy, file: file, line: line)
 }
 func greater(_ a: Double, _ b: Double) { require(a > b) }
 func less(_ a: Double, _ b: Double) { require(a < b) }
 
 struct SimulationTests {
+    func testBoostSteeringDuringAcceleration() {
+        for fps in [30.0, 60.0, 120.0] {
+            for throttle in [-1.0, 1.0] {
+                for turn in [-1.0, 1.0] {
+                    for rolling in [false, true] {
+                        var sim = Simulation(dirtTrack: true), input = DriveInput()
+                        input.throttle = throttle
+                        if rolling {
+                            for _ in 0..<Int(fps*0.4) { sim.advance(input, dt: 1/fps) }
+                        }
+                        let heading = sim.heading
+                        input.boost = true; input.turn = turn
+                        for _ in 0..<Int(fps*0.2) {
+                            let left = sim.leftSpeed, right = sim.rightSpeed
+                            sim.advance(input, dt: 1/fps)
+                            require(abs(sim.leftSpeed-left) <= 11.4/fps+1e-9)
+                            require(abs(sim.rightSpeed-right) <= 11.4/fps+1e-9)
+                        }
+                        let angle = atan2(sin(sim.heading-heading), cos(sim.heading-heading))
+                        require(angle * turn < -0.04)
+                        require(sim.speed * throttle > 0.5)
+                        input.brake = true
+                        sim.advance(input, dt: 1/fps)
+                        equal(sim.leftSpeed, 0); equal(sim.rightSpeed, 0)
+                    }
+                }
+            }
+        }
+    }
+    func testDirtOpponent() {
+        var finishTimes: [Double] = []
+        for fps in [30.0, 60.0, 120.0] {
+            var opponent = DirtOpponent()
+            let start = opponent.simulation
+            opponent.advance(dt: .nan, raceDT: 1)
+            opponent.advance(dt: 1, raceDT: .infinity)
+            equal(opponent.simulation.distance, 0)
+            greater(hypot(start.x-DirtCourse.point(0).x, start.z-DirtCourse.point(0).z), 0.7)
+            var airborne = false
+            for _ in 0..<Int(fps*240) {
+                opponent.advance(dt: 1/fps, raceDT: 1/fps)
+                airborne = airborne || opponent.simulation.airborne
+                require(DirtCourse.projection(x:opponent.simulation.x,z:opponent.simulation.z).distance < DirtCourse.fenceOffset)
+                if opponent.race.finished { break }
+            }
+            require(opponent.race.finished); require(airborne)
+            equal(opponent.race.laps.count,3); equal(opponent.simulation.speed,0)
+            near(opponent.race.laps.reduce(0,+),opponent.race.elapsed,accuracy:1e-8)
+            equal(opponent.playerPosition(DirtRace()),2)
+            let end = opponent.simulation
+            opponent.advance(dt: 1/fps, raceDT: 1/fps)
+            equal(end.x,opponent.simulation.x); equal(end.z,opponent.simulation.z)
+            finishTimes.append(opponent.race.elapsed)
+            opponent = DirtOpponent()
+            equal(opponent.race.elapsed,0); equal(opponent.simulation.x,start.x)
+            equal(opponent.simulation.z,start.z)
+        }
+        near(finishTimes.max()!,finishTimes.min()!,accuracy:0.001)
+        print("R2-D2 three-lap totals at 30/60/120 fps: \(finishTimes)")
+    }
+    func testWiderTerrainAndFence() {
+        near(DirtCourse.width*2,3.9,accuracy:1e-12)
+        let center = DirtCourse.surfacePoints(offset:0)
+        let length = zip(center,center.dropFirst()).reduce(0.0) { total, pair in
+            total+hypot(pair.1.x-pair.0.x,pair.1.y-pair.0.y)
+        }
+        // Regression baseline from the previous, narrower route.
+        near(length,136.25642662849137,accuracy:1e-8)
+        near(DirtCourse.elevation(0),0,accuracy:1e-12)
+        greater(DirtCourse.elevation(0.69*2 * .pi),1.25)
+        greater(DirtCourse.elevation(0.17*2 * .pi),0.6)
+        greater(DirtCourse.elevation(0.40*2 * .pi),0.85)
+        for i in 0..<160 {
+            let phase = Double(i)*2 * .pi/160
+            for edge in [DirtCourse.width,DirtCourse.width+DirtCourse.bermWidth,DirtCourse.shoulderEdge,DirtCourse.terrainEdge] {
+                for side in [-1.0,1.0] {
+                    near(DirtCourse.surfaceHeight(phase,offset:side*(edge-1e-7)),
+                         DirtCourse.surfaceHeight(phase,offset:side*(edge+1e-7)),accuracy:1e-5)
+                }
+            }
+        }
+        func cross(_ a:SIMD2<Double>,_ b:SIMD2<Double>) -> Double { a.x*b.y-a.y*b.x }
+        for offset in [-DirtCourse.terrainEdge,-DirtCourse.fenceOffset,-DirtCourse.width,
+                       DirtCourse.width,DirtCourse.fenceOffset,DirtCourse.terrainEdge] {
+            let points = DirtCourse.surfacePoints(offset:offset), count = DirtCourse.sampleCount
+            equal(points.first,points.last)
+            for i in 0..<count {
+                let p = points[i]
+                near(DirtCourse.projection(x:p.x,z:p.y).distance,abs(offset),accuracy:0.012)
+                let r = points[i+1]-p
+                if i+2 >= count { continue }
+                for j in i+2..<count {
+                    if i == 0 && j == count-1 { continue }
+                    let q = points[j], v = points[j+1]-q, denominator = cross(r,v)
+                    if abs(denominator) < 1e-12 { continue }
+                    let t = cross(q-p,v)/denominator, u = cross(q-p,r)/denominator
+                    require(!(t > 1e-7 && t < 1-1e-7 && u > 1e-7 && u < 1-1e-7))
+                }
+            }
+        }
+    }
     func testDirtRaceAndScores() {
         var race = DirtRace()
         let start = DirtCourse.point(0)
@@ -42,7 +144,7 @@ struct SimulationTests {
             let p = DirtCourse.point(-Double(i)*0.02); reverse.advance(x:p.x,z:p.z,dt:0.1)
         }
         equal(reverse.laps.count,0); require(reverse.wrongWay)
-        require(!DirtCourse.contains(x:0,z:0)); require(!DirtCourse.contains(x:20,z:0))
+        require(DirtCourse.contains(x:0,z:0)); require(!DirtCourse.contains(x:20,z:0))
         for i in 0..<360 {
             let p = DirtCourse.point(Double(i)*Double.pi/180)
             require(DirtCourse.contains(x:p.x,z:p.z,margin:Simulation.radius))
@@ -51,21 +153,14 @@ struct SimulationTests {
         for _ in 0..<1200 { sim.advance(input,dt:1.0/60) }
         require(DirtCourse.projection(x:sim.x,z:sim.z).distance < DirtCourse.fenceOffset); require(sim.contacting)
         sim.reset(); near(sim.z,-15,accuracy:1e-9); near(sim.heading,DirtCourse.heading(0),accuracy:1e-9)
-        let edge = DirtCourse.point(0,offset:1.35)
+        let edge = DirtCourse.point(0,offset:DirtCourse.width+0.05)
         let edgeMove = DirtCourse.resolveMove(x:edge.x,z:edge.z,heading:DirtCourse.heading(0))
         require(!edgeMove.contact)
         less(DirtCourse.traction(x:edge.x,z:edge.z),0.5)
-        let outside = DirtCourse.point(0,offset:2)
+        let outside = DirtCourse.point(0,offset:DirtCourse.fenceOffset+0.2)
         require(DirtCourse.resolveMove(x:outside.x,z:outside.z,heading:DirtCourse.heading(0)).contact)
-        let retreat = DirtCourse.point(0,offset:1.2)
+        let retreat = DirtCourse.point(0,offset:DirtCourse.width-0.1)
         require(!DirtCourse.resolveMove(x:retreat.x,z:retreat.z,heading:DirtCourse.heading(0)).contact)
-        for i in 0..<160 {
-            let phase = Double(i)*2 * Double.pi/160
-            for offset in [-1.8,1.8] {
-                let p = DirtCourse.point(phase,offset:offset)
-                near(DirtCourse.height(x:p.x,z:p.z),DirtCourse.surfaceHeight(phase,offset:offset),accuracy:0.012)
-            }
-        }
         var driver = Simulation(dirtTrack:true), drivenRace = DirtRace()
         drivenRace.countDown(dt:3)
         var maxHeight = 0.0, airborneFrames = 0
@@ -309,6 +404,9 @@ struct SimulationTests {
 @main struct CheckRunner {
     static func main() {
         let checks = SimulationTests()
+        checks.testBoostSteeringDuringAcceleration()
+        checks.testWiderTerrainAndFence()
+        checks.testDirtOpponent()
         checks.testDirtRaceAndScores()
         checks.testForwardReverseAndBrake()
         checks.testTurningInPlace()
@@ -320,6 +418,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 11 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 14 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

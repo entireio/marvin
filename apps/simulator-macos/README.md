@@ -36,7 +36,13 @@ entering Sandbox starts a fresh course.
 A fixed, winding motocross circuit inspired by [Dirt Rider’s layout guide](https://www.dirtrider.com/understanding-motocross-track-layouts/):
 a start straight and tabletop, banked mixed-direction turns, rollers, rhythm
 jumps, a raised hill/step-up, and whoops. The route uses a closed spline and a
-single continuous height surface. Course shoulders slope down into the terrain.
+single continuous height surface. The compacted lane is now 50% wider (3.9 scene units) with the same centerline
+and 136.256-unit plan-view lap length. Taller tabletop/rhythm jumps, larger
+rollers and whoops, a 1.3-unit hill, and three additional broad climbs add
+vertical variation. Course shoulders descend into the terrain outside the fence.
+The red/white rail follows the ground with 0.31-unit center clearance; every
+post extends 0.08 units below the ground and 0.40 above it. Inside offset loops
+are trimmed at tight bends so the wider surface and fence do not cross themselves.
 
 Select **Dirt Track**, watch the bird’s-eye fly-in, then wait for the three-second countdown, and complete **three
 laps** in the marked direction. The HUD shows current-lap time, best lap, total,
@@ -46,9 +52,31 @@ crossings interpolate within a frame; signed course progress prevents reverse
 finish crossings from awarding laps. Loose shoulders reduce speed; only the fence blocks Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
 Command-R starts a fresh race. The Main Menu toolbar button returns to the menu.
 
+Race against one autonomous **R2-D2** opponent. He starts alongside Marvin,
+steers toward a look-ahead point, slows for turns, and boosts on straights using
+the same acceleration, steering, fence, terrain and jump simulation. The HUD
+shows position out of two, R2-D2's lap, and a blue opponent marker (Marvin is
+gold). Three-lap finish order determines the winner; local high scores still
+record only your time. Both racers wait for the fly-in/countdown, freeze on pause
+or app inactivity, and reset with Command-R. This first opponent uses non-contact
+racing: robots can pass through each other; robot-to-robot collisions and
+avoidance are not implemented.
+
+The bundled [R2-D2 model by LordDiego](https://sketchfab.com/3d-models/r2-d2-9e6b5bc13f7943d08e657bffce78fc90)
+is a detailed 25,158-triangle textured model under CC BY 4.0. It uses the
+original animation's deployed third-leg driving pose and smooth surface normals.
+Six added treaded tires sit beneath the three foot housings; they rotate from
+signed wheel travel, stop under braking/pause, and reverse with the drivetrain.
+Marvin is scaled to 0.60 m relative to R2-D2’s 1.08 m height (55.6% as tall),
+with matching tread travel and dirt-effect spacing. The dome gently turns on its inclined pivot. The source archives, conversion
+credits and modification notes ship in `Resources/R2D2`; the exporter runs
+offline without Blender. This is an artistic mesh, not engineering CAD.
+
+
 The fastest ten complete races persist atomically in
-`~/Library/Application Support/Marvin Simulator/motocross-v2-scores.json`.
-Invalid records are excluded; load failures preserve the existing file and show
+`~/Library/Application Support/Marvin Simulator/motocross-v3-scores.json`.
+Earlier course scores remain in `motocross-v2-scores.json`; the changed terrain
+uses a separate leaderboard. Invalid records are excluded; load failures preserve the existing file and show
 an error instead of overwriting it. Smoke tests use a separate temporary file.
 
 Soil uses the CC0 [Poly Haven Dirt](https://polyhaven.com/a/dirt) scanned diffuse,
@@ -158,3 +186,10 @@ Dirt checks cover a complete three-lap driven race with jumps, boundaries, rever
 finish crossings, split timing, score sorting and disk round trips. Native smoke
 checks mode switching, rendering, debris emission, score recording, and reset;
 `dirt-overview.png` and `dirt-driving.png` capture the new scene.
+
+Opponent checks run complete three-lap AI races at 30, 60 and 120 fps, checking
+finish timing, terrain containment, jumps, stopping and reset. Native smoke also
+checks the imported model and opponent motion; `dirt-grid.png` captures both racers.
+
+Native smoke captures `r2d2-front.png` and `r2d2-wheels.png` for model inspection
+and verifies forward/reverse wheel rotation, braking, ground contact and reset.

@@ -8,6 +8,7 @@ if ! /usr/bin/xcrun --find swift >/dev/null 2>&1 && [ -x /Library/Developer/Comm
 fi
 configuration=${CONFIGURATION:-release}
 python3 "$root/scripts/export-marvin-simulator.py"
+python3 "$root/scripts/export-r2d2-simulator.py"
 swift build --package-path "$root/apps/simulator-macos" -c "$configuration" --product MarvinSimulator
 bin=$(swift build --package-path "$root/apps/simulator-macos" -c "$configuration" --show-bin-path)
 app="$root/apps/simulator-macos/.build/Marvin Simulator.app"
@@ -15,6 +16,9 @@ mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$root/apps/simulator-macos/Info.plist" "$app/Contents/Info.plist"
 cp "$bin/MarvinSimulator" "$app/Contents/MacOS/MarvinSimulator.new"
 mv -f "$app/Contents/MacOS/MarvinSimulator.new" "$app/Contents/MacOS/MarvinSimulator"
+# Replace this generated bundle directory so retired model files cannot linger.
+rm -rf "$app/Contents/Resources/R2D2"
+cp -R "$root/apps/simulator-macos/Resources/R2D2" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/Dirt" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/Marvin" "$app/Contents/Resources/"
 cp "$root/apps/simulator-macos/Resources/Icons/"*.icns "$app/Contents/Resources/"
