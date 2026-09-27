@@ -1,0 +1,13 @@
+commit/push
+
+---
+
+What are the licenses for the R2D2, BB8, and Wall-E models that you downloaded?
+
+---
+
+Add those licenses, creator names, and link to the apps/simulator-macos/README.
+
+---
+
+Next, animate all 4 characters heads: When turning into a curve, have the head turn the same direction ahead of the actual turn. When passing another robot, look over to him. Wall-E can also move his hands to make gestures when turning. For each robot, figure out the best motions and emotions.

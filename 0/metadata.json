@@ -1,0 +1,76 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3JM3TB9QW80XSWR56FV6JBS",
+  "session_id": "01a0e3e2-9195-7b33-bbc3-e3b6282b1103",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-27T23:45:40.115761Z",
+  "branch": "main",
+  "checkpoints_count": 4,
+  "save_step_count": 2,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Resources/BB8/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/R2D2/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/WallE/ATTRIBUTION.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/ImportedRacer.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceActingSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift",
+    "apps/simulator-macos/Sources/SimulationCore/RacePerformance.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "scripts/export-racers-simulator.py"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "f7c6c08fc77b",
+  "checkpoint_transcript_start": 1664,
+  "transcript_lines_at_start": 1664,
+  "compact_transcript_start": 229,
+  "token_usage": {
+    "input_tokens": 159677,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3424512,
+    "output_tokens": 15546,
+    "api_call_count": 29,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 19
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-27T23:45:39.868054Z",
+    "agent_lines": 328,
+    "agent_removed": 14,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 328,
+    "total_lines_changed": 342,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 8,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 328,
+      "agent_lines_removed": 14
+    }
+  ]
+}
