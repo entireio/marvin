@@ -10,6 +10,8 @@ public struct Obstacle: Sendable {
 public struct DriveInput: Sendable {
     public var throttle = 0.0, turn = 0.0, headYaw = 0.0, headPitch = 0.0
     public var boost = false, brake = false
+    // Set only by the Dirt Track brake assist; nil preserves manual braking.
+    var assistedBrakePressure: Double?
     public init() {}
 }
 
@@ -44,6 +46,9 @@ public struct Simulation: Sendable {
     public private(set) var x = 0.0, z = -2.6, heading = 0.0
     public private(set) var leftSpeed = 0.0, rightSpeed = 0.0
     public private(set) var leftTravel = 0.0, rightTravel = 0.0
+    /// Signed drivetrain travel in world X/Z, independent of chassis blockage
+    /// and ground contact. Drives the spherical shell just like wheel travel.
+    public private(set) var rollingTravel = SIMD2<Double>.zero
     public private(set) var yaw = 0.0, pitch = 0.0, distance = 0.0, elapsed = 0.0
     public private(set) var checkpoint = 0
     public private(set) var contacting = false
@@ -143,7 +148,14 @@ public struct Simulation: Sendable {
         func approach(_ value: Double, _ target: Double) -> Double {
             value + max(-acceleration*dt, min(acceleration*dt, target-value))
         }
-        if input.brake { leftSpeed = 0; rightSpeed = 0 }
+        if input.brake, dirtTrack, let pressure = input.assistedBrakePressure {
+            // Keep steering available while braking. Never accelerate toward a
+            // corner-speed target: pressure only removes forward momentum.
+            let longitudinal = robotDynamics ? velocity.x*sin(heading)+velocity.z*cos(heading) : speed
+            let brakingSpeed = max(0,min(speed,longitudinal)-16*pressure*dt)
+            leftSpeed = brakingSpeed+differential
+            rightSpeed = brakingSpeed-differential
+        } else if input.brake { leftSpeed = 0; rightSpeed = 0 }
         else if dirtTrack {
             // Reserve acceleration for the track-speed difference first. Two
             // independent saturated ramps erase steering while boost accelerates.
@@ -171,7 +183,10 @@ public struct Simulation: Sendable {
                 let longitudinal = velocity.x*forward.x+velocity.z*forward.z
                 let lateral = velocity.x*side.x+velocity.z*side.z
                 let driveLimit = input.brake ? 16.0 : acceleration
-                let drive = max(-driveLimit,min(driveLimit,(speed-longitudinal)*20))
+                let drive: Double
+                if input.brake, let pressure = input.assistedBrakePressure {
+                    drive = -min(max(0,longitudinal)/dt,16*pressure)
+                } else { drive = max(-driveLimit,min(driveLimit,(speed-longitudinal)*20)) }
                 let slip = max(-12.0,min(12.0,-lateral*14))
                 var force = forward*drive+side*slip
                 let magnitude = hypot(force.x,force.z), tractionLimit = 16*grip
@@ -189,16 +204,17 @@ public struct Simulation: Sendable {
                 : DirtCourse.resolveMove(x:x+dx,z:z+dz,heading:heading+omega*dt)
             distance += hypot(move.x-x,move.z-z); x = move.x; z = move.z
             contacting = contacting || move.contact
-            leftTravel += leftSpeed*dt; rightTravel += rightSpeed*dt
         } else if Self.isFree(x: x+dx, z: z+dz, heading:heading+omega*dt, character:character) {
             x += dx; z += dz; distance += hypot(dx, dz)
-            leftTravel += leftSpeed * dt; rightTravel += rightSpeed * dt
         } else {
             contacting = true
             // Allow turning away, but do not rotate a corner through an obstacle.
             if !Self.isFree(x:x,z:z,heading:heading+omega*dt, character:character) { omega = 0 }
-            leftTravel -= omega * 0.28 * dt; rightTravel += omega * 0.28 * dt
         }
+        // Contact constrains the chassis, not the powered running gear.
+        leftTravel += leftSpeed*dt; rightTravel += rightSpeed*dt
+        let rollingHeading = heading+omega*dt/2
+        rollingTravel += SIMD2(sin(rollingHeading),cos(rollingHeading))*speed*dt
         heading = atan2(sin(heading + omega*dt), cos(heading + omega*dt))
         if dirtTrack {
             let ground = DirtCourse.height(x:x,z:z)

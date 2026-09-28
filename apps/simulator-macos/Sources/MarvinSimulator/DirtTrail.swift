@@ -19,7 +19,7 @@ final class DirtTrail {
     init(style: Style = .tracks) {
         self.style = style
         ink.transparency = style == .tracks ? 0.65 : 0.48
-        // The referenced Performa wheels have smooth, flat rubber tread.
+        // The housing-fitted rollers have smooth, flat rubber tread.
         ink.isDoubleSided = true
         ink.writesToDepthBuffer = false
     }

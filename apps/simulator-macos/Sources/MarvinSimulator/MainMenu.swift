@@ -41,7 +41,7 @@ final class MainMenuView: NSView {
     private var buttons: [MenuButton] = []
     var onSandbox: (() -> Void)?
     var onDirtTrack: (() -> Void)?
-    private let optionCount = 4
+    private var optionCount: Int { settings ? 6 : 4 }
     var settings = false
     var selection = 0
     var idleAnimation: Bool {
@@ -56,6 +56,15 @@ final class MainMenuView: NSView {
         get { !UserDefaults.standard.bool(forKey: "disableRaceRobotCollisions") }
         set { UserDefaults.standard.set(!newValue, forKey: "disableRaceRobotCollisions") }
     }
+    var steeringAssist: Bool {
+        get { !UserDefaults.standard.bool(forKey: "disableRaceSteeringAssist") }
+        set { UserDefaults.standard.set(!newValue, forKey: "disableRaceSteeringAssist") }
+    }
+    var brakingAssist: Bool {
+        get { !UserDefaults.standard.bool(forKey: "disableRaceBrakingAssist") }
+        set { UserDefaults.standard.set(!newValue, forKey: "disableRaceBrakingAssist") }
+    }
+    var raceAssists: DirtDrivingAssists { DirtDrivingAssists(steering:steeringAssist,braking:brakingAssist) }
     private var clock = 0.0, nextLook = 1.8, nextBlink = 2.7, blinkStart = -10.0
     private var yaw = -0.30, pitch = 0.0, targetYaw = -0.30, targetPitch = 0.0
     private var modelYaw: CGFloat = 0.35
@@ -98,7 +107,7 @@ final class MainMenuView: NSView {
         subtitle.font = .systemFont(ofSize: 18, weight: .regular)
         hint.font = .systemFont(ofSize: 12)
         for label in [title, subtitle, hint] { label.textColor = color(0x304e44); addSubview(label) }
-        for index in 0..<4 {
+        for index in 0..<6 {
             let button = MenuButton(title: "", target: self, action: #selector(activateButton(_:)))
             button.tag = index; button.isBordered = false; button.wantsLayer = true
             button.layer?.cornerRadius = 14
@@ -112,23 +121,27 @@ final class MainMenuView: NSView {
         super.layout()
         let split = bounds.width * 0.55, width = min(360, bounds.width - split - 50)
         portrait.frame = NSRect(x: 0, y: 0, width: split, height: bounds.height)
-        let top = bounds.height / 2 + 205
+        let top = bounds.height / 2 + (settings ? 240 : 205)
         title.frame = NSRect(x: split, y: top - 72, width: width, height: 76)
         subtitle.frame = NSRect(x: split + 3, y: top - 108, width: width, height: 30)
         for (i, button) in buttons.enumerated() {
-            button.frame = NSRect(x: split, y: top - 198 - CGFloat(i)*72, width: width, height: 58)
+            button.frame = NSRect(x: split, y: top - 198 - CGFloat(i)*(settings ? 54 : 72), width: width, height: settings ? 46 : 58)
         }
-        hint.frame = NSRect(x: split + 3, y: top - 458, width: width, height: 24)
+        hint.frame = NSRect(x: split + 3, y: top - (settings ? 504 : 458), width: width, height: 24)
     }
     func refresh() {
         title.stringValue = settings ? "Settings" : "Marvin"
-        subtitle.stringValue = settings ? "Make yourself at home." : "Beep, boop... just some fun."
-        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Robot collisions: \(raceRobotCollisions ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
+        subtitle.stringValue = settings ? "Race assists still need your input." : "Beep, boop... just some fun."
+        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Robot collisions: \(raceRobotCollisions ? "On" : "Off")", "Steering assist: \(steeringAssist ? "On" : "Off")", "Braking assist: \(brakingAssist ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
         for (i, button) in buttons.enumerated() {
             button.isHidden = i >= names.count
             guard i < names.count else { continue }
             button.title = names[i]
-            button.toolTip = settings && i == 2 ? "Dirt Track only. Turn off to let racers pass through one another." : nil
+            let tips = [2: "Dirt Track only. Turn off to let racers pass through one another.",
+                        3: "Dirt Track only. Helps you follow the racing line while you steer. You choose when and which way to turn.",
+                        4: "Dirt Track only. Hold Space to brake; pressure eases near corner speed so you can keep turning. Release to accelerate."]
+            button.toolTip = settings ? tips[i] : nil
+            button.setAccessibilityHelp(button.toolTip)
             button.attributedTitle = NSAttributedString(string: names[i], attributes: [.font: NSFont.systemFont(ofSize: 21, weight: .medium), .foregroundColor: i == selection ? NSColor.white : color(0x304e44)])
             button.layer?.backgroundColor = (i == selection ? color(0x304e44) : color(0xe5e9df)).cgColor
             button.setAccessibilityLabel(names[i])
@@ -141,6 +154,8 @@ final class MainMenuView: NSView {
             case 0: idleAnimation.toggle()
             case 1: showGuide.toggle()
             case 2: raceRobotCollisions.toggle()
+            case 3: steeringAssist.toggle()
+            case 4: brakingAssist.toggle()
             default: settings = false; selection = 2
             }
         } else {
@@ -164,7 +179,7 @@ final class MainMenuView: NSView {
         case 125, 124: selection = (selection + 1) % optionCount; refresh()
         case 126, 123: selection = (selection + optionCount - 1) % optionCount; refresh()
         case 36, 76, 49: if !event.isARepeat { activate() }
-        case 53: settings = false; selection = 0; refresh()
+        case 53: settings = false; selection = 0; needsLayout = true; refresh()
         default: break
         }
     }

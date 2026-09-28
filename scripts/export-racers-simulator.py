@@ -39,7 +39,7 @@ for name,height,sha in [('BB8',0.67,'c813327f3abdb1e4823e7ff217a7e93d77b8d02dc18
  # Use the first authored pose; source rest transforms contain overlapping links.
  first={}
  for (node,path),(times,values) in channels.items():first.setdefault(node,{})[path]=values[0]
- raw=[]
+ raw=[];removed_body_cap=0
  for i,n in enumerate(m['nodes']):
   if 'mesh' not in n:continue
   a=g.matrix(i,first)
@@ -51,7 +51,13 @@ for name,height,sha in [('BB8',0.67,'c813327f3abdb1e4823e7ff217a7e93d77b8d02dc18
    groups={}
    for t in range(0,len(idx),3):
     ids=idx[t:t+3];center=[sum(ps[k][j] for k in ids)/3 for j in range(3)]
-    if name=='BB8':role='ball' if max(ps[k][1] for k in ids)<18.3 else 'head';side=0
+    if name=='BB8':
+     # The pinned source includes a detached 32-triangle support disc just
+     # above the sphere. It is hidden under the head at rest, but protrudes
+     # when included in the rolling shell. Omit only that authored plane.
+     if all(abs(ps[k][1]-17.80622)<0.0001 for k in ids):
+      removed_body_cap+=1;continue
+     role='ball' if max(ps[k][1] for k in ids)<18.3 else 'head';side=0
     else:
      label=n['name'];role='link' if label.startswith('track_low') else 'gear' if label.startswith('trackGears') else 'head' if label.startswith('eyes') or label.startswith('neck') else 'body'
      if label.startswith('hand'):role='arm'
@@ -60,6 +66,7 @@ for name,height,sha in [('BB8',0.67,'c813327f3abdb1e4823e7ff217a7e93d77b8d02dc18
    for (role,side),ids in groups.items():
     unique=sorted(set(ids));remap={old:new for new,old in enumerate(unique)}
     raw.append(dict(name=n['name'],role=role,side=side,source=i,positions=[ps[k] for k in unique],normals=[ns[k] for k in unique],texcoords=[uv[k] for k in unique],indices=[remap[k] for k in ids],material=prim['material']))
+ if name=='BB8':assert removed_body_cap==32, f'Unexpected BB-8 support disc: {removed_body_cap} triangles'
  allps=[v for p in raw for v in p['positions']];lo,hi=bounds(allps);scale=height*(.885/1.08)/(hi[1]-lo[1])
  running=[v for p in raw if p['role'] in ['ball','link'] for v in p['positions']];center=middle(running);origin=[center[0],lo[1],center[2]]
  def normalize(p):return [(p[k]-origin[k])*scale for k in range(3)]

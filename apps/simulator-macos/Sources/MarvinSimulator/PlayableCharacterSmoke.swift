@@ -1,11 +1,13 @@
 import AppKit
 import SceneKit
 import SimulationCore
+import simd
 
 extension AppController {
     func checkPlayableCharacters(at directory: URL) -> Bool {
         var results: [String: Bool] = [:]
         do {
+            guard checkPoweredRolling() else { return false }
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             for (key, character) in [("b", RacePerformance.Character.bb8), ("r", .r2d2), ("w", .wallE), ("m", .marvin)] {
                 showMainMenu(nil)
@@ -13,11 +15,13 @@ extension AppController {
                     windowNumber: window.windowNumber, context: nil, characters: key,
                     charactersIgnoringModifiers: key, isARepeat: false, keyCode: 0)!
                 mainMenu.keyDown(with: event)
+                mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 0)
                 startSandbox()
                 let root = modelRoot(character)
                 var passed = playerCharacter == character && simulation.character == character
                     && root.parent === world.scene.rootNode
                     && RacePerformance.Character.allCases.filter { modelRoot($0).parent === world.scene.rootNode }.count == 1
+                if character == .bb8 { passed = checkBB8SandboxRolling() && passed }
                 var input = DriveInput(); input.throttle = 1; input.headYaw = 0.3; input.headPitch = 0.1
                 for _ in 0..<45 { simulation.advance(input, dt: 1.0/60); updatePlayerModel() }
                 passed = passed && simulation.distance > 0.1 && abs(Double(root.position.z)-simulation.z) < 1e-6
@@ -57,6 +61,26 @@ extension AppController {
                 .write(to: directory.appendingPathComponent("characters.json"))
         } catch { print("Character smoke failed: \(error)"); return false }
         return results.count == 4 && results.values.allSatisfy { $0 }
+    }
+
+    private func checkBB8SandboxRolling() -> Bool {
+        defer { reset(nil) }
+        // Follow a material point initially touching the floor. Its rotation
+        // must cancel translation, regardless of the menu's model orientation.
+        for throttle in [1.0, -1.0] {
+            reset(nil)
+            var input = DriveInput(); input.throttle = throttle; input.turn = 0.35
+            for _ in 0..<45 {
+                let before = SIMD3<Float>(Float(simulation.x), 0, Float(simulation.z))
+                let contact = bb8.ball.simdWorldOrientation.inverse.act(SIMD3<Float>(0, -Float(bb8.ballRadius), 0))
+                simulation.advance(input, dt: 1.0/60); updatePlayerModel()
+                let movement = SIMD3<Float>(Float(simulation.x), 0, Float(simulation.z)) - before
+                let rotated = bb8.ball.simdWorldOrientation.act(contact)
+                let slip = movement + SIMD3<Float>(rotated.x, 0, rotated.z)
+                if simd_length(movement) > 1e-6 && simd_length(slip) > simd_length(movement)*0.01 { return false }
+            }
+        }
+        return true
     }
 
     private func saveCharacterFrame(_ name: String, at directory: URL) throws {

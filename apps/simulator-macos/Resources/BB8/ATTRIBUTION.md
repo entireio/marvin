@@ -7,8 +7,10 @@
 - **SHA-256:** `c813327f3abdb1e4823e7ff217a7e93d77b8d02dc1860f92fe8af151723955f4`
 
 Source GLB metadata also identifies the original creator, model URL and license.
-Conversion retains the original 7,198 triangles and textures, separates the ball
-from the head, normalizes the scale, and adds simulator-driven movement and dirt.
+Conversion retains the original textures and 7,166 of the source's 7,198 triangles.
+It removes a detached 32-triangle support disc that protruded from the rotating
+shell, separates the ball from the head, normalizes the scale, and adds
+simulator-driven movement and dirt.
 The head mount pivots around the shell center for a contact-preserving head cock;
 independent yaw anticipates bends and briefly follows passing rivals.
 Run `scripts/export-racers-simulator.py` to regenerate the offline SceneKit data.
@@ -21,8 +23,8 @@ height, using the same scene-to-metre scale as 1.08 m R2-D2 and 0.60 m Marvin.
 
 [Lucasfilm's production account](https://www.starwars.com/news/droid-dreams-how-neal-scanlan-and-the-star-wars-the-force-awakens-team-brought-bb-8-to-life)
 provides the reference for the rolling spherical body and independently balanced
-head. In this simulator the ball rolls by displacement divided by its mesh radius;
-the head stays above it and turns to face travel. It stops rolling when airborne.
+head. In this simulator the ball rolls by signed drivetrain travel divided by its mesh radius;
+the head stays above it and turns to face travel. It keeps spinning in the air and against barriers while the drivetrain runs.
 Dirt builds across the rotating shell while the head receives lighter dust.
 The single 0.045-scene-unit ground mark is an artistic contact-patch approximation,
 not a measured tire width or a fictional wheel hidden in the ball.

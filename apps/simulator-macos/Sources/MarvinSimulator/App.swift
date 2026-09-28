@@ -34,7 +34,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     func advanceRacePhysics(_ input: DriveInput, dt: Double, raceDT: Double) {
         var rivals = opponents
         racePhysics.advance(input,player:&simulation,race:&race,opponents:&rivals,dt:dt,raceDT:raceDT,
-            robotCollisionsEnabled:mainMenu.raceRobotCollisions)
+            robotCollisionsEnabled:mainMenu.raceRobotCollisions, assists:mainMenu.raceAssists)
         opponent = rivals[0]; bb8Opponent = rivals[1]; wallEOpponent = rivals[2]
     }
     var scores: [DirtScore] = []
@@ -58,7 +58,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -176,7 +176,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             if let directory = smokeDirectory {
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
+                if CommandLine.arguments.contains("--bb8-motion-smoke-test") {
+                    timer?.invalidate()
+                    let passed = checkBB8RenderedMotion(at: URL(fileURLWithPath:directory))
+                    print("BB-8 rendered motion: \(passed ? "PASS" : "FAIL") · \(directory)")
+                    exit(passed ? 0 : 1)
+                }
                 if CommandLine.arguments.contains("--character-smoke-test") {
+                    // Snapshots can pump the run loop; keep this synchronous
+                    // character check from re-entering the general smoke test.
+                    timer?.invalidate()
                     let passed = checkPlayableCharacters(at: URL(fileURLWithPath: directory))
                     print("Playable character smoke test: \(passed ? "PASS" : "FAIL") · \(directory)")
                     exit(passed ? 0 : 1)
@@ -254,7 +263,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
                 mainMenu.keyDown(with: down); mainMenu.keyDown(with: down); mainMenu.keyDown(with: enter)
                 menuSmokePassed = menuSmokePassed && mainMenu.settings
-                mainMenu.selection = 3; mainMenu.activate()
+                menuSmokePassed = ((try? checkDrivingAssistSettings(at: URL(fileURLWithPath: directory))) ?? false) && menuSmokePassed
+                mainMenu.selection = 5; mainMenu.activate()
                 menuSmokePassed = menuSmokePassed && !mainMenu.settings
                 mainMenu.selection = 0; mainMenu.activate()
                 menuSmokePassed = menuSmokePassed && inSandbox && mainMenu.isHidden && !hud.isHidden
@@ -623,7 +633,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let wheelsReverse = r2d2.wheels.allSatisfy { $0.node.eulerAngles.x < 0 }
                 wheelState.reset(); r2d2.update(wheelState)
                 let wheelsReset = r2d2.wheels.allSatisfy { $0.node.eulerAngles.x == 0 && abs(Double($0.node.position.y)-$0.radius) < 0.000001 }
-                let wheelDimensionsPassed = abs(R2D2.centerTire.width / R2D2.outerTire.width - 0.7) < 1e-9
+                let wheelDimensionsPassed = abs(R2D2.centerTire.width / R2D2.outerTire.width - 0.75) < 1e-9
                     && r2d2.wheels.allSatisfy {
                         let expected = $0.side == 0 ? R2D2.centerTire : R2D2.outerTire
                         guard let tire = $0.node.childNodes.first?.geometry as? SCNCylinder else { return false }
@@ -689,7 +699,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                         airborneTrailsPassed = airborneTrailsPassed && dirtWorld.trailCounts[i+1] == beforeTrails[i+1]
                     }
                 }
-                let opponentPassed = opponents.allSatisfy { $0.simulation.distance > 10 && $0.race.elapsed > 3.9 } && wheelsPassed && opponentGatePassed && r2d2.triangleCount == 25158 && r2d2.hasCenterLeg && r2d2.wheels.count == 5 && r2d2.root.parent === dirtWorld.scene.rootNode
+                let opponentPassed = opponents.allSatisfy { $0.simulation.distance > 10 && $0.race.elapsed > 3.9 } && wheelsPassed && opponentGatePassed && r2d2.triangleCount == 25158 && r2d2.hasCenterLeg && r2d2.wheels.count == 3 && r2d2.root.parent === dirtWorld.scene.rootNode
                     && opponent.simulation.distance > 10 && opponent.race.elapsed > 3.9
                 raceHUD.opponents = opponents; raceHUD.race = race
                 raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading

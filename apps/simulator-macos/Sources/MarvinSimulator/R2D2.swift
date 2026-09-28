@@ -7,18 +7,15 @@ final class R2D2 {
     static let heightMeters = 1.08
     // Exported body height 0.85 plus the 0.035 wheel clearance.
     static let sceneHeight = 0.885
-    // Media-Conversions Colson drive/caster configuration; see WHEEL_REFERENCE.md.
+    // One broad roller inside each artistic foot shell; see WHEEL_REFERENCE.md.
     struct Tire {
-        let diameterInches: Double, widthInches: Double
-        var radius: Double { diameterInches * 0.0254 * sceneHeight / heightMeters / 2 }
-        var width: Double { widthInches * 0.0254 * sceneHeight / heightMeters }
+        let radius: Double, width: Double
     }
-    static let outerTire = Tire(diameterInches:5, widthInches:1.25)
-    static let centerTire = Tire(diameterInches:3, widthInches:0.875)
-    // Mount coordinates fit the existing artistic mesh, not a dimensioned chassis.
-    static let groundContacts = [(x:0.205,z:-0.205,width:outerTire.width),
-                                (x:-0.205,z:-0.205,width:outerTire.width),
-                                (x:0.0,z:0.147,width:centerTire.width)]
+    static let outerTire = Tire(radius:0.055, width:0.120)
+    static let centerTire = Tire(radius:0.050, width:0.090)
+    static let groundContacts = [(x:0.213,z:-0.1415,width:outerTire.width),
+                                (x:-0.213,z:-0.1415,width:outerTire.width),
+                                (x:0.0,z:0.1445,width:centerTire.width)]
     private struct Mesh: Decodable {
         struct Part: Decodable {
             let name: String, head: Bool
@@ -87,13 +84,11 @@ final class R2D2 {
             triangleCount += part.indices.count/3
             if part.name == "R2D2_Leg_Center" { hasCenterLeg = true }
         }
-        // Four outer drive wheels and one center caster, using documented
-        // Colson dimensions instead of widths inferred from the foot shells.
-        for side in [-1, 1] {
-            for z in [-0.205, -0.045] { addWheel(x:Double(side)*0.205, z:z, tire:Self.outerTire, side:side) }
+        for contact in Self.groundContacts {
+            let side = contact.x > 0 ? 1 : contact.x < 0 ? -1 : 0
+            addWheel(x:contact.x, z:contact.z, tire:side == 0 ? Self.centerTire : Self.outerTire, side:side)
         }
-        addWheel(x:0, z:0.147, tire:Self.centerTire, side:0)
-        dirtCoating.install(on:root,height:Self.sceneHeight,wheelOffset:0.205)
+        dirtCoating.install(on:root,height:Self.sceneHeight,wheelOffset:0.213)
     }
 
     private func addWheel(x: Double, z: Double, tire: Tire, side: Int) {
@@ -109,15 +104,15 @@ final class R2D2 {
             return node
         }
         axle.addChildNode(cylinder(radius:radius,width:width,surface:rubber))
-        axle.addChildNode(cylinder(radius:radius*0.52,width:width+0.002,surface:hub))
-        // Performa flat rubber tread is smooth; no invented knobby bars.
+        axle.addChildNode(cylinder(radius:radius*0.52,width:width-0.004,surface:hub))
+        // Smooth rubber tread with recessed side hubs.
         for face in [-1.0,1.0] {
             for i in 0..<5 {
                 let angle = Double(i)*2 * .pi/5
                 let spoke = SCNBox(width:0.003,height:radius*0.54,length:radius*0.125,chamferRadius:0.001)
                 spoke.materials = [hub]
                 let node = SCNNode(geometry:spoke)
-                node.position = SCNVector3(face*(width/2+0.001),cos(angle)*radius*0.375,sin(angle)*radius*0.375)
+                node.position = SCNVector3(face*(width/2-0.001),cos(angle)*radius*0.375,sin(angle)*radius*0.375)
                 node.eulerAngles.x = angle; axle.addChildNode(node)
             }
         }
@@ -130,11 +125,7 @@ final class R2D2 {
         root.eulerAngles = SCNVector3(state.bodyPitch, state.heading, state.bodyRoll)
         for wheel in wheels {
             let travel = wheel.side > 0 ? state.leftTravel : wheel.side < 0 ? state.rightTravel : (state.leftTravel+state.rightTravel)/2
-            if wheel.side == 0 {
-                let omega = (state.rightSpeed-state.leftSpeed)/0.56
-                let lateralSpeed = omega*Double(wheel.node.position.z)
-                wheel.node.eulerAngles.y = state.distance == 0 ? 0 : CGFloat(atan2(lateralSpeed, max(0.001,abs(state.speed))) * (state.speed < 0 ? -1 : 1))
-            }
+            // Fixed axles keep the broad rollers inside their foot housings.
             wheel.node.eulerAngles.x = CGFloat((travel/wheel.radius).truncatingRemainder(dividingBy:2 * .pi))
         }
         head.rotation = SCNVector4(headAxis.x,headAxis.y,headAxis.z,0.14*sin(state.elapsed*0.7))

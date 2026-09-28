@@ -30,7 +30,7 @@ final class ImportedRacer {
     private(set) var triangleCount = 0
     private(set) var links: [(node: SCNNode,side: Int,frames: [simd_float4x4])] = []
     private var gears: [(node: SCNNode,side: Int,radius: Double)] = []
-    private var previous: (x: Double,z: Double,distance: Double)?
+    private var previous: (rollingTravel: SIMD2<Double>, elapsed: Double)?
 
     init(kind: Kind, resources: URL) throws {
         self.kind = kind
@@ -99,12 +99,16 @@ final class ImportedRacer {
     }
     func update(_ state: Simulation) {
         dirtCoating.update(state)
-        let reset = previous == nil || state.distance < previous!.distance || state.distance == 0
+        let reset = previous == nil || state.elapsed < previous!.elapsed || state.elapsed == 0
         root.position = SCNVector3(state.x,state.groundY,state.z)
         if kind == .bb8 {
+            // Rolling axes and head heading are world-space. Discard the
+            // selection screen's display rotation before applying either.
+            root.eulerAngles = SCNVector3Zero
             if reset { ball.simdOrientation = simd_quatf(angle:0,axis:SIMD3(1,0,0)) }
-            else if let previous, !state.airborne {
-                let dx = state.x-previous.x, dz = state.z-previous.z, distance = hypot(dx,dz)
+            else if let previous {
+                let travel = state.rollingTravel-previous.rollingTravel
+                let dx = travel.x, dz = travel.y, distance = hypot(dx,dz)
                 if distance > 1e-9 && distance < 2 {
                     let turn = simd_quatf(angle:Float(distance/ballRadius),axis:SIMD3(Float(dz/distance),0,Float(-dx/distance)))
                     ball.simdOrientation = simd_normalize(turn*ball.simdOrientation)
@@ -128,7 +132,7 @@ final class ImportedRacer {
             head.eulerAngles = SCNVector3Zero
             applyArms(RacePerformance.Pose())
         }
-        previous = (state.x,state.z,state.distance)
+        previous = (state.rollingTravel,state.elapsed)
     }
     func applyExpression(_ pose: RacePerformance.Pose, heading: Double) {
         if kind == .bb8 {

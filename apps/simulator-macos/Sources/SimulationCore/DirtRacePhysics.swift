@@ -14,7 +14,7 @@ public struct DirtRacePhysics: Sendable {
     }
     public mutating func advance(_ input: DriveInput, player: inout Simulation, race: inout DirtRace,
                                  opponents: inout [DirtOpponent], dt: Double, raceDT: Double,
-                                 robotCollisionsEnabled: Bool = true) {
+                                 robotCollisionsEnabled: Bool = true, assists: DirtDrivingAssists = .off) {
         guard opponents.count == 3, !player.paused, race.countdown <= 0,
               dt.isFinite, dt > 0, raceDT.isFinite, raceDT > 0 else { return }
         pendingTime += min(0.1,dt); pendingRaceTime += raceDT
@@ -23,7 +23,7 @@ public struct DirtRacePhysics: Sendable {
             let clockStep = pendingRaceTime*min(1,h/pendingTime)
             pendingTime = max(0,pendingTime-h); pendingRaceTime = max(0,pendingRaceTime-clockStep)
             player.enableRobotDynamics()
-            let playerInput = race.finished ? DirtOpponent.driveInput(for:player,cruising:true) : input
+            let playerInput = race.finished ? DirtOpponent.driveInput(for:player,cruising:true) : assists.apply(input,to:player)
             player.advance(playerInput,dt:h)
             for i in opponents.indices {
                 opponents[i].simulation.enableRobotDynamics()
