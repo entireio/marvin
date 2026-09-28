@@ -13,10 +13,16 @@ public struct DriveInput: Sendable {
     public init() {}
 }
 
-/// Kinematic differential drive. One world unit is 100 mm; this is not a
-/// calibrated motor, suspension, traction, or contact dynamics model.
+/// Differential drivetrain with optional rigid-body race motion. The sandbox
+/// retains its kinematic behavior; DirtRacePhysics enables momentum and finite
+/// traction. This is a game simulation, not calibrated hardware dynamics.
 public struct Simulation: Sendable {
-    public static let halfWidth = 6.0, halfDepth = 5.0, radius = 0.53
+    public static let halfWidth = 6.0, halfDepth = 5.0
+    public static let bodyHalfWidth = RobotCollisions.profiles[0].halfWidth
+    public static let bodyHalfDepth = RobotCollisions.profiles[0].halfDepth
+    public static let collisionClearance = 0.006
+    // Conservative all-heading radius for route planning, not drive collision.
+    public static let radius = hypot(bodyHalfWidth+collisionClearance,bodyHalfDepth+collisionClearance)
     public static let obstacles = [
         Obstacle(-2.2, -0.4, 1.25, 1.25, 0.6),
         Obstacle(1.65, 0.3, 1.1, 1.65, 0.85),
@@ -28,6 +34,9 @@ public struct Simulation: Sendable {
     public private(set) var groundY = 0.0, bodyPitch = 0.0, bodyRoll = 0.0
     public private(set) var airborne = false
     private var dirtStartOffset = 0.0, dirtStartPhase = 0.0
+    public private(set) var robotDynamics = false
+    public private(set) var velocity = SIMD3<Double>.zero
+    public private(set) var angularVelocity = 0.0
     private var steering = 0.0
     private var verticalSpeed = 0.0, previousGround = 0.0
     public private(set) var checkpoints: [Checkpoint]
@@ -38,6 +47,12 @@ public struct Simulation: Sendable {
     public private(set) var checkpoint = 0
     public private(set) var contacting = false
     public var paused = false
+    /// Rubber/loose dirt contact tolerance for visual ground effects. The center
+    /// height can flutter a few millimeters above terrain over shallow ripples;
+    /// do not tear the trail each time the rigid-body airborne flag toggles.
+    public var hasDirtContact: Bool {
+        !airborne || (dirtTrack && groundY-DirtCourse.height(x:x,z:z) <= 0.006)
+    }
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
     public var complete: Bool { checkpoint == checkpoints.count }
     public init(seed: UInt64 = UInt64.random(in: UInt64.min...UInt64.max), dirtTrack: Bool = false, dirtStartOffset: Double = 0, dirtStartPhase: Double = 0) {
@@ -47,9 +62,28 @@ public struct Simulation: Sendable {
         checkpoints = CourseLayout.generate(seed: seed)
     }
 
-    public mutating func stop() { leftSpeed = 0; rightSpeed = 0 }
+    public mutating func stop() { leftSpeed = 0; rightSpeed = 0; velocity = .zero; angularVelocity = 0 }
     public mutating func reset() { self = Simulation(dirtTrack: dirtTrack, dirtStartOffset: dirtStartOffset, dirtStartPhase: dirtStartPhase) }
     public mutating func centerHead() { yaw = 0; pitch = 0 }
+
+    mutating func enableRobotDynamics() {
+        guard !robotDynamics else { return }
+        robotDynamics = true
+        velocity = SIMD3(sin(heading)*speed,verticalSpeed,cos(heading)*speed)
+        angularVelocity = (rightSpeed-leftSpeed)/0.56
+    }
+    func collisionBody(profile: RobotCollisions.Profile) -> RobotCollisions.Body {
+        RobotCollisions.Body(position:SIMD3(x,groundY,z),velocity:velocity,heading:heading,angularVelocity:angularVelocity,profile:profile)
+    }
+    mutating func applyCollisionBody(_ body: RobotCollisions.Body) {
+        x = body.position.x; z = body.position.z; groundY = body.position.y
+        heading = atan2(sin(body.heading),cos(body.heading))
+        velocity = body.velocity; angularVelocity = body.angularVelocity; verticalSpeed = velocity.y
+        let ground = DirtCourse.height(x:x,z:z)
+        airborne = groundY > ground+0.001
+        previousGround = ground
+        contacting = contacting || body.contacted
+    }
 
     public static func isFree(x: Double, z: Double) -> Bool {
         let r = radius
@@ -58,6 +92,23 @@ public struct Simulation: Sendable {
             let closestX = max(o.x-o.width/2, min(x, o.x+o.width/2))
             let closestZ = max(o.z-o.depth/2, min(z, o.z+o.depth/2))
             if hypot(x-closestX, z-closestZ) < r { return false }
+        }
+        return true
+    }
+
+    /// Scaled oriented footprint against arena walls and axis-aligned obstacles.
+    public static func isFree(x: Double, z: Double, heading: Double) -> Bool {
+        let c = cos(heading), s = sin(heading), ac = abs(c), asn = abs(s)
+        let w = bodyHalfWidth+collisionClearance, d = bodyHalfDepth+collisionClearance
+        let extentX = ac*w+asn*d, extentZ = asn*w+ac*d
+        guard abs(x)+extentX <= halfWidth, abs(z)+extentZ <= halfDepth else { return false }
+        for o in obstacles {
+            let dx = x-o.x, dz = z-o.z, ow = o.width/2, od = o.depth/2
+            // Separating axes: both obstacle axes and both robot axes.
+            if abs(dx) >= extentX+ow || abs(dz) >= extentZ+od { continue }
+            if abs(dx*c-dz*s) >= w+ow*ac+od*asn { continue }
+            if abs(dx*s+dz*c) >= d+ow*asn+od*ac { continue }
+            return false
         }
         return true
     }
@@ -89,7 +140,7 @@ public struct Simulation: Sendable {
         func approach(_ value: Double, _ target: Double) -> Double {
             value + max(-acceleration*dt, min(acceleration*dt, target-value))
         }
-        if input.brake { stop() }
+        if input.brake { leftSpeed = 0; rightSpeed = 0 }
         else if dirtTrack {
             // Reserve acceleration for the track-speed difference first. Two
             // independent saturated ramps erase steering while boost accelerates.
@@ -106,21 +157,43 @@ public struct Simulation: Sendable {
             rightSpeed = approach(rightSpeed, rightTarget / normalization)
         }
         // Marvin faces +Z: anatomical right is -X.
-        let omega = (rightSpeed-leftSpeed) / 0.56
+        var omega = (rightSpeed-leftSpeed) / 0.56
         let middleHeading = heading + omega * dt / 2
-        let dx = sin(middleHeading) * speed * dt
-        let dz = cos(middleHeading) * speed * dt
+        var dx = sin(middleHeading) * speed * dt
+        var dz = cos(middleHeading) * speed * dt
+        if robotDynamics {
+            if !airborne {
+                let forward = SIMD3<Double>(sin(heading),0,cos(heading))
+                let side = SIMD3<Double>(cos(heading),0,-sin(heading))
+                let longitudinal = velocity.x*forward.x+velocity.z*forward.z
+                let lateral = velocity.x*side.x+velocity.z*side.z
+                let driveLimit = input.brake ? 16.0 : acceleration
+                let drive = max(-driveLimit,min(driveLimit,(speed-longitudinal)*20))
+                let slip = max(-12.0,min(12.0,-lateral*14))
+                var force = forward*drive+side*slip
+                let magnitude = hypot(force.x,force.z), tractionLimit = 16*grip
+                if magnitude > tractionLimit { force *= tractionLimit/magnitude }
+                velocity += force*dt
+                // Finite steering torque lets off-center impacts rotate a robot
+                // before the drivetrain progressively regains heading control.
+                angularVelocity += max(-7*dt,min(7*dt,omega-angularVelocity))
+            }
+            omega = angularVelocity
+            dx = velocity.x*dt; dz = velocity.z*dt
+        }
         if dirtTrack {
-            let move = DirtCourse.resolveMove(x:x+dx,z:z+dz,heading:heading+omega*dt)
+            let move = robotDynamics ? (x:x+dx,z:z+dz,contact:false)
+                : DirtCourse.resolveMove(x:x+dx,z:z+dz,heading:heading+omega*dt)
             distance += hypot(move.x-x,move.z-z); x = move.x; z = move.z
             contacting = contacting || move.contact
             leftTravel += leftSpeed*dt; rightTravel += rightSpeed*dt
-        } else if Self.isFree(x: x+dx, z: z+dz) {
+        } else if Self.isFree(x: x+dx, z: z+dz, heading:heading+omega*dt) {
             x += dx; z += dz; distance += hypot(dx, dz)
             leftTravel += leftSpeed * dt; rightTravel += rightSpeed * dt
         } else {
             contacting = true
-            // Preserve steering at contact so the driver can turn away.
+            // Allow turning away, but do not rotate a corner through an obstacle.
+            if !Self.isFree(x:x,z:z,heading:heading+omega*dt) { omega = 0 }
             leftTravel -= omega * 0.28 * dt; rightTravel += omega * 0.28 * dt
         }
         heading = atan2(sin(heading + omega*dt), cos(heading + omega*dt))
@@ -133,6 +206,7 @@ public struct Simulation: Sendable {
                 if groundY <= ground { groundY = ground; airborne = false; verticalSpeed = slopeVelocity }
             } else { groundY = ground; verticalSpeed = slopeVelocity }
             previousGround = ground
+            if robotDynamics { velocity.y = verticalSpeed }
             let fx = sin(heading)*0.24, fz = cos(heading)*0.24
             let lx = cos(heading)*0.26, lz = -sin(heading)*0.26
             let pitchTarget = -atan2(DirtCourse.height(x:x+fx,z:z+fz)-DirtCourse.height(x:x-fx,z:z-fz),0.48)

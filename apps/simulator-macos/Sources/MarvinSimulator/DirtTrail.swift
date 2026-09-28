@@ -29,7 +29,7 @@ final class DirtTrail {
         previous = nil; remainder = 0; count = 0
     }
     func update(_ state: Simulation, contacts: [(x: Double, z: Double, width: Double)]) {
-        guard !state.airborne else { previous = nil; remainder = 0; return }
+        guard state.hasDirtContact else { previous = nil; remainder = 0; return }
         defer { previous = (state.x, state.z, state.heading) }
         guard let previous else { return }
         let dx = state.x-previous.x, dz = state.z-previous.z

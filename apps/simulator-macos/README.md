@@ -20,8 +20,16 @@ The local build is ad-hoc signed, not notarized for distribution. It targets the
 Mac's current architecture; a build on Apple Silicon produces an arm64 app.
 
 The build script uses an installed standalone Command Line Tools toolchain if
-the selected Xcode toolchain is unavailable. This only affects the build process;
-it does not change `xcode-select` or accept any license agreements.
+the selected Xcode toolchain is unavailable. With standalone CLT it selects
+SwiftPM's native build backend, avoiding the default Swift Build backend's
+missing Xcode-only search paths and legacy `arclite` warning. Full Xcode builds
+keep the default backend. The build and binary-path lookup use the same backend.
+Swift 6.4 currently emits a deprecation notice for the native backend; this
+workaround keeps that notice visible rather than suppressing diagnostics. Once
+the selected full Xcode installation is usable, the fallback is unnecessary.
+This only affects the build process; it does not change `xcode-select` or accept
+any license agreements. Model-export summaries and codesign's “replacing
+existing signature” message are normal successful-build output.
 
 ## Main menu
 
@@ -46,10 +54,15 @@ are trimmed at tight bends so the wider surface and fence do not cross themselve
 
 Select **Dirt Track**, watch the bird’s-eye fly-in, then wait for the three-second countdown, and complete **three
 laps** in the marked direction. The HUD shows current-lap time, best lap, total,
-a course map, and local best race totals. The finish panel lists all three splits.
+a course map, and local best race totals. The finish panel ranks all four robots by total race time and shows each best lap.
+Unfinished racers show their current lap until their actual finish time is recorded.
+Finishers continue at a slower cooldown pace; after Marvin finishes, autopilot
+takes over and the camera reverses the opening flight back to the overview.
+Race times freeze individually at the finish. Pause freezes both the procession
+and camera flight, and restart restores player control.
 The timer uses monotonic elapsed time, excluding countdown, pauses, and time while the app is inactive; slow frames do not improve scores. Lap
 crossings interpolate within a frame; signed course progress prevents reverse
-finish crossings from awarding laps. Loose shoulders reduce speed; only the fence blocks Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
+finish crossings from awarding laps. Loose shoulders reduce grip; the fence and other robots block Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
 Command-R starts a fresh race. The Main Menu toolbar button returns to the menu.
 
 Race against autonomous **R2-D2, BB-8 and WALL-E**. All four racers are randomly
@@ -57,11 +70,12 @@ assigned distinct staggered starting boxes on every new race and Command-R reset
 The AI steers toward look-ahead points in separate lanes, slows for turns, and
 boosts on straights using the same acceleration, steering, fence, terrain and jump
 simulation. The HUD shows position out of four, every opponent's lap, and map
-markers: Marvin gold, R2-D2 blue, BB-8 orange, WALL-E green. Markers stay on the
+markers: Marvin silver, R2-D2 blue, BB-8 orange, WALL-E yellow. Markers stay on the
 course polyline. Three-lap finish order determines position; local scores record
 your time. All racers wait for the fly-in/countdown, freeze on pause or app
-inactivity, and reset together. Racing remains non-contact: robot-to-robot
-collisions and avoidance are not implemented.
+inactivity, and reset together. Robot-to-robot contact now transfers momentum,
+causes sideways skids and off-center yaw rotation, and prevents interpenetration.
+AI drivers retain their lane-following strategy; they can bump and push each other.
 
 Race acting looks ahead into the next bend before the chassis turns. When a
 rival enters the nearby passing zone, the robot briefly looks toward it, then
@@ -110,9 +124,9 @@ Model credits and licenses:
 
 
 The fastest ten complete races persist atomically in
-`~/Library/Application Support/Marvin Simulator/motocross-v3-scores.json`.
-Earlier course scores remain in `motocross-v2-scores.json`; the changed terrain
-uses a separate leaderboard. Invalid records are excluded; load failures preserve the existing file and show
+`~/Library/Application Support/Marvin Simulator/motocross-v4-scores.json`.
+Earlier scores remain in `motocross-v2-scores.json` and `motocross-v3-scores.json`;
+the new collision/traction simulation uses a separate leaderboard. Invalid records are excluded; load failures preserve the existing file and show
 an error instead of overwriting it. Smoke tests use a separate temporary file.
 
 Soil uses the CC0 [Poly Haven Dirt](https://polyhaven.com/a/dirt) scanned diffuse,
@@ -125,7 +139,9 @@ persistent terrain-following tread marks for Marvin and three continuous, smooth
 tire impressions for R2-D2, one smooth rolling contact trace for BB-8, and wider
 mesh-sized tread impressions for WALL-E. All four racers throw dust and clods. Marks are spaced by distance, including
 at boost speed, and retained in bounded mesh batches for a full three-lap race.
-Airborne racers leave no marks or soil spray; restarting clears all trails. All robots
+Ground effects allow 0.006 simulation units of rubber/soil contact tolerance, so
+millimeter-scale hops do not repeatedly tear the trail. Racers clearly off the
+ground leave no marks or soil spray; restarting clears all trails. All robots
 also accumulate surface-attached dirt with distance driven: patchy mud around
 running gear and lower panels, stronger wheel/rear spray exposure, and light
 dust higher up. Coated areas become rougher and less reflective; restart cleans
@@ -138,6 +154,33 @@ count as a completed lap.
 
 Terrain pitch/roll, crest launch and gravity are an **approximate game model**;
 this is not calibrated granular-soil, suspension, or deformable-track physics.
+
+All four racers share a **240 Hz upright rigid-body contact solver**. Oriented
+box footprints for Marvin, R2-D2 and WALL-E, plus a circular footprint for BB-8,
+follow the scaled model bounds. Vertical overlap distinguishes side impacts,
+landing on another robot, and passing clear overhead. Sequential impulses use
+mass and yaw inertia, low restitution (0.08), and Coulomb contact friction (0.45).
+Separate mass-weighted penetration correction avoids adding bounce energy and
+iterates with fence/ground constraints to resolve pileups. Drive force, lateral
+grip and steering torque are bounded; brakes slow the body over distance instead
+of deleting momentum. Wheel/track travel still follows the drivetrain, allowing
+visual wheel slip during impacts. Pause, countdown and reset gate the whole group;
+lap progress is evaluated after contact resolution.
+
+Collision masses are **gameplay estimates**, not sourced character specifications:
+Marvin 18 kg, R2-D2 55 kg, BB-8 12 kg and WALL-E 85 kg. Friction, restitution and
+motor forces are also tuning values. Collision hulls approximate the solid body;
+individual antennas, fingers, moving heads and tread links are not separate rigid
+bodies. Translation has three axes and collision rotation is yaw; terrain still
+controls pitch/roll. Full tipping, tumbling, suspension and shell deformation are
+not simulated.
+
+Collision spin recovery intentionally adds a small arcade assist: after a contact
+spins a robot out, yaw eases back toward the forward course tangent over roughly
+three seconds. It does not teleport racers or add forward speed. Core checks
+cover recovery, continued AI driving after finishing, frozen finish times, and
+classification ordering; native smoke captures start, pause and results overlays.
+
 Boost and obstacles are scaled for a playable robot-sized course.
 
 ## Controls
@@ -178,9 +221,13 @@ records the source SHA-256. One scene unit represents 100 mm. The original CAD
 is not modified. Generated resources are ignored and rebuilt automatically.
 Hardware geometry remains under [CERN-OHL-S-2.0](../../LICENSE-hardware).
 
-The sandbox is a **flat-ground kinematic simulation**; Dirt Track adds terrain following and simple ballistic jumps. Neither is a calibrated digital twin:
+Sandbox obstacle and wall collision uses Marvin’s scaled body footprint, including
+its orientation, with 0.006 units of clearance. Route planning uses its enclosing
+circle conservatively.
 
-- Differential drive with acceleration, braking, and circular-footprint collision
+The sandbox is a **flat-ground kinematic simulation**; Dirt Track adds terrain following, ballistic jumps and coupled robot contact dynamics. Neither is a calibrated digital twin:
+
+- Differential drive with acceleration, braking, and scaled oriented-footprint collision
   checks against the course's rectangular obstacles and boundaries. Fixed-size
   integration substeps prevent wall tunneling; delayed frames are clamped.
 - The pan axis follows the CAD neck ring center (Z = −1.886 mm); the pitch
@@ -194,6 +241,8 @@ The sandbox is a **flat-ground kinematic simulation**; Dirt Track adds terrain f
   The original static CAD tracks are hidden. Animated belts approximate their
   widened profile; these are visual proportions, not measured hardware dimensions.
   The rubber meets the ground at zero chassis lift. The dock is a thin floor inlay.
+- Marvin’s body and head use a matte silver metallic finish inspired by the
+  1950s Silver Arrows, with matching silver map and standings markers.
 - White curved eye strokes sit on the original CAD front panel and blink.
   The neck is shell-colored; the five-button row uses one red and four pale
   buttons, with a separate pale round button. Materials are curated for the simulator. The source electronics layout is not verified against today's robot.
@@ -237,7 +286,7 @@ checks mode switching, rendering, debris emission, score recording, and reset;
 `dirt-overview.png` and `dirt-driving.png` capture the new scene.
 
 Opponent checks run complete three-lap AI races at 30, 60 and 120 fps, checking
-finish timing, terrain containment, jumps, stopping and reset. Native smoke also
+finish timing, terrain containment, jumps, cooldown driving and reset. Native smoke also
 checks all imported models and opponent motion; `dirt-grid.png` captures the start.
 The grid checks cover every AI lane and slot at all three frame rates.
 
@@ -250,3 +299,14 @@ Attention checks cover both turn/passing directions, cooldown, parked behavior,
 frame rates, pause and reset. Node checks verify sphere rolling direction, independent
 tread movement, braking, reverse, scale and reset; all four dirt emitters and
 trail histories are checked for emission, airborne behavior, pause and cleanup.
+The native smoke test also drives a complete three-lap race through the coupled
+physics and trail renderer. `full-race-trails.json` reports lap times, mark counts,
+small-hop contact, actual flights, missing grounded marks, and ray-cast checks
+against the rendered lane; `full-race-trails.png` captures the resulting course.
+
+Robot-contact checks cover momentum and energy, unequal masses, off-center spin,
+rounded corners, overhead clearance, vertical landing, boosted opposing impacts,
+coincident centers, fence pileups, finite braking, and exact fixed-input results
+at 10/30/60/120 fps. Coupled three-lap races exercise all four bodies at
+30/60/120 fps. Native smoke runs a crowded contact scenario through the real race
+controller and captures `robot-contact.png`, including separation and pause checks.

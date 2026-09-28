@@ -25,7 +25,7 @@ final class DirtCoating {
     func update(_ state: Simulation) {
         if !state.dirtTrack || state.distance < lastDistance { amount = 0 }
         let travel = max(0,state.distance-lastDistance)
-        if state.dirtTrack && !state.airborne {
+        if state.dirtTrack && state.hasDirtContact {
             amount = min(1,amount+travel/75)
         }
         lastDistance = state.distance

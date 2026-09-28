@@ -24,6 +24,7 @@ struct MeshManifest: Decodable {
 }
 
 final class Robot {
+    static let silverColor: UInt32 = 0xc3c7c9
     let dirtCoating = DirtCoating()
     let root = SCNNode(), yawNode = SCNNode(), pitchNode = SCNNode()
     var wheels: [(node: SCNNode, left: Bool)] = []
@@ -43,7 +44,8 @@ final class Robot {
         yawNode.position = SCNVector3(HeadRig.yawPivot)
         pitchNode.position = SCNVector3(HeadRig.pitchPivot-HeadRig.yawPivot)
         root.addChildNode(yawNode); yawNode.addChildNode(pitchNode)
-        let shell = material(0xe5e5e2, metal: 0.05, roughness: 0.4)
+        // Satin aluminium: broad, muted highlights instead of white plastic or chrome.
+        let shell = material(Self.silverColor, metal: 0.8, roughness: 0.65)
         let rubber = material(0x202a29, roughness: 0.88)
         let graphite = material(0x37403f, metal: 0.25, roughness: 0.42)
         let steel = material(0x919b9d, metal: 0.7, roughness: 0.28)

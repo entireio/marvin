@@ -59,7 +59,9 @@ final class DirtWorld {
             clay.multiply.intensity = 0.35
         }
         let ring = courseSurface(inner: -DirtCourse.width, outer: DirtCourse.width, y: 0)
-        ring.materials = [clay]; scene.rootNode.addChildNode(SCNNode(geometry: ring))
+        ring.materials = [clay]
+        let lane = SCNNode(geometry:ring); lane.name = "Compacted race surface"
+        scene.rootNode.addChildNode(lane)
         // Raised loose-soil berms stay outside the driveable surface.
         let berm = courseSurface(inner: DirtCourse.width, outer: DirtCourse.width+DirtCourse.bermWidth, y: 0.10)
         berm.materials = [clay]
@@ -140,9 +142,14 @@ final class DirtWorld {
         sign.font = .systemFont(ofSize: 0.18, weight: .heavy); sign.materials = [material(0xeee6cf)]
         let board = box(0,1.6,start.z-DirtCourse.terrainEdge-0.5,1.65,0.38,0.055,material(0x34473a))
         let label = SCNNode(geometry: sign); label.position = SCNVector3(-0.69, -0.10, 0.035); board.addChildNode(label)
-        // Low bleachers beyond the back straight.
+        // Finish-straight bleachers, outside the fence and beside the sign.
+        // Rows rise away from the track so the seats face the finish straight.
         for row in 0..<4 {
-            box(0,Double(row)*0.22+0.15,20.4+Double(row)*0.45,8,0.16,0.4,material(0x8c9691,roughness:0.6))
+            let x = start.x
+            let z = start.z-DirtCourse.terrainEdge-1.0-Double(row)*0.45
+            let ground = DirtCourse.height(x:x,z:z)
+            let stand = box(x,ground+Double(row)*0.22+0.15,z,8,0.16,0.4,material(0x8c9691,roughness:0.6))
+            stand.name = "Finish straight grandstand"
         }
         scene.rootNode.addChildNode(effects)
         clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0x705033,roughness:1)]
@@ -267,7 +274,7 @@ final class DirtWorld {
         for (side, contact) in contacts.enumerated() {
             let speed = contacts.count == 1 ? state.speed : side == 0 ? state.leftSpeed : side == 1 ? state.rightSpeed : state.speed
             let magnitude = abs(speed)
-            guard magnitude > 0.08, !state.contacting, !state.airborne else { continue }
+            guard magnitude > 0.08, !state.contacting, state.hasDirtContact else { continue }
             let sign = speed > 0 ? 1.0 : -1.0
             emission[racer][side] += dt*magnitude*42
             while emission[racer][side] >= 1 {

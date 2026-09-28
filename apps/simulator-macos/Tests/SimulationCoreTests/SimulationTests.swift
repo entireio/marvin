@@ -16,6 +16,22 @@ func greater(_ a: Double, _ b: Double) { require(a > b) }
 func less(_ a: Double, _ b: Double) { require(a < b) }
 
 struct SimulationTests {
+    func testSandboxFootprint() {
+        let o = Simulation.obstacles[0], skin = Simulation.collisionClearance
+        // Straight approach ends within a small skin of the scaled body.
+        for heading in [0.0,Double.pi/2,Double.pi/4] {
+            let extent = abs(sin(heading))*(Simulation.bodyHalfWidth+skin)+abs(cos(heading))*(Simulation.bodyHalfDepth+skin)
+            let z = o.z-o.depth/2-extent
+            require(Simulation.isFree(x:o.x,z:z-0.001,heading:heading))
+            require(!Simulation.isFree(x:o.x,z:z+0.001,heading:heading))
+        }
+        // Turning a corner into an obstacle is blocked even when the center is stationary.
+        let z = o.z-o.depth/2-0.30
+        require(Simulation.isFree(x:o.x,z:z,heading:0))
+        require(!Simulation.isFree(x:o.x,z:z,heading:.pi/4))
+        require(Simulation.isFree(x:Simulation.halfWidth-Simulation.bodyHalfWidth-skin-0.001,z:0,heading:0))
+        require(!Simulation.isFree(x:Simulation.halfWidth-Simulation.bodyHalfWidth,z:0,heading:0))
+    }
     func testStaggeredGrid() {
         let a = DirtCourse.playerGrid, b = DirtCourse.opponentGrid
         var player = Simulation(dirtTrack:true,dirtStartOffset:a.offset,dirtStartPhase:a.phase)
@@ -167,12 +183,12 @@ struct SimulationTests {
                 if opponent.race.finished { break }
             }
             require(opponent.race.finished); require(airborne)
-            equal(opponent.race.laps.count,3); equal(opponent.simulation.speed,0)
+            equal(opponent.race.laps.count,3); greater(opponent.simulation.speed,0)
             near(opponent.race.laps.reduce(0,+),opponent.race.elapsed,accuracy:1e-8)
             equal(opponent.playerPosition(DirtRace()),2)
             let end = opponent.simulation
             opponent.advance(dt: 1/fps, raceDT: 1/fps)
-            equal(end.x,opponent.simulation.x); equal(end.z,opponent.simulation.z)
+            greater(opponent.simulation.distance,end.distance)
             finishTimes.append(opponent.race.elapsed)
             opponent = DirtOpponent()
             equal(opponent.race.elapsed,0); equal(opponent.simulation.x,start.x)
@@ -323,8 +339,8 @@ struct SimulationTests {
         for _ in 0..<600 { sim.advance(input, dt: 1.0/60) }
         require(sim.contacting)
         require(sim.checkpoint >= 0 && sim.checkpoint <= CourseLayout.count)
-        less(sim.z, 3.3-0.65/2-Simulation.radius+0.01)
-        require(Simulation.isFree(x: sim.x, z: sim.z))
+        near(sim.z,3.3-0.65/2-Simulation.bodyHalfDepth-Simulation.collisionClearance,accuracy:0.02)
+        require(Simulation.isFree(x: sim.x, z: sim.z,heading:sim.heading))
         require(!Simulation.isFree(x: 6, z: 0))
         require(!Simulation.isFree(x: -2.2, z: -0.4))
     }
@@ -509,6 +525,11 @@ struct SimulationTests {
 @main struct CheckRunner {
     static func main() {
         let checks = SimulationTests()
+        checks.testSandboxFootprint()
+        checks.testCollisionRecovery()
+        checks.testRobotCollisionImpulses()
+        checks.testCollisionPileupsAndClock()
+        checks.testCoupledRacePhysics()
         checks.testStaggeredGrid()
         checks.testFourRacerGrid()
         checks.testRacePerformance()
@@ -526,6 +547,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 17 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 22 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

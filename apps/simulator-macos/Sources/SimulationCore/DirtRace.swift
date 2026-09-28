@@ -209,3 +209,16 @@ public enum DirtScores {
         try JSONEncoder().encode(ranked(scores)).write(to: url, options: .atomic)
     }
 }
+
+/// Finishers sort by their frozen crossing time, remaining racers by progress.
+/// Original index breaks ties deterministically without inventing finish times.
+public enum DirtStandings {
+    public static func order(_ races: [DirtRace]) -> [Int] {
+        races.indices.sorted { a,b in
+            if races[a].finished != races[b].finished { return races[a].finished }
+            if races[a].finished && races[a].elapsed != races[b].elapsed { return races[a].elapsed < races[b].elapsed }
+            if !races[a].finished && races[a].progress != races[b].progress { return races[a].progress > races[b].progress }
+            return a < b
+        }
+    }
+}
