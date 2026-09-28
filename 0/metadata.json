@@ -1,0 +1,70 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3K5DSZX34RQXRQBESSBAB60",
+  "session_id": "01a0e630-00bd-7bd1-ba6e-31846e85e675",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-28T04:47:34.770173Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtDrivingAssists.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/DrivingAssistChecks.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "630a68fb4e9f",
+  "checkpoint_transcript_start": 878,
+  "transcript_lines_at_start": 878,
+  "compact_transcript_start": 125,
+  "token_usage": {
+    "input_tokens": 23119,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 4354304,
+    "output_tokens": 10441,
+    "api_call_count": 22
+  },
+  "session_metrics": {
+    "turn_count": 7
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-28T04:47:34.69009Z",
+    "agent_lines": 0,
+    "agent_removed": 3,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 72,
+    "total_committed": 4,
+    "total_lines_changed": 75,
+    "agent_percentage": 4,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 121,
+      "user_lines_removed": 72,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "apps/simulator-macos/README.md": 5,
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 1,
+        "apps/simulator-macos/Sources/SimulationCore/DirtDrivingAssists.swift": 20,
+        "apps/simulator-macos/Sources/SimulationCore/Simulation.swift": 10,
+        "apps/simulator-macos/Tests/SimulationCoreTests/DrivingAssistChecks.swift": 83,
+        "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift": 2
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/README.md": 4,
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 1,
+        "apps/simulator-macos/Sources/SimulationCore/DirtDrivingAssists.swift": 37,
+        "apps/simulator-macos/Sources/SimulationCore/Simulation.swift": 6,
+        "apps/simulator-macos/Tests/SimulationCoreTests/DrivingAssistChecks.swift": 23,
+        "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift": 1
+      }
+    }
+  ]
+}
