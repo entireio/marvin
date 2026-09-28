@@ -3,6 +3,45 @@ import simd
 import SimulationCore
 
 extension SimulationTests {
+    func testOptionalRobotCollisions() {
+        // Three coincident AI racers drive through a stationary Marvin when
+        // contacts are off; the same setup must produce contact by default.
+        for enabled in [false,true] {
+            var player = Simulation(seed:0,dirtTrack:true,dirtStartPhase:-0.03)
+            let start = SIMD2(player.x,player.z)
+            var race = DirtRace(startPhase:-0.03), physics = DirtRacePhysics()
+            var rivals = (0..<3).map { _ in DirtOpponent(slot:(phase:-0.09,offset:0),laneOffset:0) }
+            race.countDown(dt:3)
+            var input = DriveInput(); input.brake = true
+            var passedThrough = [false,false,false]
+            for _ in 0..<120 {
+                physics.advance(input,player:&player,race:&race,opponents:&rivals,dt:1.0/60,raceDT:1.0/60,
+                    robotCollisionsEnabled:enabled)
+                for i in rivals.indices {
+                    let state = rivals[i].simulation
+                    let a = RobotCollisions.Body(position:SIMD3(player.x,player.groundY,player.z),heading:player.heading,profile:RobotCollisions.profiles[0])
+                    let b = RobotCollisions.Body(position:SIMD3(state.x,state.groundY,state.z),heading:state.heading,profile:RobotCollisions.profiles[i+1])
+                    if (RobotCollisions.contact(a,b)?.penetration ?? 0) > 0.1 { passedThrough[i] = true }
+                }
+            }
+            if enabled { require(physics.contactCount > 0) }
+            else {
+                equal(physics.contactCount,0); require(passedThrough.allSatisfy { $0 })
+                equal(SIMD2(player.x,player.z),start)
+                require(rivals.allSatisfy { $0.race.progress > race.progress && $0.simulation.distance > 4 })
+                near(rivals[0].simulation.x,rivals[1].simulation.x,accuracy:1e-9)
+                near(rivals[1].simulation.z,rivals[2].simulation.z,accuracy:1e-9)
+            }
+            near(race.elapsed,2,accuracy:1e-9)
+        }
+        // Turning off robot contacts must retain the fence and ground support.
+        let point = DirtCourse.point(0,offset:DirtCourse.fenceOffset+0.2)
+        var bodies = [RobotCollisions.Body(position:SIMD3(point.x,-2,point.z),profile:RobotCollisions.profiles[0])]
+        equal(RobotCollisions.resolve(&bodies,terrain:true,betweenRobots:false),0)
+        require(DirtCourse.projection(x:bodies[0].position.x,z:bodies[0].position.z).distance < DirtCourse.fenceOffset)
+        require(bodies[0].position.y >= DirtCourse.height(x:bodies[0].position.x,z:bodies[0].position.z))
+    }
+
     func testCollisionRecovery() {
         for phase in [0.0,2.0,5.0] { for direction in [-1.0,1.0] {
             let p = DirtCourse.point(phase), heading = DirtCourse.heading(phase)

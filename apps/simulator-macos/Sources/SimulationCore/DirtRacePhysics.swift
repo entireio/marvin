@@ -9,7 +9,8 @@ public struct DirtRacePhysics: Sendable {
     private var recovery = Array(repeating:CollisionRecovery(),count:4)
     public init() {}
     public mutating func advance(_ input: DriveInput, player: inout Simulation, race: inout DirtRace,
-                                 opponents: inout [DirtOpponent], dt: Double, raceDT: Double) {
+                                 opponents: inout [DirtOpponent], dt: Double, raceDT: Double,
+                                 robotCollisionsEnabled: Bool = true) {
         guard opponents.count == 3, !player.paused, race.countdown <= 0,
               dt.isFinite, dt > 0, raceDT.isFinite, raceDT > 0 else { return }
         pendingTime += min(0.1,dt); pendingRaceTime += raceDT
@@ -26,7 +27,7 @@ public struct DirtRacePhysics: Sendable {
                 opponents[i].simulation.advance(drive,dt:h)
             }
             var bodies = ([player]+opponents.map { $0.simulation }).enumerated().map { $0.element.collisionBody(profile:RobotCollisions.profiles[$0.offset]) }
-            contactCount += RobotCollisions.resolve(&bodies,terrain:true)
+            contactCount += RobotCollisions.resolve(&bodies,terrain:true,betweenRobots:robotCollisionsEnabled)
             for i in bodies.indices { recovery[i].advance(&bodies[i],dt:h) }
             player.applyCollisionBody(bodies[0])
             race.advance(x:player.x,z:player.z,dt:clockStep)

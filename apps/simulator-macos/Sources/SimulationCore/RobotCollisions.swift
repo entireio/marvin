@@ -93,11 +93,11 @@ public enum RobotCollisions {
     }
     /// Low restitution for robot shells/rubber, with Coulomb contact friction.
     /// Positional correction is separate from velocity so overlap adds no energy.
-    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false) -> Int {
+    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false, betweenRobots: Bool = true) -> Int {
         var pairs = Set<Int>()
         for iteration in 0..<24 {
             var worstOverlap = 0.0
-            for i in bodies.indices { for j in bodies.indices where j > i {
+            for i in bodies.indices where betweenRobots { for j in bodies.indices where j > i {
                 guard let c = contact(bodies[i],bodies[j]) else { continue }
                 worstOverlap = max(worstOverlap,c.penetration)
                 pairs.insert(i*bodies.count+j)

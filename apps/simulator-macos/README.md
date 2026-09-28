@@ -35,8 +35,11 @@ existing signature” message are normal successful-build output.
 
 The app opens with a live 3D Marvin portrait. Use the cursor keys and Return,
 or hover and click, to select Sandbox, Dirt Track, Settings, or Quit. Marvin looks around
-and blinks at random intervals. Settings saves the idle-animation and keyboard-guide
-preferences. Use the Main Menu toolbar button or Command-M to return from the sandbox;
+and blinks at random intervals. Settings saves the idle-animation, keyboard-guide,
+and **Robot collisions** preferences. Robot collisions are on by default; turn them
+off to let all four Dirt Track racers pass through one another. Track barriers,
+terrain, jumps, and sandbox collisions still work as usual.
+Use the Main Menu toolbar button or Command-M to return from the sandbox;
 entering Sandbox starts a fresh course.
 
 ## Dirt Track

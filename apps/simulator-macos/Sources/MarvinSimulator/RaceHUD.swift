@@ -16,8 +16,11 @@ final class RaceHUD: NSView {
     static func time(_ seconds: Double) -> String {
         String(format:"%d:%05.2f",Int(seconds)/60,seconds.truncatingRemainder(dividingBy:60))
     }
+    private func textAttributes(_ size:CGFloat, _ bold:Bool = false) -> [NSAttributedString.Key:Any] {
+        [.font:NSFont.monospacedSystemFont(ofSize:size,weight:bold ? .bold : .regular),.foregroundColor:color(0xf7eddb)]
+    }
     private func text(_ string: String, _ x:CGFloat,_ y:CGFloat,_ size:CGFloat = 16,_ bold:Bool = false) {
-        (string as NSString).draw(at:NSPoint(x:x,y:y),withAttributes:[.font:NSFont.monospacedSystemFont(ofSize:size,weight:bold ? .bold : .regular),.foregroundColor:color(0xf7eddb)])
+        (string as NSString).draw(at:NSPoint(x:x,y:y),withAttributes:textAttributes(size,bold))
     }
     private func panel(_ x:CGFloat,_ y:CGFloat,_ w:CGFloat,_ h:CGFloat) {
         color(0x263029,alpha:0.9).setFill(); NSBezierPath(roundedRect:NSRect(x:x,y:y,width:w,height:h),xRadius:12,yRadius:12).fill()
@@ -26,24 +29,34 @@ final class RaceHUD: NSView {
         if race.finished && !paused { drawResults(); return }
         let races = [race]+opponents.map { $0.race }
         let inset:CGFloat = 18, rowsY:CGFloat = 242, rowSpacing:CGFloat = 22
-        let rowHeight = ceil(("Marvin" as NSString).size(withAttributes:[
-            .font:NSFont.monospacedSystemFont(ofSize:13,weight:.regular)]).height)
+        let rowHeight = ceil(("Marvin" as NSString).size(withAttributes:textAttributes(13)).height)
         let panelBottom = rowsY+CGFloat(races.count-1)*rowSpacing+rowHeight+inset
-        panel(22,22,280,panelBottom-22)
-        text("DIRT TRACK",40,40,23,true)
-        text("LAP \(min(3,race.laps.count+1)) / 3",40,76,18,true)
-        text("CURRENT  \(Self.time(race.currentLap))",40,111)
-        text("TOTAL    \(Self.time(race.elapsed))",40,140)
         let best = race.laps.min().map(Self.time) ?? "—"
-        text("BEST LAP \(best)",40,169)
-        text("POSITION \(position) / 4",40,202,18,true)
+        let lines: [(value:String,y:CGFloat,size:CGFloat,bold:Bool)] = [
+            ("DIRT TRACK",40,23,true),
+            ("LAP \(min(3,race.laps.count+1)) / 3",76,18,true),
+            ("CURRENT  \(Self.time(race.currentLap))",111,16,false),
+            ("TOTAL    \(Self.time(race.elapsed))",140,16,false),
+            ("BEST LAP \(best)",169,16,false),
+            ("POSITION \(position) / 4",202,18,true)
+        ]
         let names = ["Marvin"]+racerNames, colors = [Robot.silverColor]+racerColors
-        for (i, competitor) in races.enumerated() {
+        let standings = races.enumerated().map { i,competitor in
             let status = competitor.finished ? "FINISHED" : "LAP \(min(3,competitor.laps.count+1)) / 3"
+            return "\(names[i].padding(toLength:8,withPad:" ",startingAt:0))\(status)"
+        }
+        // Measure the actual rendered strings so every edge keeps the same
+        // inset, expanding only when longer times or standings need the space.
+        let lineWidths = lines.map { ($0.value as NSString).size(withAttributes:textAttributes($0.size,$0.bold)).width }
+        let rowWidths = standings.map { 15+($0 as NSString).size(withAttributes:textAttributes(13)).width }
+        let panelWidth = ceil((lineWidths+rowWidths).max() ?? 0)+inset*2
+        panel(22,22,panelWidth,panelBottom-22)
+        for line in lines { text(line.value,40,line.y,line.size,line.bold) }
+        for (i, standing) in standings.enumerated() {
             color(colors[i]).setFill()
             let rowY = rowsY+CGFloat(i)*rowSpacing
             NSBezierPath(ovalIn:NSRect(x:40,y:rowY+(rowHeight-7)/2,width:7,height:7)).fill()
-            text("\(names[i].padding(toLength:8,withPad:" ",startingAt:0))\(status)",55,rowY,13)
+            text(standing,55,rowY,13)
         }
         let x = bounds.width-292
         panel(x,22,270,250)

@@ -20,12 +20,12 @@ private final class MenuButton: NSButton {
 /// A native AppKit menu alongside a separate, live SceneKit portrait.
 final class MainMenuView: NSView {
     let portrait: SCNView = PortraitView(), stage = SCNScene(), camera = SCNNode()
-    let title = NSTextField(labelWithString: "Marvin"), subtitle = NSTextField(labelWithString: "A little room to explore.")
+    let title = NSTextField(labelWithString: "Marvin"), subtitle = NSTextField(labelWithString: "Beep, boop... just some fun.")
     let hint = NSTextField(labelWithString: "↑ ↓ to choose   ·   Return to select")
     private var buttons: [MenuButton] = []
     var onSandbox: (() -> Void)?
     var onDirtTrack: (() -> Void)?
-    private var optionCount: Int { settings ? 3 : 4 }
+    private let optionCount = 4
     var settings = false
     var selection = 0
     var idleAnimation: Bool {
@@ -35,6 +35,10 @@ final class MainMenuView: NSView {
     var showGuide: Bool {
         get { !UserDefaults.standard.bool(forKey: "hideKeyboardGuide") }
         set { UserDefaults.standard.set(!newValue, forKey: "hideKeyboardGuide") }
+    }
+    var raceRobotCollisions: Bool {
+        get { !UserDefaults.standard.bool(forKey: "disableRaceRobotCollisions") }
+        set { UserDefaults.standard.set(!newValue, forKey: "disableRaceRobotCollisions") }
     }
     private var clock = 0.0, nextLook = 1.8, nextBlink = 2.7, blinkStart = -10.0
     private var yaw = -0.30, pitch = 0.0, targetYaw = -0.30, targetPitch = 0.0
@@ -92,16 +96,17 @@ final class MainMenuView: NSView {
         for (i, button) in buttons.enumerated() {
             button.frame = NSRect(x: split, y: top - 198 - CGFloat(i)*72, width: width, height: 58)
         }
-        hint.frame = NSRect(x: split + 3, y: top - (settings ? 386 : 458), width: width, height: 24)
+        hint.frame = NSRect(x: split + 3, y: top - 458, width: width, height: 24)
     }
     func refresh() {
         title.stringValue = settings ? "Settings" : "Marvin"
-        subtitle.stringValue = settings ? "Make yourself at home." : "A little room to explore."
-        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
+        subtitle.stringValue = settings ? "Make yourself at home." : "Beep, boop... just some fun."
+        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Robot collisions: \(raceRobotCollisions ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
         for (i, button) in buttons.enumerated() {
             button.isHidden = i >= names.count
             guard i < names.count else { continue }
             button.title = names[i]
+            button.toolTip = settings && i == 2 ? "Dirt Track only. Turn off to let racers pass through one another." : nil
             button.attributedTitle = NSAttributedString(string: names[i], attributes: [.font: NSFont.systemFont(ofSize: 21, weight: .medium), .foregroundColor: i == selection ? NSColor.white : color(0x304e44)])
             button.layer?.backgroundColor = (i == selection ? color(0x304e44) : color(0xe5e9df)).cgColor
             button.setAccessibilityLabel(names[i])
@@ -113,6 +118,7 @@ final class MainMenuView: NSView {
             switch selection {
             case 0: idleAnimation.toggle()
             case 1: showGuide.toggle()
+            case 2: raceRobotCollisions.toggle()
             default: settings = false; selection = 2
             }
         } else {

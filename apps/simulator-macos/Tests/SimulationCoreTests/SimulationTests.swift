@@ -526,6 +526,7 @@ struct SimulationTests {
     static func main() {
         let checks = SimulationTests()
         checks.testSandboxFootprint()
+        checks.testOptionalRobotCollisions()
         checks.testCollisionRecovery()
         checks.testRobotCollisionImpulses()
         checks.testCollisionPileupsAndClock()
@@ -547,6 +548,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 22 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 23 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

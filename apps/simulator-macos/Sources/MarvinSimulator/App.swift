@@ -36,7 +36,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     func advanceRacePhysics(_ input: DriveInput, dt: Double, raceDT: Double) {
         var rivals = opponents
-        racePhysics.advance(input,player:&simulation,race:&race,opponents:&rivals,dt:dt,raceDT:raceDT)
+        racePhysics.advance(input,player:&simulation,race:&race,opponents:&rivals,dt:dt,raceDT:raceDT,
+            robotCollisionsEnabled:mainMenu.raceRobotCollisions)
         opponent = rivals[0]; bb8Opponent = rivals[1]; wallEOpponent = rivals[2]
     }
     var scores: [DirtScore] = []
@@ -84,7 +85,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Marvin · Playground"
         window.minSize = NSSize(width: 900, height: 640)
-        window.titlebarAppearsTransparent = true; window.backgroundColor = color(0xe6ece3)
+        window.backgroundColor = .windowBackgroundColor
         window.delegate = self
         let toolbar = NSToolbar(identifier: "SimulatorToolbar")
         toolbar.delegate = self; toolbar.displayMode = .iconAndLabel
@@ -203,7 +204,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
                 mainMenu.keyDown(with: down); mainMenu.keyDown(with: down); mainMenu.keyDown(with: enter)
                 menuSmokePassed = menuSmokePassed && mainMenu.settings
-                mainMenu.selection = 2; mainMenu.activate()
+                mainMenu.selection = 3; mainMenu.activate()
                 menuSmokePassed = menuSmokePassed && !mainMenu.settings
                 mainMenu.selection = 0; mainMenu.activate()
                 menuSmokePassed = menuSmokePassed && inSandbox && mainMenu.isHidden && !hud.isHidden
