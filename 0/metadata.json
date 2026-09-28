@@ -1,0 +1,100 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3JXRRT4Q5RMCY5BSDV9C366",
+  "session_id": "01a0e3e2-9195-7b33-bbc3-e3b6282b1103",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-28T02:34:18.365496Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "save_step_count": 1,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RobotCollisionSmoke.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtOpponent.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift",
+    "apps/simulator-macos/Sources/SimulationCore/RobotCollisions.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/RobotCollisionChecks.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "apps/simulator-macos/build-app.sh"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "000a350bd702",
+  "checkpoint_transcript_start": 1888,
+  "transcript_lines_at_start": 1888,
+  "compact_transcript_start": 261,
+  "token_usage": {
+    "input_tokens": 745859,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 23127040,
+    "output_tokens": 70832,
+    "api_call_count": 179,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 20
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-28T02:34:17.680858Z",
+    "agent_lines": 195,
+    "agent_removed": 0,
+    "human_added": 553,
+    "human_modified": 111,
+    "human_removed": 0,
+    "total_committed": 820,
+    "total_lines_changed": 892,
+    "agent_percentage": 21.8609865470852,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 437,
+      "user_lines_removed": 72,
+      "agent_lines_added": 494,
+      "agent_lines_removed": 36,
+      "user_added_per_file": {
+        "apps/simulator-macos/README.md": 39,
+        "apps/simulator-macos/Sources/MarvinSimulator/App.swift": 33,
+        "apps/simulator-macos/Sources/MarvinSimulator/DirtCoating.swift": 1,
+        "apps/simulator-macos/Sources/MarvinSimulator/DirtTrail.swift": 1,
+        "apps/simulator-macos/Sources/MarvinSimulator/DirtWorld.swift": 11,
+        "apps/simulator-macos/Sources/MarvinSimulator/RaceFinishSmoke.swift": 52,
+        "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift": 64,
+        "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift": 3,
+        "apps/simulator-macos/Sources/MarvinSimulator/RobotCollisionSmoke.swift": 16,
+        "apps/simulator-macos/Sources/MarvinSimulator/TrailRaceSmoke.swift": 65,
+        "apps/simulator-macos/Sources/SimulationCore/DirtOpponent.swift": 8,
+        "apps/simulator-macos/Sources/SimulationCore/DirtRace.swift": 13,
+        "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift": 26,
+        "apps/simulator-macos/Sources/SimulationCore/Simulation.swift": 32,
+        "apps/simulator-macos/Tests/SimulationCoreTests/RobotCollisionChecks.swift": 38,
+        "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift": 23,
+        "apps/simulator-macos/build-app.sh": 12
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/README.md": 7,
+        "apps/simulator-macos/Sources/MarvinSimulator/App.swift": 8,
+        "apps/simulator-macos/Sources/MarvinSimulator/DirtCoating.swift": 1,
+        "apps/simulator-macos/Sources/MarvinSimulator/DirtTrail.swift": 1,
+        "apps/simulator-macos/Sources/MarvinSimulator/DirtWorld.swift": 4,
+        "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift": 26,
+        "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift": 1,
+        "apps/simulator-macos/Sources/SimulationCore/DirtOpponent.swift": 6,
+        "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift": 8,
+        "apps/simulator-macos/Sources/SimulationCore/Simulation.swift": 3,
+        "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift": 5,
+        "apps/simulator-macos/build-app.sh": 2
+      }
+    }
+  ]
+}
