@@ -1,0 +1,75 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3JZEAF5XNH35MJ8DJWTVQZ8",
+  "session_id": "01a0e3e2-9195-7b33-bbc3-e3b6282b1103",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-28T03:04:00.263485Z",
+  "branch": "main",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift",
+    "apps/simulator-macos/Sources/SimulationCore/RobotCollisions.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/RobotCollisionChecks.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "fd6f3a669f30",
+  "checkpoint_transcript_start": 3230,
+  "transcript_lines_at_start": 3230,
+  "compact_transcript_start": 444,
+  "token_usage": {
+    "input_tokens": 132029,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 6087680,
+    "output_tokens": 15953,
+    "api_call_count": 62
+  },
+  "session_metrics": {
+    "turn_count": 20
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-28T03:03:59.25228Z",
+    "agent_lines": 0,
+    "agent_removed": 0,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 27,
+    "total_committed": 0,
+    "total_lines_changed": 27,
+    "agent_percentage": 0,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 91,
+      "user_lines_removed": 27,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "apps/simulator-macos/README.md": 5,
+        "apps/simulator-macos/Sources/MarvinSimulator/App.swift": 4,
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 11,
+        "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift": 25,
+        "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift": 3,
+        "apps/simulator-macos/Sources/SimulationCore/RobotCollisions.swift": 2,
+        "apps/simulator-macos/Tests/SimulationCoreTests/RobotCollisionChecks.swift": 39,
+        "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift": 2
+      },
+      "user_removed_per_file": {
+        "apps/simulator-macos/README.md": 2,
+        "apps/simulator-macos/Sources/MarvinSimulator/App.swift": 3,
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 5,
+        "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift": 12,
+        "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift": 2,
+        "apps/simulator-macos/Sources/SimulationCore/RobotCollisions.swift": 2,
+        "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+commit/push
+
+---
+
+In dark mode, the app's title bar is still showing the light mode gray tone.
+
+---
+
+In the main menu, change "A little room to explore" to "Beep, boop... just some fun."
+
+---
+
+In Settings, add options to disable collision detection for the dirt track race.
+
+---
+
+[Image #1] Make this narrower so the padding on the right side matches left/top/bottom. If the times really get so high that more space is needed, adjust it dynamically.
+
+---
+
+commit/push
