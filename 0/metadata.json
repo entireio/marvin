@@ -1,0 +1,91 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3K29KE1KQZTZS403H5Q54CY",
+  "session_id": "01a0e5fd-3d21-79b1-a489-cd0b7921ff88",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-28T03:52:52.294439Z",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "save_step_count": 4,
+  "files_touched": [
+    "apps/simulator-macos/Launch Marvin.command",
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PlayableCharacterSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PlayerCharacter.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift",
+    "apps/simulator-macos/Sources/SimulationCore/RacePerformance.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "apps/simulator-macos/build-app.sh",
+    "scripts/launch-marvin.py",
+    "scripts/prepare-simulator-assets.py",
+    "scripts/test-simulator-launch.py"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "c8eb0decfd81",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 132102,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 7241472,
+    "output_tokens": 26621,
+    "api_call_count": 92,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 5
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-28T03:52:52.246741Z",
+    "agent_lines": 645,
+    "agent_removed": 48,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 645,
+    "total_lines_changed": 693,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 313,
+      "agent_lines_removed": 6
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 335,
+      "agent_lines_removed": 6
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 384,
+      "agent_lines_removed": 9
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 645,
+      "agent_lines_removed": 48
+    }
+  ]
+}

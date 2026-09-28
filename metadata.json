@@ -1,0 +1,41 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3K29KE1KQZTZS403H5Q54CY",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 5,
+  "files_touched": [
+    "apps/simulator-macos/Launch Marvin.command",
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PlayableCharacterSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PlayerCharacter.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceHUD.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift",
+    "apps/simulator-macos/Sources/SimulationCore/RacePerformance.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "apps/simulator-macos/build-app.sh",
+    "scripts/launch-marvin.py",
+    "scripts/prepare-simulator-assets.py",
+    "scripts/test-simulator-launch.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 132102,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 7241472,
+    "output_tokens": 26621,
+    "api_call_count": 92,
+    "subagent_tokens_complete": true
+  }
+}
