@@ -1,17 +1,1 @@
-Explain what the ./Launch\ Marvin.command is doing
-
----
-
-Improve the output of this script: Show a progress spinner and status in the first row, then below that in grey the current process output. Also, only regenerate the assets if they have changed, so the launch is faster.
-
----
-
-Ok, good, but no need to clear the shell
-
----
-
-On the main menu, allow the user to rotate Marvin with the mouse.
-
----
-
-Add hidden shortcuts to the main menu to show BB8, R2D2, and Wall-E instead of Marvin on the main menu.
+commit/push
