@@ -1,0 +1,116 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3K50BSVFRKJRZJGQNBXBGEJ",
+  "session_id": "01a0e630-00bd-7bd1-ba6e-31846e85e675",
+  "strategy": "manual-commit",
+  "created_at": "2026-09-28T04:40:14.15953Z",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "save_step_count": 7,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Resources/BB8/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/R2D2/WHEEL_REFERENCE.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/BB8MotionSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtTrail.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DrivingAssistSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/ImportedRacer.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PlayableCharacterSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PoweredRollingSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtDrivingAssists.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/DrivingAssistChecks.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/PoweredRollingChecks.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "scripts/export-racers-simulator.py"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "913ef206493e",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 187418,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 12650624,
+    "output_tokens": 35796,
+    "api_call_count": 125,
+    "subagent_tokens_complete": true
+  },
+  "session_metrics": {
+    "turn_count": 7
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-09-28T04:40:14.085294Z",
+    "agent_lines": 605,
+    "agent_removed": 76,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 605,
+    "total_lines_changed": 681,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    },
+    {
+      "checkpoint_number": 2,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 37,
+      "agent_lines_removed": 44
+    },
+    {
+      "checkpoint_number": 3,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 66,
+      "agent_lines_removed": 44
+    },
+    {
+      "checkpoint_number": 4,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 401,
+      "agent_lines_removed": 61
+    },
+    {
+      "checkpoint_number": 5,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 471,
+      "agent_lines_removed": 62
+    },
+    {
+      "checkpoint_number": 6,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 592,
+      "agent_lines_removed": 72
+    },
+    {
+      "checkpoint_number": 7,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 605,
+      "agent_lines_removed": 76
+    },
+    {
+      "checkpoint_number": 8,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 605,
+      "agent_lines_removed": 76
+    }
+  ]
+}

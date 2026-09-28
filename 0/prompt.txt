@@ -1,0 +1,25 @@
+R2D2s wheels still don't look right. They are too narrow and the sides have 2 wheels. Why not put one wheel into each housing matching the shape that is visible from the outside? [Image #1]
+
+---
+
+When driving BB8 in the sandbox, it's obvious that the body rotates in the wrong direction.
+
+---
+
+For the dirt track race, add a steering and braking help similar to how mainstream racing games work (do some web research on that). Allow to disable them separately in settings. Even with the help enabled, the user should still be required to steer and brake, but it should be easier to follow the ideal line through the curve.
+
+---
+
+BB8s body rotation is still wrong in both sandbox and dirt race. Also, his eye looks in the wrong direction.
+
+---
+
+For all robots, when they are jumping, keep the wheels/body spinning. Same when they are blocked on the fence. The fence blocks the body's movement, but not the wheels.
+
+---
+
+[Image #1] BB8 has an artifact from the CAD model that rotates with the body. Remove that.
+
+---
+
+Are you sure the steering/braking help works right in curves?

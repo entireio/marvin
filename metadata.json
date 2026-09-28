@@ -1,0 +1,45 @@
+{
+  "cli_version": "0.10.7-nightly.202609130627.8a43e78f1.0.20260913155315-d419fef66327",
+  "checkpoint_id": "01M3K50BSVFRKJRZJGQNBXBGEJ",
+  "strategy": "manual-commit",
+  "branch": "main",
+  "checkpoints_count": 7,
+  "files_touched": [
+    "apps/simulator-macos/README.md",
+    "apps/simulator-macos/Resources/BB8/ATTRIBUTION.md",
+    "apps/simulator-macos/Resources/R2D2/WHEEL_REFERENCE.md",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/BB8MotionSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DirtTrail.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/DrivingAssistSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/ImportedRacer.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PlayableCharacterSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PoweredRollingSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/R2D2.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtDrivingAssists.swift",
+    "apps/simulator-macos/Sources/SimulationCore/DirtRacePhysics.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/DrivingAssistChecks.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/PoweredRollingChecks.swift",
+    "apps/simulator-macos/Tests/SimulationCoreTests/SimulationTests.swift",
+    "scripts/export-racers-simulator.py"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 187418,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 12650624,
+    "output_tokens": 35796,
+    "api_call_count": 125,
+    "subagent_tokens_complete": true
+  }
+}
