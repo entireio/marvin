@@ -16,6 +16,20 @@ func greater(_ a: Double, _ b: Double) { require(a > b) }
 func less(_ a: Double, _ b: Double) { require(a < b) }
 
 struct SimulationTests {
+    func testPlayableFootprints() {
+        for character in RacePerformance.Character.allCases {
+            let profile = RobotCollisions.profiles[character.rawValue]
+            let edge = Simulation.halfWidth-profile.halfWidth-Simulation.collisionClearance
+            require(Simulation.isFree(x:edge-0.001,z:0,heading:0,character:character))
+            require(!Simulation.isFree(x:edge+0.001,z:0,heading:0,character:character))
+            var state = Simulation(seed:0,character:character)
+            var input = DriveInput(); input.throttle = 1
+            for _ in 0..<60 { state.advance(input,dt:1.0/60) }
+            require(state.distance > 0.1)
+            state.reset()
+            equal(state.character,character); equal(state.distance,0)
+        }
+    }
     func testSandboxFootprint() {
         let o = Simulation.obstacles[0], skin = Simulation.collisionClearance
         // Straight approach ends within a small skin of the scaled body.
@@ -526,6 +540,7 @@ struct SimulationTests {
     static func main() {
         let checks = SimulationTests()
         checks.testSandboxFootprint()
+        checks.testPlayableFootprints()
         checks.testOptionalRobotCollisions()
         checks.testCollisionRecovery()
         checks.testRobotCollisionImpulses()
@@ -548,6 +563,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 23 simulation checks (drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 24 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

@@ -31,6 +31,7 @@ public struct Simulation: Sendable {
         Obstacle(0.0, 3.3, 1.6, 0.65, 0.35),
     ]
     public private(set) var dirtTrack = false
+    public let character: RacePerformance.Character
     public private(set) var groundY = 0.0, bodyPitch = 0.0, bodyRoll = 0.0
     public private(set) var airborne = false
     private var dirtStartOffset = 0.0, dirtStartPhase = 0.0
@@ -55,7 +56,8 @@ public struct Simulation: Sendable {
     }
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
     public var complete: Bool { checkpoint == checkpoints.count }
-    public init(seed: UInt64 = UInt64.random(in: UInt64.min...UInt64.max), dirtTrack: Bool = false, dirtStartOffset: Double = 0, dirtStartPhase: Double = 0) {
+    public init(seed: UInt64 = UInt64.random(in: UInt64.min...UInt64.max), dirtTrack: Bool = false, dirtStartOffset: Double = 0, dirtStartPhase: Double = 0, character: RacePerformance.Character = .marvin) {
+        self.character = character
         self.dirtTrack = dirtTrack
         self.dirtStartOffset = dirtStartOffset; self.dirtStartPhase = dirtStartPhase
         if dirtTrack { let start = DirtCourse.point(dirtStartPhase, offset: dirtStartOffset); x = start.x; z = start.z; heading = DirtCourse.heading(dirtStartPhase); groundY = DirtCourse.height(x:x,z:z); previousGround = groundY }
@@ -63,7 +65,7 @@ public struct Simulation: Sendable {
     }
 
     public mutating func stop() { leftSpeed = 0; rightSpeed = 0; velocity = .zero; angularVelocity = 0 }
-    public mutating func reset() { self = Simulation(dirtTrack: dirtTrack, dirtStartOffset: dirtStartOffset, dirtStartPhase: dirtStartPhase) }
+    public mutating func reset() { self = Simulation(dirtTrack: dirtTrack, dirtStartOffset: dirtStartOffset, dirtStartPhase: dirtStartPhase, character: character) }
     public mutating func centerHead() { yaw = 0; pitch = 0 }
 
     mutating func enableRobotDynamics() {
@@ -97,9 +99,10 @@ public struct Simulation: Sendable {
     }
 
     /// Scaled oriented footprint against arena walls and axis-aligned obstacles.
-    public static func isFree(x: Double, z: Double, heading: Double) -> Bool {
+    public static func isFree(x: Double, z: Double, heading: Double, character: RacePerformance.Character = .marvin) -> Bool {
         let c = cos(heading), s = sin(heading), ac = abs(c), asn = abs(s)
-        let w = bodyHalfWidth+collisionClearance, d = bodyHalfDepth+collisionClearance
+        let profile = RobotCollisions.profiles[character.rawValue]
+        let w = profile.halfWidth+collisionClearance, d = profile.halfDepth+collisionClearance
         let extentX = ac*w+asn*d, extentZ = asn*w+ac*d
         guard abs(x)+extentX <= halfWidth, abs(z)+extentZ <= halfDepth else { return false }
         for o in obstacles {
@@ -187,13 +190,13 @@ public struct Simulation: Sendable {
             distance += hypot(move.x-x,move.z-z); x = move.x; z = move.z
             contacting = contacting || move.contact
             leftTravel += leftSpeed*dt; rightTravel += rightSpeed*dt
-        } else if Self.isFree(x: x+dx, z: z+dz, heading:heading+omega*dt) {
+        } else if Self.isFree(x: x+dx, z: z+dz, heading:heading+omega*dt, character:character) {
             x += dx; z += dz; distance += hypot(dx, dz)
             leftTravel += leftSpeed * dt; rightTravel += rightSpeed * dt
         } else {
             contacting = true
             // Allow turning away, but do not rotate a corner through an obstacle.
-            if !Self.isFree(x:x,z:z,heading:heading+omega*dt) { omega = 0 }
+            if !Self.isFree(x:x,z:z,heading:heading+omega*dt, character:character) { omega = 0 }
             leftTravel -= omega * 0.28 * dt; rightTravel += omega * 0.28 * dt
         }
         heading = atan2(sin(heading + omega*dt), cos(heading + omega*dt))

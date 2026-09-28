@@ -1,9 +1,23 @@
 import AppKit
 import SceneKit
+import SimulationCore
 
 private final class PortraitView: SCNView {
+    var onRotate: ((CGFloat) -> Void)?
+    private var dragX: CGFloat?
     override var acceptsFirstResponder: Bool { false }
-    override func mouseDown(with event: NSEvent) { window?.makeFirstResponder(superview) }
+    override func resetCursorRects() { addCursorRect(bounds, cursor: .openHand) }
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(superview)
+        dragX = event.locationInWindow.x
+    }
+    override func mouseDragged(with event: NSEvent) {
+        guard let previousX = dragX else { return }
+        let x = event.locationInWindow.x
+        onRotate?(x - previousX)
+        dragX = x
+    }
+    override func mouseUp(with event: NSEvent) { dragX = nil }
 }
 
 private final class MenuButton: NSButton {
@@ -19,6 +33,8 @@ private final class MenuButton: NSButton {
 
 /// A native AppKit menu alongside a separate, live SceneKit portrait.
 final class MainMenuView: NSView {
+    typealias Character = RacePerformance.Character
+    private(set) var character = Character.marvin
     let portrait: SCNView = PortraitView(), stage = SCNScene(), camera = SCNNode()
     let title = NSTextField(labelWithString: "Marvin"), subtitle = NSTextField(labelWithString: "Beep, boop... just some fun.")
     let hint = NSTextField(labelWithString: "↑ ↓ to choose   ·   Return to select")
@@ -42,6 +58,7 @@ final class MainMenuView: NSView {
     }
     private var clock = 0.0, nextLook = 1.8, nextBlink = 2.7, blinkStart = -10.0
     private var yaw = -0.30, pitch = 0.0, targetYaw = -0.30, targetPitch = 0.0
+    private var modelYaw: CGFloat = 0.35
     override var acceptsFirstResponder: Bool { true }
 
     override init(frame: NSRect) {
@@ -50,6 +67,11 @@ final class MainMenuView: NSView {
         portrait.scene = stage; portrait.pointOfView = camera
         portrait.antialiasingMode = .multisampling4X
         portrait.rendersContinuously = true; portrait.preferredFramesPerSecond = 60
+        portrait.toolTip = "Drag left or right to rotate."
+        (portrait as? PortraitView)?.onRotate = { [weak self] delta in
+            guard let self else { return }
+            self.modelYaw = (self.modelYaw + delta * 0.01).truncatingRemainder(dividingBy: 2 * .pi)
+        }
         stage.background.contents = color(0xf2f1e9)
         camera.camera = SCNCamera(); camera.camera?.fieldOfView = 36
         camera.position = SCNVector3(0, 1.05, 2.25)
@@ -133,6 +155,11 @@ final class MainMenuView: NSView {
     }
     override func keyDown(with event: NSEvent) {
         guard !event.modifierFlags.contains(.command) else { super.keyDown(with: event); return }
+        if !settings && event.modifierFlags.intersection([.control, .option]).isEmpty,
+           let chosen = ["m": Character.marvin, "b": .bb8, "r": .r2d2, "w": .wallE][event.charactersIgnoringModifiers?.lowercased() ?? ""] {
+            character = chosen
+            return
+        }
         switch event.keyCode {
         case 125, 124: selection = (selection + 1) % optionCount; refresh()
         case 126, 123: selection = (selection + optionCount - 1) % optionCount; refresh()
@@ -142,7 +169,7 @@ final class MainMenuView: NSView {
         }
     }
     override func mouseDown(with event: NSEvent) { window?.makeFirstResponder(self) }
-    func animate(_ robot: Robot, dt: Double) {
+    func animate(_ robot: Robot, r2d2: R2D2, bb8: ImportedRacer, wallE: ImportedRacer, dt: Double) {
         clock += dt
         if clock >= nextLook {
             targetYaw = Double.random(in: -0.65...0.25)
@@ -152,7 +179,25 @@ final class MainMenuView: NSView {
         if clock >= nextBlink { blinkStart = clock; nextBlink = clock + Double.random(in: 2.5...6.0) }
         let blend = 1 - exp(-dt * 3)
         yaw += (targetYaw - yaw) * blend; pitch += (targetPitch - pitch) * blend
-        robot.root.position = SCNVector3Zero; robot.root.eulerAngles = SCNVector3(0,0.35,0)
+        let models: [Character: SCNNode] = [.marvin: robot.root, .bb8: bb8.root, .r2d2: r2d2.root, .wallE: wallE.root]
+        let selected = models[character]!
+        for node in models.values where node !== selected && node.parent === stage.rootNode {
+            node.removeFromParentNode()
+        }
+        if selected.parent !== stage.rootNode { stage.rootNode.addChildNode(selected) }
+        // WALL-E's tracks and hands need more room when viewed from the side.
+        camera.position = SCNVector3(0, 1.05, character == .wallE ? 2.85 : 2.25)
+        camera.look(at: SCNVector3(0, 0.40, 0), up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, -1))
+        var pose = RacePerformance.Pose()
+        pose.yaw = idleAnimation ? yaw : -0.30
+        pose.pitch = idleAnimation ? pitch : 0
+        switch character {
+        case .marvin: break
+        case .r2d2: r2d2.update(Simulation()); r2d2.applyExpression(pose)
+        case .bb8: bb8.update(Simulation()); bb8.applyExpression(pose, heading: 0)
+        case .wallE: wallE.update(Simulation()); wallE.applyExpression(pose, heading: 0)
+        }
+        selected.position = SCNVector3Zero; selected.eulerAngles = SCNVector3(0,modelYaw,0)
         robot.yawNode.eulerAngles.y = CGFloat(idleAnimation ? yaw : -0.30)
         robot.pitchNode.eulerAngles.x = CGFloat(idleAnimation ? -pitch : 0)
         let blink = max(0, 1 - abs((clock - blinkStart) / 0.11 - 1))

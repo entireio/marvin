@@ -4,7 +4,7 @@ import Foundation
 /// All timing uses the simulation clock so focus loss, pause and braking do not
 /// produce wall-clock animation jumps.
 public struct RacePerformance: Sendable {
-    public enum Character: Int, Sendable { case marvin, r2d2, bb8, wallE }
+    public enum Character: Int, Sendable, CaseIterable { case marvin, r2d2, bb8, wallE }
     public struct Actor: Sendable {
         public let x: Double, z: Double, heading: Double, speed: Double, elapsed: Double
         public init(x: Double, z: Double, heading: Double, speed: Double, elapsed: Double) {

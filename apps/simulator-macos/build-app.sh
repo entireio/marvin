@@ -1,6 +1,14 @@
 #!/bin/sh
 set -eu
 root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
+status() {
+  if [ "${MARVIN_PROGRESS:-}" = 1 ]; then
+    printf '\036%s\n' "$1"
+  else
+    printf '\n%s\n' "$1"
+  fi
+}
+status 'Preparing Swift tools'
 # Use the installed standalone CLT if Xcode is selected but unavailable (for
 # example, awaiting a license agreement). Do not change the global selection.
 if ! /usr/bin/xcrun --find swift >/dev/null 2>&1 && [ -x /Library/Developer/CommandLineTools/usr/bin/swift ]; then
@@ -17,12 +25,13 @@ case "${DEVELOPER_DIR:-$(/usr/bin/xcode-select -p)}" in
     ;;
 esac
 configuration=${CONFIGURATION:-release}
-python3 "$root/scripts/export-marvin-simulator.py"
-python3 "$root/scripts/export-r2d2-simulator.py"
-python3 "$root/scripts/export-racers-simulator.py"
+status 'Checking model assets'
+python3 "$root/scripts/prepare-simulator-assets.py"
+status "Building Marvin Simulator ($configuration)"
 swift build "$@" --package-path "$root/apps/simulator-macos" -c "$configuration" --product MarvinSimulator
 bin=$(swift build "$@" --package-path "$root/apps/simulator-macos" -c "$configuration" --show-bin-path)
 app="$root/apps/simulator-macos/.build/Marvin Simulator.app"
+status 'Packaging Marvin Simulator'
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp "$root/apps/simulator-macos/Info.plist" "$app/Contents/Info.plist"
 cp "$bin/MarvinSimulator" "$app/Contents/MacOS/MarvinSimulator.new"
@@ -36,5 +45,6 @@ cp -R "$root/apps/simulator-macos/Resources/Dirt" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/Marvin" "$app/Contents/Resources/"
 cp "$root/apps/simulator-macos/Resources/Icons/"*.icns "$app/Contents/Resources/"
 cp "$root/LICENSE-hardware" "$app/Contents/Resources/LICENSE-hardware"
+status 'Signing Marvin Simulator'
 codesign --force --sign - "$app"
 printf '\nBuilt: %s\n' "$app"

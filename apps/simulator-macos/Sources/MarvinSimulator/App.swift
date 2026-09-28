@@ -8,6 +8,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     let mainMenu = MainMenuView(frame: .zero)
     var inSandbox = false
     var isDirtTrack = false
+    var playerCharacter = RacePerformance.Character.marvin
     var dirtOutro: Double?
     var outroPosition = SCNVector3Zero, outroTarget = SCNVector3Zero
     var dirtIntro: Double?
@@ -24,15 +25,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var performances = [RacePerformance(.marvin),RacePerformance(.r2d2),RacePerformance(.bb8),RacePerformance(.wallE)]
     var opponents: [DirtOpponent] { [opponent,bb8Opponent,wallEOpponent] }
     func updateOpponents() {
-        r2d2.update(opponent.simulation)
-        bb8.update(bb8Opponent.simulation); wallE.update(wallEOpponent.simulation)
         raceHUD.opponents = opponents
-        let actors = ([simulation]+opponents.map { $0.simulation }).map { RacePerformance.Actor($0) }
+        let states = [simulation]+opponents.map { $0.simulation }
+        let actors = states.map { RacePerformance.Actor($0) }
         for i in performances.indices { performances[i].update(index:i,actors:actors) }
-        robot.applyExpression(performances[0].pose,state:simulation)
-        r2d2.applyExpression(performances[1].pose)
-        bb8.applyExpression(performances[2].pose,heading:bb8Opponent.simulation.heading)
-        wallE.applyExpression(performances[3].pose,heading:wallEOpponent.simulation.heading)
+        for i in lineup.indices { updateModel(lineup[i], state: states[i], expression: performances[i].pose) }
     }
     func advanceRacePhysics(_ input: DriveInput, dt: Double, raceDT: Double) {
         var rivals = opponents
@@ -61,7 +58,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(of: "--smoke-test"), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -175,10 +172,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let wallDelta = max(0, now-lastTime)
         let dt = min(wallDelta, 0.1); lastTime = now
         if !inSandbox {
-            mainMenu.animate(robot, dt: dt)
+            mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt)
             if let directory = smokeDirectory {
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
+                if CommandLine.arguments.contains("--character-smoke-test") {
+                    let passed = checkPlayableCharacters(at: URL(fileURLWithPath: directory))
+                    print("Playable character smoke test: \(passed ? "PASS" : "FAIL") · \(directory)")
+                    exit(passed ? 0 : 1)
+                }
                 // Capture the native controls and composite the Metal portrait for visual QA.
                 mainMenu.layoutSubtreeIfNeeded()
                 if let bitmap = mainMenu.bitmapImageRepForCachingDisplay(in: mainMenu.bounds) {
@@ -195,6 +197,54 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     }
                 }
                 menuSmokePassed = !mainMenu.isHidden && hud.isHidden && robot.root.parent === mainMenu.stage.rootNode
+                // Exercise portrait dragging through its native mouse handlers.
+                let initialYaw = robot.root.eulerAngles.y
+                let portraitPoint = mainMenu.portrait.convert(NSPoint(x: 150, y: 200), to: nil)
+                func portraitMouse(_ type: NSEvent.EventType, offset: CGFloat) {
+                    let event = NSEvent.mouseEvent(with: type,
+                        location: NSPoint(x: portraitPoint.x + offset, y: portraitPoint.y),
+                        modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                        context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+                    switch type {
+                    case .leftMouseDown: mainMenu.portrait.mouseDown(with: event)
+                    case .leftMouseDragged: mainMenu.portrait.mouseDragged(with: event)
+                    default: mainMenu.portrait.mouseUp(with: event)
+                    }
+                }
+                portraitMouse(.leftMouseDown, offset: 0)
+                portraitMouse(.leftMouseDragged, offset: 80)
+                portraitMouse(.leftMouseUp, offset: 80)
+                mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 1.0 / 60)
+                menuSmokePassed = menuSmokePassed && abs(robot.root.eulerAngles.y - initialYaw - 0.8) < 0.001
+                    && window.firstResponder === mainMenu
+                portraitMouse(.leftMouseDown, offset: 80)
+                portraitMouse(.leftMouseDragged, offset: 0)
+                portraitMouse(.leftMouseUp, offset: 0)
+                mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 1.0 / 60)
+                menuSmokePassed = menuSmokePassed && abs(robot.root.eulerAngles.y - initialYaw) < 0.001
+                for (shortcut, model) in [("b", bb8.root), ("r", r2d2.root), ("w", wallE.root), ("m", robot.root)] {
+                    let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+                        windowNumber: window.windowNumber, context: nil, characters: shortcut,
+                        charactersIgnoringModifiers: shortcut, isARepeat: false, keyCode: 0)!
+                    mainMenu.keyDown(with: event)
+                    mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 1.0 / 60)
+                    let models = [robot.root, r2d2.root, bb8.root, wallE.root]
+                    menuSmokePassed = menuSmokePassed && model.parent === mainMenu.stage.rootNode
+                        && models.filter { $0.parent === mainMenu.stage.rootNode }.count == 1
+                    portraitMouse(.leftMouseDown, offset: 0)
+                    portraitMouse(.leftMouseDragged, offset: 40)
+                    portraitMouse(.leftMouseUp, offset: 40)
+                    mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 1.0 / 60)
+                    menuSmokePassed = menuSmokePassed && abs(model.eulerAngles.y - initialYaw - 0.4) < 0.001
+                    if let tiff = mainMenu.portrait.snapshot().tiffRepresentation,
+                       let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                        try? png.write(to: URL(fileURLWithPath: directory).appendingPathComponent("menu-\(shortcut).png"))
+                    }
+                    portraitMouse(.leftMouseDown, offset: 40)
+                    portraitMouse(.leftMouseDragged, offset: 0)
+                    portraitMouse(.leftMouseUp, offset: 0)
+                    mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 0)
+                }
                 let down = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
                     windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 125)!
                 let enter = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
@@ -208,6 +258,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 menuSmokePassed = menuSmokePassed && !mainMenu.settings
                 mainMenu.selection = 0; mainMenu.activate()
                 menuSmokePassed = menuSmokePassed && inSandbox && mainMenu.isHidden && !hud.isHidden
+                if CommandLine.arguments.contains("--menu-smoke-test") {
+                    print("Native menu smoke test: \(menuSmokePassed ? "PASS" : "FAIL") · \(directory)")
+                    exit(menuSmokePassed ? 0 : 1)
+                }
             }
             return
         }
@@ -217,16 +271,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let raceDelta = smokeDirectory == nil ? wallDelta : step
         let advancing = (active || smokeDirectory != nil) && !simulation.paused
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
-        robot.update(simulation)
         if isDirtTrack {
-            dirtWorld.update(simulation, opponent: opponent.simulation, dt: advancing ? step : 0, modelScale: robot.modelScale, additional:[bb8Opponent.simulation,wallEOpponent.simulation])
+            updateRaceWorld(dt: advancing ? step : 0)
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
             updateOpponents()
             raceHUD.race = race; raceHUD.scores = scores; raceHUD.paused = simulation.paused
             raceHUD.needsDisplay = true
-        } else { world.update(simulation) }
+        } else { updatePlayerModel(); world.update(simulation) }
         updateCamera(snap: false)
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
         hud.needsDisplay = true
@@ -238,19 +291,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; window.toolbar?.isVisible = false
         mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
         mainMenu.stage.rootNode.addChildNode(robot.root)
-        mainMenu.animate(robot, dt: 0)
+        mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 0)
         window.makeFirstResponder(mainMenu)
     }
     func startSandbox() {
+        configurePlayer()
         window.title = "Marvin · Playground"
         world.camera.camera?.zFar = 80
-        isDirtTrack = false; dirtIntro = nil; simulation = Simulation()
+        isDirtTrack = false; dirtIntro = nil; simulation = Simulation(character: playerCharacter)
         view.scene = world.scene; world.scene.rootNode.addChildNode(world.camera)
         view.pointOfView = world.camera; raceHUD.isHidden = true
         inSandbox = true; mainMenu.isHidden = true; hud.isHidden = false
         window.toolbar?.isVisible = true; hud.helpVisible = mainMenu.showGuide
-        world.scene.rootNode.addChildNode(robot.root)
-        reset(nil); robot.update(simulation); world.update(simulation)
+        for character in RacePerformance.Character.allCases { modelRoot(character).removeFromParentNode() }
+        world.scene.rootNode.addChildNode(modelRoot(playerCharacter))
+        reset(nil); updatePlayerModel(); world.update(simulation)
     }
     func recordRaceScore() {
         guard race.finished, !scoreSaved else { return }
@@ -261,6 +316,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         catch { raceHUD.saveError = "Could not save score" }
     }
     func startDirtTrack() {
+        configurePlayer()
         window.title = "Marvin · Dirt Track"; world.camera.camera?.zFar = 250
         isDirtTrack = true; inSandbox = true; simulation = Simulation(dirtTrack: true, dirtStartOffset:DirtCourse.playerGrid.offset, dirtStartPhase:DirtCourse.playerGrid.phase)
         hud.isHidden = true; raceHUD.isHidden = true
@@ -276,7 +332,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         scoreLoadFailed = false; raceHUD.saveError = nil
         do { scores = try DirtScores.load(scoreURL) }
         catch { scores = []; scoreLoadFailed = true; raceHUD.saveError = "Could not load scores; file preserved" }
-        reset(nil); robot.update(simulation)
+        reset(nil); updatePlayerModel()
         dirtIntro = 0; updateCamera(snap:true)
         SCNTransaction.commit()
         // Compile materials/upload geometry and draw the first correct overview
@@ -340,18 +396,17 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         guard inSandbox else { return }
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil; dirtOutro = nil
-        simulation.reset(); robot.update(simulation)
+        simulation.reset(); updatePlayerModel()
         if isDirtTrack {
             var random = SystemRandomNumberGenerator()
             let slots = DirtCourse.shuffledGrid(using:&random)
-            simulation = Simulation(dirtTrack:true,dirtStartOffset:slots[0].offset,dirtStartPhase:slots[0].phase)
-            robot.update(simulation)
+            simulation = Simulation(dirtTrack:true,dirtStartOffset:slots[0].offset,dirtStartPhase:slots[0].phase,character:playerCharacter)
             opponent = DirtOpponent(slot:slots[1])
             bb8Opponent = DirtOpponent(slot:slots[2],laneOffset:0)
             wallEOpponent = DirtOpponent(slot:slots[3],laneOffset:-0.65)
-            performances = [RacePerformance(.marvin),RacePerformance(.r2d2),RacePerformance(.bb8),RacePerformance(.wallE)]
+            performances = lineup.map { RacePerformance($0) }
             updateOpponents()
-            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(); scoreSaved = false
+            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup); scoreSaved = false
             dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
         }
         view.clearInput(); pauseItem?.label = "Pause"

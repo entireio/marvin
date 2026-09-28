@@ -3,8 +3,9 @@ import SimulationCore
 
 final class RaceHUD: NSView {
     var opponents: [DirtOpponent] = []
-    let racerNames = ["R2-D2", "BB-8", "WALL-E"]
-    let racerColors: [UInt32] = [0x58baff, 0xff914b, 0xf2c94c]
+    var playerName = "Marvin", playerColor = Robot.silverColor
+    var racerNames = ["R2-D2", "BB-8", "WALL-E"]
+    var racerColors: [UInt32] = [0x58baff, 0xff914b, 0xf2c94c]
     var position: Int { 1 + opponents.filter { $0.playerPosition(race) == 2 }.count }
     var race = DirtRace(), scores: [DirtScore] = []
     var x = 0.0, z = -10.0, heading = 0.0
@@ -40,7 +41,7 @@ final class RaceHUD: NSView {
             ("BEST LAP \(best)",169,16,false),
             ("POSITION \(position) / 4",202,18,true)
         ]
-        let names = ["Marvin"]+racerNames, colors = [Robot.silverColor]+racerColors
+        let names = [playerName]+racerNames, colors = [playerColor]+racerColors
         let standings = races.enumerated().map { i,competitor in
             let status = competitor.finished ? "FINISHED" : "LAP \(min(3,competitor.laps.count+1)) / 3"
             return "\(names[i].padding(toLength:8,withPad:" ",startingAt:0))\(status)"
@@ -115,10 +116,10 @@ final class RaceHUD: NSView {
             NSBezierPath(ovalIn:NSRect(x:rivalAt.x-4,y:rivalAt.y-4,width:8,height:8)).fill()
         }
         let at = marker(self.x,z)
-        color(Robot.silverColor).setFill(); NSBezierPath(ovalIn:NSRect(x:at.x-4,y:at.y-4,width:8,height:8)).fill()
+        color(playerColor).setFill(); NSBezierPath(ovalIn:NSRect(x:at.x-4,y:at.y-4,width:8,height:8)).fill()
         let direction = NSBezierPath(); direction.move(to:at)
         direction.line(to:NSPoint(x:at.x-sin(heading)*10,y:at.y-cos(heading)*10))
-        color(Robot.silverColor).setStroke(); direction.lineWidth = 2; direction.stroke()
+        color(playerColor).setStroke(); direction.lineWidth = 2; direction.stroke()
         if helpVisible {
             let lines = ["DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", "CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R"]
             let font = NSFont.monospacedSystemFont(ofSize:12,weight:.regular)
@@ -152,7 +153,7 @@ final class RaceHUD: NSView {
     }
     private func drawResults() {
         let races = [race]+opponents.map { $0.race }
-        let names = ["Marvin"]+racerNames, colors = [Robot.silverColor]+racerColors
+        let names = [playerName]+racerNames, colors = [playerColor]+racerColors
         let order = DirtStandings.order(races)
         let complete = races.allSatisfy { $0.finished }
         let w = min(CGFloat(560),bounds.width-44), h:CGFloat = 344

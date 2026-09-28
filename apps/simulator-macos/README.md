@@ -15,7 +15,12 @@ open 'apps/simulator-macos/.build/Marvin Simulator.app'
 ```
 
 Or double-click **Launch Marvin.command** in this directory. It builds and opens
-the app. You can copy `.build/Marvin Simulator.app` to Applications after building.
+the app, with a spinner and current stage pinned above grey process output.
+Redirected output stays plain text. Control-C cancels the build.
+Model exports are cached in `.build/asset-cache`: unchanged sources and exporter
+code skip regeneration, while missing or modified generated files trigger it.
+The first build populates this cache; deleting it forces a fresh export.
+You can copy `.build/Marvin Simulator.app` to Applications after building.
 The local build is ad-hoc signed, not notarized for distribution. It targets the
 Mac's current architecture; a build on Apple Silicon produces an arm64 app.
 
@@ -34,7 +39,13 @@ existing signature” message are normal successful-build output.
 ## Main menu
 
 The app opens with a live 3D Marvin portrait. Use the cursor keys and Return,
-or hover and click, to select Sandbox, Dirt Track, Settings, or Quit. Marvin looks around
+or hover and click, to select Sandbox, Dirt Track, Settings, or Quit. Drag left or
+right on the portrait to rotate Marvin; he stays at the angle you release.
+Hidden main-menu shortcuts: **B** shows BB-8, **R** shows R2-D2, **W** shows
+WALL-E, and **M** restores Marvin. Each portrait supports dragging and idle
+head movement. Your choice carries into Sandbox and Dirt Track and survives
+restarts during this app session. The other three robots become your race rivals.
+Marvin looks around
 and blinks at random intervals. Settings saves the idle-animation, keyboard-guide,
 and **Robot collisions** preferences. Robot collisions are on by default; turn them
 off to let all four Dirt Track racers pass through one another. Track barriers,
@@ -253,6 +264,17 @@ The sandbox is a **flat-ground kinematic simulation**; Dirt Track adds terrain f
   sensor emulation, firmware connection, or robot commands.
 
 ## Verification
+
+For a focused native check of menu shortcuts, portrait rotation, and navigation:
+
+```sh
+'apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator' \
+  --menu-smoke-test /tmp/marvin-menu-smoke
+```
+
+Use `--character-smoke-test /tmp/marvin-character-smoke` instead to check every
+playable robot in both modes, including driving, resets, race lineup, HUD names,
+model positions, and trails. This also captures each robot in both scenes.
 
 ```sh
 # Use DEVELOPER_DIR only if the default Xcode selection is unavailable.
