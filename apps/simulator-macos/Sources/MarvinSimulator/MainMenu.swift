@@ -139,7 +139,7 @@ final class MainMenuView: NSView {
             button.title = names[i]
             let tips = [2: "Dirt Track only. Turn off to let racers pass through one another.",
                         3: "Dirt Track only. Helps you follow the racing line while you steer. You choose when and which way to turn.",
-                        4: "Dirt Track only. Hold Space to brake; pressure eases near corner speed so you can keep turning. Release to accelerate."]
+                        4: "Dirt Track only. Hold Space for full braking while keeping steering control through the curve. Release to accelerate."]
             button.toolTip = settings ? tips[i] : nil
             button.setAccessibilityHelp(button.toolTip)
             button.attributedTitle = NSAttributedString(string: names[i], attributes: [.font: NSFont.systemFont(ofSize: 21, weight: .medium), .foregroundColor: i == selection ? NSColor.white : color(0x304e44)])

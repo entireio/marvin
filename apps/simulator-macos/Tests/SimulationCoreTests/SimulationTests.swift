@@ -540,6 +540,7 @@ struct SimulationTests {
     static func main() {
         let checks = SimulationTests()
         checks.testPoweredRolling()
+        checks.testBrakingAuthority()
         checks.testDrivingAssists()
         checks.testAssistedCornering()
         if CommandLine.arguments.contains("--assists-only") { return }
@@ -567,6 +568,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 27 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 28 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

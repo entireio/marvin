@@ -63,14 +63,16 @@ gear. Braking stops drivetrain spin; pausing freezes it and restarting resets it
 off independently in Settings. They apply only to the player during Dirt Track:
 
 - Keep pressing A/D or the arrow keys to steer. Steering help refines a turn
-  toward a smooth racing line while preserving your chosen direction. Releasing
-  steering gives no line-following correction; opposite steering remains yours.
-- Hold Space to brake before a curve. Braking help eases pressure near the
-  recommended corner speed and keeps steering available. Holding Space keeps
+  toward a smooth racing line while preserving your chosen direction. Help fades
+  smoothly as you steer away from the line at an exit. Releasing steering gives
+  no line-following correction; the assist never reverses your chosen turn.
+- Hold Space to brake before a curve. Braking help keeps full braking strength
+  and lets you keep steering through the curve. Holding Space keeps
   slowing you down; release it and use the throttle to accelerate out.
 - Neither assist drives for you, saves an unbraked boosted corner, or acts in
-  the air, in reverse, or while facing the wrong way. Sandbox controls and AI
-  drivers are unchanged. Disabling both restores the original manual controls.
+  the air or in reverse. Steering guidance also disengages outside the lane or
+  while facing the wrong way. Sandbox controls and AI drivers are unchanged.
+  Disabling both restores the original manual controls.
 
 The design draws on the separate steering/braking aids documented for
 [F1 22](https://www.frostbite.com/able/resources/f1-22/pc/assists) and the distinction
@@ -78,7 +80,7 @@ between stability assistance and Auto-Drive in
 [Gran Turismo 7](https://www.gran-turismo.com/au/gt7/manual/drivingoption/03)
 (reviewed September 28, 2026). Unlike their more automatic modes, these assists
 require the corresponding player input. The internal reference line is smoothed
-within the lane; its corner speeds reserve steering and grip for corrections.
+within the lane, and guidance follows actual chassis speed even when wheels slip.
 It is an arcade aid, not a mathematically optimal racing line.
 
 A fixed, winding motocross circuit inspired by [Dirt Rider’s layout guide](https://www.dirtrider.com/understanding-motocross-track-layouts/):

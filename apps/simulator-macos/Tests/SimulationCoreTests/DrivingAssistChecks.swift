@@ -3,43 +3,56 @@ import SimulationCore
 
 extension SimulationTests {
     func testAssistedCornering() {
-        func drive(_ assists: DirtDrivingAssists, phase: Double, fps: Double = 60,
-                   handsOff: Bool = false) -> (error:Double, progress:Double, speed:Double, heading:Double) {
+        struct Result { var error = 0.0, peak = 0.0, contacts = 0, progress = 0.0 }
+        func drive(_ assists: DirtDrivingAssists, phase: Double, handsOff: Bool = false) -> Result {
             var state = Simulation(seed:0,dirtTrack:true,dirtStartPhase:phase)
             var race = DirtRace(startPhase:phase), physics = DirtRacePhysics()
             var rivals = (0..<3).map { DirtOpponent(slot:(phase:phase-1-Double($0)*0.15,offset:0)) }
             race.countDown(dt:3)
-            var error = 0.0
-            for _ in 0..<Int(fps*8) {
-                let at = DirtCourse.phase(x:state.x,z:state.z)
-                let guide = DirtRacingLine.guidance(x:state.x,z:state.z,heading:state.heading,speed:state.speed,phase:at)
-                // A coarse keyboard driver presses the right direction, with
-                // a dead zone, and brakes when approaching corner speed.
-                var input = DriveInput(); input.throttle = 1; input.boost = true
-                if !handsOff {
-                    input.turn = abs(guide.turn) < 0.15 ? 0 : guide.turn > 0 ? 1 : -1
-                    input.brake = state.speed > guide.speed+0.3
+            var result = Result(), input = DriveInput()
+            for frame in 0..<360 {
+                // Independent centerline driver with 150 ms reaction time.
+                // Never consult the assist's line or corner-speed recommendation.
+                if frame.isMultiple(of:9) {
+                    let at = DirtCourse.phase(x:state.x,z:state.z), target = DirtCourse.point(at+0.075)
+                    let desired = atan2(target.x-state.x,target.z-state.z)
+                    let error = atan2(sin(desired-state.heading),cos(desired-state.heading))
+                    let delta = DirtCourse.heading(at+0.15)-DirtCourse.heading(at)
+                    let bend = abs(atan2(sin(delta),cos(delta)))
+                    input.throttle = 1
+                    if !handsOff {
+                        input.turn = abs(error) < 0.08 ? 0 : error > 0 ? -1 : 1
+                        input.brake = state.groundSpeed > (bend > 0.4 ? 3.0 : 5.5)
+                    }
                 }
-                physics.advance(input,player:&state,race:&race,opponents:&rivals,dt:1/fps,raceDT:1/fps,
+                physics.advance(input,player:&state,race:&race,opponents:&rivals,dt:1.0/60,raceDT:1.0/60,
                                 robotCollisionsEnabled:false,assists:assists)
-                let p = DirtRacingLine.point(DirtCourse.phase(x:state.x,z:state.z))
-                error += hypot(p.x-state.x,p.z-state.z)/(fps*8)
+                let distance = DirtCourse.projection(x:state.x,z:state.z).distance
+                result.error += distance/360; result.peak = max(result.peak,distance)
+                if state.contacting { result.contacts += 1 }
             }
-            return (error,race.progress-phase,state.speed,state.heading)
+            result.progress = race.progress-phase
+            return result
         }
         var manualError = 0.0, assistedError = 0.0
-        for phase in [0.6,2.4,4.2] {
-            let manual = drive(.off,phase:phase), assisted = drive(DirtDrivingAssists(),phase:phase)
-            print("Corner \(phase): manual error \(manual.error), assisted \(assisted.error); progress \(manual.progress), \(assisted.progress)")
-            manualError += manual.error; assistedError += assisted.error
-            require(assisted.progress > 0.1)
+        let settings = [DirtDrivingAssists.off, DirtDrivingAssists(braking:false),
+                        DirtDrivingAssists(steering:false), DirtDrivingAssists()]
+        for i in 0..<12 {
+            let phase = Double(i)*2 * .pi/12
+            let runs = settings.map { drive($0,phase:phase) }
+            for run in runs {
+                require(run.contacts == 0 && run.peak < DirtCourse.width)
+                require(run.progress > 0.5)
+            }
+            manualError += runs[0].error; assistedError += runs[3].error
+            print(String(format:"Corner %.3f: manual %.3f, assisted %.3f; no fence contacts",phase,runs[0].error,runs[3].error))
         }
-        require(assistedError < manualError*0.9)
+        require(assistedError < manualError*0.85)
         let manual = drive(.off,phase:2.4,handsOff:true)
         let handsOff = drive(DirtDrivingAssists(),phase:2.4,handsOff:true)
         near(manual.error,handsOff.error,accuracy:1e-10)
         near(manual.progress,handsOff.progress,accuracy:1e-10)
-        near(manual.speed,handsOff.speed,accuracy:1e-10)
+        equal(manual.contacts,handsOff.contacts)
         // Active assists re-evaluate at the physics clock, not the renderer.
         func scripted(fps: Double, assists: DirtDrivingAssists) -> Simulation {
             var state = Simulation(seed:0,dirtTrack:true,dirtStartPhase:2.4)
@@ -62,6 +75,39 @@ extension SimulationTests {
         near(slow.speed,0,accuracy:0.01)
         require(hypot(fast.x-unassisted.x,fast.z-unassisted.z) > 0.1)
         print("PASS: assisted cornering improves line error; hands-off behavior is unchanged")
+    }
+
+    func testBrakingAuthority() {
+        func stop(assisted:Bool, turn:Double = 0) -> (distance:Double,heading:Double,speed:Double) {
+            var state = Simulation(seed:0,dirtTrack:true,dirtStartPhase:-0.15)
+            var race = DirtRace(startPhase:-0.15), physics = DirtRacePhysics()
+            var rivals = (0..<3).map { DirtOpponent(slot:(phase:-1-Double($0)*0.15,offset:0)) }
+            race.countDown(dt:3)
+            var input = DriveInput(); input.throttle = 1; input.boost = true
+            for _ in 0..<30 {
+                physics.advance(input,player:&state,race:&race,opponents:&rivals,dt:1.0/60,raceDT:1.0/60,robotCollisionsEnabled:false)
+            }
+            let initial = state
+            require(state.groundSpeed > 4)
+            input.brake = true; input.turn = turn
+            for _ in 0..<60 {
+                let before = state.groundSpeed
+                physics.advance(input,player:&state,race:&race,opponents:&rivals,dt:1.0/60,raceDT:1.0/60,
+                                robotCollisionsEnabled:false,assists:DirtDrivingAssists(steering:false,braking:assisted))
+                require(state.groundSpeed <= before+0.00001)
+            }
+            let delta = state.heading-initial.heading
+            return (hypot(state.x-initial.x,state.z-initial.z),atan2(sin(delta),cos(delta)),state.groundSpeed)
+        }
+        let manual = stop(assisted:false), assisted = stop(assisted:true)
+        require(assisted.distance <= manual.distance+0.001)
+        near(assisted.speed,0,accuracy:0.001)
+        for turn in [-0.5,0.5] {
+            let result = stop(assisted:true,turn:turn)
+            require(result.heading*turn < -0.01)
+            near(result.speed,0,accuracy:0.001)
+        }
+        print("PASS: brake help preserves stopping strength and steering in both directions")
     }
 
     func testDrivingAssists() {
@@ -103,6 +149,20 @@ extension SimulationTests {
             }
         }
         require(changed > 0)
+        // Sweep through the reference turn's sign change. A held steering
+        // key must not jump back to full strength as the curve straightens.
+        for direction in [-1.0,1.0] {
+            var previous: Double?
+            for i in -200...200 {
+                var state = Simulation(seed:0,dirtTrack:true,dirtStartOffset:Double(i)*0.005)
+                var input = DriveInput(); input.throttle = 1
+                state.advance(input,dt:0.1); input.turn = direction
+                let output = assists.apply(input,to:state).turn
+                if let previous { require(abs(output-previous) < 0.04) }
+                require(output*direction > 0)
+                previous = output
+            }
+        }
         // Sandbox controls stay exact, regardless of the two settings.
         var sandbox = Simulation(seed:0), input = DriveInput()
         input.throttle = 1; input.turn = 0.6; input.brake = true

@@ -10,8 +10,8 @@ public struct Obstacle: Sendable {
 public struct DriveInput: Sendable {
     public var throttle = 0.0, turn = 0.0, headYaw = 0.0, headPitch = 0.0
     public var boost = false, brake = false
-    // Set only by the Dirt Track brake assist; nil preserves manual braking.
-    var assistedBrakePressure: Double?
+    // Set only by the Dirt Track assist; preserves steering while braking.
+    var assistedBraking = false
     public init() {}
 }
 
@@ -60,6 +60,10 @@ public struct Simulation: Sendable {
         !airborne || (dirtTrack && groundY-DirtCourse.height(x:x,z:z) <= 0.006)
     }
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
+    /// Chassis motion can differ from drivetrain speed during braking/sliding
+    /// or when powered wheels spin against a barrier.
+    public var groundSpeed: Double { robotDynamics ? hypot(velocity.x,velocity.z) : abs(speed) }
+    public var forwardSpeed: Double { robotDynamics ? velocity.x*sin(heading)+velocity.z*cos(heading) : speed }
     public var complete: Bool { checkpoint == checkpoints.count }
     public init(seed: UInt64 = UInt64.random(in: UInt64.min...UInt64.max), dirtTrack: Bool = false, dirtStartOffset: Double = 0, dirtStartPhase: Double = 0, character: RacePerformance.Character = .marvin) {
         self.character = character
@@ -148,11 +152,11 @@ public struct Simulation: Sendable {
         func approach(_ value: Double, _ target: Double) -> Double {
             value + max(-acceleration*dt, min(acceleration*dt, target-value))
         }
-        if input.brake, dirtTrack, let pressure = input.assistedBrakePressure {
+        if input.brake, dirtTrack, input.assistedBraking {
             // Keep steering available while braking. Never accelerate toward a
             // corner-speed target: pressure only removes forward momentum.
             let longitudinal = robotDynamics ? velocity.x*sin(heading)+velocity.z*cos(heading) : speed
-            let brakingSpeed = max(0,min(speed,longitudinal)-16*pressure*dt)
+            let brakingSpeed = max(0,min(speed,longitudinal)-16*dt)
             leftSpeed = brakingSpeed+differential
             rightSpeed = brakingSpeed-differential
         } else if input.brake { leftSpeed = 0; rightSpeed = 0 }
@@ -184,8 +188,8 @@ public struct Simulation: Sendable {
                 let lateral = velocity.x*side.x+velocity.z*side.z
                 let driveLimit = input.brake ? 16.0 : acceleration
                 let drive: Double
-                if input.brake, let pressure = input.assistedBrakePressure {
-                    drive = -min(max(0,longitudinal)/dt,16*pressure)
+                if input.brake, input.assistedBraking {
+                    drive = -min(max(0,longitudinal)/dt,16)
                 } else { drive = max(-driveLimit,min(driveLimit,(speed-longitudinal)*20)) }
                 let slip = max(-12.0,min(12.0,-lateral*14))
                 var force = forward*drive+side*slip
