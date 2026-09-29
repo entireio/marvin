@@ -51,6 +51,7 @@ extension AppController {
                 ("town-citizens",SCNVector3(-6.0,1.35,-28.1),SCNVector3(-6.7,0.65,-25.4)),
                 ("town-spectators",SCNVector3(3.3,2.5,DirtCourse.point(0).z-1.5),SCNVector3(3,2.03,DirtCourse.point(0).z-4.18)),
                 ("town-market",SCNVector3(-14,2.6,-27.8),SCNVector3(0,1.3,-24.5)),
+                ("town-service-access",SCNVector3(-2,5.8,-18),SCNVector3(-7.5,0.15,-10.8)),
                 ("town-repair",SCNVector3(-3.6,2.9,-13.0),SCNVector3(-7.5,0.95,-7.5)),
                 ("town-outskirts",SCNVector3(-46,13,-26),SCNVector3(-21,3,-3)),
                 ("town-spaceport",SCNVector3(17,9,0),SCNVector3(34,1.5,13)),
@@ -63,12 +64,18 @@ extension AppController {
             }
             updateCamera(snap:true)
             try saveTownFrame("town-racing",at:directory)
+            // Inspect from just ahead of Marvin's head, at its actual eye height.
+            let forward=SIMD2(sin(simulation.heading),cos(simulation.heading))
+            let eye=SCNVector3(simulation.x+forward.x*0.34,simulation.groundY+0.46,simulation.z+forward.y*0.34)
+            world.camera.position=eye
+            world.camera.look(at:SCNVector3(simulation.x+forward.x*12,simulation.groundY+0.46,simulation.z+forward.y*12),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+            try saveTownFrame("town-robot-pov",at:directory)
             let count=dirtWorld.town.statistics
             let children=dirtWorld.town.root.childNodes.count
             reset(nil)
             let resetPassed=dirtWorld.town.statistics==count && dirtWorld.town.root.childNodes.count==children && race.countdown==3
             let report:[String:Any] = ["passed":valid && resetPassed && cameraPassed && pausePassed,"layoutClearancePassed":valid,"cityCoveragePassed":dirtWorld.town.cityCoveragePassed,"streetNetworkPassed":dirtWorld.town.streetNetworkPassed,"resetPassed":resetPassed,"cameraObstructionPassed":cameraPassed,"crowdPausePassed":pausePassed,
-                                      "town":count,"images":cameras.map{$0.0} + ["town-racing"]]
+                                      "town":count,"images":cameras.map{$0.0} + ["town-racing","town-robot-pov"]]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("town-smoke.json"))
             return valid && resetPassed && cameraPassed && pausePassed
         } catch { print("Town smoke: \(error)");return false }

@@ -49,6 +49,7 @@ final class TownWorld {
         buildLandmarks()
         buildStreetLife()
         buildMarketDetails()
+        buildReferenceDetails()
         buildWayfinding()
         crowd.finish(into:root)
         for key in cells.keys.sorted() {
@@ -93,6 +94,27 @@ final class TownWorld {
     private struct Street {
         let points:[SIMD2<Double>]
         let width:Double
+        let path:[SIMD2<Double>]
+        init(points:[SIMD2<Double>],width:Double) {
+            self.points=points;self.width=width
+            // Interpolating Hermite curves retain junctions while easing changes
+            // of direction. Tangents are limited by the shorter adjacent block.
+            let tangents=points.indices.map { i -> SIMD2<Double> in
+                if i==0 { return points[1]-points[0] }
+                if i==points.count-1 { return points[i]-points[i-1] }
+                let incoming=points[i]-points[i-1],outgoing=points[i+1]-points[i]
+                return simd_normalize(simd_normalize(incoming)+simd_normalize(outgoing))*min(simd_length(incoming),simd_length(outgoing))
+            }
+            var samples:[SIMD2<Double>]=[]
+            for i in 0..<points.count-1 {
+                let count=max(8,Int(ceil(simd_length(points[i+1]-points[i])/0.9)))
+                for j in 0..<count {
+                    let t=Double(j)/Double(count),t2=t*t,t3=t2*t
+                    samples.append(points[i]*(2*t3-3*t2+1)+tangents[i]*(t3-2*t2+t)+points[i+1]*(-2*t3+3*t2)+tangents[i+1]*(t3-t2))
+                }
+            }
+            path=samples+[points.last!]
+        }
     }
     // Destination-led arteries: market approach, dock access and northern trade
     // route. None forms a closed perimeter around the race.
@@ -107,33 +129,37 @@ final class TownWorld {
     private func streetDistance(_ x:Double,_ z:Double)->Double {
         let p=SIMD2(x,z)
         var distance=Double.greatestFiniteMagnitude
-        for street in streets { for i in 1..<street.points.count {
-            let a=street.points[i-1],d=street.points[i]-a
+        for street in streets { for i in 1..<street.path.count {
+            let a=street.path[i-1],d=street.path[i]-a
             let t=max(0,min(1,simd_dot(p-a,d)/simd_length_squared(d)))
             distance=min(distance,simd_length(p-a-d*t)-street.width/2)
         }}
         return distance
     }
     private func buildRoads() {
+        let mesh=TownMesh()
         for street in streets {
-            for i in 1..<street.points.count {
-                let a=street.points[i-1],b=street.points[i],delta=b-a
-                let length=simd_length(delta),steps=Int(ceil(length/8))
-                let yaw=atan2(delta.x,delta.y)
-                for k in 0..<steps {
-                    let center=a+delta*(Double(k)+0.5)/Double(steps)
-                    let p=paint(center.x,center.y,yaw:yaw)
-                    p.box(0,-0.012,0,street.width+0.7,0.016,length/Double(steps)+0.08,0x8e806e)
-                    p.box(0,-0.002,0,street.width,0.012,length/Double(steps)+0.1,0xa49680)
-                    // Worn cart tracks replace the modern white kerbs/markings.
-                    for side in [-1.0,1] {
-                        p.box(side*0.72,0.006,0,0.19,0.008,length/Double(steps)+0.1,0x938672,detail:true)
+            // One continuous ground ribbon, with soft shoulders. No overlapping
+            // rectangular slabs or ruler-straight parallel cart-track markings.
+            let widths=[-street.width/2-0.42,-street.width/2,-street.width*0.35,street.width*0.35,street.width/2,street.width/2+0.42]
+            let inks:[UInt32]=[0x9d8c73,0xa0927b,0xa49680,0xa0927b,0x9d8c73]
+            let normals=street.path.indices.map { i -> SIMD2<Double> in
+                let tangent=simd_normalize(street.path[min(i+1,street.path.count-1)]-street.path[max(0,i-1)])
+                return SIMD2(-tangent.y,tangent.x)
+            }
+            for i in 1..<street.path.count {
+                for band in 0..<widths.count-1 {
+                    func vertex(_ j:Int,_ edge:Int)->SIMD3<Float> {
+                        let p=street.path[j]+normals[j]*widths[edge]
+                        return SIMD3(Float(p.x),-0.013,Float(p.y))
                     }
+                    let a=vertex(i-1,band),b=vertex(i,band),c=vertex(i,band+1),d=vertex(i-1,band+1)
+                    mesh.triangle(a,c,b,inks[band]);mesh.triangle(a,d,c,inks[band])
                 }
-                let q=paint(b.x,b.y)
-                q.cylinder(0,0,0,street.width/2,street.width/2,0.008,0xa49680,sides:16)
             }
         }
+        let road=SCNNode(geometry:mesh.geometry(material:CityMaterials.plaster))
+        road.name="Continuous curved town streets";road.castsShadow=false;root.addChildNode(road)
         let plaza=paint(0,finishZ-7.0)
         plaza.box(0,-0.006,0,19,0.018,7.0,0x9f917b)
         // Small local passages connect the market doors to the main approach.
@@ -142,25 +168,41 @@ final class TownWorld {
 
     private func buildGrandstand() {
         let z = finishZ-4.9, p = paint(0,z)
-        cameraBounds.append((SIMD3(-7.5,0,z-2.6),SIMD3(7.5,3.9,z+1.95)))
+        cameraBounds.append((SIMD3(-7.5,0,z-2.6),SIMD3(7.5,4.3,z+1.95)))
         // Shops form the plinth, with seating rising toward the back of town.
-        p.box(0,0.67,-0.65,12.8,1.34,3.8,sand)
+        // Structural arcade: real recessed bays, not dark rectangles on a solid box.
+        p.box(0,0.68,-2.36,12.8,1.36,0.30,0xb49d7e)
+        p.box(0,1.34,-0.65,12.8,0.18,3.8,0xc7b18b)
+        p.box(0,0.04,-0.65,12.8,0.08,3.8,0x8a7964)
         p.box(0,0.12,0.9,13.2,0.24,1.0,cream)
-        for x in stride(from:-5.5,through:5.5,by:1.85) {
-            p.box(x,0.76,1.26,1.42,1.12,0.04,dark)
-            p.dome(x,1.28,1.28,0.71,0.45,0.09,sand,detail:true)
-            p.box(x,0.16,1.35,1.48,0.18,0.32,trim)
-            p.box(x,1.23,1.60,1.55,0.10,0.85,Int(x*10)%2 == 0 ? teal : rust)
-            for sx in [-0.72,0.72] { p.box(x+sx,0.62,1.90,0.055,1.24,0.055,dark,detail:true) }
-            for k in 0..<3 { p.box(x-0.42+Double(k)*0.38,0.42,1.44,0.28,0.35,0.23,0xa17c51,detail:true) }
+        for (bay,x) in stride(from:-5.5,through:5.5,by:1.85).enumerated() {
+            p.arcade(x,0.05,1.22,1.44,1.22,0.42,0.17,0xc5b08b)
+            p.box(x,0.61,0.32,1.42,1.06,0.08,0x51493d,detail:true)
+            p.box(x,0.16,1.36,1.54,0.15,0.47,0xa9977b)
+            p.awning(x,1.66,1.64,1.02,1.46,bay%2==0 ? 0xad9671:0x758680)
+            for sx in [-0.77,0.77] {
+                p.beam(SIMD3(x+sx,0.12,2.06),SIMD3(x+sx,1.44,2.06),0.025,0x5e5548,sides:6)
+                p.beam(SIMD3(x+sx,1.42,2.06),SIMD3(x+sx,1.57,1.10),0.017,0x746554,sides:6)
+            }
+            // Joinery, open shelves, pots and supply cases are visible in the alcove.
+            for shelf in [0.42,0.85] {
+                p.box(x,shelf,0.73,1.2,0.055,0.46,0x77634c,detail:true)
+                for k in 0..<4 {
+                    let xx=x-0.43+Double(k)*0.28
+                    if (k+bay)%2==0 { p.cylinder(xx,shelf+0.12,0.74,0.08,0.10,0.22,0xab8c64,sides:10,detail:true) }
+                    else { p.box(xx,shelf+0.12,0.74,0.19,0.23,0.20,0x64756c,detail:true) }
+                }
+            }
+            p.plasterPatch(x-0.88,0.38,1.448,0.08,0.27,0x927f64,seed:bay)
         }
         for row in 0..<5 {
             let y=1.4+Double(row)*0.31, rz=0.72-Double(row)*0.56
             p.box(0,y-0.12,rz,12.6,0.24,0.58,cream)
             p.box(0,y+0.06,rz-0.12,12.1,0.12,0.25,rust,detail:true)
-            for seat in 0..<22 where seat != 10 && seat != 11 && (seat+row*3)%9 != 0 {
-                let x = -5.7+Double(seat)*0.54
-                citizen(x,z+rz,y:y+0.12,yaw:0,index:row*22+seat,seated:true,animated:row == 0 && seat%4 == 0)
+            for seat in 0..<22 where seat != 10 && seat != 11 && (seat*7+row*11)%13>1 {
+                let x = -5.7+Double(seat)*0.54+sin(Double(seat*17+row))*0.035
+                let turn=sin(Double(seat*7+row*13))*0.23
+                citizen(x,z+rz+cos(Double(seat*11))*0.035,y:y+0.12,yaw:turn,index:row*22+seat,seated:true,animated:row == 0 && seat%4 == 0)
             }
         }
         // Central aisle and accessible-looking side stairs, not a solid slab.
@@ -173,11 +215,15 @@ final class TownWorld {
         }
         // Shade roof with a gap over the central aisle. Opaque geometry avoids
         // layers of alpha over the crowded start and finish.
-        for x in [-3.45,3.45] {
-            p.box(x,3.78,-1.12,5.65,0.085,2.8,teal)
-            for pole in [-2.7,2.7] { p.box(x+pole,2.49,-2.30,0.07,2.6,0.07,dark,detail:true) }
-            for stripe in stride(from:-2.4,through:2.4,by:0.6) {
-                p.box(x+stripe,3.826,-1.12,0.10,0.01,2.75,cream,detail:true)
+        for (i,x) in [-3.45,3.45].enumerated() {
+            p.canopy(x,-1.12,5.65,2.8,3.83,0.32,i==0 ? 0xb6a17e:0x9eaa9b)
+            p.valance(x,0.285,5.65,3.83,0.23,i==0 ? 0xb6a17e:0x9eaa9b,rise:0.32)
+            for edge in [-2.8,2.8] {
+                p.cable(SIMD3(x+edge,3.83,0.28),SIMD3(x+edge,2.85,0.28),0.018,0x766653)
+            }
+            // Tension seams, reinforced hems and roof battens follow the cloth.
+            for xx in [-1.85,0,1.85] {
+                p.beam(SIMD3(x+xx,3.79,-2.52),SIMD3(x+xx,3.79,0.27),0.025,0x75634e,sides:6)
             }
         }
         for (i,x) in [-5.2,-2.4,2.4,5.2].enumerated() {
@@ -195,12 +241,14 @@ final class TownWorld {
             q.adobe(0,1.75,0,2.4,3.5,3.6,sand)
             for side in [-1.0,1] { q.door(0,side*1.81,0.70,1.35,dark,sand,side:side) }
             q.cylinder(0,4.45,0,0.85,0.62,1.8,cream)
-            q.dome(0,5.35,0,0.72,0.55,0.72,sand)
-            q.box(0,4.55,0.69,0.65,0.5,0.035,dark,detail:true)
+            q.dome(0,5.315,0,0.72,0.55,0.72,sand)
+            q.box(0,4.55,0.72,0.45,0.65,0.30,sand,detail:true)
+            q.box(0,4.55,0.88,0.27,0.42,0.025,dark,detail:true)
+            for j in 0..<4 { q.box(0,4.41+Double(j)*0.09,0.90,0.30,0.025,0.035,trim,detail:true) }
             q.box(0,6.1,0,0.055,0.85,0.055,dark,detail:true)
         }
         signs.plate("MOS ASTER GRAND PRIX",eyebrow:"INTERPLANETARY RACING SERIES",footer:"START  /  FINISH",badge:"07",
-                    at:SCNVector3(0,1.49,z+2.06),width:8.2,height:0.94,into:root)
+                    at:SCNVector3(0,1.54,z+2.10),width:5.7,height:0.68,into:root)
         for (i,x) in [-8.5,8.5].enumerated() {
             signs.plate("GATE \(i+1)",eyebrow:"GRANDSTAND",footer:i==0 ? "SECTORS A / B":"SECTORS C / D",badge:i==0 ? "A":"C",
                         at:SCNVector3(x,2.37,finishZ-3.64),width:1.78,height:0.58,accent:teal,into:root)
@@ -379,13 +427,21 @@ final class TownWorld {
 
     private var repairLots:[TownLot] = []
     private func buildRepairPit() {
+        let entry=paint(DirtCourse.serviceEntryX,-12.2)
+        for side in [-1.0,1.0] {
+            entry.cylinder(side*1.40,0.28,0,0.045,0.045,0.56,0xb59b62,sides:8,detail:true)
+            entry.cylinder(side*1.40,0.40,0,0.046,0.046,0.075,0x554c40,sides:8,detail:true)
+        }
+        signs.plate("SERVICE ACCESS",eyebrow:"REPAIR BAY",footer:"KEEP CLEAR",badge:"S",
+                    at:SCNVector3(DirtCourse.serviceEntryX-1.85,0.68,-12.2),width:1.02,height:0.34,yaw:.pi,accent:rust,into:root)
+        entry.beam(SIMD3(-1.85,0,-0.01),SIMD3(-1.85,0.67,-0.01),0.025,trim,sides:6)
         // Two pockets on the west side of the infield, clear of the dirt shoulder.
         for (i,location) in [(-7.5,-7.5),(-8.5,3.5)].enumerated() {
             let x=location.0,z=location.1,w=4.0,d=4.0
             guard infield(x,z),clearLot(x,z,w+0.3,d+0.3) else { continue }
             repairLots.append(TownLot(x:x,z:z,width:w+0.3,depth:d+0.3))
             let p=paint(x,z)
-            p.box(0,0.025,0,w+0.2,0.05,d+0.2,0x897c63)
+            p.repairRug(3.8,3.8,i)
             p.canopy(0,0,w,d,2.0,0.65,i == 0 ? rust:teal)
             cameraBounds.append((SIMD3(x-w/2,2.0,z-d/2),SIMD3(x+w/2,2.65,z+d/2)))
             // Open sides reveal benches, parts racks and a robot on a lift.
@@ -398,11 +454,24 @@ final class TownWorld {
                 p.box(-0.69,0.775,zz+0.11,0.16,0.035,0.07,cream,detail:true)
             }
             p.box(0.24,0.14,0.20,0.95,0.28,1.3,dark)
-            p.box(0.24,0.57,0.20,0.48,0.58,0.56,cream)
-            p.box(0.24,0.63,0.49,0.32,0.34,0.04,dark,detail:true) // exposed circuitry
-            for k in 0..<3 { p.box(0.14+Double(k)*0.1,0.64,0.52,0.035,0.25,0.035,k%2 == 0 ? rust:teal,detail:true) }
-            p.dome(0.24,0.99,0.20,0.26,0.23,0.26,teal,sides:10)
-            for xx in [-0.13,0.61] { p.box(xx,0.30,0.30,0.20,0.20,0.70,trim) }
+            // Tapered service droid with separate shell, collar and articulated limbs.
+            p.cylinder(0.24,0.62,0.20,0.28,0.23,0.63,cream,sides:24)
+            p.cylinder(0.24,0.92,0.20,0.245,0.245,0.065,dark,sides:24,detail:true)
+            p.dome(0.24,0.965,0.20,0.26,0.23,0.26,teal,sides:24)
+            p.box(0.24,1.07,0.448,0.18,0.065,0.035,dark,detail:true)
+            p.box(0.30,1.07,0.47,0.035,0.035,0.016,0xbb9567,detail:true)
+            p.box(0.24,0.66,0.465,0.25,0.32,0.035,dark,detail:true)
+            for k in 0..<5 {
+                p.box(0.24,0.55+Double(k)*0.047,0.487,0.20,0.018,0.012,trim,detail:true)
+            }
+            for side in [-1.0,1.0] {
+                let xx=0.24+side*0.34
+                p.cylinder(xx,0.77,0.20,0.10,0.10,0.12,trim,sides:16,detail:true)
+                p.beam(SIMD3(xx,0.74,0.20),SIMD3(xx+side*0.09,0.40,0.32),0.065,cream,sides:12)
+                p.beam(SIMD3(xx+side*0.09,0.40,0.32),SIMD3(xx,0.33,0.46),0.045,dark,sides:12)
+                p.box(xx,0.29,0.34,0.22,0.15,0.46,trim,detail:true)
+                p.cylinder(xx,0.375,0.43,0.068,0.068,0.035,cream,sides:16,detail:true)
+            }
             // Engine hoist and hanging spare motor.
             p.box(1.17,0.8,0.91,0.09,1.6,0.09,dark)
             p.box(0.83,1.60,0.91,0.76,0.10,0.10,rust)
@@ -415,9 +484,9 @@ final class TownWorld {
             citizen(x+0.73,z-0.35,y:0.055,yaw:-1.2,index:707+i,seated:false)
             p.box(-0.96,0.19,-1.06,0.60,0.36,0.40,teal)
             p.box(-0.96,0.40,-1.06,0.21,0.06,0.08,dark,detail:true)
-            for sx in [-0.65,0.65] { p.beam(SIMD3(sx,2.02,-1.56),SIMD3(sx,2.43,-1.56),0.012,dark,sides:5) }
+            for sx in [-0.65,0.65] { p.beam(SIMD3(sx,1.98,-2.015),SIMD3(sx,2.44,-2.015),0.012,dark,sides:5) }
             signs.plate(i==0 ? "DROID REPAIR":"PARTS & SALVAGE",eyebrow:"RACE SERVICE",footer:"CREW ACCESS ONLY",badge:i==0 ? "01":"02",
-                        at:SCNVector3(x,1.77,z-1.56),width:1.85,height:0.46,yaw:.pi,accent:rust,into:root)
+                        at:SCNVector3(x,1.74,z-2.035),width:1.85,height:0.46,yaw:.pi,accent:rust,into:root)
         }
     }
 
@@ -510,8 +579,10 @@ final class TownWorld {
             }
         }
         for i in 0..<36 {
-            let x = -8.5+Double(i%18)*0.98+sin(Double(i)*2.3)*0.22, z=finishZ-7.8-Double(i/18)*0.85+cos(Double(i)*1.9)*0.30
-            citizen(x,z,y:0.04,yaw:Double(i)*0.9,index:i+400,seated:false,animated:i%9 == 0,walking:i%9 == 0)
+            let group=i/3,member=i%3,angle=Double(member)*2.1+Double(group)*0.6
+            let x = -8.3+Double(group%6)*3.2+cos(angle)*0.42
+            let z=finishZ-8.0-Double(group/6)*1.25+sin(angle)*0.42
+            citizen(x,z,y:0.04,yaw:-angle-Double.pi/2,index:i+400,seated:false,animated:i%9 == 0,walking:i%9 == 0)
         }
         // Side terrace: civic spectators overlooking the northern sweeping turn.
         let p=paint(3,22)
@@ -531,7 +602,7 @@ final class TownWorld {
             for side in [-1.0,1] { p.box(side*0.95,0.3,-0.1,0.14,0.6,0.5,0x54483b,detail:true) }
             for k in 0..<6 {
                 let xx = -0.9+Double(k)*0.36
-                if i%2==0 { p.cylinder(xx,0.82,-0.08,0.12,0.17,0.28,0x97816a,sides:8,detail:true) }
+                if i%2==0 { p.vessel(xx,0.73,-0.08,0.38+Double(k%3)*0.05,k%2==0 ? 0x97816a:0xa8795c) }
                 else { p.box(xx,0.81,-0.08,0.25,0.22,0.34,k%2==0 ? 0x667771:0xad8f65,detail:true) }
             }
             p.beam(SIMD3(-1.4,1.64,-0.77),SIMD3(1.4,1.64,-0.77),0.022,dark,sides:6)
@@ -550,7 +621,11 @@ final class TownWorld {
                 let count=Int(length/3.5)
                 for k in 0..<count {
                     let t=(Double(k)+0.5)/Double(max(1,count))
-                    let center=a+delta*t+normal*((k%2==0 ? 1.0:-1.0)*(street.width/2-0.32))
+                    let routePoint=a+delta*t
+                    let nearest=street.path.indices.min { simd_length_squared(street.path[$0]-routePoint)<simd_length_squared(street.path[$1]-routePoint) }!
+                    let curvedTangent=simd_normalize(street.path[min(nearest+1,street.path.count-1)]-street.path[max(0,nearest-1)])
+                    let curvedNormal=SIMD2(-curvedTangent.y,curvedTangent.x)
+                    let center=street.path[nearest]+curvedNormal*((k%2==0 ? 1.0:-1.0)*(street.width/2-0.32))
                     guard max(abs(center.x),abs(center.y))<52 else { continue }
                     let index=2000+roadIndex*100+i*13+k
                     citizen(center.x,center.y,y:0.02,yaw:atan2(tangent.x,tangent.y),index:index,seated:false)
@@ -594,6 +669,80 @@ final class TownWorld {
             people.append(TownPerson(node:node,origin:node.position,phase:Double(index)*1.618))
         }
     }
+    /// Authored reference block: construction, repairs and usable objects have
+    /// specific placements rather than scattering decoration over the whole city.
+    private func buildReferenceDetails() {
+        let z=finishZ-4.9,p=paint(0,z)
+        for side in [-1.0,1] {
+            // Handrails follow the flights, with vertical posts and socket plates.
+            let x=side*7.29
+            p.beam(SIMD3(x,0.86,1.30),SIMD3(x,3.31,-2.10),0.026,0x6d6555)
+            for i in 0..<5 {
+                let zz=1.3-Double(i)*0.85,y=0.08+Double(i)*0.60
+                p.beam(SIMD3(x,y,zz),SIMD3(x,y+0.81,zz),0.02,0x6d6555,sides:6)
+            }
+            let q=paint(side*8.5,finishZ-5.5)
+            // Plaster repairs collect at the plinth, pipes and sill edges.
+            for k in 0..<7 {
+                q.plasterPatch(-0.94+Double(k)*0.30,0.18+Double(k%3)*0.12,1.802,0.23,0.24,0xa38e71,seed:k)
+            }
+            q.box(0,3.28,1.83,2.24,0.11,0.20,0xaa9676,detail:true)
+            q.box(0,3.46,1.84,2.33,0.12,0.23,0xd0ba95,detail:true)
+            // Copper service riser, elbows, straps and junction housing.
+            q.beam(SIMD3(0.93,0.18,1.86),SIMD3(0.93,2.76,1.86),0.036,0x897157)
+            q.beam(SIMD3(0.93,2.76,1.86),SIMD3(0.38,2.76,1.86),0.036,0x897157)
+            for y in [0.48,1.35,2.28] { q.box(0.93,y,1.88,0.14,0.05,0.09,0x554c40,detail:true) }
+            q.box(0.65,1.10,1.94,0.33,0.48,0.19,0x6d7970,detail:true)
+            q.box(0.65,1.10,2.042,0.26,0.36,0.012,0x8d998a,detail:true)
+            for k in 0..<4 { q.box(0.65,1.20-Double(k)*0.055,2.052,0.18,0.014,0.009,0x3e4842,detail:true) }
+            q.cable(SIMD3(-0.98,2.91,1.88),SIMD3(0.9,2.82,1.88),0.18,0x594b3c)
+            q.vessel(-0.91,0.02,2.02,0.44,0x9f7154)
+            q.crate(0.5,0.02,2.12,0.48,0x8d7656)
+        }
+        // Riveted fascia and support brackets make the race sign a built object.
+        for x in [-2.7,-1.35,0,1.35,2.7] {
+            p.box(x,1.54,2.04,0.06,0.77,0.08,0x655d50,detail:true)
+            for y in [1.26,1.83] { p.dome(x,y,2.125,0.023,0.023,0.014,0x968b70,sides:6,detail:true) }
+        }
+        // Market work surfaces: plank joints, stacked produce and hanging stock.
+        for (i,x) in [-7.5,-3.7,3.7,7.5].enumerated() {
+            let q=paint(x,finishZ-10.0)
+            q.valance(0,-0.73,2.8,1.65,0.16,0xa58d67,rise:0.22)
+            for k in 0..<8 { q.box(-1.0+Double(k)*0.29,0.718,-0.1,0.25,0.022,0.67,0x9c8765,detail:true) }
+            q.crate(-1.05,0.025,0.77,0.51,0x817057)
+            q.crate(-1.01,0.54,0.76,0.43,0x9b835e)
+            q.vessel(0.7,0.72,-0.12,0.33,0xba9470)
+            q.vessel(1.02,0.02,0.64,0.48,0x876653)
+            q.cable(SIMD3(-1.4,1.64,-0.75),SIMD3(1.4,1.64,-0.75),0.10,0x6c5c47)
+            for k in 0..<3 {
+                let xx = -0.86+Double(k)*0.44
+                q.beam(SIMD3(xx,1.60,-0.74),SIMD3(xx,1.28,-0.74),0.008,0x615a4c,sides:5)
+                if i%2==0 { q.vessel(xx,1.02,-0.74,0.26,0x987559) }
+                else { q.ring(xx,1.24,-0.74,0.10,0.068,0.10,0x6b7167,sides:12) }
+            }
+        }
+        // The hero pit is a functioning workshop: a workboard, drawers, hoist
+        // hardware, engine fins and a hose resting on the packed-earth apron.
+        let q=paint(-7.5,-7.5)
+        q.box(-1.54,1.05,0.15,0.08,0.77,1.75,0x586157,detail:true)
+        for j in 0..<9 {
+            let zz = -0.55+Double(j)*0.17
+            q.beam(SIMD3(-1.48,0.82,zz),SIMD3(-1.48,1.23-Double(j%3)*0.08,zz),0.014,0xb0a891,sides:6)
+            q.box(-1.46,1.22-Double(j%3)*0.08,zz,0.025,0.045,0.07,0x8a8d80,detail:true)
+        }
+        for row in 0..<3 {
+            let y=0.18+Double(row)*0.15
+            q.box(-0.93,y,0.93,0.57,0.13,0.13,0x6e8279,detail:true)
+            q.box(-0.93,y,1.006,0.19,0.025,0.02,0xb3ad94,detail:true)
+        }
+        for k in 0..<7 { q.cylinder(0.51,0.80+Double(k)*0.041,0.91,0.235,0.235,0.014,0x7e8174,sides:14,detail:true) }
+        q.cable(SIMD3(1.4,0.14,-1.1),SIMD3(0.7,0.10,0.40),-0.035,0x4c5148)
+        q.crate(1.32,0.08,-1.34,0.50,0x8a795a)
+        q.vessel(-1.42,0.08,-1.43,0.39,0x988b69)
+        q.valance(-1.55,-2.01,0.90,2.0,0.16,0x9b795e)
+        q.valance(1.55,-2.01,0.90,2.0,0.16,0x9b795e)
+    }
+
     private func buildWayfinding() {
         // Signs face the approach and stand at street edges, not in the roadway.
         let routes:[(Double,Double,Double,String,String,String)] = [
@@ -692,6 +841,8 @@ final class TownWorld {
 final class TownMesh {
     var materialSlot=0
     private var groups:[[Int32]]=[[],[],[]]
+    var wearUV:[CGPoint]=[]
+    var wearProjector:((SIMD3<Float>)->CGPoint)?
     var positions:[SCNVector3]=[], normals:[SCNVector3]=[], uv:[CGPoint]=[], colors:[Float]=[], indices:[Int32]=[]
     func triangle(_ a:SIMD3<Float>,_ b:SIMD3<Float>,_ c:SIMD3<Float>,_ color:UInt32, smooth:[SIMD3<Float>]?=nil) {
         let cross=simd_cross(b-a,c-a)
@@ -706,6 +857,7 @@ final class TownMesh {
             let axis=abs(n)
             let tex:SIMD2<Float> = axis.y>max(axis.x,axis.z) ? SIMD2(v.x,v.z) : (axis.x>axis.z ? SIMD2(v.z,v.y):SIMD2(v.x,v.y))
             uv.append(CGPoint(x:Double(tex.x)*0.48,y:Double(tex.y)*0.48))
+            wearUV.append(wearProjector?(v) ?? CGPoint(x:0.0625,y:0.0625))
             colors += [Float((color>>16)&255)/255*shade,Float((color>>8)&255)/255*shade,Float(color&255)/255*shade,1]
         }
         indices += [base,base+1,base+2]
@@ -714,7 +866,7 @@ final class TownMesh {
     func geometry(material:SCNMaterial,relativeTo origin:SIMD3<Float> = .zero)->SCNGeometry {
         let source=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:positions.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
         let local=positions.map { SCNVector3(Float($0.x)-origin.x,Float($0.y)-origin.y,Float($0.z)-origin.z) }
-        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
+        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),SCNGeometrySource(textureCoordinates:wearUV),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
         let materials=[material,CityMaterials.cloth,CityMaterials.metal]
         g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]};return g
     }
@@ -746,6 +898,31 @@ private struct TownPainter {
             tri(world(to),world(to+aa),world(to+bb),ink,true)
         }
     }
+    /// Replace the wall face itself with a jagged opening, inset reveals and a dark cavity.
+    private func damagedWall(_ v0:SIMD3<Float>,_ v1:SIMD3<Float>,_ v2:SIMD3<Float>,_ v3:SIMD3<Float>,_ ink:UInt32,_ seed:Int) {
+        let normal=simd_normalize(simd_cross(v3-v0,v1-v0))
+        func sample(_ u:Float,_ v:Float)->SIMD3<Float> { (v0*(1-u)+v1*u)*(1-v)+(v3*(1-u)+v2*u)*v }
+        let boundary:[SIMD2<Float>]=[SIMD2(0,0),SIMD2(0.5,0),SIMD2(1,0),SIMD2(1,0.5),SIMD2(1,1),SIMD2(0.5,1),SIMD2(0,1),SIMD2(0,0.5)]
+        let center=SIMD2<Float>(0.28+Float(seed%41)*0.01,0.30+Float((seed/41)%34)*0.01)
+        let holes=boundary.enumerated().map { i,p -> SIMD3<Float> in
+            let jitter:Float=0.73+Float((seed+i*7)%5)*0.12
+            let angle=Float(i)*Float.pi/4-Float.pi*0.75
+            let uv=center+SIMD2(cos(angle)*(0.10+Float(seed%7)*0.01),sin(angle)*(0.11+Float((seed/7)%5)*0.012))*jitter
+            return sample(uv.x,uv.y)
+        }
+        let depth:Float=0.13+Float(seed%4)*0.025
+        let backing=sample(center.x,center.y)-normal*(depth+0.035)
+        for i in 0..<8 {
+            let j=(i+1)%8,a=boundary[i],b=boundary[j]
+            quad(sample(a.x,a.y),holes[i],holes[j],sample(b.x,b.y),ink,true)
+            let innerA=holes[i]-normal*depth,innerB=holes[j]-normal*depth
+            quad(holes[i],innerA,innerB,holes[j],Self.tone(ink,i%3==0 ? 0.58:0.76),true)
+            tri(backing,innerB,innerA,Self.tone(ink,0.48),true)
+        }
+        // The tiny cavity disappears at the existing architecture LOD distance.
+        far.triangle(v0,v3,v2,ink);far.triangle(v0,v2,v1,ink)
+    }
+
     func adobe(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,simple:Bool=false) {
         if simple { box(x,y,z,w,h,d,ink);return }
         let bevel=min(0.18,min(w,d)*0.12)
@@ -772,7 +949,34 @@ private struct TownPainter {
             let v0=point(x+a.0,y-h/2,z+a.1),v1=point(x+b.0,y-h/2,z+b.1)
             let v2=point(x+b.0*0.97,y+h/2-bevel,z+b.1*0.97),v3=point(x+a.0*0.97,y+h/2-bevel,z+a.1*0.97)
             let v4=point(x+b.0*0.92,y+h/2,z+b.1*0.92),v5=point(x+a.0*0.92,y+h/2,z+a.1*0.92)
-            smoothQuad([v0,v3,v2,v1],[normal(a.2,0),normal(a.2,0.18),normal(b.2,0.18),normal(b.2,0)])
+            func hash(_ input:Int)->Int {
+                var n=UInt32(truncatingIfNeeded:input)
+                n=(n ^ (n >> 16)) &* 0x7feb352d;n=(n ^ (n >> 15)) &* 0x846ca68b
+                return Int((n ^ (n >> 16)) & 0x7fffffff)
+            }
+            let buildingSeed=hash(Int(origin.x*17)*73856093 ^ Int(origin.z*17)*19349663)
+            let wearSeed=hash(buildingSeed ^ Int(x*53+y*101+w*71+d*97) ^ i*379)
+            let condition=buildingSeed%100
+            let history=condition<30 ? 0:(condition<70 ? 1:(condition<92 ? 2:3))
+            let tile=history*16+wearSeed%16
+            let along=v1-v0,up=v3-v0
+            let mapper:(SIMD3<Float>)->CGPoint = { vertex in
+                let relative=vertex-v0
+                let u=max(0,min(1,simd_dot(relative,along)/simd_length_squared(along)))
+                let v=max(0,min(1,simd_dot(relative,up)/simd_length_squared(up)))
+                return CGPoint(x:(Double(tile%8)+0.05+Double(u)*0.90)/8,
+                               y:(Double(tile/8)+0.05+Double(1-v)*0.90)/8)
+            }
+            // Broad wear belongs to walls; roofs, pavement and equipment retain their own surfaces.
+            near.wearProjector=mapper;far.wearProjector=mapper
+            defer { near.wearProjector=nil;far.wearProjector=nil }
+            let worn=w>1.5 && h>1.5 && max(abs(origin.x),abs(origin.z))<46 && history==3 && wearSeed%3 != 0
+            if worn && i == (wearSeed%3==0 ? 11:5) {
+                damagedWall(v0,v1,v2,v3,ink,wearSeed)
+            } else {
+                smoothQuad([v0,v3,v2,v1],[normal(a.2,0),normal(a.2,0.18),normal(b.2,0.18),normal(b.2,0)])
+            }
+            near.wearProjector=nil;far.wearProjector=nil
             smoothQuad([v3,v5,v4,v2],[normal(a.2,0.18),normal(a.2,1.3),normal(b.2,1.3),normal(b.2,0.18)])
             tri(point(x,y+h/2,z),v4,v5,ink,false)
         }
@@ -824,19 +1028,131 @@ private struct TownPainter {
         }
         for i in 0..<nx { for j in 0..<nz {
             let a=v(i,j),b=v(i+1,j),c=v(i+1,j+1),e=v(i,j+1)
-            quad(a,e,c,b,ink,true);quad(b,c,e,a,ink,true)
+            let panelInk:UInt32 = i%3==0 ? Self.tone(ink,0.92):ink
+            quad(a,e,c,b,panelInk,true)
         }}
         // Distant cloth keeps the silhouette without folds.
         let a=v(0,0),b=v(nx,0),c=v(nx,nz),e=v(0,nz)
         far.triangle(a,e,c,ink);far.triangle(a,c,b,ink)
-        far.triangle(c,e,a,ink);far.triangle(b,c,a,ink)
     }
+    func repairRug(_ w:Double,_ d:Double,_ variation:Int) {
+        near.materialSlot=1;far.materialSlot=1
+        defer { near.materialSlot=0;far.materialSlot=0 }
+        let base:UInt32=variation==0 ? 0x8a7960:0x827568
+        func patch(_ x:Double,_ z:Double,_ width:Double,_ depth:Double,_ ink:UInt32,_ lift:Double=0) {
+            let y=0.004+lift
+            quad(point(x-width/2,y,z-depth/2),point(x-width/2,y,z+depth/2),point(x+width/2,y,z+depth/2),point(x+width/2,y,z-depth/2),ink,false)
+        }
+        patch(0,0,w,d,base)
+        for side in [-1.0,1.0] {
+            patch(side*(w/2-0.16),0,0.19,d-0.13,0x545849,0.002)
+            patch(0,side*(d/2-0.17),w-0.14,0.21,0x545849,0.002)
+            patch(0,side*(d/2-0.33),w-0.31,0.035,0xb4a17d,0.003)
+            for j in 0..<26 {
+                let x = -w/2+0.10+Double(j)*(w-0.20)/25
+                let length=0.09+Double((j*7+variation)%5)*0.013
+                quad(point(x,0.003,side*d/2),point(x+0.024,0.003,side*d/2),point(x+0.02,0.001,side*(d/2+length)),point(x-0.005,0.001,side*(d/2+length)),0xa69574,true)
+            }
+        }
+        // Muted woven checks remain legible as a single textile, with no raised tile seams.
+        for row in 0..<5 { for col in 0..<5 {
+            let x = -1.20+Double(col)*0.60,z = -1.20+Double(row)*0.60
+            if (row+col+variation)%2==0 { patch(x,z,0.58,0.58,0x958b70,0.001) }
+        }}
+        for side in [-1.0,1.0] { for j in 0..<7 {
+            let x = -1.2+Double(j)*0.4,z=side*(d/2-0.17),y=0.008
+            quad(point(x-0.085,y,z),point(x,y,z+0.068),point(x+0.085,y,z),point(x,y,z-0.068),0xb7a783,true)
+        }}
+    }
+
     func canopy(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ y:Double,_ rise:Double,_ ink:UInt32) {
         cloth(x,z,w,d,y,rise,ink,ridge:true)
         for side in [-1.0,1.0] { for zz in [-d/2,d/2] {
             beam(SIMD3(x+side*w/2,0,z+zz),SIMD3(x+side*w/2,y,z+zz),0.035,0x625b50)
         }}
         beam(SIMD3(x,y+rise,z-d/2),SIMD3(x,y+rise,z+d/2),0.04,0x625b50)
+    }
+    /// Open voussoir arch. Intrados, jambs and wall thickness are actual geometry.
+    func arcade(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ depth:Double,_ thickness:Double,_ ink:UInt32) {
+        let r=w/2,spring=y+h-r
+        for side in [-1.0,1] {
+            adobe(x+side*(r+thickness/2),(y+spring)/2,z,thickness,spring-y,depth,ink)
+            box(x+side*(r+thickness/2),y+0.055,z,thickness+0.06,0.11,depth+0.08,Self.tone(ink,0.85),detail:true)
+        }
+        for i in 0..<14 {
+            let a=Double(i)*Double.pi/14+0.005,b=Double(i+1)*Double.pi/14-0.005
+            let color=Self.tone(ink,[0.97,1.015,0.94,1.0][i%4])
+            func v(_ angle:Double,_ radius:Double,_ zz:Double)->SIMD3<Float> {
+                point(x+cos(angle)*radius,spring+sin(angle)*radius,zz)
+            }
+            let f=z+depth/2,back=z-depth/2
+            let a0=v(a,r,f),b0=v(b,r,f),a1=v(a,r+thickness,f),b1=v(b,r+thickness,f)
+            let c0=v(a,r,back),d0=v(b,r,back),c1=v(a,r+thickness,back),d1=v(b,r+thickness,back)
+            quad(a0,a1,b1,b0,color,false);quad(d0,d1,c1,c0,color,false)
+            quad(a0,b0,d0,c0,Self.tone(color,0.72),false)
+            quad(b1,a1,c1,d1,color,false)
+            quad(c0,c1,a1,a0,color,true);quad(b0,b1,d1,d0,color,true)
+        }
+    }
+    /// Thin, irregular patches follow wall surfaces; no extra decal pass or transparency.
+    func plasterPatch(_ x:Double,_ y:Double,_ z:Double,_ rx:Double,_ ry:Double,_ ink:UInt32,seed:Int) {
+        let n=11
+        for i in 0..<n {
+            func edge(_ k:Int)->SIMD3<Float> {
+                let a=Double(k)*2 * .pi/Double(n)
+                let r=0.79+0.16*sin(Double(k*17+seed*23))
+                return point(x+cos(a)*rx*r,y+sin(a)*ry*r,z)
+            }
+            tri(point(x,y,z),edge(i),edge(i+1),ink,true)
+        }
+    }
+    func cable(_ from:SIMD3<Double>,_ to:SIMD3<Double>,_ sag:Double,_ ink:UInt32) {
+        var previous=from
+        for i in 1...8 {
+            let t=Double(i)/8
+            let p=from+(to-from)*t-SIMD3(0,sin(t * .pi)*sag,0)
+            beam(previous,p,0.009,ink,sides:5);previous=p
+        }
+    }
+    func valance(_ x:Double,_ z:Double,_ width:Double,_ y:Double,_ drop:Double,_ ink:UInt32,rise:Double=0) {
+        near.materialSlot=1
+        defer { near.materialSlot=0 }
+        for i in 0..<24 {
+            let a=Double(i)/24,b=Double(i+1)/24
+            func top(_ u:Double)->SIMD3<Float> { point(x+(u-0.5)*width,y+rise*(1-abs(u*2-1)),z) }
+            func bottom(_ u:Double)->SIMD3<Float> { point(x+(u-0.5)*width,y+rise*(1-abs(u*2-1))-drop*(0.78+0.22*sin(u*6 * .pi)),z+0.025*sin(u*12 * .pi)) }
+            quad(top(a),bottom(a),bottom(b),top(b),ink,true)
+        }
+    }
+    func crate(_ x:Double,_ y:Double,_ z:Double,_ size:Double,_ ink:UInt32) {
+        box(x,y+size/2,z,size,size,size*0.72,Self.tone(ink,0.72),detail:true)
+        for k in 0..<4 {
+            box(x,y+(Double(k)+0.5)*size/4,z+size*0.37,size*0.94,size*0.19,0.026,ink,detail:true)
+        }
+        for side in [-1.0,1] { box(x+side*size*0.38,y+size/2,z+size*0.39,0.045,size,0.025,Self.tone(ink,0.84),detail:true) }
+    }
+    func vessel(_ x:Double,_ y:Double,_ z:Double,_ size:Double,_ ink:UInt32) {
+        // Lathed clay profile includes the lip and hollow interior, with smooth normals.
+        let profile:[SIMD2<Double>]=[SIMD2(0.24,0),SIMD2(0.43,0.24),SIMD2(0.40,0.43),SIMD2(0.22,0.56),SIMD2(0.25,0.66),SIMD2(0.17,0.66),SIMD2(0.17,0.53),SIMD2(0.26,0.13),SIMD2(0,0.12)]
+        for j in 0..<(profile.count-1) {
+            let lo=profile[j],hi=profile[j+1],delta=hi-lo
+            func vertex(_ a:Double,_ v:SIMD2<Double>)->SIMD3<Float> { point(x+cos(a)*v.x*size,y+v.y*size,z+sin(a)*v.x*size) }
+            func normal(_ a:Double)->SIMD3<Float> {
+                simd_normalize(SIMD3(Float(cos(a-Double(yaw))*delta.y),Float(-delta.x),Float(sin(a-Double(yaw))*delta.y)))
+            }
+            for k in 0..<16 {
+                let a=Double(k)*2 * Double.pi/16,b=Double(k+1)*2 * Double.pi/16
+                let v0=vertex(a,lo),v1=vertex(a,hi),v2=vertex(b,hi),v3=vertex(b,lo)
+                let c=j>4 ? Self.tone(ink,0.66):ink
+                near.triangle(v0,v1,v2,c,smooth:[normal(a),normal(a),normal(b)])
+                near.triangle(v0,v2,v3,c,smooth:[normal(a),normal(b),normal(b)])
+            }
+        }
+    }
+
+    static func tone(_ ink:UInt32,_ factor:Double)->UInt32 {
+        let r=UInt32(min(255,Double((ink>>16)&255)*factor)),g=UInt32(min(255,Double((ink>>8)&255)*factor)),b=UInt32(min(255,Double(ink&255)*factor))
+        return r<<16 | g<<8 | b
     }
     func box(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,detail:Bool=false) {
         let v=[point(x-w/2,y-h/2,z-d/2),point(x+w/2,y-h/2,z-d/2),point(x+w/2,y+h/2,z-d/2),point(x-w/2,y+h/2,z-d/2),point(x-w/2,y-h/2,z+d/2),point(x+w/2,y-h/2,z+d/2),point(x+w/2,y+h/2,z+d/2),point(x-w/2,y+h/2,z+d/2)]

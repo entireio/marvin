@@ -557,6 +557,7 @@ struct SimulationTests {
         checks.testRacePerformance()
         checks.testBoostSteeringDuringAcceleration()
         checks.testWiderTerrainAndFence()
+        checks.testServiceAccess()
         checks.testDirtOpponent()
         checks.testDirtRaceAndScores()
         checks.testForwardReverseAndBrake()
@@ -569,6 +570,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 29 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 30 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

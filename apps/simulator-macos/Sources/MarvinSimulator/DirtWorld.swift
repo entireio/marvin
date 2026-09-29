@@ -22,23 +22,20 @@ final class DirtWorld {
     private var poolIndex = 0
     private(set) var emittedCount = 0
 
-    private func cityPavingTexture()->NSImage {
-        let size=256
+    private func packedEarthTexture()->NSImage {
+        let size=512
         let bitmap=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:size,pixelsHigh:size,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:size*4,bitsPerPixel:32)!
-        let data=bitmap.bitmapData!
+        let bytes=bitmap.bitmapData!
         for y in 0..<size { for x in 0..<size {
-            let row=y/32,xx=(x+(row%2)*32)%64
-            let joint=y%32<1 || xx<1
-            func hash(_ a:Int,_ b:Int)->Int {
-                var n=UInt32(truncatingIfNeeded:a &* 374761393 &+ b &* 668265263)
-                n=(n ^ (n >> 13)) &* 1274126177
-                return Int((n ^ (n >> 16)) & 65535)
-            }
-            let noise=hash(x,y)%7-3
-            let block=hash(((x+(row%2)*32)/64)%4,row)%5
-            let value=(joint ? 139:149)+noise+block
+            var seed=UInt32(truncatingIfNeeded:x &* 374761393 &+ y &* 668265263)
+            seed=(seed ^ (seed >> 13)) &* 1274126177
+            let grain=Double((seed ^ (seed >> 16)) & 255)/255
+            let u=Double(x)/Double(size),v=Double(y)/Double(size)
+            let soil=(CityMaterials.surfaceNoise(u,v,cells:5,seed:11)-0.5)*7+(CityMaterials.surfaceNoise(u,v,cells:21,seed:31)-0.5)*5
+            let pebble=grain>0.984 ? -19.0:0.0
+            let value=soil+(grain-0.5)*16+pebble
             let i=(y*size+x)*4
-            data[i]=UInt8(value+8);data[i+1]=UInt8(value+2);data[i+2]=UInt8(value-10);data[i+3]=255
+            bytes[i]=UInt8(157+value);bytes[i+1]=UInt8(140+value);bytes[i+2]=UInt8(115+value);bytes[i+3]=255
         }}
         let image=NSImage(size:NSSize(width:size,height:size));image.addRepresentation(bitmap);return image
     }
@@ -61,7 +58,7 @@ final class DirtWorld {
         scene.rootNode.addChildNode(sun)
         let ground = SCNPlane(width: 300, height: 300)
         let earth = material(0x827656, roughness: 1)
-        earth.diffuse.contents = cityPavingTexture()
+        earth.diffuse.contents = packedEarthTexture()
         earth.normal.contents = nil
         for channel in [earth.diffuse, earth.normal] {
             channel.wrapS = .repeat; channel.wrapT = .repeat
@@ -105,38 +102,15 @@ final class DirtWorld {
         let inner = courseSurface(inner: -DirtCourse.width-DirtCourse.bermWidth, outer: -DirtCourse.width, y: 0.055)
         inner.materials = [clay]
         scene.rootNode.addChildNode(SCNNode(geometry: inner))
-        for (innerEdge,outerEdge) in [(-DirtCourse.terrainEdge,-DirtCourse.width-DirtCourse.bermWidth),(DirtCourse.width+DirtCourse.bermWidth,DirtCourse.terrainEdge)] {
+        for (innerEdge,outerEdge) in [(-DirtCourse.fenceOffset,-DirtCourse.width-DirtCourse.bermWidth),(DirtCourse.width+DirtCourse.bermWidth,DirtCourse.fenceOffset)] {
             let shoulder = courseSurface(inner:innerEdge,outer:outerEdge,y:-1)
             shoulder.materials = [clay]; scene.rootNode.addChildNode(SCNNode(geometry:shoulder))
         }
-        // Dense continuous tape follows the ground, including between posts.
-        // Posts use the very same terrain height and extend below its surface.
-        for side in [-1.0,1.0] {
-            let boundary = DirtCourse.surfacePoints(offset:side*DirtCourse.fenceOffset)
-            var vertices: [SCNVector3] = [], red: [Int32] = [], white: [Int32] = []
-            for (i,p) in boundary.enumerated() {
-                let ground = DirtCourse.height(x:p.x,z:p.y)
-                for edge in [-0.0225,0.0225] {
-                    vertices.append(SCNVector3(p.x,ground+DirtCourse.railClearance+edge,p.y))
-                }
-                if i < boundary.count-1 {
-                    let a = Int32(i*2)
-                    let indices: [Int32] = [a,a+2,a+1,a+1,a+2,a+3]
-                    if (i/5)%2 == 0 { red += indices } else { white += indices }
-                }
-                if i%4 == 0 && i < boundary.count-1 && (i == 0 || p != boundary[i-1]) {
-                    let height = DirtCourse.postHeight+DirtCourse.postEmbed
-                    let post = box(p.x,ground-DirtCourse.postEmbed+height/2,p.y,0.035,height,0.035,material(0xe4c5a0))
-                    post.name = "Dirt fence post"
-                }
-            }
-            let rail = SCNGeometry(sources:[SCNGeometrySource(vertices:vertices)],elements:[
-                SCNGeometryElement(indices:red,primitiveType:.triangles),
-                SCNGeometryElement(indices:white,primitiveType:.triangles)])
-            rail.materials = [material(0xa24d32),material(0xe8ddd0)]
-            let node = SCNNode(geometry:rail); node.name = "Dirt fence rail"
-            scene.rootNode.addChildNode(node)
-        }
+        // Retain the earthen access ramp only within the service opening.
+        let access=courseSurface(inner:-DirtCourse.terrainEdge,outer:-DirtCourse.fenceOffset,y:-1,serviceOnly:true)
+        access.materials=[clay];scene.rootNode.addChildNode(SCNNode(geometry:access))
+        addInfieldDirt()
+        addTrackWalls()
         // Start / finish checker paint, across the full lane at phase zero.
         let start = DirtCourse.point(0)
         for row in 0..<2 { for cell in 0..<10 {
@@ -192,7 +166,121 @@ final class DirtWorld {
         for trail in trails { effects.addChildNode(trail.root) }
     }
 
-    private func courseSurface(inner: Double, outer: Double, y: Double) -> SCNGeometry {
+    /// Level brick courses rise from a common foundation, batched per boundary. The track-facing
+    /// surface stays on the existing collision line; thickness extends away from racing.
+    private func addTrackWalls() {
+        let palette:[UInt32]=[0xa28a70,0x998068,0xb0997c,0x927963,0xa78c70,0xb29b80]
+        for side in [-1.0,1.0] {
+            let boundary=DirtCourse.surfacePoints(offset:side*(DirtCourse.fenceOffset+DirtCourse.boundaryWallThickness/2))
+            var distances=[0.0]
+            for i in 1..<boundary.count { distances.append(distances.last!+simd_length(boundary[i]-boundary[i-1])) }
+            let length=distances.last!, count=Int(ceil(length/0.43)), step=length/Double(count)
+            func sample(_ distance:Double)->SIMD2<Double> {
+                let d=(distance.truncatingRemainder(dividingBy:length)+length).truncatingRemainder(dividingBy:length)
+                var lo=0,hi=distances.count-1
+                while lo+1<hi { let m=(lo+hi)/2;if distances[m]<=d { lo=m } else { hi=m } }
+                let fraction=(d-distances[lo])/max(0.000001,distances[hi]-distances[lo])
+                return boundary[lo]+(boundary[hi]-boundary[lo])*fraction
+            }
+            let mesh=TownMesh()
+            func quad(_ a:SIMD3<Float>,_ b:SIMD3<Float>,_ c:SIMD3<Float>,_ d:SIMD3<Float>,_ ink:UInt32) {
+                mesh.triangle(a,c,b,ink);mesh.triangle(a,d,c,ink)
+            }
+            let courseHeight=0.13,foundation = -0.04
+            let maxHeight=boundary.map { DirtCourse.height(x:$0.x,z:$0.y) }.max()!+DirtCourse.postHeight
+            let rows=Int(ceil((maxHeight-foundation)/courseHeight))
+            for row in 0..<rows { for i in 0..<count {
+                let distance=(Double(i)+(row%2==0 ? 0:0.5))*step
+                let a=sample(distance+0.004),b=sample(distance+step-0.004),center=(a+b)*0.5
+                // Do not bridge the service entrance, even with staggered end bricks.
+                if side<0 && [a,b,center].contains(where:{DirtCourse.serviceAccess(x:$0.x,z:$0.y)}) { continue }
+                let direction=simd_normalize(b-a),normal=SIMD2(-direction.y,direction.x)*(DirtCourse.boundaryWallThickness/2)
+                let seed=i*73+row*193+(side>0 ? 31:0)
+                // Global horizontal bed joints: hills add courses from the same
+                // foundation instead of tilting the individual bricks uphill.
+                let target=max(DirtCourse.height(x:a.x,z:a.y),DirtCourse.height(x:b.x,z:b.y))+DirtCourse.postHeight
+                let localRows=max(3,Int(ceil((target-foundation)/courseHeight)))
+                guard row<localRows else { continue }
+                let base=foundation+Double(row)*courseHeight
+                let rise=courseHeight-0.006
+                let ink=palette[(seed ^ (seed>>3))%palette.count]
+                let corners=[a-normal,b-normal,b+normal,a+normal]
+                let bottom=corners.map { p in SIMD3<Float>(Float(p.x),Float(base),Float(p.y)) }
+                let lip=corners.map { p in SIMD3<Float>(Float(p.x),Float(base+rise-0.012),Float(p.y)) }
+                let top=corners.enumerated().map { j,p -> SIMD3<Float> in
+                    let q=p+(center-p)*0.055
+                    let chip=row==localRows-1 ? Double((seed+j*7)%7)*0.001:0
+                    return SIMD3(Float(q.x),Float(base+rise-chip),Float(q.y))
+                }
+                for j in 0..<4 { let k=(j+1)%4
+                    quad(bottom[j],bottom[k],lip[k],lip[j],ink)
+                    quad(lip[j],lip[k],top[k],top[j],ink)
+                }
+                quad(top[0],top[1],top[2],top[3],ink)
+            }}
+            let node=SCNNode(geometry:mesh.geometry(material:CityMaterials.plaster))
+            node.name=side<0 ? "Inner irregular brick track wall":"Outer irregular brick track wall"
+            scene.rootNode.addChildNode(node)
+        }
+    }
+
+    /// One startup-baked decal: no per-frame projection work or individual dirt nodes.
+    private func addInfieldDirt() {
+        let size=768,span=60.0
+        let bitmap=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:size,pixelsHigh:size,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:size*4,bitsPerPixel:32)!
+        let bytes=bitmap.bitmapData!
+        bytes.initialize(repeating:0,count:size*size*4)
+        for row in 0..<size { for column in 0..<size {
+            let x=(Double(column)+0.5)/Double(size)*span-span/2
+            let z=(Double(row)+0.5)/Double(size)*span-span/2
+            let p=DirtCourse.projection(x:x,z:z)
+            guard p.distance > DirtCourse.terrainEdge-0.10 else { continue }
+            var seed=UInt32(truncatingIfNeeded:column &* 374761393 &+ row &* 668265263)
+            seed=(seed ^ (seed >> 13)) &* 1274126177
+            let grain=Double((seed ^ (seed >> 16)) & 255)/255
+            let broad=sin(x*2.1+sin(z*1.7))*sin(z*2.7+x*0.8)
+            let reach=1.05+0.50*sin(p.phase*19)+0.22*sin(p.phase*47)
+            let edge=max(0,1-(p.distance-DirtCourse.terrainEdge)/max(0.35,reach+broad*0.23))
+            // Traffic fans out after the gate and thins toward the service bench.
+            let progress=max(0,min(1,(z+12.0)/3.0))
+            let lateral=abs(x-DirtCourse.serviceEntryX)
+            let route=max(0,1-lateral/(0.95+progress*0.60+broad*0.18))
+                * max(0,min(1,(z+15.0)/1.5))*max(0,min(1,(-5.1-z)/2.0))
+            let wheel=exp(-pow((lateral-0.46)/0.13,2))*route
+            let coverage:Double
+            if p.offset < 0 {
+                // Keep the existing infield deposit and service traffic mask verbatim.
+                coverage=max(edge*0.78,route*0.73+wheel*0.20)
+            } else {
+                // Soil thrown over the wall settles in irregular fans, strongest near
+                // the boundary, with broader sparse patches out toward the town.
+                let macro=CityMaterials.surfaceNoise(x/60+0.5,z/60+0.5,cells:23,seed:83)
+                let detail=CityMaterials.surfaceNoise(x/60+0.5,z/60+0.5,cells:79,seed:137)
+                let spread=1.5+macro*2.1
+                let falloff=max(0,1-(p.distance-DirtCourse.terrainEdge)/spread)
+                coverage=pow(falloff,1.65)*(0.36+macro*0.49)*(0.58+detail*0.42)
+            }
+            let alpha=max(0,min(0.94,coverage*(0.72+grain*0.33)+broad*0.045*coverage))
+            let index=(row*size+column)*4
+            let value=grain*12-6-(p.offset < 0 ? wheel*15:0)
+            bytes[index]=UInt8(max(0,min(255,(184+value)*alpha)))
+            bytes[index+1]=UInt8(max(0,min(255,(144+value)*alpha)))
+            bytes[index+2]=UInt8(max(0,min(255,(118+value)*alpha)))
+            bytes[index+3]=UInt8(alpha*255)
+        }}
+        let image=NSImage(size:NSSize(width:size,height:size));image.addRepresentation(bitmap)
+        let surface=SCNMaterial();surface.lightingModel = .physicallyBased
+        surface.diffuse.contents=image;surface.roughness.contents=0.98
+        surface.transparencyMode = .aOne;surface.writesToDepthBuffer=false
+        surface.diffuse.mipFilter = .linear
+        let vertices=[SCNVector3(-30,-0.012,-30),SCNVector3(-30,-0.012,30),SCNVector3(30,-0.012,30),SCNVector3(30,-0.012,-30)]
+        let mesh=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:Array(repeating:SCNVector3(0,1,0),count:4)),SCNGeometrySource(textureCoordinates:[CGPoint(x:0,y:0),CGPoint(x:0,y:1),CGPoint(x:1,y:1),CGPoint(x:1,y:0)])],elements:[SCNGeometryElement(indices:[Int32(0),1,2,0,2,3],primitiveType:.triangles)])
+        mesh.materials=[surface]
+        let node=SCNNode(geometry:mesh);node.name="Clay spill inside and outside walls and service wheel paths"
+        node.castsShadow=false;node.renderingOrder=1;scene.rootNode.addChildNode(node)
+    }
+
+    private func courseSurface(inner: Double, outer: Double, y: Double, serviceOnly:Bool=false) -> SCNGeometry {
         var points: [SCNVector3] = [], uv: [CGPoint] = [], indices: [Int32] = []
         let segments = DirtCourse.sampleCount, strips = 32
         let outlines = (0...strips).map { j in
@@ -208,7 +296,10 @@ final class DirtWorld {
                 points.append(SCNVector3(p.x, height, p.y)); uv.append(CGPoint(x: Double(i)/Double(segments),y:across))
                 if i < segments && j < strips {
                     let a = Int32(i*(strips+1)+j), b = a+Int32(strips+1)
-                    indices += [a,b,a+1,a+1,b,b+1]
+                    let midpoint=(outlines[j][i]+outlines[j][i+1])*0.5
+                    if !serviceOnly || DirtCourse.serviceAccess(x:midpoint.x,z:midpoint.y) {
+                        indices += [a,b,a+1,a+1,b,b+1]
+                    }
                 }
             }
         }

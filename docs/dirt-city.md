@@ -244,3 +244,219 @@ under the cleaner load, not a guarantee of presentation timing or performance on
 other hardware. Do not attribute the whole improvement to code: emulator removal
 was a material change in test conditions. The earlier same-load projection test
 independently demonstrated the CPU reduction from 18.68 to 5.16 ms.
+
+## Grandstand, bazaar and service-pit reference pass
+
+The first focused venue pass replaces the grandstand's solid plinth with an
+open masonry arcade, recessed shelving and supported shop awnings. The shade
+roof now has pitched canvas, a hem following its ridge, scalloped valances and
+separate supports. Tower windows sit in projecting housings instead of cutting
+through curved walls. Local plaster repairs, utility risers, conduit straps,
+vented service boxes and fascia fasteners give the venue construction detail.
+
+Market stock includes hollow lathed pottery, slatted cases, joined countertops
+and suspended goods. The repair bay has a tapered service droid, collar and
+jointed limbs, tool rack, drawers, removable floor plates, finned motor and hose.
+Its sign sits ahead of the cloth trim with suspension rods reaching the roof.
+The race title is smaller, exposing the arcade; text-fit checks still cover all
+25 signs. The distant city layout and track palette are unchanged.
+
+Crowd variation is deterministic and baked into the existing three material
+batches: independent clothing/skin palettes, body proportions, neck turns,
+gentle lean and occasional shoulder mantles. Concourse groups replace orderly
+queues; seating has small placement/heading differences and vacancies. There
+are 294 residents, 15 independently animated, and 77 crowd cells. This improves
+variation but does not replace the underlying face meshes or add facial motion.
+
+Cloth is one double-sided surface instead of overlapping front/back meshes.
+Near architecture totals 356,960 triangles, far architecture 256,098; the original
+360,000/290,000 limits remain. Crowd totals are 1,912,586 near and 104,637 far.
+No new runtime lights, shadow maps, physics bodies or per-prop scene nodes were
+added. The normal game still uses SceneKit; the renderer study remains separate.
+
+The release build and native city smoke pass layout clearance, city coverage,
+street connectivity, camera avoidance, pause, reset, signs and geometry budgets.
+The eleven actual app captures are in `../marvin-town-planning/hero-final/`.
+Close-ups still show the limitations of the existing faces, broad wall shapes
+and procedural props; this is a focused construction/variation pass, not a
+photorealistic asset replacement.
+
+The 180-second 1920×1080 run on the M2 MacBook Air averaged **59.89 render
+callbacks/sec** across 10,600 intervals. Callback p95/p99 were 17.35/17.82 ms;
+21 intervals (0.20%) exceeded 25 ms, none exceeded 50 ms. CPU update p95 was
+2.81 ms and final thermal state was nominal (0). This is near 60, not a claim
+of zero missed frames. The earlier clean baseline was 60.00 callbacks/sec with
+one interval above 25 ms. These are single-run observations, not a controlled
+statistical attribution of every timing difference to the art changes. Results:
+`../marvin-town-planning/hero-benchmark/benchmark.json`. A final sign suspension
+endpoint correction changed positions only after this run; mesh counts, materials
+and runtime behavior were unchanged.
+
+The final build's separate 45-second Apple Metal HUD check reported GPU p50/p95/
+p99 of 13.51/15.76/16.39 ms, versus the previous full-city baseline's
+13.72/15.43/16.02 ms. Logged presentation intervals were 16.67 ms at p50/p95/p99,
+with a maximum of 33.33 ms. Only the final 34.8 seconds were summarized. HUD
+samples may repeat and include HUD overhead; these are not unique-frame counts
+or a GPU encoder trace. The p95 GPU budget leaves less than 1 ms of headroom at
+60 Hz, so broad propagation of extra detail should wait for further optimization.
+Raw summary: `../marvin-town-planning/hero-gpu/metal-hud.json`.
+
+## Infield service access and carried clay
+
+A 2.5-meter opening in the inner fence aligns with the first repair tent at
+x = -7.5. Rail segments and posts are omitted there; striped bollards and a
+small SERVICE ACCESS plate identify it without spanning the opening. The outer
+fence remains closed. Shared SimulationCore access bounds include chassis
+clearance. Both movement and coupled robot collision constraints admit traffic
+in both directions. Once inside, robots can move around the infield; approaching
+the intact inner fence from the field keeps them on that side instead of snapping
+them back onto the racing surface. Lap progress retains its existing on-track
+eligibility check.
+
+One 768-square RGBA dirt map is baked at scene initialization using exact course
+projection. It supplies an irregular, feathered red-clay spill along inner edges,
+a wider dusty fan at the service entrance, and paired worn wheel paths toward
+the repair area. Pale paving remains visible through thinner deposits. The map
+is a single two-triangle ground layer with depth testing, no depth writes and no
+shadow casting; it adds no per-frame projection work or particle emitters.
+
+All 30 simulation checks pass, including every playable chassis traversing the
+opening in both directions, free movement at the repair apron, and intact fences
+blocking from both sides. The release city smoke passes with 26 fitted signs and
+357,112 near architecture triangles. Actual screenshots, including the added
+service-access review camera, are in `../marvin-town-planning/service-access-final/`.
+
+A separate 45-second 1920×1080 run with Metal HUD enabled averaged 59.90 render
+callbacks/sec, CPU update p95 2.48 ms, with four callback intervals above 25 ms
+and none above 50 ms. GPU p50/p95/p99 were 13.55/15.64/16.47 ms, close to the
+preceding venue pass (13.51/15.76/16.39 ms). Logged presentation p50/p95/p99 were
+16.67 ms; maximum 33.33 ms. This short check shows no material regression, not
+a guarantee of zero missed frames. Raw results are in
+`../marvin-town-planning/service-access-performance/`; the same HUD sampling
+limitations described above apply.
+
+## Organic wear and textile service floors
+
+The tiled base texture is replaced by packed earth with grain and irregular
+multi-scale variation. The initial removal of both tent platforms was revised
+at the user's request: each tent now has a thin woven rug, with muted checks,
+border motifs and uneven fringe. The surroundings remain earth and carried clay;
+there is no rigid grid of raised floor plates.
+
+Research informed the revised weathering approach:
+
+- [Adobe's dirt generator guidance](https://experienceleague.adobe.com/en/docs/substance-3d-painter/using/effects/generators/dirt)
+  recommends controlling dirt through masks that reflect an asset's environment
+  and history.
+- [Adobe's parametric decal breakdown](https://www.adobe.com/products/substance3d/magazine/effortless-grunge-look-with-new-substance-3d-assets-parametric-decals.html)
+  distinguishes the reusable base material from localized patches, cracks and
+  leaks, with independent variation to avoid repeating marks.
+- [NPS adobe preservation guidance](https://www.nps.gov/orgs/1739/upload/preservation-brief-05-adobe.pdf)
+  documents causes and locations of deterioration, including exposed surfaces,
+  wall bases and previous repairs. This guides placement; the game does not
+  simulate adobe erosion or assume that all desert walls are water-damaged.
+- [Epic's decal performance guidance](https://dev.epicgames.com/documentation/unreal-engine/decal-materials-in-unreal-engine)
+  identifies screen coverage and material complexity as major costs. Here the
+  marks are baked into a shared atlas rather than many projected decal passes.
+
+The abandoned blanket grunge pattern is replaced by a 64-cell, 1024-square wear
+atlas on a second UV channel. A stable hash assigns each building a maintenance
+profile, with separate variants per wall: maintained, dusty, repaired, or neglected.
+Masks place deposits near the base, limited runs beneath roof edges and irregular
+resurfacing patches. Roofs, roads and equipment do not inherit the wall atlas.
+The profile distribution is weighted toward maintained/dusty buildings; large
+recessed damage is limited to selected nearby neglected walls. Cavity locations,
+sizes and outlines vary; the face is replaced by a jagged opening with inset
+reveals and backing, not covered by a black polygon. Existing distant LODs omit
+these small cavities. Texture noise is baked at startup, not evaluated per frame.
+
+The native review includes bird's-eye, service, market and racing views, plus a
+new camera just ahead of Marvin's head at 0.46 m above the ground. This inspection
+camera does not change normal follow/orbit controls.
+
+The release build and native city smoke pass. Final captures are in
+`../marvin-town-planning/organic-city-final/`. Near/far architecture totals are
+357,456/256,152 triangles, within the existing budgets. A 45-second 1920×1080
+check averaged 59.91 render callbacks/sec, with CPU update p95 2.82 ms, five
+callback intervals above 25 ms and none above 50 ms. Metal HUD GPU p95/p99 were
+15.60/16.46 ms; presentation p95/p99 were 16.67 ms, with a 33.33 ms maximum.
+This short run shows no material regression from the service-access check, but
+does not guarantee a locked 60 FPS. Results and HUD sampling limitations are in
+`../marvin-town-planning/organic-city-performance/`.
+
+## Brick track boundaries
+
+Both tape fences are replaced with three staggered courses of clay brick. The
+upper course varies from roughly 0.36 to 0.40 m above its local ground, matching
+the former 0.40 m posts, with individually sloping, chipped top edges. Shared
+plaster microdetail and varied warm brick colors keep the masonry in the city's
+palette. Each boundary is one static batched mesh instead of individual brick
+nodes; dirt remains one startup-baked ground layer.
+
+The 0.15 m wall thickness extends away from the existing track collision line.
+Infield-side collision clearance includes that thickness. The service entrance
+remains open, including staggered course ends. The existing elevated grandstand
+(first seating platform above 1.4 m) and north terrace (1.26 m platform) retain
+sightlines above these low walls.
+
+The infield clay mask and service wheel paths are unchanged. The same ground map
+now also deposits clay outside the outer boundary: broad, noise-varied fans fade
+into the town ground over approximately 1.5–3.6 m. This is baked visual deposition
+from thrown soil, not a new runtime particle simulation.
+
+Native screenshots and scene checks are in
+`../marvin-town-planning/brick-walls-final/`.
+
+Release build, native scene checks and all 30 simulation checks pass. The
+45-second 1920×1080 benchmark averaged 59.89 render callbacks/sec, with five
+intervals above 25 ms and none above 50 ms. CPU update p95 was 2.47 ms; Metal HUD
+GPU p95/p99 were 15.70/16.42 ms (previous pass 15.60/16.46 ms). Presentation
+p95/p99 remained 16.67 ms, with a 33.33 ms maximum. This shows similar performance
+in this short run, not a locked-60 guarantee. The wall meshes are separate from
+the town architecture triangle counters. Measurements are in
+`../marvin-town-planning/brick-walls-performance/`.
+
+## Continuous town streets
+
+Street centerlines now use interpolating Hermite curves with tangents limited
+by adjacent block lengths. They retain the existing destination and junction
+anchors while easing the former sharp polyline corners. Continuous ground
+ribbons replace overlapping road boxes and circular corner caps; the rigid
+parallel cart markings are removed. Narrow tonal shoulders frame the earth
+surface. Building exclusion uses the sampled curves, and street pedestrians
+are placed along the same rendered routes.
+
+The streets are one static mesh generated at scene initialization. The road
+mesh is separate from town architecture triangle counters. Release build and
+native layout, network, city coverage, camera, pause/reset and sign checks pass.
+Final captures are in `../marvin-town-planning/curved-streets-final/`.
+
+The 45-second 1920×1080 check averaged 59.89 render callbacks/sec, with five
+intervals above 25 ms and none above 50 ms. HUD GPU p95/p99 were 15.69/16.45 ms,
+comparable to the brick-wall pass (15.70/16.42 ms). Presentation p95/p99 were
+16.67 ms; the maximum was 33.33 ms. Results are in
+`../marvin-town-planning/curved-streets-performance/`; this short check does not
+guarantee a locked 60 FPS.
+
+## Full-height stepped retaining walls
+
+The fence-only brick treatment above is superseded. Masonry now starts at a
+common foundation below surrounding ground and retains the entire raised track
+side. Every bed joint is horizontal at a fixed 0.13 m course spacing. Changes
+in track elevation add or remove complete courses, producing stepped tops;
+bricks no longer tilt to follow the track. Small top-edge chips remain, without
+sloping the structural courses. The crest follows the old fence clearance,
+quantized to brick courses.
+
+The exposed earthen side slopes are removed from rendering and terrain height
+outside the solid walls. The service opening retains its original dirt ramp;
+wall thickness and chassis clearances remain coordinated. Infield and outside
+clay spill maps and tent rugs are unchanged. Release build, all 30 simulation
+checks and native scene checks pass. Screenshots are in
+`../marvin-town-planning/retaining-walls-final/`.
+
+The 45-second 1080p check averaged 59.91 render callbacks/sec; four intervals
+exceeded 25 ms and none exceeded 50 ms. GPU p95/p99 were 15.54/16.22 ms;
+presentation p95/p99 were 16.67 ms, maximum 33.33 ms. Results are in
+`../marvin-town-planning/retaining-walls-performance/`. Performance remains
+comparable in this short check, with occasional missed frames.

@@ -15,8 +15,15 @@ public enum DirtCourse {
     public static let width = 1.3 * 1.5
     public static let bermWidth = 0.35
     public static let fenceOffset = width + 0.5
+    public static let boundaryWallThickness = 0.15
     public static let shoulderEdge = fenceOffset + 0.1
     public static let terrainEdge = shoulderEdge + 0.45
+    // Shared by the visible wall opening, chassis constraints and the baked service-route dirt.
+    public static let serviceEntryX = -7.5
+    public static let serviceEntryHalfWidth = 1.25
+    public static func serviceAccess(x:Double,z:Double,clearance:Double=0) -> Bool {
+        abs(x-serviceEntryX) < max(0,serviceEntryHalfWidth-clearance) && z > -15.4 && z < -5.3
+    }
     public static let railClearance = 0.31
     public static let postHeight = 0.40
     public static let postEmbed = 0.08
@@ -171,8 +178,12 @@ public enum DirtCourse {
             let crest = offset > 0 ? 0.10 : 0.055
             return base + sin((distance-width)/bermWidth * .pi)*crest
         }
-        // Keep a shelf beneath the fence; descend to the surrounding field
-        // outside it, so the rail follows the same elevation as the lane edge.
+        // Retaining walls replace the earthen slope, except at the service ramp.
+        let location=point(phase,offset:offset)
+        let ramp=offset<0 && serviceAccess(x:location.x,z:location.z)
+        if !ramp {
+            return distance<=fenceOffset+boundaryWallThickness ? base : -0.025
+        }
         if distance <= shoulderEdge { return base }
         let t = max(0,min(1,(distance-shoulderEdge)/(terrainEdge-shoulderEdge)))
         let blend = t*t*(3-2*t)
@@ -184,8 +195,10 @@ public enum DirtCourse {
         let p = projection(x:x,z:z), tangent = self.heading(p.phase)
         let relative = heading-tangent
         let support = 0.35*abs(cos(relative)) + 0.33*abs(sin(relative))
-        let limit = fenceOffset-support-0.025
-        guard p.distance > limit else { return (x,z,false) }
+        if p.offset < 0 && serviceAccess(x:x,z:z,clearance:support) { return (x,z,false) }
+        let insideField = p.offset < 0 && p.distance > fenceOffset
+        let limit = fenceOffset+(insideField ? boundaryWallThickness+support+0.025 : -support-0.025)
+        guard insideField ? p.distance < limit : p.distance > limit else { return (x,z,false) }
         let corrected = point(p.phase,offset:p.offset < 0 ? -limit : limit)
         return (corrected.x,corrected.z,true)
     }

@@ -133,11 +133,14 @@ public enum RobotCollisions {
         let projection = DirtCourse.projection(x:body.position.x,z:body.position.z)
         let heading = DirtCourse.heading(projection.phase)
         let outward = SIMD2(cos(heading),-sin(heading))*(projection.offset < 0 ? -1.0 : 1.0)
-        let limit = DirtCourse.fenceOffset-body.extent(outward)-0.025
-        if projection.distance > limit {
+        let insideField = projection.offset < 0 && projection.distance > DirtCourse.fenceOffset
+        let support = body.extent(outward)+0.025
+        let limit = DirtCourse.fenceOffset+(insideField ? DirtCourse.boundaryWallThickness+support : -support)
+        let serviceAccess = projection.offset < 0 && DirtCourse.serviceAccess(x:body.position.x,z:body.position.z,clearance:body.extent(SIMD2(1,0)))
+        if (insideField ? projection.distance < limit : projection.distance > limit) && !serviceAccess {
             let point = DirtCourse.point(projection.phase,offset:projection.offset < 0 ? -limit : limit)
             body.position.x = point.x; body.position.z = point.z
-            let normal = SIMD3(outward.x,0,outward.y), speed = simd_dot(body.velocity,normal)
+            let normal = SIMD3(outward.x,0,outward.y)*(insideField ? -1.0:1.0), speed = simd_dot(body.velocity,normal)
             if speed > 0 { body.velocity -= normal*speed }
             body.contacted = true
         }
