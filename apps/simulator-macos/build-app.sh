@@ -27,6 +27,7 @@ esac
 configuration=${CONFIGURATION:-release}
 status 'Checking model assets'
 python3 "$root/scripts/prepare-simulator-assets.py"
+python3 "$root/scripts/city/check-assets.py"
 status "Building Marvin Simulator ($configuration)"
 swift build "$@" --package-path "$root/apps/simulator-macos" -c "$configuration" --product MarvinSimulator
 bin=$(swift build "$@" --package-path "$root/apps/simulator-macos" -c "$configuration" --show-bin-path)
@@ -41,6 +42,8 @@ rm -rf "$app/Contents/Resources/R2D2" "$app/Contents/Resources/BB8" "$app/Conten
 cp -R "$root/apps/simulator-macos/Resources/R2D2" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/BB8" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/WallE" "$app/Contents/Resources/"
+rm -rf "$app/Contents/Resources/City"
+cp -R "$root/apps/simulator-macos/Resources/City" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/Dirt" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/Marvin" "$app/Contents/Resources/"
 cp "$root/apps/simulator-macos/Resources/Icons/"*.icns "$app/Contents/Resources/"

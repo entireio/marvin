@@ -544,6 +544,7 @@ struct SimulationTests {
         checks.testDrivingAssists()
         checks.testAssistedCornering()
         if CommandLine.arguments.contains("--assists-only") { return }
+        checks.testExactCourseProjection()
         checks.testSandboxFootprint()
         checks.testPlayableFootprints()
         checks.testOptionalRobotCollisions()
@@ -568,6 +569,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 28 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 29 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

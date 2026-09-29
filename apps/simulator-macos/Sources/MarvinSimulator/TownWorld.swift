@@ -7,7 +7,10 @@ import simd
 /// cells with two detail levels; the race never acquires scenery physics bodies.
 final class TownWorld {
     let root = SCNNode()
-    private let surface = SCNMaterial()
+    private let surface = CityMaterials.plaster
+    private let crowd = TownCrowd()
+    private let signs = TownSigns()
+    private var storefrontSigns=0
     private var cells: [String: TownCell] = [:]
     private var people: [TownPerson] = []
     private(set) var buildings = 0
@@ -33,16 +36,12 @@ final class TownWorld {
         init(_ x: Float, _ z: Float) { origin = SIMD3(x, 0, z) }
     }
     private struct TownPerson {
-        let node: SCNNode, arm: SCNNode, origin: SCNVector3
-        let phase: Double, walking: Bool
+        let node: SCNNode, origin: SCNVector3
+        let phase: Double
     }
 
     init() {
         root.name = "Mos Aster desert spaceport"
-        surface.lightingModel = .physicallyBased
-        surface.diffuse.contents = plasterTexture()
-        surface.roughness.contents = 0.93
-        surface.isDoubleSided = false
         buildRoads()
         buildGrandstand()
         buildSettlement()
@@ -50,6 +49,8 @@ final class TownWorld {
         buildLandmarks()
         buildStreetLife()
         buildMarketDetails()
+        buildWayfinding()
+        crowd.finish(into:root)
         for key in cells.keys.sorted() {
             let cell = cells[key]!
             let near = cell.near.geometry(material: surface, relativeTo: cell.origin)
@@ -179,6 +180,12 @@ final class TownWorld {
                 p.box(x+stripe,3.826,-1.12,0.10,0.01,2.75,cream,detail:true)
             }
         }
+        for (i,x) in [-5.2,-2.4,2.4,5.2].enumerated() {
+            let sector=["A","B","C","D"][i]
+            signs.plate("SECTOR \(sector)",eyebrow:"GRANDSTAND",footer:"ROWS 01–05",badge:sector,
+                        at:SCNVector3(x,3.55,z+0.29),width:1.05,height:0.32,accent:teal,into:root)
+            p.beam(SIMD3(x,3.73,0.29),SIMD3(x,3.82,0.29),0.018,dark,sides:5)
+        }
         // Two plaster towers bookend the stand and make the civic landmark
         // readable from the track as well as the opening overview.
         for x in [-8.5,8.5] {
@@ -192,8 +199,12 @@ final class TownWorld {
             q.box(0,4.55,0.69,0.65,0.5,0.035,dark,detail:true)
             q.box(0,6.1,0,0.055,0.85,0.055,dark,detail:true)
         }
-        p.box(0,1.55,1.99,4.85,0.48,0.07,dark)
-        sign("MOS ASTER / GRAND PRIX", at:SCNVector3(-2.18,1.42,z+2.035),size:0.21,ink:0xeadbbd)
+        signs.plate("MOS ASTER GRAND PRIX",eyebrow:"INTERPLANETARY RACING SERIES",footer:"START  /  FINISH",badge:"07",
+                    at:SCNVector3(0,1.49,z+2.06),width:8.2,height:0.94,into:root)
+        for (i,x) in [-8.5,8.5].enumerated() {
+            signs.plate("GATE \(i+1)",eyebrow:"GRANDSTAND",footer:i==0 ? "SECTORS A / B":"SECTORS C / D",badge:i==0 ? "A":"C",
+                        at:SCNVector3(x,2.37,finishZ-3.64),width:1.78,height:0.58,accent:teal,into:root)
+        }
     }
 
     private var citySeed:UInt64 = 0xA57E2026
@@ -312,6 +323,17 @@ final class TownWorld {
             let face=(style==8 && side>0 ? d*0.4 : side*d/2)+side*0.018
             let doorX = style==6 ? -w*0.34 : -w*0.16
             p.door(doorX,face,0.70,min(1.4,h*0.57),0x3d352e,ink,side:side)
+            if side>0 && max(abs(x),abs(z))<36 && index%7==0 && storefrontSigns<8 {
+                let title=["MACHINE WORKS","CANTINA","OFFWORLD GOODS","REACTOR SUPPLY"][storefrontSigns%4]
+                let sy=min(h-0.22,min(1.4,h*0.57)+0.43)
+                for sx in [-0.55,0.55] { p.box(doorX+sx,sy,face-0.09,0.045,0.05,0.28,dark,detail:true) }
+                let wx=x+doorX*cos(yaw)+(face+0.06)*sin(yaw)
+                let wz=z-doorX*sin(yaw)+(face+0.06)*cos(yaw)
+                signs.plate(title,eyebrow:"MOS ASTER",footer:"MARKET DISTRICT",badge:String(format:"%02d",storefrontSigns+11),
+                            at:SCNVector3(wx,sy,wz),width:min(2.0,CGFloat(w)*0.62),height:0.42,yaw:CGFloat(yaw),
+                            accent:storefrontSigns%2==0 ? rust:teal,into:root)
+                storefrontSigns += 1
+            }
             for k in 0..<2 {
                 let xx = -w*0.32+Double(k)*w*0.55
                 p.box(xx,h*0.41,face,0.24,0.57,0.035,0x39332c,detail:true)
@@ -393,8 +415,9 @@ final class TownWorld {
             citizen(x+0.73,z-0.35,y:0.055,yaw:-1.2,index:707+i,seated:false)
             p.box(-0.96,0.19,-1.06,0.60,0.36,0.40,teal)
             p.box(-0.96,0.40,-1.06,0.21,0.06,0.08,dark,detail:true)
-            p.box(0,1.77,-1.51,1.55,0.30,0.04,dark)
-            sign(i == 0 ? "DROID REPAIR":"SPARES / 02",at:SCNVector3(x+0.67,1.69,z-1.54),size:0.16,ink:0xeadbbd,facing:.pi)
+            for sx in [-0.65,0.65] { p.beam(SIMD3(sx,2.02,-1.56),SIMD3(sx,2.43,-1.56),0.012,dark,sides:5) }
+            signs.plate(i==0 ? "DROID REPAIR":"PARTS & SALVAGE",eyebrow:"RACE SERVICE",footer:"CREW ACCESS ONLY",badge:i==0 ? "01":"02",
+                        at:SCNVector3(x,1.77,z-1.56),width:1.85,height:0.46,yaw:.pi,accent:rust,into:root)
         }
     }
 
@@ -413,7 +436,8 @@ final class TownWorld {
         p.box(3,1.85,4.87,7.5,3.7,0.055,dark)
         p.box(3,4.8,7,9.4,0.40,4.5,cream)
         for x in stride(from:-0.5,through:6.5,by:0.7) { p.box(x,1.9,4.82,0.065,3.6,0.06,trim,detail:true) }
-        sign("DOCK 07",at:SCNVector3(27.5,4.03,18.78),size:0.38,ink:0xeadbbd,facing:.pi)
+        signs.plate("DOCK 07",eyebrow:"MOS ASTER SPACEPORT",footer:"ARRIVALS  /  CARGO",badge:"07",
+                    at:SCNVector3(26,4.13,18.77),width:5.6,height:0.65,yaw:.pi,accent:teal,into:root)
         // A small parked original utility shuttle: low hull, wings and engines.
         p.box(3,0.7,0.6,1.35,0.65,3.2,cream)
         p.box(3,1.13,0.2,0.75,0.36,1.1,teal)
@@ -464,7 +488,8 @@ final class TownWorld {
             q.adobe(-2.0,1.0,4.0,3.2,2.0,2.5,0xaf9878)
             q.dome(-2.0,2.0,4.0,1.5,0.9,1.15,0xaf9878,sides:16)
             for k in 0..<6 { q.box(2.7,0.15+Double(k)*0.27,3.8-Double(k)*0.36,1.0,0.3,0.38,0x9c886b) }
-            sign("BAY / 0\(i+8)",at:SCNVector3(pt.0-1.3,1.2,pt.1-4.91),size:0.30,ink:0xd1bf9a,facing:.pi)
+            signs.plate("LANDING BAY",eyebrow:"SPACEPORT AUTHORITY",footer:"KEEP APRON CLEAR",badge:"0\(i+8)",
+                        at:SCNVector3(pt.0,1.15,pt.1-4.94),width:2.9,height:0.59,yaw:.pi,accent:teal,into:root)
         }
         // Small roof-mounted utilities sit within the city instead of a mesa ring.
         for (x,z) in [(-53.0,48.0),(49.0,53.0),(-70.0,-41.0),(22.0,71.0)] {
@@ -509,6 +534,10 @@ final class TownWorld {
                 if i%2==0 { p.cylinder(xx,0.82,-0.08,0.12,0.17,0.28,0x97816a,sides:8,detail:true) }
                 else { p.box(xx,0.81,-0.08,0.25,0.22,0.34,k%2==0 ? 0x667771:0xad8f65,detail:true) }
             }
+            p.beam(SIMD3(-1.4,1.64,-0.77),SIMD3(1.4,1.64,-0.77),0.022,dark,sides:6)
+            for sx in [-0.75,0.75] { p.beam(SIMD3(sx,1.57,-0.77),SIMD3(sx,1.64,-0.77),0.012,dark,sides:5) }
+            signs.plate(["CERAMICS","DROID EXCHANGE","SPICE MERCHANT","POWER CELLS"][i],eyebrow:"ASTER BAZAAR",footer:"TRADE  /  REPAIR  /  SUPPLIES",badge:"0\(i+1)",
+                        at:SCNVector3(x,1.37,z-0.77),width:2.15,height:0.40,yaw:.pi,accent:i%2==0 ? rust:teal,into:root)
             citizen(x,z+0.42,y:0.03,yaw:.pi,index:1701+i,seated:false)
             citizen(x+1.25,z+0.82,y:0.03,yaw:-0.4,index:1801+i,seated:false)
             p.box(1.12,0.24,0.45,0.43,0.48,0.44,0x665846,detail:true)
@@ -556,57 +585,29 @@ final class TownWorld {
 
     private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,animated:Bool=false,walking:Bool=false) {
         population += 1
-        let outfit:UInt32=[0x875345,0x4b7074,0xd4bf91,0x6f6e51,0x58616a,0xb6824c,0x927e72,0xddd0b0][index%8]
-        let skin:UInt32=[0xb68660,0x7f563e,0xccab83,0x879d7b,0xb79168,0x758b91][index%6]
-        let isDroid=index%11 == 0
-        if animated && people.count<(walking ? 16:12) {
-            let mesh=TownMesh(), dummy=TownMesh()
-            let p=TownPainter(near:mesh,far:dummy,origin:.zero,yaw:0)
-            personMesh(p,y:0,outfit:outfit,skin:skin,seated:seated,droid:isDroid,articulated:true)
-            let node=SCNNode(geometry:mesh.geometry(material:surface)); node.position=SCNVector3(x,y,z); node.eulerAngles.y=CGFloat(yaw)
-            node.name="Animated town spectator"; node.castsShadow=false
-            let armMesh=TownMesh(), armPainter=TownPainter(near:armMesh,far:TownMesh(),origin:.zero,yaw:0)
-            armPainter.cylinder(0,-0.18,0,0.055,0.065,0.36,outfit,sides:5)
-            let arm=SCNNode(geometry:armMesh.geometry(material:surface)); arm.position=SCNVector3(-0.18,seated ? 0.48:0.78,0)
-            node.addChildNode(arm); root.addChildNode(node)
-            people.append(TownPerson(node:node,arm:arm,origin:node.position,phase:Double(index)*1.618,walking:walking))
-        } else {
+        let node = crowd.add(x:x,y:y,z:z,yaw:yaw,index:index,seated:seated,
+                             animated:animated && people.count<(walking ? 16:12))
+        if let node {
+            node.name="Animated town spectator"
+            root.addChildNode(node)
+            // The full body uses a relaxed authored pose with bounded idle motion.
+            people.append(TownPerson(node:node,origin:node.position,phase:Double(index)*1.618))
+        }
+    }
+    private func buildWayfinding() {
+        // Signs face the approach and stand at street edges, not in the roadway.
+        let routes:[(Double,Double,Double,String,String,String)] = [
+            (-12.5,finishZ-10.2,Double.pi,"←  BAZAAR","GRANDSTAND  /  GATES 1–2","M"),
+            (20.5,-29.0,Double.pi,"←  SPACEPORT","DOCK 07  /  LANDING BAYS","D"),
+            (27.0,-12.0,-Double.pi/2,"GATES 1–2  ←","GRANDSTAND  /  BAZAAR","R")]
+        for (x,z,yaw,title,footer,badge) in routes {
             let p=paint(x,z,yaw:yaw)
-            personMesh(p,y:y,outfit:outfit,skin:skin,seated:seated,droid:isDroid)
+            p.beam(SIMD3(0,0,0),SIMD3(0,2.5,0),0.045,0x55574f,sides:8)
+            signs.plate(title,eyebrow:"MOS ASTER WAYFINDING",footer:footer,badge:badge,
+                        at:SCNVector3(x,2.14,z),width:2.45,height:0.55,yaw:CGFloat(yaw),accent:teal,into:root)
         }
-    }
-    private func personMesh(_ p:TownPainter,y:Double,outfit:UInt32,skin:UInt32,seated:Bool,droid:Bool,articulated:Bool=false) {
-        let hip=seated ? 0.18:0.47, head=hip+0.47
-        p.cylinder(0,y+hip+0.18,0,0.18,0.13,0.42,outfit,sides:6)
-        p.dome(0,y+head,0,0.115,0.15,0.12,droid ? cream:skin,sides:6)
-        p.cylinder(0,y+head-0.045,0,0.11,0.11,0.10,droid ? cream:skin,sides:6)
-        if droid { p.box(0,y+head,0.12,0.16,0.05,0.035,teal,detail:true) }
-        else { p.dome(0,y+head+0.04,-0.018,0.13,0.14,0.12,outfit,sides:6,detail:true) }
-        for sx in [-0.085,0.085] {
-            p.box(sx,y+(seated ? 0.02:0.22),seated ? 0.15:0,0.09,seated ? 0.26:0.44,0.12,dark)
-            if seated { p.box(sx,y+0.15,0.10,0.10,0.12,0.30,outfit,detail:true) }
-        }
-        p.box(0.20,y+hip+0.10,0.015,0.09,0.32,0.10,outfit,detail:true)
-        if !articulated { p.box(-0.20,y+hip+0.10,0.015,0.09,0.32,0.10,outfit,detail:true) }
-        if skin == 0x879d7b {
-            p.box(0,y+head,0,0.36,0.07,0.07,skin,detail:true)
-        }
-        if droid { p.box(0,y+hip+0.2,0.15,0.14,0.14,0.025,dark,detail:true) }
-    }
-    private func sign(_ value:String,at position:SCNVector3,size:CGFloat,ink:UInt32,facing:CGFloat=0) {
-        let text=SCNText(string:value,extrusionDepth:0)
-        text.font = .monospacedSystemFont(ofSize:1,weight:.bold)
-        text.flatness=0.08
-        let m=SCNMaterial();m.diffuse.contents=color(ink);m.lightingModel = .constant
-        text.materials=[m]
-        let node=SCNNode(geometry:text)
-        let bounds=text.boundingBox
-        let scale=size/max(0.001,bounds.max.y-bounds.min.y)
-        node.scale=SCNVector3(scale,scale,scale)
-        node.pivot=SCNMatrix4MakeTranslation(bounds.min.x,bounds.min.y,0)
-        node.position=position;node.eulerAngles.y=facing
-        node.castsShadow=false
-        root.addChildNode(node)
+        signs.plate("NORTH CURVE",eyebrow:"MOS ASTER GRAND PRIX",footer:"SPECTATOR TERRACE",badge:"N",
+                    at:SCNVector3(3,0.82,20.76),width:3.6,height:0.55,yaw:.pi,into:root)
     }
 
     func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>) {
@@ -617,25 +618,18 @@ final class TownWorld {
             for person in people {
                 let d=hypot(Double(camera.x-person.origin.x),Double(camera.z-person.origin.z))
                 // Far animated figures remain visible in their resting pose.
-                person.arm.isHidden=d>38
                 if d<24 { animatedCount += 1 }
             }
         }
         for person in people {
             let d=hypot(Double(camera.x-person.origin.x),Double(camera.z-person.origin.z))
             guard d<24 else { continue }
-            let nearby=hypot(player.x-Double(person.origin.x),player.y-Double(person.origin.z))<9
-            let wave=nearby ? max(0,sin(clock*1.7+person.phase))*1.8 : 0.12*sin(clock+person.phase)
-            person.arm.eulerAngles.z=CGFloat(-wave)
-            if person.walking {
-                person.node.position.x=person.origin.x+CGFloat(sin(clock*0.32+person.phase)*0.42)
-                person.node.position.y=person.origin.y+CGFloat(abs(sin(clock*3+person.phase))*0.025)
-            } else { person.node.eulerAngles.z=CGFloat(sin(clock*0.8+person.phase)*0.018) }
+            person.node.eulerAngles.z=CGFloat(sin(clock*0.8+person.phase)*0.012)
         }
     }
     func reset() {
         clock=0;visibilityClock = -1
-        for p in people { p.node.position=p.origin;p.node.eulerAngles.z=0;p.arm.eulerAngles.z=0 }
+        for p in people { p.node.position=p.origin;p.node.eulerAngles.z=0 }
     }
     /// Clip the chase/orbit boom against simple scenery bounds, with a small
     /// near-plane margin. Does not add any scene geometry to race physics.
@@ -662,7 +656,7 @@ final class TownWorld {
     }
     var statistics: [String:Int] {
         ["buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":people.count,
-         "walkingPeople":people.filter{$0.walking}.count,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
+         "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":0,"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
     }
     var cityCoveragePassed:Bool {
         (0..<8).allSatisfy { sector in
@@ -685,42 +679,19 @@ final class TownWorld {
     }
     func validate() -> Bool {
         buildings>800 && population>120 && people.count<=16 && triangleCount<360_000 && coarseTriangles<290_000 && cells.count<150
-            && cityCoveragePassed && streetNetworkPassed
+            && signs.valid && signs.count>=20 && crowd.valid && cityCoveragePassed && streetNetworkPassed
             && repairLots.count == 2
             && lots.allSatisfy { !infield($0.x,$0.z) && clearLot($0.x,$0.z,$0.width,$0.depth) }
             && repairLots.allSatisfy { infield($0.x,$0.z) && clearLot($0.x,$0.z,$0.width,$0.depth) }
-    }
-    private func plasterTexture() -> NSImage {
-        let size=256
-        let b=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:size,pixelsHigh:size,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:size*4,bitsPerPixel:32)!
-        let data=b.bitmapData!
-        func hash(_ x:Int,_ y:Int)->Double {
-            var n=UInt32(truncatingIfNeeded:x &* 374761393 &+ y &* 668265263)
-            n=(n ^ (n >> 13)) &* 1274126177;n=n ^ (n >> 16)
-            return Double(n & 65535)/65535
-        }
-        func noise(_ x:Double,_ y:Double,_ cells:Int)->Double {
-            let px=x*Double(cells)/Double(size),py=y*Double(cells)/Double(size)
-            let ix=Int(px),iy=Int(py),fx=px-Double(ix),fy=py-Double(iy)
-            let u=fx*fx*(3-2*fx),v=fy*fy*(3-2*fy)
-            let a=hash(ix%cells,iy%cells),bb=hash((ix+1)%cells,iy%cells)
-            let c=hash(ix%cells,(iy+1)%cells),d=hash((ix+1)%cells,(iy+1)%cells)
-            return (a+(bb-a)*u)*(1-v)+(c+(d-c)*u)*v
-        }
-        for y in 0..<size { for x in 0..<size {
-            let value=224+noise(Double(x),Double(y),7)*12+noise(Double(x),Double(y),29)*7+hash(x,y)*9
-            let v=UInt8(min(255,value)),i=(y*size+x)*4
-            data[i]=v;data[i+1]=v;data[i+2]=v;data[i+3]=255
-        }}
-        surface.diffuse.wrapS = .repeat;surface.diffuse.wrapT = .repeat
-        let image=NSImage(size:NSSize(width:size,height:size));image.addRepresentation(b);return image
     }
 
 }
 
 /// Offline-style mesh batching performed once at scene preparation. No SceneKit
 /// primitive nodes survive for each window, brick or spectator body part.
-private final class TownMesh {
+final class TownMesh {
+    var materialSlot=0
+    private var groups:[[Int32]]=[[],[],[]]
     var positions:[SCNVector3]=[], normals:[SCNVector3]=[], uv:[CGPoint]=[], colors:[Float]=[], indices:[Int32]=[]
     func triangle(_ a:SIMD3<Float>,_ b:SIMD3<Float>,_ c:SIMD3<Float>,_ color:UInt32, smooth:[SIMD3<Float>]?=nil) {
         let cross=simd_cross(b-a,c-a)
@@ -730,18 +701,22 @@ private final class TownMesh {
         for (i,v) in [a,b,c].enumerated() {
             let normal=smooth?[i] ?? n
             let contact:Float=0.83+0.17*min(1,max(0,v.y)/1.2)
-            let shade:Float=(0.72+0.28*max(0,normal.y))*contact
+            let shade:Float=(0.94+0.06*max(0,normal.y))*contact
             positions.append(SCNVector3(v));normals.append(SCNVector3(normal))
-            uv.append(CGPoint(x:Double(v.x+v.z)*0.8,y:Double(v.y+v.z)*0.8))
+            let axis=abs(n)
+            let tex:SIMD2<Float> = axis.y>max(axis.x,axis.z) ? SIMD2(v.x,v.z) : (axis.x>axis.z ? SIMD2(v.z,v.y):SIMD2(v.x,v.y))
+            uv.append(CGPoint(x:Double(tex.x)*0.48,y:Double(tex.y)*0.48))
             colors += [Float((color>>16)&255)/255*shade,Float((color>>8)&255)/255*shade,Float(color&255)/255*shade,1]
         }
         indices += [base,base+1,base+2]
+        groups[materialSlot] += [base,base+1,base+2]
     }
     func geometry(material:SCNMaterial,relativeTo origin:SIMD3<Float> = .zero)->SCNGeometry {
         let source=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:positions.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
         let local=positions.map { SCNVector3(Float($0.x)-origin.x,Float($0.y)-origin.y,Float($0.z)-origin.z) }
-        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),source],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
-        g.materials=[material];return g
+        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
+        let materials=[material,CityMaterials.cloth,CityMaterials.metal]
+        g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]};return g
     }
 }
 private struct TownPainter {
@@ -757,6 +732,8 @@ private struct TownPainter {
         tri(a,b,c,ink,detail);tri(a,c,d,ink,detail)
     }
     func beam(_ from:SIMD3<Double>,_ to:SIMD3<Double>,_ radius:Double,_ ink:UInt32,sides:Int=8) {
+        near.materialSlot=2;far.materialSlot=2
+        defer { near.materialSlot=0;far.materialSlot=0 }
         let axis=simd_normalize(to-from)
         let seed=abs(axis.y)<0.9 ? SIMD3<Double>(0,1,0):SIMD3<Double>(1,0,0)
         let u=simd_normalize(simd_cross(axis,seed))*radius,v=simd_cross(axis,u)
@@ -772,16 +749,35 @@ private struct TownPainter {
     func adobe(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,simple:Bool=false) {
         if simple { box(x,y,z,w,h,d,ink);return }
         let bevel=min(0.18,min(w,d)*0.12)
-        let outline:[(Double,Double)]=[(-w/2+bevel,-d/2),(w/2-bevel,-d/2),(w/2,-d/2+bevel),(w/2,d/2-bevel),(w/2-bevel,d/2),(-w/2+bevel,d/2),(-w/2,d/2-bevel),(-w/2,-d/2+bevel)]
-        for i in 0..<8 {
-            let a=outline[i],b=outline[(i+1)%8]
+        var outline:[(Double,Double,Double)]=[]
+        for (cx,cz,start) in [(w/2-bevel,-d/2+bevel,-Double.pi/2),(w/2-bevel,d/2-bevel,0),(-w/2+bevel,d/2-bevel,Double.pi/2),(-w/2+bevel,-d/2+bevel,Double.pi)] {
+            for k in 0...2 {
+                let angle=start+Double(k) * .pi/4
+                outline.append((cx+cos(angle)*bevel,cz+sin(angle)*bevel,angle))
+            }
+        }
+        func normal(_ angle:Double,_ rise:Float)->SIMD3<Float> {
+            let a=Float(angle)-yaw
+            return simd_normalize(SIMD3(cos(a),rise,sin(a)))
+        }
+        func smoothQuad(_ v:[SIMD3<Float>],_ n:[SIMD3<Float>]) {
+            for ids in [[0,1,2],[0,2,3]] {
+                let normals=ids.map{n[$0]}
+                near.triangle(v[ids[0]],v[ids[1]],v[ids[2]],ink,smooth:normals)
+                far.triangle(v[ids[0]],v[ids[1]],v[ids[2]],ink,smooth:normals)
+            }
+        }
+        for i in 0..<outline.count {
+            let a=outline[i],b=outline[(i+1)%outline.count]
             let v0=point(x+a.0,y-h/2,z+a.1),v1=point(x+b.0,y-h/2,z+b.1)
             let v2=point(x+b.0*0.97,y+h/2-bevel,z+b.1*0.97),v3=point(x+a.0*0.97,y+h/2-bevel,z+a.1*0.97)
             let v4=point(x+b.0*0.92,y+h/2,z+b.1*0.92),v5=point(x+a.0*0.92,y+h/2,z+a.1*0.92)
-            quad(v0,v3,v2,v1,ink,false);quad(v3,v5,v4,v2,ink,false)
+            smoothQuad([v0,v3,v2,v1],[normal(a.2,0),normal(a.2,0.18),normal(b.2,0.18),normal(b.2,0)])
+            smoothQuad([v3,v5,v4,v2],[normal(a.2,0.18),normal(a.2,1.3),normal(b.2,1.3),normal(b.2,0.18)])
             tri(point(x,y+h/2,z),v4,v5,ink,false)
         }
     }
+
     func ring(_ x:Double,_ y:Double,_ z:Double,_ outer:Double,_ inner:Double,_ h:Double,_ ink:UInt32,sides:Int=24) {
         for i in 0..<sides {
             let a=Double(i)*2 * Double.pi/Double(sides),b=Double(i+1)*2 * Double.pi/Double(sides)
@@ -797,25 +793,50 @@ private struct TownPainter {
         box(x,h*0.43,z,w,h*0.86,0.05,ink)
         dome(x,h*0.86,z,w/2,w*0.52,0.055,ink,sides:12)
         for sx in [-1.0,1] { adobe(x+sx*(w/2+0.07),h*0.42,z-side*0.015,0.13,h*0.84,0.13,trim) }
+        for i in 0..<16 {
+            let a=Double(i) * .pi/16,b=Double(i+1) * .pi/16
+            let r=w/2,outer=r+0.12,cy=h*0.86
+            let a0=point(x+cos(a)*r,cy+sin(a)*r,z+side*0.06)
+            let a1=point(x+cos(a)*outer,cy+sin(a)*outer,z+side*0.10)
+            let b0=point(x+cos(b)*r,cy+sin(b)*r,z+side*0.06)
+            let b1=point(x+cos(b)*outer,cy+sin(b)*outer,z+side*0.10)
+            if side>0 { quad(a0,a1,b1,b0,trim,true) } else { quad(b0,b1,a1,a0,trim,true) }
+        }
+        near.materialSlot=2
+        box(x,h*0.40,z+side*0.035,w*0.79,h*0.72,0.012,0x86715b,detail:true)
+        for sx in [-0.22,0.22] { box(x+sx*w,h*0.4,z+side*0.047,0.022,h*0.70,0.014,0x493e34,detail:true) }
+        box(x+w*0.22,h*0.4,z+side*0.068,0.055,0.14,0.035,0xb7a184,detail:true)
+        near.materialSlot=0
         box(x,0.04,z+side*0.13,w+0.18,0.08,0.31,trim,detail:true)
     }
     func awning(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ y:Double,_ ink:UInt32) {
-        // Slight sag and uneven strips avoid a rigid flat sheet.
-        for i in 0..<4 {
-            let x0=x-w/2+Double(i)*w/4,x1=x-w/2+Double(i+1)*w/4
-            let a=point(x0,y,z-d/2),b=point(x1,y,z-d/2)
-            let c=point(x1,y-0.17,z+d/2),e=point(x0,y-0.17,z+d/2)
-            quad(a,e,c,b,ink,true);quad(b,c,e,a,ink,true)
+        cloth(x,z,w,d,y,0.12,ink,ridge:false)
+    }
+    private func cloth(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ y:Double,_ rise:Double,_ ink:UInt32,ridge:Bool) {
+        near.materialSlot=1;far.materialSlot=1
+        defer { near.materialSlot=0;far.materialSlot=0 }
+        let nx=8,nz=4
+        func v(_ i:Int,_ j:Int)->SIMD3<Float> {
+            let u=Double(i)/Double(nx),t=Double(j)/Double(nz)
+            let roof=ridge ? rise*(1-abs(u*2-1)) : -t*0.15
+            let sag=0.10*sin(u * .pi)*sin(t * .pi)+0.018*sin(u*12 * .pi)*sin(t * .pi)
+            return point(x+(u-0.5)*w,y+roof-sag,z+(t-0.5)*d)
         }
+        for i in 0..<nx { for j in 0..<nz {
+            let a=v(i,j),b=v(i+1,j),c=v(i+1,j+1),e=v(i,j+1)
+            quad(a,e,c,b,ink,true);quad(b,c,e,a,ink,true)
+        }}
+        // Distant cloth keeps the silhouette without folds.
+        let a=v(0,0),b=v(nx,0),c=v(nx,nz),e=v(0,nz)
+        far.triangle(a,e,c,ink);far.triangle(a,c,b,ink)
+        far.triangle(c,e,a,ink);far.triangle(b,c,a,ink)
     }
     func canopy(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ y:Double,_ rise:Double,_ ink:UInt32) {
-        for side in [-1.0,1.0] {
-            let a=point(x,y+rise,z-d/2),b=point(x+side*w/2,y,z-d/2)
-            let c=point(x+side*w/2,y,z+d/2),e=point(x,y+rise,z+d/2)
-            quad(a,b,c,e,ink,false);quad(e,c,b,a,ink,false)
-            for zz in [-d/2,d/2] { box(x+side*w/2,y/2,z+zz,0.055,y,0.055,0x3e4545) }
-        }
-        box(x,y+rise,z,0.065,0.065,d,0x3e4545,detail:true)
+        cloth(x,z,w,d,y,rise,ink,ridge:true)
+        for side in [-1.0,1.0] { for zz in [-d/2,d/2] {
+            beam(SIMD3(x+side*w/2,0,z+zz),SIMD3(x+side*w/2,y,z+zz),0.035,0x625b50)
+        }}
+        beam(SIMD3(x,y+rise,z-d/2),SIMD3(x,y+rise,z+d/2),0.04,0x625b50)
     }
     func box(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,detail:Bool=false) {
         let v=[point(x-w/2,y-h/2,z-d/2),point(x+w/2,y-h/2,z-d/2),point(x+w/2,y+h/2,z-d/2),point(x-w/2,y+h/2,z-d/2),point(x-w/2,y-h/2,z+d/2),point(x+w/2,y-h/2,z+d/2),point(x+w/2,y+h/2,z+d/2),point(x-w/2,y+h/2,z+d/2)]
@@ -826,13 +847,20 @@ private struct TownPainter {
             let a=Double(i)*2 * Double.pi/Double(sides),b=Double(i+1)*2 * Double.pi/Double(sides)
             let v0=point(x+cos(a)*bottom,y-h/2,z+sin(a)*bottom),v1=point(x+cos(b)*bottom,y-h/2,z+sin(b)*bottom)
             let v2=point(x+cos(b)*top,y+h/2,z+sin(b)*top),v3=point(x+cos(a)*top,y+h/2,z+sin(a)*top)
-            quad(v0,v3,v2,v1,ink,detail)
+            func normal(_ angle:Double)->SIMD3<Float> {
+                let a=Float(angle)-yaw
+                return simd_normalize(SIMD3(cos(a),Float((bottom-top)/max(h,0.001)),sin(a)))
+            }
+            for (v,n) in [([v0,v3,v2],[normal(a),normal(a),normal(b)]),([v0,v2,v1],[normal(a),normal(b),normal(b)])] {
+                near.triangle(v[0],v[1],v[2],ink,smooth:n)
+                if !detail { far.triangle(v[0],v[1],v[2],ink,smooth:n) }
+            }
             tri(point(x,y+h/2,z),v2,v3,ink,detail)
             tri(point(x,y-h/2,z),v0,v1,ink,detail)
         }
     }
     func dome(_ x:Double,_ y:Double,_ z:Double,_ rx:Double,_ ry:Double,_ rz:Double,_ ink:UInt32,sides:Int=16,detail:Bool=false) {
-        let rings=4
+        let rings=sides>=16 ? 8:4
         for j in 0..<rings { for i in 0..<sides {
             let a=Double(i)*2 * Double.pi/Double(sides),b=Double(i+1)*2 * Double.pi/Double(sides)
             let p=Double(j)/Double(rings)*Double.pi/2,q=Double(j+1)/Double(rings)*Double.pi/2

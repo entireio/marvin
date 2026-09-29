@@ -79,19 +79,64 @@ public enum DirtCourse {
         return atan2(b.x-a.x,b.y-a.y)
     }
     private static let samples = (0...sampleCount).map { center(Double($0)*2 * .pi/Double(sampleCount)) }
+    private struct ProjectionNode {
+        let low: SIMD2<Double>, high: SIMD2<Double>
+        let start: Int, end: Int, left: Int, right: Int
+        func distanceSquared(_ p: SIMD2<Double>) -> Double {
+            let x=max(0,max(low.x-p.x,p.x-high.x))
+            let z=max(0,max(low.y-p.y,p.y-high.y))
+            return x*x+z*z
+        }
+    }
+    // Adjacent spline segments are spatially coherent. A balanced bounds tree
+    // rejects whole arcs while retaining the exact original segment projection.
+    private static let projectionNodes: [ProjectionNode] = {
+        var nodes:[ProjectionNode]=[]
+        func build(_ start:Int,_ end:Int)->Int {
+            var lo=SIMD2<Double>(repeating:.infinity),hi=SIMD2<Double>(repeating:-.infinity)
+            for i in start...end {
+                lo.x=min(lo.x,samples[i].x);lo.y=min(lo.y,samples[i].y)
+                hi.x=max(hi.x,samples[i].x);hi.y=max(hi.y,samples[i].y)
+            }
+            let index=nodes.count
+            nodes.append(ProjectionNode(low:lo,high:hi,start:start,end:end,left:-1,right:-1))
+            if end-start>12 {
+                let middle=(start+end)/2,left=build(start,middle),right=build(middle,end)
+                nodes[index]=ProjectionNode(low:lo,high:hi,start:start,end:end,left:left,right:right)
+            }
+            return index
+        }
+        _=build(0,sampleCount)
+        return nodes
+    }()
     public static func projection(x: Double, z: Double) -> (phase: Double, offset: Double, distance: Double) {
         let p = SIMD2<Double>(x,z)
-        var best = Double.infinity, bestPhase = 0.0, offset = 0.0
-        for i in 0..<sampleCount {
-            let a = samples[i], d = samples[i+1]-a, v = p-a
-            let lengthSquared = d.x*d.x+d.y*d.y
-            let t = max(0,min(1,(v.x*d.x+v.y*d.y)/lengthSquared))
-            let e = p-(a+d*t), distance = e.x*e.x+e.y*e.y
-            if distance < best {
-                best = distance; bestPhase = (Double(i)+t)*2 * .pi/Double(sampleCount)
-                offset = (e.x*d.y-e.y*d.x)/sqrt(lengthSquared)
+        var best = Double.infinity, bestPhase = 0.0, offset = 0.0, bestIndex=sampleCount
+        func search(_ index:Int) {
+            let node=projectionNodes[index]
+            // Allow rounding slack in the lower bound, including distant queries.
+            if node.distanceSquared(p)>best+max(1e-12,best.ulp*8) { return }
+            if node.left>=0 {
+                let leftDistance=projectionNodes[node.left].distanceSquared(p)
+                let rightDistance=projectionNodes[node.right].distanceSquared(p)
+                if leftDistance<=rightDistance { search(node.left);search(node.right) }
+                else { search(node.right);search(node.left) }
+                return
+            }
+            for i in node.start..<node.end {
+                let a = samples[i], d = samples[i+1]-a, v = p-a
+                let lengthSquared = d.x*d.x+d.y*d.y
+                let t = max(0,min(1,(v.x*d.x+v.y*d.y)/lengthSquared))
+                let e = p-(a+d*t), distance = e.x*e.x+e.y*e.y
+                // The original ascending scan resolves ties to the first segment.
+                if distance < best || (distance == best && bestIndex<sampleCount && i<bestIndex) {
+                    best = distance; bestIndex=i
+                    bestPhase = (Double(i)+t)*2 * .pi/Double(sampleCount)
+                    offset = (e.x*d.y-e.y*d.x)/sqrt(lengthSquared)
+                }
             }
         }
+        search(0)
         return (bestPhase,offset,sqrt(best))
     }
     public static func phase(x: Double, z: Double) -> Double { projection(x:x,z:z).phase }

@@ -1,0 +1,13 @@
+{
+  "cloth-base.jpg": "1f4941638b890d4535b1078067be8a831ca302d1e696ed959b4e4512de893cba",
+  "cloth-normal.jpg": "84f15ee5f6b63e7e224051a22426c751cc1fe15a794efd001ebfdb5f84828602",
+  "cloth-rough.jpg": "be3e311614ee6f31d4cb4a774ed678b7a64189d3e1a55ad71033142185da270a",
+  "crowd.json": "4cd375affc469779724413d06dead5e29e3a35a5f3de81433c1a6480055a8475",
+  "metal-base.jpg": "7bd898b6218ab9fb9ddbe07fa7706efb761552252f3e0dc78798b03fef2b2fa2",
+  "metal-normal.jpg": "3b4074ac7b6d9c489abcafd2dababfeedd9dc4b8d2d1156d48de4aee3f186543",
+  "metal-rough.jpg": "25d7b615597d593a1fe4a037b75f5f6f709aae8245d9aa92a93d5a9a170ddad4",
+  "plaster-base.jpg": "6fd812ed8dd5be1873c29aeef38ce9bf1fb30a22c6d4b3a12db725e98c26a1be",
+  "plaster-normal.jpg": "2d601a46ed5ce2af866741c53cafa3cba472620c272e633b6484d4de16a80eb1",
+  "plaster-rough.jpg": "35aad595469533cc3b7cc209cc6c7e065d660211f02c867f4492d3b371b1fee1",
+  "sky.hdr": "2b94f1046750f91616b1442236edd233142608c8452f76b4c427a4c2901b352b"
+}

@@ -377,13 +377,27 @@ The finish-line grandstand is built into a populated market arcade. There are
 298 spectators/residents, four market stalls, parked speeders and rooftop utility
 hardware. Two open infield repair tents contain mechanics, robot lifts, benches,
 tools and spare parts. Houses are excluded from the entire circuit interior.
-Fifteen nearby people animate (hard cap 16), including four plaza walkers.
+Fifteen nearby people have bounded idle animation (hard cap 16). The old sliding
+plaza walkers are replaced by stationary, posed residents.
 Race geometry, lap rules, robot contacts and driving assists are unchanged.
 
-Static scenery uses 130 spatial batches, a shared 256×256 plaster texture and
-near/far geometry tiers. Outer districts omit small details at generation time;
-nearby architecture retains its equipment through the overview distance. Assets
-are constructed locally once at load time, with no downloads or extra asset tools.
+Static architecture uses 130 spatial batches and near/far geometry tiers. Rounded
+adobe edges, smoother domes, layered arched door frames, scanned 2K plaster,
+cloth and metal surfaces, sagging canopies, and HDR sky lighting improve close-up
+appearance. The 298 people use clothed human meshes with modeled faces, hands,
+boots and hoods, batched into small cells with three independent detail levels.
+The city keeps its previous layout and the muted clay course color.
+
+Race branding, grandstand gates/sectors, repair tents, market stalls, workshops,
+and street wayfinding share a mounted enamel-sign system. Text is fitted in both
+dimensions and centered within a measured content area; signs have directional
+orientation, frames and mounting hardware. They are rasterized once, not laid out
+or billboarded during the race.
+
+Normal builds use bundled assets, with no downloads or extra asset tools. Run
+`git lfs pull` after cloning. For offline human-mesh editing, see
+[the crowd exporter](../../scripts/city/README.md). Credits and CC0 source links
+are in [City/ATTRIBUTION.md](Resources/City/ATTRIBUTION.md).
 The chase/orbit camera shortens against scenery bounds. Crowd motion respects
 pause/focus gates. See [film comparison and validation](../../docs/dirt-city.md).
 

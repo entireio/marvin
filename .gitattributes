@@ -69,3 +69,8 @@ tests/acceptance/**/*.png  -filter -diff -merge -text
 # ---------------------------------------------------------------------------
 hardware/mechanical/* linguist-documentation
 apps/build-docs/*     linguist-documentation
+
+# Offline human art source and generated crowd geometry.
+scripts/city/*.blend filter=lfs diff=lfs merge=lfs -text
+apps/simulator-macos/Resources/City/crowd.json filter=lfs diff=lfs merge=lfs -text
+apps/simulator-macos/Resources/City/*.hdr filter=lfs diff=lfs merge=lfs -text
