@@ -56,13 +56,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var appearanceObservation: NSKeyValueObservation?
     var appliedIconName = ""
     let townMeter = TownFrameMeter()
+    var rendererStudy: AnyObject?
     var townBenchmarkStart: Double?
     var townBenchmarkDirectory: URL?
     var townBenchmarkCPU: [Double] = []
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--town-benchmark"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -181,6 +182,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             if let directory = smokeDirectory {
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
+                if CommandLine.arguments.contains("--renderer-study") {
+                    timer?.invalidate()
+                    if #available(macOS 15.0, *) {
+                        Task { @MainActor in
+                            do {
+                                let study=RendererStudy(app:self,directory:URL(fileURLWithPath:directory),reality:CommandLine.arguments.contains("--realitykit"))
+                                rendererStudy=study;try await study.startStudy()
+                            } catch { print("Renderer study failed: \(error)");exit(1) }
+                        }
+                    } else { print("Renderer study requires macOS 15 or newer");exit(1) }
+                    return
+                }
                 if CommandLine.arguments.contains("--town-benchmark") {
                     startTownBenchmark(at:URL(fileURLWithPath:directory)); return
                 }

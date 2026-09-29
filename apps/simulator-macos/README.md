@@ -435,3 +435,12 @@ steps and are not frame-rate benchmarks.
 
 V1 uses stylized procedural art and simple crowd poses. General pedestrian
 navigation, explorable interiors, and dynamic traffic are not implemented.
+
+### Experimental RealityKit comparison
+
+The normal game still uses SceneKit. An opt-in `--renderer-study OUTPUT` mode
+compares a fixed grandstand block with the same geometry and simulation; add
+`--realitykit` for the alternate backend (macOS 15+ and an installed Apple SDK).
+This is a migration study, not a complete playable port. See
+[renderer study](../../docs/renderer-study.md) for measurements, screenshots,
+known parity gaps, capture commands, and migration gates.
