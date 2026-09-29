@@ -5,6 +5,8 @@ import SimulationCore
 final class DirtCoating {
     private var surfaces: [SCNGeometry] = []
     private var lastDistance = 0.0
+    private var uploaded: [Double] = []
+    private var uploadCursor = 0
     private(set) var amount = 0.0
 
     func install(on root: SCNNode, height: Double, wheelOffset: Double, rolling: Bool = false) {
@@ -20,16 +22,37 @@ final class DirtCoating {
             geometry.setValue(0.0,forKey:"dirtAmount")
             geometry.setValue((rolling && node.name?.hasPrefix("ball:") == true) || node.name?.hasPrefix("link:") == true ? 1.0 : 0.0,forKey:"dirtRolling")
             surfaces.append(geometry)
+            uploaded.append(0)
         }
     }
     func update(_ state: Simulation) {
-        if !state.dirtTrack || state.distance < lastDistance { amount = 0 }
+        let resetting = !state.dirtTrack || state.distance < lastDistance
+        if resetting { amount = 0 }
         let travel = max(0,state.distance-lastDistance)
         if state.dirtTrack && state.hasDirtContact {
             amount = min(1,amount+travel/75)
         }
         lastDistance = state.distance
-        for surface in surfaces { surface.setValue(amount,forKey:"dirtAmount") }
+        // A setValue on each articulated surface invalidates SceneKit's Metal
+        // uniform buffers, even when the number has not changed. Dirt changes
+        // slowly: quantize its visual level and spread uploads across frames.
+        // The logical amount remains exact; resets clear every surface at once.
+        let level = floor(amount*32)/32
+        if resetting {
+            for i in surfaces.indices where uploaded[i] != 0 {
+                surfaces[i].setValue(0.0,forKey:"dirtAmount");uploaded[i]=0
+            }
+        } else if !surfaces.isEmpty {
+            var changed=0
+            for _ in surfaces.indices {
+                let i=uploadCursor;uploadCursor=(uploadCursor+1)%surfaces.count
+                if uploaded[i] != level {
+                    surfaces[i].setValue(level,forKey:"dirtAmount");uploaded[i]=level
+                    changed += 1
+                    if changed==12 { break }
+                }
+            }
+        }
     }
     private static let shader = """
     #pragma arguments

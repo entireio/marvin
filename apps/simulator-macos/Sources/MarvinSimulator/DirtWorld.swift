@@ -1,12 +1,16 @@
 import AppKit
 import SceneKit
 import SimulationCore
+import simd
 
 /// Procedural clay, directional ruts, world-space tread marks and pooled debris.
 /// Geometry and textures are generated locally; no network assets are required.
 final class DirtWorld {
     let scene = SCNScene()
+    let town = TownWorld()
     private let effects = SCNNode()
+    private let dustBatch = SCNNode(), clodBatch = SCNNode()
+    weak var camera: SCNNode?
     private var flecks: [(node: SCNNode, velocity: SIMD3<Double>, life: Double, dust: Bool)] = []
     private let trails = [DirtTrail(style:.tracks), DirtTrail(style:.tires), DirtTrail(style:.tires), DirtTrail(style:.tracks)]
     private var emission = [[0.0, 0.0], [0.0, 0.0, 0.0], [0.0], [0.0,0.0]]
@@ -18,24 +22,45 @@ final class DirtWorld {
     private var poolIndex = 0
     private(set) var emittedCount = 0
 
+    private func cityPavingTexture()->NSImage {
+        let size=256
+        let bitmap=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:size,pixelsHigh:size,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:size*4,bitsPerPixel:32)!
+        let data=bitmap.bitmapData!
+        for y in 0..<size { for x in 0..<size {
+            let row=y/32,xx=(x+(row%2)*32)%64
+            let joint=y%32<1 || xx<1
+            func hash(_ a:Int,_ b:Int)->Int {
+                var n=UInt32(truncatingIfNeeded:a &* 374761393 &+ b &* 668265263)
+                n=(n ^ (n >> 13)) &* 1274126177
+                return Int((n ^ (n >> 16)) & 65535)
+            }
+            let noise=hash(x,y)%7-3
+            let block=hash(((x+(row%2)*32)/64)%4,row)%5
+            let value=(joint ? 139:149)+noise+block
+            let i=(y*size+x)*4
+            data[i]=UInt8(value+8);data[i+1]=UInt8(value+2);data[i+2]=UInt8(value-10);data[i+3]=255
+        }}
+        let image=NSImage(size:NSSize(width:size,height:size));image.addRepresentation(bitmap);return image
+    }
+
     init() {
-        scene.background.contents = color(0xc8d7df)
-        scene.fogColor = color(0xc8d7df); scene.fogStartDistance = 70; scene.fogEndDistance = 140
+        scene.background.contents = color(0xb9c9cf)
+        scene.fogColor = color(0xb9c9cf); scene.fogStartDistance = 115; scene.fogEndDistance = 240
         let ambient = SCNNode(); ambient.light = SCNLight(); ambient.light?.type = .ambient
-        ambient.light?.intensity = 600; ambient.light?.color = color(0xd8e5f2)
+        ambient.light?.intensity = 400; ambient.light?.color = color(0xd8e5f2)
         scene.rootNode.addChildNode(ambient)
         let sun = SCNNode(); sun.light = SCNLight(); sun.light?.type = .directional
         sun.eulerAngles = SCNVector3(-0.85, -0.6, 0)
-        sun.light?.intensity = 1550; sun.light?.color = color(0xffe6c1)
+        sun.light?.intensity = 1250; sun.light?.color = color(0xffe6c1)
         sun.light?.castsShadow = true; sun.light?.shadowMode = .deferred
-        sun.light?.shadowMapSize = CGSize(width: 4096, height: 4096)
-        sun.light?.orthographicScale = 28; sun.light?.shadowRadius = 5
-        sun.light?.shadowColor = NSColor.black.withAlphaComponent(0.30)
+        sun.light?.shadowMapSize = CGSize(width: 2048, height: 2048)
+        sun.light?.orthographicScale = 58; sun.light?.shadowRadius = 5
+        sun.light?.shadowColor = NSColor.black.withAlphaComponent(0.42)
         scene.rootNode.addChildNode(sun)
         let ground = SCNPlane(width: 300, height: 300)
         let earth = material(0x827656, roughness: 1)
-        earth.diffuse.contents = soilTexture(track: false, normal: false)
-        earth.normal.contents = soilTexture(track: false, normal: true)
+        earth.diffuse.contents = cityPavingTexture()
+        earth.normal.contents = nil
         for channel in [earth.diffuse, earth.normal] {
             channel.wrapS = .repeat; channel.wrapT = .repeat
             channel.contentsTransform = SCNMatrix4MakeScale(75, 75, 1)
@@ -58,6 +83,15 @@ final class DirtWorld {
             clay.multiply.contents = soilTexture(track:true,normal:false)
             clay.multiply.intensity = 0.35
         }
+        // Sun-dried rose clay: retain the scan's ruts and grain while lifting
+        // its dark brown albedo away from the city paving's pale sandy palette.
+        // One shared material keeps lanes, berms and shoulders consistent.
+        clay.shaderModifiers = [.surface: """
+        #pragma body
+        float clayDetail = dot(_surface.diffuse.rgb, float3(0.2126,0.7152,0.0722));
+        _surface.diffuse.rgb = float3(0.34,0.205,0.145)
+                            + clayDetail * float3(0.58,0.44,0.33);
+        """]
         let ring = courseSurface(inner: -DirtCourse.width, outer: DirtCourse.width, y: 0)
         ring.materials = [clay]
         let lane = SCNNode(geometry:ring); lane.name = "Compacted race surface"
@@ -136,21 +170,7 @@ final class DirtWorld {
             arrow.eulerAngles = SCNVector3(-Double.pi/2, DirtCourse.heading(t) + .pi, 0)
             arrow.castsShadow = false; scene.rootNode.addChildNode(arrow)
         }
-        // Race furnishings give the course a sense of scale and purpose.
-        for x in [-0.3, 0.3] { box(x,0.9,start.z-DirtCourse.terrainEdge-0.5,0.045,1.8,0.045,material(0x494c43)) }
-        let sign = SCNText(string: "DIRT TRACK", extrusionDepth: 0.002)
-        sign.font = .systemFont(ofSize: 0.18, weight: .heavy); sign.materials = [material(0xeee6cf)]
-        let board = box(0,1.6,start.z-DirtCourse.terrainEdge-0.5,1.65,0.38,0.055,material(0x34473a))
-        let label = SCNNode(geometry: sign); label.position = SCNVector3(-0.69, -0.10, 0.035); board.addChildNode(label)
-        // Finish-straight bleachers, outside the fence and beside the sign.
-        // Rows rise away from the track so the seats face the finish straight.
-        for row in 0..<4 {
-            let x = start.x
-            let z = start.z-DirtCourse.terrainEdge-1.0-Double(row)*0.45
-            let ground = DirtCourse.height(x:x,z:z)
-            let stand = box(x,ground+Double(row)*0.22+0.15,z,8,0.16,0.4,material(0x8c9691,roughness:0.6))
-            stand.name = "Finish straight grandstand"
-        }
+        scene.rootNode.addChildNode(town.root)
         scene.rootNode.addChildNode(effects)
         clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0x705033,roughness:1)]
         dustMaterial.lightingModel = .constant; dustMaterial.diffuse.contents = dustTexture()
@@ -159,8 +179,13 @@ final class DirtWorld {
             let dust = i % 3 == 0
             let node = SCNNode(geometry: dust ? SCNPlane(width: 0.18,height: 0.18) : clodGeometry)
             if dust { node.geometry?.materials = [dustMaterial]; node.constraints = [SCNBillboardConstraint()] }
-            node.castsShadow = false; node.isHidden = true; effects.addChildNode(node)
+            node.castsShadow = false; node.isHidden = true
+            // Simulation slots are not individual render submissions.
             flecks.append((node,.zero,0,dust))
+        }
+        for (batch, mat) in [(dustBatch,dustMaterial),(clodBatch,clodGeometry.materials[0])] {
+            let placeholder=SCNPlane(width:0,height:0);placeholder.materials=[mat]
+            batch.geometry=placeholder;batch.castsShadow=false;effects.addChildNode(batch)
         }
         for trail in trails { effects.addChildNode(trail.root) }
     }
@@ -219,7 +244,7 @@ final class DirtWorld {
             if normal {
                 rgb = [0.5+(grain-noise(x+1,y))*0.22, 0.5+(grain-noise(x,y+1))*0.22 + (track ? cos(v*190)*0.11 : 0), 0.97]
             } else {
-                rgb = track ? [0.57+value,0.37+value*0.8,0.23+value*0.55] : [0.43+value,0.44+value,0.29+value*0.7]
+                rgb = track ? [0.57+value,0.37+value*0.8,0.23+value*0.55] : [0.66+value*0.45,0.53+value*0.4,0.37+value*0.3]
             }
             let i = (y*w+x)*4
             for c in 0..<3 { data[i+c] = UInt8(max(0,min(255,rgb[c]*255))) }; data[i+3] = 255
@@ -236,6 +261,8 @@ final class DirtWorld {
         let node = SCNNode(geometry:shape); node.position = SCNVector3(x,y,z); scene.rootNode.addChildNode(node); return node
     }
     func reset() {
+        town.reset()
+        dustBatch.isHidden=true;clodBatch.isHidden=true
         for i in flecks.indices { flecks[i].life = 0; flecks[i].node.isHidden = true }
         trails.forEach { $0.reset() }; emission = [[0,0],[0,0,0],[0],[0,0]]
         racerEmittedCount = [0,0,0,0]; emittedCount = 0; poolIndex = 0
@@ -263,6 +290,42 @@ final class DirtWorld {
         emit(opponent, racer:1, dt:dt, contacts:R2D2.groundContacts)
         for (i, racer) in additional.enumerated() {
             emit(racer,racer:i+2,dt:dt,contacts:additionalContacts[i])
+        }
+        rebuildDebrisBatches()
+    }
+    /// Two draw submissions replace up to 1,600 individual particle nodes.
+    /// Pool lifetime, emission counts, contact behavior and reset stay unchanged.
+    private func rebuildDebrisBatches() {
+        let transform=camera?.simdWorldTransform ?? matrix_identity_float4x4
+        let right=SIMD3(transform.columns.0.x,transform.columns.0.y,transform.columns.0.z)
+        let up=SIMD3(transform.columns.1.x,transform.columns.1.y,transform.columns.1.z)
+        let normal=simd_normalize(simd_cross(right,up))
+        for dust in [false,true] {
+            var vertices:[SCNVector3]=[],normals:[SCNVector3]=[],uv:[CGPoint]=[],rgba:[Float]=[],indices:[Int32]=[]
+            for f in flecks where f.life>0 && f.dust==dust {
+                let center=f.node.simdPosition,base=Int32(vertices.count)
+                if dust {
+                    let radius=Float(0.09)*f.node.simdScale.x
+                    for (sx,sy) in [(-1.0,-1.0),(1.0,-1.0),(1.0,1.0),(-1.0,1.0)] {
+                        vertices.append(SCNVector3(center+right*Float(sx)*radius+up*Float(sy)*radius))
+                        normals.append(SCNVector3(normal));uv.append(CGPoint(x:(sx+1)/2,y:(sy+1)/2))
+                    }
+                    indices += [base,base+1,base+2,base,base+2,base+3]
+                } else {
+                    for v:SIMD3<Float> in [SIMD3(0,1,0),SIMD3(-0.87,-0.5,-0.5),SIMD3(0.87,-0.5,-0.5),SIMD3(0,-0.5,1)] {
+                        vertices.append(SCNVector3(center+v*0.014));normals.append(SCNVector3(simd_normalize(v)));uv.append(.zero)
+                    }
+                    indices += [base,base+2,base+1,base,base+3,base+2,base,base+1,base+3,base+1,base+2,base+3]
+                }
+                for _ in 0..<4 { rgba += [1,1,1,Float(f.node.opacity)] }
+            }
+            let batch=dust ? dustBatch:clodBatch
+            batch.isHidden=indices.isEmpty
+            guard !indices.isEmpty else { continue }
+            let colors=rgba.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:vertices.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
+            let geometry=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),colors],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
+            geometry.materials=[dust ? dustMaterial:clodGeometry.materials[0]]
+            batch.geometry=geometry
         }
     }
     private func emit(_ state: Simulation, racer: Int, dt: Double,

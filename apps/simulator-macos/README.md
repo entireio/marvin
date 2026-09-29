@@ -363,3 +363,61 @@ coincident centers, fence pileups, finite braking, and exact fixed-input results
 at 10/30/60/120 fps. Coupled three-lap races exercise all four bodies at
 30/60/120 fps. Native smoke runs a crowded contact scenario through the real race
 controller and captures `robot-contact.png`, including separation and pause checks.
+
+## Spaceport city
+
+Dirt Track sits inside **Mos Aster**, a dense procedural spaceport inspired by
+Mos Eisley and Mos Espa film stills. The city extends beyond both overview cameras:
+1,327 building modules form joined adobe compounds, terraces, courtyard workshops
+and domed halls. Branching streets connect the market, hangar and circular docking
+courts; there is no rectangular perimeter road or isolated mesa ring. Worn city
+paving covers the scenery ground while the original dirt course stays intact.
+
+The finish-line grandstand is built into a populated market arcade. There are
+298 spectators/residents, four market stalls, parked speeders and rooftop utility
+hardware. Two open infield repair tents contain mechanics, robot lifts, benches,
+tools and spare parts. Houses are excluded from the entire circuit interior.
+Fifteen nearby people animate (hard cap 16), including four plaza walkers.
+Race geometry, lap rules, robot contacts and driving assists are unchanged.
+
+Static scenery uses 130 spatial batches, a shared 256×256 plaster texture and
+near/far geometry tiers. Outer districts omit small details at generation time;
+nearby architecture retains its equipment through the overview distance. Assets
+are constructed locally once at load time, with no downloads or extra asset tools.
+The chase/orbit camera shortens against scenery bounds. Crowd motion respects
+pause/focus gates. See [film comparison and validation](../../docs/dirt-city.md).
+
+Dirt Track uses 2× MSAA, a 2048² sun shadow map and restrained screen-space ambient
+occlusion (disabled on return to Sandbox). Dirt debris uses two batched meshes;
+robot coating uploads remain quantized and spread across frames to avoid redundant
+Metal buffer updates, without changing logical dirt accumulation.
+
+Capture the native scene and validate track clearance, infield exclusion, city
+coverage, branching street connectivity, geometry budgets, camera obstruction,
+crowd pause and reset behavior:
+
+```sh
+'apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator' \
+  --town-smoke-test /tmp/marvin-town
+```
+
+Run a real-time driving/overview benchmark (default 45 seconds, first three
+seconds excluded from timing):
+
+```sh
+MARVIN_BENCHMARK_SECONDS=180 \
+  'apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator' \
+  --town-benchmark /tmp/marvin-town-benchmark
+```
+
+Add `--without-town` for an A/B run with the same course and scenery camera
+bounds, but hidden town and no crowd updates. Both runs use a fixed starting grid,
+autonomous player input, and a 960×540-point view (1920×1080 drawable pixels on a
+2× display). The report records actual drawable dimensions, CPU update p95,
+thermal state, and SceneKit render-callback intervals. Render callback timing is
+not GPU execution time or display presentation timing. Run benchmarks individually
+without builds or other profiling workloads. Smoke tests use fixed simulation
+steps and are not frame-rate benchmarks.
+
+V1 uses stylized procedural art and simple crowd poses. General pedestrian
+navigation, explorable interiors, and dynamic traffic are not implemented.

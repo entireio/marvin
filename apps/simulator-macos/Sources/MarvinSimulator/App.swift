@@ -55,10 +55,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var pauseItem: NSToolbarItem?
     var appearanceObservation: NSKeyValueObservation?
     var appliedIconName = ""
+    let townMeter = TownFrameMeter()
+    var townBenchmarkStart: Double?
+    var townBenchmarkDirectory: URL?
+    var townBenchmarkCPU: [Double] = []
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--town-benchmark"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -171,11 +175,21 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let now = ProcessInfo.processInfo.systemUptime
         let wallDelta = max(0, now-lastTime)
         let dt = min(wallDelta, 0.1); lastTime = now
+        if townBenchmarkStart != nil { tickTownBenchmark(now:now,dt:dt); return }
         if !inSandbox {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt)
             if let directory = smokeDirectory {
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
+                if CommandLine.arguments.contains("--town-benchmark") {
+                    startTownBenchmark(at:URL(fileURLWithPath:directory)); return
+                }
+                if CommandLine.arguments.contains("--town-smoke-test") {
+                    timer?.invalidate()
+                    let passed=checkTown(at:URL(fileURLWithPath:directory))
+                    print("Town smoke: \(passed ? "PASS" : "FAIL") · \(directory)")
+                    exit(passed ? 0:1)
+                }
                 if CommandLine.arguments.contains("--bb8-motion-smoke-test") {
                     timer?.invalidate()
                     let passed = checkBB8RenderedMotion(at: URL(fileURLWithPath:directory))
@@ -283,6 +297,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
         if isDirtTrack {
             updateRaceWorld(dt: advancing ? step : 0)
+            dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z))
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
@@ -297,6 +312,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     @objc func showMainMenu(_ sender: Any?) {
         window.title = "Marvin · Playground"
+        mainMenu.portrait.rendersContinuously = true
         inSandbox = false; dirtIntro = nil; view.clearInput()
         hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; window.toolbar?.isVisible = false
         mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
@@ -308,7 +324,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         configurePlayer()
         window.title = "Marvin · Playground"
         world.camera.camera?.zFar = 80
+        world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0
         isDirtTrack = false; dirtIntro = nil; simulation = Simulation(character: playerCharacter)
+        mainMenu.portrait.rendersContinuously = false
+        view.antialiasingMode = .multisampling4X
         view.scene = world.scene; world.scene.rootNode.addChildNode(world.camera)
         view.pointOfView = world.camera; raceHUD.isHidden = true
         inSandbox = true; mainMenu.isHidden = true; hud.isHidden = false
@@ -328,11 +347,17 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     func startDirtTrack() {
         configurePlayer()
         window.title = "Marvin · Dirt Track"; world.camera.camera?.zFar = 250
+        world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0.70
+        world.camera.camera?.screenSpaceAmbientOcclusionRadius = 1.6
+        world.camera.camera?.screenSpaceAmbientOcclusionBias = 0.025
         isDirtTrack = true; inSandbox = true; simulation = Simulation(dirtTrack: true, dirtStartOffset:DirtCourse.playerGrid.offset, dirtStartPhase:DirtCourse.playerGrid.phase)
         hud.isHidden = true; raceHUD.isHidden = true
         view.isHidden = true
         SCNTransaction.begin(); SCNTransaction.disableActions = true
         raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = true
+        dirtWorld.camera = world.camera
+        mainMenu.portrait.rendersContinuously = false
+        view.antialiasingMode = .multisampling2X
         view.scene = dirtWorld.scene; dirtWorld.scene.rootNode.addChildNode(world.camera)
         dirtWorld.scene.rootNode.addChildNode(robot.root)
         dirtWorld.scene.rootNode.addChildNode(r2d2.root)
@@ -392,6 +417,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let mix: CGFloat = snap ? 1 : 0.12
         world.camera.position = SCNVector3(current.x+(desired.x-current.x)*mix,
             current.y+(desired.y-current.y)*mix, current.z+(desired.z-current.z)*mix)
+        if isDirtTrack && cameraMode != 2 {
+            world.camera.position = dirtWorld.town.clearCamera(from:target,to:world.camera.position)
+        }
         world.camera.look(at: cameraMode == 2 ? SCNVector3(0, 0, 0) : target,
             up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, -1))
     }
