@@ -487,3 +487,10 @@ whole access route and turning at its waypoints, 8 m/s approaches to every
 salvage piece, canopy footprint/overhead clearance, and reversing away from a
 pole. Native scene checks also pass. Screenshots are in
 `../marvin-town-planning/triangular-service-final/`.
+
+The final rotated layout's 45-second 1920×1080 check averaged 59.89 render
+callbacks/sec. CPU update p95 was 2.96 ms; GPU p95/p99 were 15.57/16.34 ms.
+Five callback intervals exceeded 25 ms, none exceeded 50 ms. Presentation
+p95/p99 remained 16.67 ms, maximum 33.33 ms. The new static contacts show no
+material regression in this short run. Measurements are in
+`../marvin-town-planning/triangular-service-performance/`.
