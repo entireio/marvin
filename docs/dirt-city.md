@@ -498,3 +498,36 @@ material regression in this short run. Measurements are in
 The orange workshop is tucked farther into the narrow pocket. A regression
 check requires its canopy footprint to clear the complete service opening,
 while the full route to the second tent still passes for every chassis.
+
+## Streets, neighborhood lanes and doorstep access
+
+The visible city now has 25 connected routes with a hierarchy of surfaces:
+4–5.2 m muted brown main roads, 2.5–3.2 m warm earthen neighborhood lanes,
+1.4–2 m pale alleys, and wider light-colored civic approaches. Neighborhood
+loops replace the previous restriction that the street network had to be a
+tree. Routes lead to the market, spectator terrace, cargo forecourt, comms
+tower and landing bays; both round landing bays have openings aligned with
+their approach paths. The freight route passes beside the hangar.
+
+Roads reserve space before building placement. Smaller infill houses face the
+new lanes and occupy plots too small for the original compound grid. There
+are 74 generated doorway connections in this layout. Connectors are rejected
+if they cross another lot or the racing corridor; the generator does not claim
+that every distant decorative building has a navigable route. Main roads,
+lanes and door paths remain static batched geometry, with the existing LOD and
+crowd budgets. Buildings total 1,320, with near/far architecture at
+351,444/251,520 triangles; street ribbons are counted separately.
+
+The release build, all 31 simulation checks, and native scene checks pass.
+The orange tent's new position remains completely clear of the entrance, and
+all four chassis can reach the second tent and turn at every service waypoint.
+Screenshots are in `../marvin-town-planning/town-streets-final/`.
+
+A 45-second 1920×1080 race benchmark averaged 59.91 render callbacks/s, with
+CPU update p95 2.70 ms, four callback intervals over 25 ms and none over 50 ms.
+Metal HUD reported GPU p95/p99 of 15.47/16.18 ms and presentation p95/p99 of
+16.67/16.67 ms, with a maximum presentation interval of 33.33 ms. Thermal state
+was nominal. This short run is comparable to the preceding layout, but still
+includes occasional missed frames; it does not establish a locked 60 fps.
+HUD samples can repeat and include HUD overhead. Raw results and the parsed
+HUD report are in `../marvin-town-planning/town-streets-performance/`.
