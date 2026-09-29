@@ -499,7 +499,7 @@ The orange workshop is tucked farther into the narrow pocket. A regression
 check requires its canopy footprint to clear the complete service opening,
 while the full route to the second tent still passes for every chassis.
 
-## Streets, neighborhood lanes and doorstep access
+## Superseded: streets, neighborhood lanes and doorstep access
 
 The visible city now has 25 connected routes with a hierarchy of surfaces:
 4–5.2 m muted brown main roads, 2.5–3.2 m warm earthen neighborhood lanes,
@@ -531,3 +531,44 @@ was nominal. This short run is comparable to the preceding layout, but still
 includes occasional missed frames; it does not establish a locked 60 fps.
 HUD samples can repeat and include HUD overhead. Raw results and the parsed
 HUD report are in `../marvin-town-planning/town-streets-performance/`.
+
+
+## Mos Eisley / Mos Espa layout correction
+
+The 25-route/74-doorway-path layout above was rejected visually. It created
+suburban setbacks and painted driveways, rather than a Tatooine street fabric.
+The correction removes all individual connectors and the extra residential
+road loops. Trackside compounds return to the spaces those loops had cleared.
+Six shared through routes remain, 2–4.2 m wide, with freight access beside the
+hangar. Local circulation reads as the unpainted sandy space between clustered
+buildings and around their courtyards. It is not a claim of a fully navigable
+city: distant compounds remain backdrop scenery.
+
+References inspected in-browser:
+- [Mos Espa, official Databank](https://www.starwars.com/databank/mos-espa): dense clusters and larger civic spaces.
+- [Mos Eisley, official Databank](https://www.starwars.com/databank/mos-eisley-spaceport): buildings and awnings open directly onto shared sandy ground.
+- [Phantom Menace street still](https://mitchdarbyarchitect.com/blog/most-remote-mos-espa): continuous walls, arched passages and sand running directly to entrances.
+
+The interpretation is an original arrangement around the race, not a copied
+map. Roads are now subtle worn-earth overlays with feathered, uneven edges;
+there are no parallel curb-color bands or pale doorstep strips. Different
+widths and a restrained difference in wear distinguish the through roads
+from smaller lanes. The orange tent and its shared collision geometry remain
+in the approved corner position.
+
+Architecture remains batched and within the existing budgets: 1,338 buildings,
+354,516 near / 253,082 far triangles. The detailed dressing radius is 52 m to
+retain the restored houses without exceeding the 360k near-architecture budget.
+Final images are in `../marvin-town-planning/mos-layout-final/`.
+
+Validation: release build and native town smoke pass (layout clearance, city
+coverage, connected through routes, camera obstruction, crowd pause and reset).
+Overhead and market screenshots were inspected against the references; shader
+compilation/blending issues found during that inspection were corrected before
+these final captures. Physics and the shared infield layout were not changed.
+A 45-second 1080p benchmark averaged 59.94 render callbacks/s, CPU update p95
+2.59 ms, with three callback intervals over 25 ms and none over 50 ms. Metal HUD
+GPU p95/p99 was 15.50/16.13 ms; presentation p95/p99 16.67/16.67 ms, maximum
+33.33 ms. Nominal thermal state. This is comparable to the preceding run,
+not proof of locked 60 fps; HUD logging may repeat samples and adds overhead.
+Results: `../marvin-town-planning/mos-layout-performance/`.

@@ -11,8 +11,6 @@ final class TownWorld {
     private let crowd = TownCrowd()
     private let signs = TownSigns()
     private var storefrontSigns=0
-    private var doors:[(point:SIMD2<Double>,lot:Int)]=[]
-    private var connectedDoors=0
     private var cells: [String: TownCell] = [:]
     private var people: [TownPerson] = []
     private(set) var buildings = 0
@@ -49,7 +47,6 @@ final class TownWorld {
         buildSettlement()
         buildRepairPit()
         buildLandmarks()
-        buildDoorPaths()
         buildStreetLife()
         buildMarketDetails()
         buildReferenceDetails()
@@ -123,34 +120,14 @@ final class TownWorld {
     // Destination-led arteries: market approach, dock access and northern trade
     // route. None forms a closed perimeter around the race.
     private let streets:[Street] = [
-        // Through routes: freight road, market street and northern trade road.
-        Street(points:[SIMD2(-150,-76),SIMD2(-64,-39),SIMD2(-35,-29),SIMD2(-15,-27),SIMD2(0,-26),SIMD2(18,-31),SIMD2(45,-45),SIMD2(145,-68)],width:5.2),
-        Street(points:[SIMD2(45,-45),SIMD2(35,-25),SIMD2(28,-10),SIMD2(33,3),SIMD2(35,14)],width:4.4),
-        Street(points:[SIMD2(35,14),SIMD2(36,30),SIMD2(18,36),SIMD2(-8,32),SIMD2(-30,39),SIMD2(-64,58),SIMD2(-145,80)],width:4.0),
-        Street(points:[SIMD2(-145,-5),SIMD2(-62,-8),SIMD2(-39,-15),SIMD2(-35,-29)],width:3.2,kind:1),
-        Street(points:[SIMD2(36,30),SIMD2(60,48),SIMD2(105,42),SIMD2(150,52)],width:4.6),
-        Street(points:[SIMD2(-64,58),SIMD2(-48,92),SIMD2(-65,150)],width:3.0,kind:1),
-        // Residential loops run through blocks, not as a frame around the race.
-        Street(points:[SIMD2(-35,-29),SIMD2(-24,-21),SIMD2(-24,-4),SIMD2(-23,13),SIMD2(-18,27),SIMD2(-8,32)],width:2.8,kind:1),
-        Street(points:[SIMD2(-39,-15),SIMD2(-48,0),SIMD2(-45,18),SIMD2(-30,39)],width:2.5,kind:1),
-        Street(points:[SIMD2(-24,-4),SIMD2(-32,0),SIMD2(-38,0),SIMD2(-48,0)],width:1.6,kind:2),
-        Street(points:[SIMD2(-23,13),SIMD2(-34,15),SIMD2(-45,18)],width:1.8,kind:2),
-        Street(points:[SIMD2(-24,-21),SIMD2(-34,-21),SIMD2(-39,-15)],width:1.5,kind:2),
-        Street(points:[SIMD2(35,-25),SIMD2(47,-19),SIMD2(51,-5),SIMD2(49,17),SIMD2(36,30)],width:2.8,kind:1),
-        Street(points:[SIMD2(28,-10),SIMD2(37,-9),SIMD2(43,-9),SIMD2(51,-5)],width:1.7,kind:2),
-        Street(points:[SIMD2(33,3),SIMD2(38,9),SIMD2(43,12),SIMD2(49,17)],width:2.0,kind:2),
-        Street(points:[SIMD2(-18,27),SIMD2(-14,42),SIMD2(0,49),SIMD2(18,48),SIMD2(18,36)],width:2.6,kind:1),
-        Street(points:[SIMD2(-14,42),SIMD2(-30,50),SIMD2(-45,55),SIMD2(-64,58)],width:1.5,kind:2),
-        // Deliberate arrival courts and pedestrian approaches.
-        Street(points:[SIMD2(0,-26),SIMD2(0,-22),SIMD2(0,-18)],width:2.6,kind:3),
-        Street(points:[SIMD2(-15,-27),SIMD2(-12,-22),SIMD2(-9,-19)],width:1.6,kind:2),
-        Street(points:[SIMD2(18,-31),SIMD2(14,-23),SIMD2(10,-19)],width:2.0,kind:2),
-        Street(points:[SIMD2(-8,32),SIMD2(3,29),SIMD2(3,23.3)],width:1.8,kind:3),
-        Street(points:[SIMD2(35,14),SIMD2(31,17),SIMD2(26,18)],width:3.0,kind:3),
-        Street(points:[SIMD2(-38,0),SIMD2(-38,-0.5)],width:2.4,kind:3),
-        Street(points:[SIMD2(43,12),SIMD2(43,11.5)],width:2.4,kind:3),
-        Street(points:[SIMD2(-18,27),SIMD2(-25,27),SIMD2(-27,24)],width:1.4,kind:2),
-        Street(points:[SIMD2(18,48),SIMD2(10,48)],width:2.3,kind:3)
+        // Broad shared sandy streets; the gaps between compounds form local
+        // passages. Do not clear residential loops or individual driveways.
+        Street(points:[SIMD2(-150,-76),SIMD2(-64,-39),SIMD2(-35,-29),SIMD2(-15,-27),SIMD2(0,-26),SIMD2(18,-31),SIMD2(45,-45),SIMD2(145,-68)],width:3.8),
+        Street(points:[SIMD2(45,-45),SIMD2(35,-25),SIMD2(28,-10),SIMD2(33,3),SIMD2(35,14)],width:4.2),
+        Street(points:[SIMD2(35,14),SIMD2(36,30),SIMD2(18,36),SIMD2(-8,32),SIMD2(-30,39),SIMD2(-64,58),SIMD2(-145,80)],width:3.6),
+        Street(points:[SIMD2(-145,-5),SIMD2(-62,-8),SIMD2(-39,-15),SIMD2(-35,-29)],width:2.4,kind:1),
+        Street(points:[SIMD2(36,30),SIMD2(60,48),SIMD2(105,42),SIMD2(150,52)],width:4.0),
+        Street(points:[SIMD2(-64,58),SIMD2(-48,92),SIMD2(-65,150)],width:2.0,kind:1)
     ]
 
 
@@ -169,14 +146,10 @@ final class TownWorld {
         for street in routes {
             // One continuous ground ribbon, with soft shoulders. No overlapping
             // rectangular slabs or ruler-straight parallel cart-track markings.
-            let shoulder=street.kind==0 ? 0.32:0.17
-            let widths=[-street.width/2-shoulder,-street.width/2,-street.width*0.35,street.width*0.35,street.width/2,street.width/2+shoulder]
-            let palettes:[[UInt32]]=[
-                [0x9d8c73,0x958771,0x9c8d77,0x958771,0x9d8c73],
-                [0xa79577,0xad9675,0xb09b7b,0xad9675,0xa79577],
-                [0xb09b7d,0xb8a487,0xbdab8e,0xb8a487,0xb09b7d],
-                [0xb3a084,0xbba98f,0xc5b49a,0xbba98f,0xb3a084]]
-            let inks=palettes[street.kind]
+            let shoulder=0.6
+            let widths=[-street.width/2-shoulder,-street.width*0.30,street.width*0.30,street.width/2+shoulder]
+            let ink:UInt32=street.kind==0 ? 0x9d8d75:0xa99a81
+            let opacity:Float=street.kind==0 ? 0.44:0.23
             let normals=street.path.indices.map { i -> SIMD2<Double> in
                 let tangent=simd_normalize(street.path[min(i+1,street.path.count-1)]-street.path[max(0,i-1)])
                 return SIMD2(-tangent.y,tangent.x)
@@ -184,51 +157,45 @@ final class TownWorld {
             for i in 1..<street.path.count {
                 for band in 0..<widths.count-1 {
                     func vertex(_ j:Int,_ edge:Int)->SIMD3<Float> {
-                        let p=street.path[j]+normals[j]*widths[edge]
+                        let center=street.path[j]
+                        let irregular=1+0.07*sin(center.x*0.63+center.y*0.31)+0.04*sin(center.y*1.43)
+                        let p=center+normals[j]*widths[edge]*irregular
                         return SIMD3(Float(p.x),Float(-0.016+Double(street.kind)*0.001),Float(p.y))
                     }
                     let a=vertex(i-1,band),b=vertex(i,band),c=vertex(i,band+1),d=vertex(i-1,band+1)
-                    mesh.triangle(a,c,b,inks[band]);mesh.triangle(a,d,c,inks[band])
+                    let first=mesh.colors.count/4
+                    mesh.triangle(a,c,b,ink);mesh.triangle(a,d,c,ink)
+                    let left:Float=band==0 ? 0:opacity
+                    let right:Float=band==widths.count-2 ? 0:opacity
+                    for (j,alpha) in [left,right,left,left,right,right].enumerated() {
+                        mesh.colors[(first+j)*4+3]=alpha
+                    }
                 }
             }
         }
-        let road=SCNNode(geometry:mesh.geometry(material:CityMaterials.plaster))
+        let material=SCNMaterial()
+        material.lightingModel = .physicallyBased
+        material.diffuse.contents=NSColor.white;material.roughness.contents=1.0
+        material.transparencyMode = .aOne
+        material.writesToDepthBuffer=false
+        material.shaderModifiers=[.geometry:"""
+        #pragma varyings
+        half4 streetTint;
+        #pragma body
+        out.streetTint=half4(half3(pow(max(_geometry.color.rgb,float3(0)),float3(2.2))),half(_geometry.color.a));
+        """,.surface:"_surface.diffuse.rgb=float3(in.streetTint.rgb);",.fragment:"""
+        #pragma transparent
+        #pragma body
+        _output.color.rgb *= float(in.streetTint.a);
+        _output.color.a=float(in.streetTint.a);
+        """]
+        let road=SCNNode(geometry:mesh.geometry(material:material))
         road.name=name;road.castsShadow=false;root.addChildNode(road)
     }
     private func buildRoads() {
-        drawStreets(streets,name:"Main roads, neighborhood lanes and footpaths")
+        drawStreets(streets,name:"Worn shared sandy streets")
         let plaza=paint(0,finishZ-7.0)
-        plaza.box(0,-0.006,0,19,0.018,7.0,0x9f917b)
-        // Small local passages connect the market doors to the main approach.
-        for x in [-7.0,0,7] { plaza.box(x,0.005,0,1.4,0.012,7.2,0xb4a28a) }
-    }
-
-    private func buildDoorPaths() {
-        var paths:[Street]=[]
-        // Connect visible front doors only along unobstructed ground. Reject a
-        // connector rather than paint a line through someone else's dwelling.
-        for door in doors {
-            guard max(abs(door.point.x),abs(door.point.y))<54 else { continue }
-            let candidates=streets.flatMap{$0.path}.enumerated().filter{$0.offset%3==0}.map{$0.element}
-                .sorted{simd_length_squared($0-door.point)<simd_length_squared($1-door.point)}
-            for target in candidates.prefix(18) {
-                let length=simd_length(target-door.point)
-                guard length>0.3,length<9 else { continue }
-                var clear=true
-                let steps=max(2,Int(ceil(length/0.3)))
-                for step in 1...steps {
-                    let p=door.point+(target-door.point)*Double(step)/Double(steps)
-                    if !clearLot(p.x,p.y,0.9,0.9) || infield(p.x,p.y) { clear=false;break }
-                    if lots.enumerated().contains(where:{ i,lot in
-                        i != door.lot && abs(p.x-lot.x)<lot.width/2+0.45 && abs(p.y-lot.z)<lot.depth/2+0.45
-                    }) { clear=false;break }
-                }
-                if clear {
-                    paths.append(Street(points:[door.point,target],width:0.85,kind:2));connectedDoors += 1;break
-                }
-            }
-        }
-        drawStreets(paths,name:"Doorway access paths")
+        plaza.box(0,-0.006,0,19,0.018,7.0,0xab9679)
     }
 
     private func buildGrandstand() {
@@ -367,29 +334,10 @@ final class TownWorld {
             if lots.contains(where:{abs(x-$0.x)<($0.width+w)/2+0.15 && abs(z-$0.z)<($0.depth+d)/2+0.15}) { continue }
             cityCompound(x,z,w:w,d:d,h:1.8+random()*1.5,index:1400+i+j*16,yaw:0)
         }}
-        var frontageCount=0
-        for sample in stride(from:4,to:90,by:6) {
-            for (routeIndex,street) in streets.enumerated() where street.kind != 3 {
-                guard sample<street.path.count-1 else { continue }
-                let along=simd_normalize(street.path[sample+1]-street.path[sample-1])
-                let normal=SIMD2(-along.y,along.x)
-                for side in [-1.0,1.0] {
-                    let p=street.path[sample]+normal*side*(street.width/2+3.2)
-                    guard max(abs(p.x),abs(p.y))<56 else { continue }
-                    let yaw=atan2(-normal.x*side,-normal.y*side),w=3.0,d=2.8
-                    let bw=w*abs(cos(yaw))+d*abs(sin(yaw)),bd=d*abs(cos(yaw))+w*abs(sin(yaw))
-                    guard !reserved(p.x,p.y,bw+0.1,bd+0.1),
-                          !lots.contains(where:{abs(p.x-$0.x)<($0.width+bw)/2+0.3 && abs(p.y-$0.z)<($0.depth+bd)/2+0.3}) else { continue }
-                    if frontageCount>=70 || cells.values.reduce(0,{$0+$1.near.indices.count/3})>323000 { break }
-                    cityCompound(p.x,p.y,w:w,d:d,h:2.0+Double((sample+routeIndex)%4)*0.32,index:2300+frontageCount,yaw:yaw)
-                    frontageCount += 1
-                }
-            }
-        }
     }
 
     private func cityCompound(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double) {
-        let near=max(abs(x),abs(z))<54
+        let near=max(abs(x),abs(z))<52
         let p=paint(x,z,yaw:yaw)
         let boundW=w*cos(yaw)+d*abs(sin(yaw)),boundD=d*cos(yaw)+w*abs(sin(yaw))
         lots.append(TownLot(x:x,z:z,width:boundW+0.2,depth:boundD+0.2))
@@ -454,10 +402,6 @@ final class TownWorld {
         for side in [-1.0,1] {
             let face=(style==8 && side>0 ? d*0.4 : side*d/2)+side*0.018
             let doorX = style==6 ? -w*0.34 : -w*0.16
-            if side>0 {
-                let apron=face+0.25
-                doors.append((SIMD2(x+doorX*cos(yaw)+apron*sin(yaw),z-doorX*sin(yaw)+apron*cos(yaw)),lots.count-1))
-            }
             p.door(doorX,face,0.70,min(1.4,h*0.57),0x3d352e,ink,side:side)
             if side>0 && max(abs(x),abs(z))<36 && index%7==0 && storefrontSigns<8 {
                 let title=["MACHINE WORKS","CANTINA","OFFWORLD GOODS","REACTOR SUPPLY"][storefrontSigns%4]
@@ -898,7 +842,7 @@ final class TownWorld {
         return SCNVector3(result.x,result.y,result.z)
     }
     var statistics: [String:Int] {
-        ["streetRoutes":streets.count,"doorConnections":connectedDoors,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":people.count,
+        ["streetRoutes":streets.count,"doorConnections":0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":people.count,
          "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":0,"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
     }
     var cityCoveragePassed:Bool {
@@ -921,7 +865,7 @@ final class TownWorld {
                 }) { reached.insert(i);changed=true }
             }
         }
-        return reached.count==streets.count && connectedDoors>12
+        return reached.count==streets.count
     }
     func validate() -> Bool {
         buildings>800 && population>120 && people.count<=16 && triangleCount<360_000 && coarseTriangles<290_000 && cells.count<150
