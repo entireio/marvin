@@ -4,7 +4,7 @@ import simd
 /// Shared authored fixtures and seeded salvage: rendering and collision use the
 /// same transforms. Seeded placement keeps race resets and tests reproducible.
 public enum InfieldLayout {
-    public static let tentOrigins=[SIMD2<Double>(-6.6,-8.7),SIMD2<Double>(-8.5,3.5)]
+    public static let tentOrigins=[SIMD2<Double>(-4.6,-9.4),SIMD2<Double>(-8.5,3.5)]
     public static let orangeCorners=[SIMD2<Double>(-1.6,-1.6),SIMD2<Double>(-1.6,1.6),SIMD2<Double>(1.4,1.6)]
     public static let serviceLane:[SIMD2<Double>]=[SIMD2(-7.5,-12.5),SIMD2(-8.8,-10.8),SIMD2(-8.8,-6.2),SIMD2(-8.5,-3),SIMD2(-8.5,1.8)]
     public static func tentPoint(_ index:Int,_ local:SIMD2<Double>)->SIMD2<Double> {

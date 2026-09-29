@@ -463,7 +463,7 @@ comparable in this short check, with occasional missed frames.
 
 ## Connected infield service access and salvage
 
-The orange tent is now a smaller three-corner canopy at (-6.6, -8.7), rotated
+The orange tent is now a smaller three-corner canopy at (-4.6, -9.4), rotated
 180 degrees into the narrower infield pocket. Its woven rug is clipped to the
 same triangular outline, retaining the checks, border and fringe. Equipment
 and colliders use the same rotation and are repositioned with it. A shared service lane runs
@@ -494,3 +494,7 @@ Five callback intervals exceeded 25 ms, none exceeded 50 ms. Presentation
 p95/p99 remained 16.67 ms, maximum 33.33 ms. The new static contacts show no
 material regression in this short run. Measurements are in
 `../marvin-town-planning/triangular-service-performance/`.
+
+The orange workshop is tucked farther into the narrow pocket. A regression
+check requires its canopy footprint to clear the complete service opening,
+while the full route to the second tent still passes for every chassis.
