@@ -436,13 +436,15 @@ final class TownWorld {
                     at:SCNVector3(DirtCourse.serviceEntryX-1.85,0.68,-12.2),width:1.02,height:0.34,yaw:.pi,accent:rust,into:root)
         entry.beam(SIMD3(-1.85,0,-0.01),SIMD3(-1.85,0.67,-0.01),0.025,trim,sides:6)
         // Two pockets on the west side of the infield, clear of the dirt shoulder.
-        for (i,location) in [(-7.5,-7.5),(-8.5,3.5)].enumerated() {
-            let x=location.0,z=location.1,w=4.0,d=4.0
+        for (i,location) in InfieldLayout.tentOrigins.enumerated() {
+            let x=location.x,z=location.y,w=i==0 ? 3.2:4.0,d=i==0 ? 3.2:4.0
             guard infield(x,z),clearLot(x,z,w+0.3,d+0.3) else { continue }
             repairLots.append(TownLot(x:x,z:z,width:w+0.3,depth:d+0.3))
-            let p=paint(x,z)
-            p.repairRug(3.8,3.8,i)
-            p.canopy(0,0,w,d,2.0,0.65,i == 0 ? rust:teal)
+            var p=paint(x,z,yaw:i==0 ? .pi:0)
+            p.repairRug(w-0.2,d-0.2,i)
+            if i==0 { p.triangularRepairCanopy(rust) }
+            else { p.canopy(0,0,w,d,2.0,0.65,teal) }
+            if i==0 { let center=InfieldLayout.tentPoint(0,SIMD2(-0.1,0.35));p=paint(center.x,center.y,yaw:.pi) }
             cameraBounds.append((SIMD3(x-w/2,2.0,z-d/2),SIMD3(x+w/2,2.65,z+d/2)))
             // Open sides reveal benches, parts racks and a robot on a lift.
             p.box(-0.92,0.69,0.15,0.64,0.12,1.7,trim)
@@ -478,16 +480,22 @@ final class TownWorld {
             p.box(0.51,1.29,0.91,0.03,0.54,0.03,dark,detail:true)
             p.cylinder(0.51,0.94,0.91,0.18,0.22,0.36,trim,sides:8)
             for k in 0..<3 {
-                p.cylinder(1.03,0.12+Double(k)*0.17,-0.86,0.27,0.27,0.15,dark,sides:10,detail:true)
-                p.cylinder(1.03,0.20+Double(k)*0.17,-0.86,0.14,0.14,0.015,cream,sides:10,detail:true)
+                p.cylinder(i==0 ? -0.1:1.03,0.12+Double(k)*0.17,i==0 ? 0.85:-0.86,0.27,0.27,0.15,dark,sides:10,detail:true)
+                p.cylinder(i==0 ? -0.1:1.03,0.20+Double(k)*0.17,i==0 ? 0.85:-0.86,0.14,0.14,0.015,cream,sides:10,detail:true)
             }
-            citizen(x+0.73,z-0.35,y:0.055,yaw:-1.2,index:707+i,seated:false)
+            citizen(x+(i==0 ? -0.65:0.73),z+(i==0 ? 0.25:-0.35),y:0.055,yaw:i==0 ? .pi-1.2:-1.2,index:707+i,seated:false)
             p.box(-0.96,0.19,-1.06,0.60,0.36,0.40,teal)
             p.box(-0.96,0.40,-1.06,0.21,0.06,0.08,dark,detail:true)
-            for sx in [-0.65,0.65] { p.beam(SIMD3(sx,1.98,-2.015),SIMD3(sx,2.44,-2.015),0.012,dark,sides:5) }
+            if i==1 { for sx in [-0.65,0.65] { p.beam(SIMD3(sx,1.98,-2.015),SIMD3(sx,2.44,-2.015),0.012,dark,sides:5) } }
             signs.plate(i==0 ? "DROID REPAIR":"PARTS & SALVAGE",eyebrow:"RACE SERVICE",footer:"CREW ACCESS ONLY",badge:i==0 ? "01":"02",
-                        at:SCNVector3(x,1.74,z-2.035),width:1.85,height:0.46,yaw:.pi,accent:rust,into:root)
+                        at:SCNVector3(x+(i==0 ? 1.625:0),1.74,z+(i==0 ? 0.65:-2.035)),width:1.85,height:0.46,yaw:i==0 ? .pi/2:.pi,accent:rust,into:root)
         }
+        for (index,part) in InfieldLayout.parts.enumerated() {
+            let p=paint(part.x,part.z,yaw:part.yaw)
+            p.salvage(part.width,part.depth,part.height,part.kind,index)
+            cameraBounds.append((SIMD3(part.x-part.width/2,0,part.z-part.depth/2),SIMD3(part.x+part.width/2,part.height,part.z+part.depth/2)))
+        }
+
     }
 
     private func buildLandmarks() {
@@ -647,14 +655,14 @@ final class TownWorld {
             }
         }
         // Visible cables and hardware turn the repair pockets into a paddock.
-        for z in [-7.5,3.5] {
-            let x = z<0 ? -7.5:-8.5,p=paint(x,z)
+        for (i,origin) in InfieldLayout.tentOrigins.enumerated() {
+            let z=origin.y,center=InfieldLayout.tentPoint(i,SIMD2(i==0 ? -0.1:0,i==0 ? 0.35:0)),p=paint(center.x,center.y,yaw:i==0 ? .pi:0)
             for k in 0..<5 {
                 p.beam(SIMD3(-1.25,0.08,-0.35+Double(k)*0.22),SIMD3(-0.5,0.08,-0.55+Double(k)*0.2),0.023,0x554a3d,sides:5)
             }
-            p.box(1.50,0.47,0.95,0.32,0.94,0.40,0x77766a)
-            p.box(1.50,0.80,0.73,0.22,0.18,0.025,0x45656b)
-            p.box(1.50,0.55,0.73,0.13,0.05,0.03,0xc5a56c)
+            p.box(z<0 ? -1.5:1.5,0.47,z<0 ? 0.5:0.95,0.32,0.94,0.40,0x77766a)
+            p.box(z<0 ? -1.5:1.5,0.80,z<0 ? 0.28:0.73,0.22,0.18,0.025,0x45656b)
+            p.box(z<0 ? -1.5:1.5,0.55,z<0 ? 0.28:0.73,0.13,0.05,0.03,0xc5a56c)
         }
     }
 
@@ -723,7 +731,7 @@ final class TownWorld {
         }
         // The hero pit is a functioning workshop: a workboard, drawers, hoist
         // hardware, engine fins and a hose resting on the packed-earth apron.
-        let q=paint(-7.5,-7.5)
+        let center=InfieldLayout.tentPoint(0,SIMD2(-0.1,0.35)),q=paint(center.x,center.y,yaw:.pi)
         q.box(-1.54,1.05,0.15,0.08,0.77,1.75,0x586157,detail:true)
         for j in 0..<9 {
             let zz = -0.55+Double(j)*0.17
@@ -737,10 +745,8 @@ final class TownWorld {
         }
         for k in 0..<7 { q.cylinder(0.51,0.80+Double(k)*0.041,0.91,0.235,0.235,0.014,0x7e8174,sides:14,detail:true) }
         q.cable(SIMD3(1.4,0.14,-1.1),SIMD3(0.7,0.10,0.40),-0.035,0x4c5148)
-        q.crate(1.32,0.08,-1.34,0.50,0x8a795a)
+        q.crate(-1.30,0.08,-0.85,0.50,0x8a795a)
         q.vessel(-1.42,0.08,-1.43,0.39,0x988b69)
-        q.valance(-1.55,-2.01,0.90,2.0,0.16,0x9b795e)
-        q.valance(1.55,-2.01,0.90,2.0,0.16,0x9b795e)
     }
 
     private func buildWayfinding() {
@@ -1036,6 +1042,7 @@ private struct TownPainter {
         far.triangle(a,e,c,ink);far.triangle(a,c,b,ink)
     }
     func repairRug(_ w:Double,_ d:Double,_ variation:Int) {
+        if variation==0 { triangularRug();return }
         near.materialSlot=1;far.materialSlot=1
         defer { near.materialSlot=0;far.materialSlot=0 }
         let base:UInt32=variation==0 ? 0x8a7960:0x827568
@@ -1063,6 +1070,81 @@ private struct TownPainter {
             let x = -1.2+Double(j)*0.4,z=side*(d/2-0.17),y=0.008
             quad(point(x-0.085,y,z),point(x,y,z+0.068),point(x+0.085,y,z),point(x,y,z-0.068),0xb7a783,true)
         }}
+    }
+
+    private func triangularRug() {
+        near.materialSlot=1;far.materialSlot=1
+        defer { near.materialSlot=0;far.materialSlot=0 }
+        let outline=InfieldLayout.orangeCorners.map{$0*0.94}
+        func patch(_ polygon:[SIMD2<Double>],_ ink:UInt32,_ y:Double) {
+            var clipped=polygon
+            for i in 0..<3 {
+                let a=outline[i],b=outline[(i+1)%3],d=b-a
+                func distance(_ p:SIMD2<Double>)->Double { d.x*(p.y-a.y)-d.y*(p.x-a.x) }
+                var output:[SIMD2<Double>]=[]
+                guard !clipped.isEmpty else { return }
+                for j in clipped.indices {
+                    let p=clipped[j],q=clipped[(j+1)%clipped.count],dp=distance(p),dq=distance(q)
+                    if dp<=0 { output.append(p) }
+                    if (dp<=0) != (dq<=0) { output.append(p+(q-p)*(dp/(dp-dq))) }
+                }
+                clipped=output
+            }
+            guard clipped.count>=3 else { return }
+            for i in 1..<clipped.count-1 {
+                let a=clipped[0],b=clipped[i],c=clipped[i+1]
+                tri(point(a.x,y,a.y),point(b.x,y,b.y),point(c.x,y,c.y),ink,false)
+            }
+        }
+        patch(outline,0x8a7960,0.004)
+        for x in -3...2 { for z in -3...2 where (x+z)%2==0 {
+            let a=Double(x)*0.5,b=Double(z)*0.5
+            patch([SIMD2(a,b),SIMD2(a,b+0.49),SIMD2(a+0.49,b+0.49),SIMD2(a+0.49,b)],0x958b70,0.006)
+        }}
+        let center=outline.reduce(SIMD2<Double>.zero,+)/3
+        for i in 0..<3 {
+            let a=outline[i],b=outline[(i+1)%3],ia=a+(center-a)*0.14,ib=b+(center-b)*0.14
+            patch([a,b,ib,ia],0x545849,0.009)
+            let direction=b-a,n=simd_normalize(SIMD2(-direction.y,direction.x))
+            for j in 1..<17 {
+                let p=a+direction*Double(j)/17,q=p+simd_normalize(direction)*0.022
+                quad(point(p.x,0.006,p.y),point(q.x,0.006,q.y),point(q.x+n.x*0.08,0.003,q.y+n.y*0.08),point(p.x+n.x*0.08,0.003,p.y+n.y*0.08),0xa69574,true)
+            }
+        }
+    }
+
+    func triangularRepairCanopy(_ ink:UInt32) {
+        let corners=InfieldLayout.orangeCorners.map { SIMD3<Double>($0.x,2,$0.y) }
+        near.materialSlot=1;far.materialSlot=1
+        let center=point(-0.6,2.3,0.53)
+        for i in 0..<3 { let a=corners[i],b=corners[(i+1)%3]
+            tri(center,point(a.x,a.y,a.z),point(b.x,b.y,b.z),ink,false)
+        }
+        near.materialSlot=0;far.materialSlot=0
+        for a in corners { beam(SIMD3(a.x,0,a.z),a,0.035,0x625b50) }
+        for i in 0..<3 { cable(corners[i],corners[(i+1)%3],0.025,0x625b50) }
+    }
+    func salvage(_ w:Double,_ d:Double,_ h:Double,_ kind:Int,_ seed:Int) {
+        near.materialSlot=2;far.materialSlot=2
+        defer { near.materialSlot=0;far.materialSlot=0 }
+        let rust:UInt32=[0x80533b,0x98603e,0x694c39,0x9c704a][seed%4]
+        if kind==0 {
+            ring(0,h/2,0,w/2,w*0.29,h,rust,sides:16)
+            for i in 0..<6 { let a=Double(i)*Double.pi/3
+                box(cos(a)*w*0.39,h+0.01,sin(a)*w*0.39,0.045,0.025,0.045,0x51483d,detail:true)
+            }
+        } else if kind==1 {
+            box(0,h*0.46,0,w*0.78,h*0.92,d*0.80,rust)
+            for k in 0..<5 { box(0,h*0.95,-d*0.32+Double(k)*d*0.16,w,0.035,0.035,0x564b3e,detail:true) }
+            cylinder(0,h,0,w*0.16,w*0.16,0.04,0x6b6350,sides:10,detail:true)
+        } else {
+            box(0,h/2,0,w,h,d,rust)
+            for k in 0..<4 { box(-w*0.38+Double(k)*w*0.25,h+0.005,0,0.025,0.015,d*0.85,0x514a3d,detail:true) }
+        }
+        for k in 0..<7 {
+            let xx=sin(Double(seed*23+k*17))*w*0.32,zz=cos(Double(seed*11+k*29))*d*0.29
+            box(xx,h+0.02,zz,0.035+Double(k%3)*0.012,0.005,0.025,0xb07a45,detail:true)
+        }
     }
 
     func canopy(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ y:Double,_ rise:Double,_ ink:UInt32) {

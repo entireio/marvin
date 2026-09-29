@@ -460,3 +460,30 @@ exceeded 25 ms and none exceeded 50 ms. GPU p95/p99 were 15.54/16.22 ms;
 presentation p95/p99 were 16.67 ms, maximum 33.33 ms. Results are in
 `../marvin-town-planning/retaining-walls-performance/`. Performance remains
 comparable in this short check, with occasional missed frames.
+
+## Connected infield service access and salvage
+
+The orange tent is now a smaller three-corner canopy at (-6.6, -8.7), rotated
+180 degrees into the narrower infield pocket. Its woven rug is clipped to the
+same triangular outline, retaining the checks, border and fringe. Equipment
+and colliders use the same rotation and are repositioned with it. A shared service lane runs
+from the gate past the open side to the front of the blue tent; this entire
+route, including the turns, is reserved before scattering salvage. Sixteen
+seeded rusty brake housings, engine blocks and ribbed panels occupy other
+infield pockets. Their transforms are shared by rendering and physics.
+
+Infield fixtures use fixed oriented boxes/cylinders in the existing 240 Hz
+collision solver. Bench legs and elevated worktops, lift/droid, hoist, cabinets,
+crates, pottery, tent poles and stationary mechanics have individual bounds.
+Canopies use elevated convex envelopes, with the actual triangular footprint
+for the orange canopy: there is no invisible ground-level tent box across the
+passage. These are coarse collision envelopes, not deformable cloth or loose
+rigid-body salvage. Small decorative tools, cables and fabric fringe are not
+individual collision bodies. Static collisions stay enabled when robot-to-robot
+collisions are disabled.
+
+All 31 simulation checks pass. The new checks cover every chassis along the
+whole access route and turning at its waypoints, 8 m/s approaches to every
+salvage piece, canopy footprint/overhead clearance, and reversing away from a
+pole. Native scene checks also pass. Screenshots are in
+`../marvin-town-planning/triangular-service-final/`.
