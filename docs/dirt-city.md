@@ -652,3 +652,18 @@ are in `../marvin-town-planning/city-escape-final/`.
 chase camera. Without `--city-roam`, the benchmark retains its racing and overhead
 camera sequence. Benchmarks use a 1920 × 1080 drawable and separate CPU callback
 measurements from Apple Metal HUD GPU/presentation samples.
+
+Final 45-second measurements on the local machine, with a 1080p drawable:
+
+| Route | Mean render callbacks/s | CPU update p95 | GPU p95 / p99 | Callback gaps over 25 ms |
+| --- | ---: | ---: | ---: | ---: |
+| Race | 59.86 | 2.89 ms | 15.48 / 16.44 ms | 6 |
+| Roaming | 59.99 | 2.72 ms | 14.50 / 15.32 ms | 1 |
+
+Both runs remained in nominal thermal state, with no callback gaps over 50 ms.
+Metal HUD presentation p95/p99 was 16.67/16.67 ms for both, with occasional
+33.33 ms intervals. These short runs are comparable to the previous build;
+they do not establish a locked 60 fps. HUD logs can repeat samples and add overhead.
+The final native escape run covered 112.23 m over 167.27 simulated seconds,
+with zero measured town/gate penetration. All 13 native escape checks and the
+existing town smoke suite passed after raising both entrance walls.
