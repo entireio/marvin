@@ -197,9 +197,6 @@ final class DirtWorld {
             for row in 0..<rows { for i in 0..<count {
                 let distance=(Double(i)+(row%2==0 ? 0:0.5))*step
                 let a=sample(distance+0.004),b=sample(distance+step-0.004),center=(a+b)*0.5
-                // Do not bridge the service entrance, even with staggered end bricks.
-                if side<0 && [a,b,center].contains(where:{DirtCourse.serviceAccess(x:$0.x,z:$0.y)}) { continue }
-                if side>0 && [a,b,center].contains(where:{CityExit.opening($0,clearance:-0.08)}) { continue }
                 let direction=simd_normalize(b-a),normal=SIMD2(-direction.y,direction.x)*(DirtCourse.boundaryWallThickness/2)
                 let seed=i*73+row*193+(side>0 ? 31:0)
                 // Global horizontal bed joints: hills add courses from the same
@@ -210,19 +207,42 @@ final class DirtWorld {
                 let base=foundation+Double(row)*courseHeight
                 let rise=courseHeight-0.006
                 let ink=palette[(seed ^ (seed>>3))%palette.count]
-                let corners=[a-normal,b-normal,b+normal,a+normal]
+                var corners=[a-normal,b-normal,b+normal,a+normal]
+                // Cut crossing bricks at a fixed vertical jamb plane instead of
+                // dropping a whole stretcher. Alternate courses retain their bond;
+                // the exposed cut faces close the wall right up to the gate posts.
+                let exitLocal=CityExit.local(center)
+                let atExit=side>0 && exitLocal.y > -1.1 && exitLocal.y<CityExit.run+1
+                let atService=side<0 && center.y > -15.4 && center.y < -5.3
+                if atExit || atService {
+                    let along: (SIMD2<Double>)->Double = atExit
+                        ? { CityExit.local($0).x } : { $0.x-DirtCourse.serviceEntryX }
+                    let halfWidth=atExit ? CityExit.width/2+0.08:DirtCourse.serviceEntryHalfWidth
+                    let jambSide=along(center)<0 ? -1.0:1.0
+                    func signedDistance(_ p:SIMD2<Double>)->Double { jambSide*along(p)-halfWidth }
+                    var clipped:[SIMD2<Double>]=[]
+                    for j in corners.indices {
+                        let p=corners[j],q=corners[(j+1)%corners.count]
+                        let dp=signedDistance(p),dq=signedDistance(q)
+                        if dp>=0 { clipped.append(p) }
+                        if (dp>=0) != (dq>=0) { clipped.append(p+(q-p)*(dp/(dp-dq))) }
+                    }
+                    corners=clipped
+                    guard corners.count>=3 else { continue }
+                }
+                let brickCenter=corners.reduce(SIMD2<Double>.zero,+)/Double(corners.count)
                 let bottom=corners.map { p in SIMD3<Float>(Float(p.x),Float(base),Float(p.y)) }
                 let lip=corners.map { p in SIMD3<Float>(Float(p.x),Float(base+rise-0.012),Float(p.y)) }
                 let top=corners.enumerated().map { j,p -> SIMD3<Float> in
-                    let q=p+(center-p)*0.055
+                    let q=p+(brickCenter-p)*0.055
                     let chip=row==localRows-1 ? Double((seed+j*7)%7)*0.001:0
                     return SIMD3(Float(q.x),Float(base+rise-chip),Float(q.y))
                 }
-                for j in 0..<4 { let k=(j+1)%4
+                for j in corners.indices { let k=(j+1)%corners.count
                     quad(bottom[j],bottom[k],lip[k],lip[j],ink)
                     quad(lip[j],lip[k],top[k],top[j],ink)
                 }
-                quad(top[0],top[1],top[2],top[3],ink)
+                for j in 1..<top.count-1 { mesh.triangle(top[0],top[j+1],top[j],ink) }
             }}
             let node=SCNNode(geometry:mesh.geometry(material:CityMaterials.plaster))
             node.name=side<0 ? "Inner irregular brick track wall":"Outer irregular brick track wall"
