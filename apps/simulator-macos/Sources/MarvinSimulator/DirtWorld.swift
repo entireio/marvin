@@ -7,6 +7,7 @@ import simd
 /// Geometry and textures are generated locally; no network assets are required.
 final class DirtWorld {
     let scene = SCNScene()
+    private(set) var sky: BinarySky!
     let cityGateNode=SCNNode()
     let town: TownWorld
     let escapeRoutes:[[SIMD2<Double>]]
@@ -57,21 +58,7 @@ final class DirtWorld {
         progress?(0.49,"Planning routes through town")
         escapeRoutes=PostRaceEscape.makeRoutes(city:town.collisionWorld)
         progress?(0.495,"Preparing the sand and racecourse")
-        scene.background.contents = color(0xb9c9cf)
-        scene.lightingEnvironment.contents = CityMaterials.asset("sky.hdr")
-        scene.lightingEnvironment.intensity = 0.65
-        scene.fogColor = color(0xb9c9cf); scene.fogStartDistance = 115; scene.fogEndDistance = 240
-        let ambient = SCNNode(); ambient.light = SCNLight(); ambient.light?.type = .ambient
-        ambient.light?.intensity = 180; ambient.light?.color = color(0xd8e5f2)
-        scene.rootNode.addChildNode(ambient)
-        let sun = SCNNode(); sun.light = SCNLight(); sun.light?.type = .directional
-        sun.eulerAngles = SCNVector3(-0.85, -0.6, 0)
-        sun.light?.intensity = 1250; sun.light?.color = color(0xffe6c1)
-        sun.light?.castsShadow = true; sun.light?.shadowMode = .deferred
-        sun.light?.shadowMapSize = CGSize(width: 2048, height: 2048)
-        sun.light?.orthographicScale = 58; sun.light?.shadowRadius = 5
-        sun.light?.shadowColor = NSColor.black.withAlphaComponent(0.58)
-        scene.rootNode.addChildNode(sun)
+        sky=BinarySky(scene:scene)
         let ground = SCNPlane(width: 256, height: 256)
         let earth = material(0x827656, roughness: 1)
         earth.diffuse.contents = packedEarthTexture()

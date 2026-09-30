@@ -109,6 +109,9 @@ extension AppController {
     func startTownBenchmark(at directory:URL) {
         try? FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
         startDirtTrack(); dirtIntro=nil;race.countDown(dt:3)
+        if let text=ProcessInfo.processInfo.environment["MARVIN_DAYLIGHT_FRACTION"],let fraction=Double(text),fraction.isFinite {
+            dirtWorld.sky.apply(BinaryDaylight(fraction:fraction,phase:1.2))
+        }
         raceHUD.isHidden=true
         simulation=Simulation(dirtTrack:true,dirtStartOffset:DirtCourse.startingGrid[0].offset,dirtStartPhase:DirtCourse.startingGrid[0].phase)
         opponent=DirtOpponent(slot:DirtCourse.startingGrid[1])
@@ -192,6 +195,8 @@ extension AppController {
             report["cpuUpdateP95MS"]=cpu.isEmpty ? 0:cpu[Int(Double(cpu.count-1)*0.95)]*1000
             report["durationSeconds"]=elapsed;report["townEnabled"] = !dirtWorld.town.root.isHidden
             report["town"]=dirtWorld.town.statistics
+            report["daylightFraction"]=dirtWorld.sky.daylight.fraction
+            report["sunElevationsDegrees"]=dirtWorld.sky.daylight.directions.map{asin($0.y)*180/Double.pi}
             report["drawableWidth"]=view.convertToBacking(view.bounds).width
             report["drawableHeight"]=view.convertToBacking(view.bounds).height
             report["simulationSeconds"]=race.elapsed;report["laps"]=race.laps.count

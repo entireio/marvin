@@ -867,3 +867,52 @@ A 45 s 1080p dune run measured 59.997 render callbacks/s, zero intervals over
 restored. These are SceneKit callback timings, not GPU presentation measurements.
 Artifacts: `../marvin-town-planning/ground-spray-closeup`, `spray-performance`,
 and `marvin-ground-aware-spray.mp4`.
+
+### Twin suns and per-race daylight
+
+The planet uses a fictional circumbinary arrangement, inspired by real systems
+such as [Kepler-16](https://science.nasa.gov/exoplanets/other-stars-other-worlds/kepler-16-b-almost-a-real-life-tatooine/).
+A planet outside a close binary sees two nearby stars; their projected separation
+changes with binary phase. Our model places the binary components at 0.06 and
+0.14 AU from their barycenter, with the observer approximately 1 AU away, at
+25° latitude on an equinox. This is a plausible geometric model, not a claim to
+reproduce Kepler-16 or a canonical Star Wars ephemeris. Stellar brightness and
+angular sizes are art-directed for this fictional planet.
+
+Each race/reset draws a binary phase and a uniform time within the pair's shared
+daylight interval. Conjunctions are excluded so both suns remain distinguishable.
+The selected sky is frozen over a race. Both suns share the same direction data
+with their directional lights. Color/extinction use a Beer–Lambert approximation
+with [Kasten–Young optical air mass](https://doi.org/10.1364/AO.28.004735): low suns
+lose more blue light. A procedural sky dome supplies the discs and forward haze;
+a matching diffuse environment probe replaces the old fixed-sun HDR image.
+Directional lights provide specular highlights at the correct angles.
+
+Both lights use forward shadows, so each star can illuminate the other star's
+shadow. Primary/secondary maps are bounded to 2048/1024 pixels. HDR bloom comes
+from the visible sun discs; opaque world geometry occludes them normally, with
+no always-visible flare overlay. Exposure is fixed to prevent brightness pumping
+when a sun enters the camera. See Apple's [shadow modes](https://developer.apple.com/documentation/scenekit/scnlight/shadowmode),
+[bloom threshold](https://developer.apple.com/documentation/scenekit/scncamera/bloomthreshold),
+and [exposure adaptation](https://developer.apple.com/documentation/scenekit/scncamera/wantsexposureadaptation).
+
+`--binary-sky-smoke-test <directory>` samples 2,000 random skies, checks daylight
+and light/disc direction alignment, runs three full four-robot races at stratified
+random morning/midday/evening times, captures overview and sky screenshots, and
+renders an opaque-screen sun/glare occlusion comparison. Race resets must select
+fresh daylight. `MARVIN_DAYLIGHT_FRACTION` selects repeatable sun angles for
+`--town-benchmark` only; ordinary race starts remain random.
+
+Validation (2026-09-30): all four racers completed three laps in each of the
+morning, midday and evening runs; all 2,000 daylight samples and the sun-occlusion
+pixel check passed. The 34 core simulation checks also passed. Captures and JSON
+are in `../marvin-town-planning/binary-races-final`.
+
+Two 45 s 1080p circuit benchmarks measured 59.975 (midday) and 59.999 (evening)
+render callbacks/s. Each had one interval over 25 ms and none over 50 ms; CPU
+update p95 was 1.01/0.99 ms. The midday 32.71 ms gap coincided with a 32.51 ms
+simulation tick gap (local update 1.25 ms, renderer cycle 4.41 ms). The evening
+25.84 ms gap occurred in the aerial view (renderer cycle 14.76 ms, local update
+1.13 ms). These measurements do not prove GPU/display presentation cadence.
+Activity Monitor was temporarily paused and restored for both runs. Artifacts:
+`binary-perf-midday` and `binary-perf-evening` beside the captures.

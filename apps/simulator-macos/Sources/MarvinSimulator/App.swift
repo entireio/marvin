@@ -75,7 +75,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -199,6 +199,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
                 if CommandLine.arguments.contains("--loading-smoke-test") { loadDirtTrack();return }
+                if CommandLine.arguments.contains("--binary-sky-smoke-test") {
+                    timer?.invalidate();let passed=checkBinaryRaces(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
                 if CommandLine.arguments.contains("--debris-smoke-test") {
                     timer?.invalidate();let passed=dirtWorld.checkDebris();exit(passed ? 0:1)
                 }
@@ -375,6 +378,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         configurePlayer()
         window.title = "Marvin · Playground"
         world.camera.camera?.zFar = 80
+        world.camera.camera?.wantsHDR=false;world.camera.camera?.bloomIntensity=0
         world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0
         isDirtTrack = false; dirtIntro = nil; simulation = Simulation(character: playerCharacter)
         mainMenu.portrait.rendersContinuously = false
@@ -407,6 +411,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         SCNTransaction.begin(); SCNTransaction.disableActions = true
         raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = !isLoadingDirt
         dirtWorld.camera = world.camera
+        dirtWorld.sky.attach(camera:world.camera)
         mainMenu.portrait.rendersContinuously = false
         view.antialiasingMode = .multisampling2X
         view.scene = dirtWorld.scene; dirtWorld.scene.rootNode.addChildNode(world.camera)
@@ -519,7 +524,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             performances = lineup.map { RacePerformance($0) }
             updateOpponents()
             race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup,townRoutes:dirtWorld.escapeRoutes); dirtWorld.updateGate(racePhysics.gate); scoreSaved = false
-            dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
+            dirtWorld.reset(); dirtWorld.sky.apply(.random()); cameraMode = 0; cameraDistance = 4.5
         }
         view.clearInput(); pauseItem?.label = "Pause"
         pauseItem?.image = NSImage(systemSymbolName: "pause.fill", accessibilityDescription: nil)
