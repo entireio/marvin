@@ -68,7 +68,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -202,6 +202,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--town-benchmark") {
                     startTownBenchmark(at:URL(fileURLWithPath:directory)); return
+                }
+                if CommandLine.arguments.contains("--town-departure-movie") {
+                    timer?.invalidate()
+                    let passed=captureTownDeparture(at:URL(fileURLWithPath:directory))
+                    exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--city-escape-smoke-test") {
                     timer?.invalidate()

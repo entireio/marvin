@@ -741,3 +741,19 @@ To reproduce a timeline summary, run:
 ```sh
 python3 scripts/rendering/analyze-frame-timeline.py /path/to/benchmark-directory
 ```
+
+### Town departure recording
+
+`--town-departure-movie <output-directory>` captures a continuous drive from the
+last eastern street onto the existing flat sand. Dunes are not implemented.
+Only the initial spawn is placed; the route uses ordinary throttle, steering,
+60 Hz coupled physics and town collisions. The camera uses the town's existing
+obstruction checks. Output is 1280×720 JPEG frames at 30 fps plus `departure.json`
+with arrival, travel distance and maximum solid penetration. This offline
+recording is not a real-time performance benchmark.
+
+Encode the captured frames with:
+
+```sh
+ffmpeg -framerate 30 -i /path/to/output/frame-%05d.jpg -c:v libx264 -crf 18 -pix_fmt yuv420p -movflags +faststart /path/to/departure.mp4
+```
