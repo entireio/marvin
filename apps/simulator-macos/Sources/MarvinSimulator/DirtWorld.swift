@@ -57,17 +57,18 @@ final class DirtWorld {
         sun.light?.orthographicScale = 58; sun.light?.shadowRadius = 5
         sun.light?.shadowColor = NSColor.black.withAlphaComponent(0.58)
         scene.rootNode.addChildNode(sun)
-        let ground = SCNPlane(width: 2000, height: 2000)
+        let ground = SCNPlane(width: 256, height: 256)
         let earth = material(0x827656, roughness: 1)
         earth.diffuse.contents = packedEarthTexture()
         earth.normal.contents = nil
         for channel in [earth.diffuse, earth.normal] {
             channel.wrapS = .repeat; channel.wrapT = .repeat
-            channel.contentsTransform = SCNMatrix4MakeScale(500, 500, 1)
+            channel.contentsTransform = SCNMatrix4MakeScale(64, 64, 1)
         }
         ground.materials = [earth]
         let terrain = SCNNode(geometry: ground); terrain.eulerAngles.x = -.pi/2; terrain.position.y = -0.025
         scene.rootNode.addChildNode(terrain)
+        addDesertTerrain(earth:earth)
         let clay = material(0x986441, roughness: 0.94)
         clay.diffuse.contents = soilTexture(track: true, normal: false)
         clay.normal.contents = soilTexture(track: true, normal: true); clay.normal.intensity = 0.65

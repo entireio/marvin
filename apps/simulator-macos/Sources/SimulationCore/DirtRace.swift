@@ -223,6 +223,7 @@ public enum DirtCourse {
         return 1-loose*0.72
     }
     public static func height(x:Double,z:Double) -> Double {
+        if max(abs(x),abs(z))>DesertTerrain.townEdge-2 { return DesertTerrain.height(x:x,z:z) }
         let p = projection(x:x,z:z)
         return surfaceHeight(p.phase,offset:p.offset)
     }

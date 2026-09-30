@@ -745,10 +745,9 @@ python3 scripts/rendering/analyze-frame-timeline.py /path/to/benchmark-directory
 ### Town departure recording
 
 `--town-departure-movie <output-directory>` captures a continuous drive from the
-last eastern street onto the existing flat sand. Dunes are not implemented.
+last eastern street onto the drivable dunes.
 Only the initial spawn is placed; the route uses ordinary throttle, steering,
-60 Hz coupled physics and town collisions. The camera uses the town's existing
-obstruction checks. Output is 1280×720 JPEG frames at 30 fps plus `departure.json`
+60 Hz coupled physics and town collisions. The camera checks buildings and the dune surface. Output is 1280×720 JPEG frames at 30 fps plus `departure.json`
 with arrival, travel distance and maximum solid penetration. This offline
 recording is not a real-time performance benchmark.
 
@@ -757,3 +756,46 @@ Encode the captured frames with:
 ```sh
 ffmpeg -framerate 30 -i /path/to/output/frame-%05d.jpg -c:v libx264 -crf 18 -pix_fmt yuv420p -movflags +faststart /path/to/departure.mp4
 ```
+
+
+### Drivable dune field
+
+The outer settlement transitions into a deterministic dune heightfield beyond
+156 m on each axis, keeping existing foundations level. Warped asymmetric ridges
+have broad windward climbs, shorter lee slopes and varied heights. The current
+sampled field peaks around 9.1 m with a maximum sampled slope of 32.9 degrees.
+The dune profile follows [USGS descriptions of windward and slipface slopes](https://pubs.usgs.gov/gip/deserts/eolian/).
+
+A cached 2 m grid supplies exactly the same triangular interpolation for the near
+render mesh, wheel height, chassis pitch/roll, ground collision and track marks.
+Dune driving adds the downhill component of gravity to the existing traction
+limited drivetrain. Camera booms stop before intersecting a ridge. The field is
+finite (1,536 m across), tapering back to flat at its distant perimeter.
+
+Static 64 m terrain tiles have prebuilt 2/4/8 m detail levels at 0/130/260 m view
+distances; every level retains the same 2 m boundary vertices to avoid cracks.
+No terrain meshes regenerate during play. Dunes receive lighting but do not add
+shadow-map submissions. Distance-based terrain detail follows the principle of
+spending geometry near the viewer described in [NVIDIA's terrain rendering chapter](https://developer.nvidia.com/gpugems/gpugems2/part-i-geometric-complexity/chapter-2-terrain-rendering-using-gpu-based-geometry);
+this implementation uses SceneKit tile LOD rather than GPU clipmaps.
+
+`SimulationChecks --dunes-only` covers flat town foundations, collision/render
+height agreement, boundary continuity, slope bounds and all four playable robots
+traversing a dune. The native departure capture records actual ascent, tilt,
+solid penetration and terrain penetration in `departure.json`.
+`--town-benchmark <directory> --dune-roam` measures normal real-time rendering on
+a repeated dune drive; the offline movie export is not a frame-rate benchmark.
+
+Validation: all 33 simulation checks passed, including all four chassis climbing
+and descending beyond a dune crest. The 65.2 s native departure movie travelled
+66.7 m, reached 5.49 m elevation and 12.43° pitch, with zero measured ground or
+solid penetration. Images include a fresh dune overview.
+
+At 1920×1080 with normal quality settings, a 45 s dune benchmark averaged 59.90
+render callbacks/s with four intervals over 25 ms and none over 50 ms. Repeating
+with Activity Monitor temporarily paused averaged 59.996 callbacks/s with zero
+intervals over 25 ms; CPU update p95 was 2.88 ms. Activity Monitor was restored.
+These are SceneKit callback measurements, not GPU/display presentation timing,
+and do not establish a universal frame-rate guarantee. Artifacts are under
+`../marvin-town-planning/dunes-final`, `dunes-performance` and
+`dunes-performance-isolated`; movie: `../marvin-town-planning/marvin-enters-dunes.mp4`.

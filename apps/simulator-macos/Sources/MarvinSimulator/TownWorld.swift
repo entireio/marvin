@@ -860,6 +860,15 @@ final class TownWorld {
             }
             if hit && enter>0 { limit=min(limit,max(0.08,enter-0.025)) }
         }
+        // A camera boom can intersect a dune even if both endpoints are above
+        // ground. Stop at the first obstruction, leaving near-plane clearance.
+        let steps=max(1,Int(ceil(simd_length(delta)*limit/0.20)))
+        for i in 1...steps {
+            let t=limit*Double(i)/Double(steps),p=a+delta*t
+            if max(abs(p.x),abs(p.z))>DesertTerrain.townEdge && p.y<DesertTerrain.height(x:p.x,z:p.z)+0.18 {
+                limit=limit*Double(i-1)/Double(steps);break
+            }
+        }
         let result=a+delta*limit
         return SCNVector3(result.x,result.y,result.z)
     }

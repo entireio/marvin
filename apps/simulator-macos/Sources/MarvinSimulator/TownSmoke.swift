@@ -126,6 +126,11 @@ extension AppController {
             }
             townBenchmarkRoute += townBenchmarkRoute.reversed()
         }
+        if CommandLine.arguments.contains("--dune-roam") {
+            let p=DirtCourse.projection(x:175,z:57)
+            simulation=Simulation(dirtTrack:true,dirtStartOffset:p.distance,dirtStartPhase:p.phase)
+            townBenchmarkRoute=[SIMD2(205,65),SIMD2(178,57)]
+        }
         updateOpponents()
         // Explicit 960x540 points at 2x backing gives the target 1080p drawable.
         window.minSize=NSSize(width:640,height:400)

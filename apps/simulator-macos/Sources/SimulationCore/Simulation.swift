@@ -195,6 +195,11 @@ public struct Simulation: Sendable {
                 var force = forward*drive+side*slip
                 let magnitude = hypot(force.x,force.z), tractionLimit = 16*grip
                 if magnitude > tractionLimit { force *= tractionLimit/magnitude }
+                if dirtTrack && max(abs(x),abs(z))>DesertTerrain.townEdge {
+                    let grade=DesertTerrain.gradient(x:x,z:z)
+                    let downhill = -9.8/(1+grade.x*grade.x+grade.y*grade.y)
+                    force += SIMD3(grade.x*downhill,0,grade.y*downhill)
+                }
                 velocity += force*dt
                 // Finite steering torque lets off-center impacts rotate a robot
                 // before the drivetrain progressively regains heading control.

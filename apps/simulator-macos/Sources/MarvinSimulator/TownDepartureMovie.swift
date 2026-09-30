@@ -6,24 +6,29 @@ import simd
 extension AppController {
     /// Offline capture of ordinary driving physics, at 30 fps with two 60 Hz
     /// simulation steps per image. The only placed pose is the initial spawn.
-    /// The current terrain beyond town is flat sand, not a dune heightfield.
+    /// The drive continues over the dune heightfield beyond the last houses.
     func captureTownDeparture(at directory:URL)->Bool {
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
             startDirtTrack();dirtIntro=nil;race.countDown(dt:3);raceHUD.isHidden=true
-            let spawn=SIMD2<Double>(132,48)
+            let spawn=SIMD2<Double>(142,50)
             let projection=DirtCourse.projection(x:spawn.x,z:spawn.y)
             simulation=Simulation(dirtTrack:true,dirtStartOffset:projection.distance,
                 dirtStartPhase:DirtCourse.phase(x:spawn.x,z:spawn.y))
-            let start=SIMD2(simulation.x,simulation.z),goal=SIMD2<Double>(172,57)
+            let start=SIMD2(simulation.x,simulation.z),goal=SIMD2<Double>(207,65)
             let city=dirtWorld.town.collisionWorld
-            guard let route=TownEscapeRoute(city:city,origin:start).route(from:start,to:goal) else {
-                print("No safe departure route from \(start)");return false
+            var route=[start],cursor=start
+            for destination in [SIMD2<Double>(170,56),goal] {
+                guard let leg=TownEscapeRoute(city:city,origin:cursor).route(from:cursor,to:destination) else {
+                    print("No safe departure route from \(cursor)");return false
+                }
+                route += leg.dropFirst();cursor=leg.last!
             }
             let renderer=SCNRenderer(device:view.device,options:nil)
             renderer.scene=dirtWorld.scene;renderer.pointOfView=world.camera
             var waypoint=1,frame=0,distance=0.0,maxPenetration=0.0,arrived=false
             var camera=SIMD3(start.x+6,2.9,start.y+1.3)
+            var minimumHeight=Double.infinity,maximumHeight = -Double.infinity,maximumPitch=0.0,maximumGroundPenetration=0.0
             // Settle the heading before the shot starts, using actual controls.
             for _ in 0..<300 {
                 let d=route[1]-SIMD2(simulation.x,simulation.z)
@@ -31,7 +36,7 @@ extension AppController {
                 var input=DriveInput();input.turn=max(-1,min(1,-error*2.5))
                 advanceRacePhysics(input,dt:1.0/60,raceDT:1.0/60)
             }
-            while frame<1800 {
+            while frame<2700 {
                 for _ in 0..<2 {
                     let position=SIMD2(simulation.x,simulation.z)
                     if simd_distance(position,route[waypoint])<0.24 {
@@ -45,6 +50,9 @@ extension AppController {
                     input.brake=arrived
                     advanceRacePhysics(input,dt:1.0/60,raceDT:1.0/60)
                     distance += simd_distance(position,SIMD2(simulation.x,simulation.z))
+                    minimumHeight=min(minimumHeight,simulation.groundY);maximumHeight=max(maximumHeight,simulation.groundY)
+                    maximumPitch=max(maximumPitch,abs(simulation.bodyPitch))
+                    maximumGroundPenetration=max(maximumGroundPenetration,DirtCourse.height(x:simulation.x,z:simulation.z)-simulation.groundY)
                     let body=RobotCollisions.Body(position:SIMD3(simulation.x,simulation.groundY,simulation.z),heading:simulation.heading,profile:RobotCollisions.profiles[0])
                     for obstacle in city.nearby(body) {
                         if let contact=RobotCollisions.contact(body,obstacle) { maxPenetration=max(maxPenetration,contact.penetration) }
@@ -52,7 +60,12 @@ extension AppController {
                     updateOpponents();updateRaceWorld(dt:1.0/60)
                 }
                 let target=SIMD3(simulation.x,simulation.groundY+0.4,simulation.z)
-                camera += (target+SIMD3(6,2.5,1.3)-camera)*0.08
+                // Ease around to a rear quarter view once clear of the town,
+                // revealing the dune field ahead while keeping Marvin visible.
+                let orbit=max(0,min(1,(simulation.x-155)/20)) * Double.pi*0.85
+                let desired=target+SIMD3(6*cos(orbit),2.5,6*sin(orbit)+1.3)
+                camera += (desired-camera)*0.08
+                camera.y=max(camera.y,DirtCourse.height(x:camera.x,z:camera.z)+1.2)
                 world.camera.position=dirtWorld.town.clearCamera(from:SCNVector3(target.x,target.y,target.z),to:SCNVector3(camera.x,camera.y,camera.z))
                 world.camera.look(at:SCNVector3(target.x,target.y,target.z),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
                 dirtWorld.town.update(dt:1.0/30,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z))
@@ -66,10 +79,14 @@ extension AppController {
                 if frame%150==0 { print("Departure frame \(frame), position \(simulation.x), \(simulation.z)");fflush(stdout) }
                 if arrived { break }
             }
-            let report:[String:Any]=["arrived":arrived,"frames":frame,"fps":30,"distanceMetres":distance,"maximumPenetrationMetres":maxPenetration,"terrain":"Existing flat sand outside town; dunes not implemented","start":[start.x,start.y],"end":[simulation.x,simulation.z]]
+            let report:[String:Any]=["arrived":arrived,"frames":frame,"fps":30,"distanceMetres":distance,"maximumPenetrationMetres":maxPenetration,"terrain":"Shared rendered/collision dune heightfield","minimumHeight":minimumHeight,"maximumHeight":maximumHeight,"maximumPitchDegrees":maximumPitch*180/Double.pi,"maximumGroundPenetrationMetres":maximumGroundPenetration,"start":[start.x,start.y],"end":[simulation.x,simulation.z]]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("departure.json"))
             print(report)
-            return arrived && maxPenetration<0.005
+            // A separate overview makes the terrain extent and winding crests reviewable.
+            world.camera.position=SCNVector3(212,52,105)
+            world.camera.look(at:SCNVector3(205,3,48),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+            try saveTownFrame("dunes-overview",at:directory)
+            return arrived && maxPenetration<0.005 && maximumGroundPenetration<0.005 && maximumHeight-minimumHeight>2
         } catch { print("Departure capture: \(error)");return false }
     }
 }

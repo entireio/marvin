@@ -421,8 +421,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             return
         }
         let lookAhead = isDirtTrack && cameraMode == 0 ? 1.5 : 0.0
-        let target = SCNVector3(simulation.x+sin(simulation.heading)*lookAhead,
+        var target = SCNVector3(simulation.x+sin(simulation.heading)*lookAhead,
             simulation.groundY+0.35,simulation.z+cos(simulation.heading)*lookAhead)
+        if isDirtTrack && max(abs(simulation.x),abs(simulation.z))>DesertTerrain.townEdge {
+            target.y=max(target.y,CGFloat(DirtCourse.height(x:Double(target.x),z:Double(target.z))+0.35))
+        }
         let desired: SCNVector3
         if cameraMode == 2 {
             desired = isDirtTrack ? SCNVector3(0, 38, -33) : SCNVector3(0, 11.7, -10)
