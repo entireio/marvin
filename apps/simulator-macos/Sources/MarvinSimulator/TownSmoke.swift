@@ -8,13 +8,31 @@ final class TownFrameMeter: NSObject, SCNSceneRendererDelegate {
     private let lock = NSLock()
     private var previous: Double?
     private var intervals: [Double] = []
+    private var frameStart=0.0,cycleStart=0.0,animationsEnd=0.0,physicsEnd=0.0,constraintsEnd=0.0
+    func renderer(_ renderer:SCNSceneRenderer,didApplyAnimationsAtTime time:TimeInterval) {
+        lock.lock();animationsEnd=ProcessInfo.processInfo.systemUptime;lock.unlock()
+    }
+    func renderer(_ renderer:SCNSceneRenderer,didSimulatePhysicsAtTime time:TimeInterval) {
+        lock.lock();physicsEnd=ProcessInfo.processInfo.systemUptime;lock.unlock()
+    }
+    func renderer(_ renderer:SCNSceneRenderer,didApplyConstraintsAtTime time:TimeInterval) {
+        lock.lock();constraintsEnd=ProcessInfo.processInfo.systemUptime;lock.unlock()
+    }
+    func renderer(_ renderer:SCNSceneRenderer,updateAtTime time:TimeInterval) {
+        lock.lock();cycleStart=ProcessInfo.processInfo.systemUptime;lock.unlock()
+    }
+    private var frames:[[Double]]=[]
+    func renderer(_ renderer:SCNSceneRenderer,willRenderScene scene:SCNScene,atTime time:TimeInterval) {
+        lock.lock();frameStart=ProcessInfo.processInfo.systemUptime;lock.unlock()
+    }
     func renderer(_ renderer: SCNSceneRenderer, didRenderScene scene: SCNScene, atTime time: TimeInterval) {
         let now=ProcessInfo.processInfo.systemUptime
         lock.lock(); defer { lock.unlock() }
-        if let previous { intervals.append(now-previous) }
+        if let previous { intervals.append(now-previous);frames.append([now,(now-previous)*1000,(now-frameStart)*1000,(now-cycleStart)*1000,(animationsEnd-cycleStart)*1000,(physicsEnd-animationsEnd)*1000,(constraintsEnd-physicsEnd)*1000,(frameStart-constraintsEnd)*1000]) }
         previous=now
     }
-    func reset() { lock.lock();intervals=[];previous=nil;lock.unlock() }
+    func reset() { lock.lock();intervals=[];frames=[];previous=nil;lock.unlock() }
+    func timeline()->[[Double]] { lock.lock();defer { lock.unlock() };return frames }
     func report() -> [String:Any] {
         lock.lock();let values=intervals;lock.unlock()
         let sorted=values.sorted()
@@ -87,6 +105,7 @@ extension AppController {
               let png=NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) else { throw CocoaError(.fileWriteUnknown) }
         try png.write(to:directory.appendingPathComponent(name+".png"))
     }
+    @objc func benchmarkDisplayTick(_ sender:AnyObject) { tick() }
     func startTownBenchmark(at directory:URL) {
         try? FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
         startDirtTrack(); dirtIntro=nil;race.countDown(dt:3)
@@ -111,6 +130,16 @@ extension AppController {
         // Explicit 960x540 points at 2x backing gives the target 1080p drawable.
         window.minSize=NSSize(width:640,height:400)
         window.setContentSize(NSSize(width:960,height:540))
+        if CommandLine.arguments.contains("--benchmark-msaa2") { view.antialiasingMode = .multisampling2X }
+        if CommandLine.arguments.contains("--benchmark-no-shadows") {
+            dirtWorld.scene.rootNode.enumerateChildNodes { node,_ in node.light?.castsShadow=false }
+        }
+        if #available(macOS 14.0,*), CommandLine.arguments.contains("--benchmark-display-link") {
+            timer?.invalidate()
+            let link=view.displayLink(target:self,selector:#selector(benchmarkDisplayTick(_:)))
+            link.preferredFrameRateRange=CAFrameRateRange(minimum:60,maximum:60,preferred:60)
+            link.add(to:.main,forMode:.common);benchmarkDisplayLink=link
+        }
         view.delegate=townMeter
         townBenchmarkStart=ProcessInfo.processInfo.systemUptime
         townMeter.reset();townBenchmarkCPU=[]
@@ -120,7 +149,7 @@ extension AppController {
     func tickTownBenchmark(now:Double,dt:Double) {
         guard let start=townBenchmarkStart,let directory=townBenchmarkDirectory else { return }
         let elapsed=now-start
-        if elapsed<3 { townMeter.reset();townBenchmarkCPU=[] }
+        if elapsed<3 { townMeter.reset();townBenchmarkCPU=[];townBenchmarkTimeline=[] }
         let begin=ProcessInfo.processInfo.systemUptime
         var input=DirtOpponent.driveInput(for:simulation)
         if !townBenchmarkRoute.isEmpty {
@@ -133,17 +162,26 @@ extension AppController {
             input=DriveInput();input.turn=max(-1,min(1,-error*2.5));input.throttle=abs(error)<0.22 ? 0.5:0
         }
         advanceRacePhysics(input,dt:dt,raceDT:dt)
-        updateOpponents();updateRaceWorld(dt:dt)
-        if townBenchmarkRoute.isEmpty && elapsed.truncatingRemainder(dividingBy:24)>18 {
+        let physicsEnd=ProcessInfo.processInfo.systemUptime
+        updateOpponents()
+        let modelsEnd=ProcessInfo.processInfo.systemUptime
+        updateRaceWorld(dt:dt)
+        let effectsEnd=ProcessInfo.processInfo.systemUptime
+        let aerial=townBenchmarkRoute.isEmpty && !CommandLine.arguments.contains("--benchmark-chase-only") && elapsed.truncatingRemainder(dividingBy:24)>18
+        if aerial {
             world.camera.position=SCNVector3(0,42,-44);world.camera.look(at:SCNVector3(0,0,0),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
         } else { updateCamera(snap:true) }
+        let cameraEnd=ProcessInfo.processInfo.systemUptime
         if !dirtWorld.town.root.isHidden {
             dirtWorld.town.update(dt:dt,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z))
         }
-        townBenchmarkCPU.append(ProcessInfo.processInfo.systemUptime-begin)
+        let finish=ProcessInfo.processInfo.systemUptime
+        townBenchmarkCPU.append(finish-begin)
+        townBenchmarkTimeline.append([now,elapsed,dt*1000,(physicsEnd-begin)*1000,(modelsEnd-physicsEnd)*1000,(effectsEnd-modelsEnd)*1000,(cameraEnd-effectsEnd)*1000,(finish-cameraEnd)*1000,(finish-begin)*1000,simulation.x,simulation.z,aerial ? 1:0])
         let duration=Double(ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_SECONDS"] ?? "45") ?? 45
         if elapsed>=max(10,duration) {
             timer?.invalidate();view.delegate=nil
+            if #available(macOS 14.0,*) { (benchmarkDisplayLink as? CADisplayLink)?.invalidate() }
             var report=townMeter.report()
             let cpu=townBenchmarkCPU.sorted()
             report["cpuUpdateP95MS"]=cpu.isEmpty ? 0:cpu[Int(Double(cpu.count-1)*0.95)]*1000
@@ -153,7 +191,12 @@ extension AppController {
             report["drawableHeight"]=view.convertToBacking(view.bounds).height
             report["simulationSeconds"]=race.elapsed;report["laps"]=race.laps.count
             report["thermalState"]=ProcessInfo.processInfo.thermalState.rawValue
+            report["benchmarkArguments"]=CommandLine.arguments
+            report["startUptime"]=start
+            report["endWallTime"]=Date().timeIntervalSince1970
             do {
+                let timeline:[String:Any]=["renderColumns":["uptime","intervalMS","renderCallbackSpanMS","rendererCycleMS","sceneAnimationMS","scenePhysicsMS","sceneConstraintsMS","preRenderMS"],"renderFrames":townMeter.timeline(),"updateColumns":["uptime","elapsed","tickMS","physicsMS","modelsMS","effectsMS","cameraMS","townMS","totalMS","x","z","aerial"],"updates":townBenchmarkTimeline]
+                try JSONSerialization.data(withJSONObject:timeline).write(to:directory.appendingPathComponent("timeline.json"))
                 try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("benchmark.json"))
                 print("Town benchmark complete · \(directory)")
                 exit(0)

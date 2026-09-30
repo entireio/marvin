@@ -61,6 +61,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var townBenchmarkStart: Double?
     var townBenchmarkDirectory: URL?
     var townBenchmarkCPU: [Double] = []
+    var townBenchmarkTimeline:[[Double]]=[]
+    var benchmarkDisplayLink:AnyObject?
     var townBenchmarkRoute:[SIMD2<Double>]=[]
     var townBenchmarkWaypoint=0
     var smokeFrames = 0

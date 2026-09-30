@@ -667,3 +667,77 @@ they do not establish a locked 60 fps. HUD logs can repeat samples and add overh
 The final native escape run covered 112.23 m over 167.27 simulated seconds,
 with zero measured town/gate penetration. All 13 native escape checks and the
 existing town smoke suite passed after raising both entrance walls.
+
+## Missed-frame investigation: Activity Monitor interference
+
+On this MacBook Air M2, the recurring presentation gaps followed Activity
+Monitor's activity. Temporarily suspending that application removed the gaps;
+resuming it brought them back. No game-quality reduction was needed for the
+successful control. This identifies an external trigger in this setup, not a
+proof that every possible missed frame has the same cause.
+
+The release build now has benchmark-only per-frame telemetry: render callback
+intervals, SceneKit stage spans, game physics, robot models, dust/trails, camera,
+town updates, position, and camera mode. JSON is written only after measurement.
+`analyze-frame-timeline.py` correlates long callback intervals with nearby update
+work. These spans are wall-clock callback durations, not exclusive CPU time or
+GPU command-buffer timestamps. The normal game does not collect this telemetry.
+
+All trials used a 1920 × 1080 drawable; the first three seconds are excluded
+from callback statistics. Trials ran one at a time. Rows with shorter durations
+are explicitly shown, so raw event counts should not be compared as rates.
+
+| Control | Run length | Mean callbacks/s | Intervals >25 ms | Game update p95 |
+| --- | ---: | ---: | ---: | ---: |
+| hud-baseline | 72 s | 59.919 | 6 | 3.19 ms |
+| no-hud | 72 s | 59.904 | 7 | 2.62 ms |
+| display-link | 72 s | 59.872 | 9 | 3.71 ms |
+| msaa2 | 72 s | 59.918 | 6 | 2.64 ms |
+| no-shadows | 72 s | 59.912 | 6 | 2.92 ms |
+| without-town | 72 s | 59.903 | 7 | 3.09 ms |
+| monitor-paused | 72 s | 59.999 | 0 | 2.60 ms |
+| monitor-resumed | 45 s | 59.937 | 3 | 2.58 ms |
+
+The first six controls retained Activity Monitor. Turning off the HUD, switching
+the update timer to an NSView display link, using 2× MSAA, disabling shadows, or
+hiding the town did not eliminate the periodic gaps. They often recurred at
+multiples of roughly 5.3 seconds, at different track positions and in different
+camera modes. One additional first-aerial-camera hitch was observed, but camera
+switching does not explain the recurring stalls.
+
+The decisive control retained the whole city, all collision work, 4× MSAA,
+shadows, normal timer and Metal HUD. Only Activity Monitor was suspended, using
+SIGSTOP with an EXIT trap to restore it via SIGCONT. Its settings and permissions
+were not changed. The 72-second run averaged 59.9986 callbacks/s with zero
+intervals above 25 ms. Metal HUD's final 65-second window reported presentation
+intervals of 16.67 ms throughout, despite GPU p99 of 16.18 ms and a 17.29 ms
+maximum. The immediately following 45-second run with Activity Monitor resumed
+had three long callback intervals; 33.33 ms presentations returned, despite
+similar GPU time (p99 16.05 ms, max 17.30 ms). Activity Monitor was left resumed.
+
+The city-hidden control is also important: gaps persisted with renderer cycles
+of only 3–6 ms, so a long SceneKit cycle in an earlier trial was insufficient
+reason to attribute the problem to city geometry or renderer execution. Game
+updates around ordinary missed frames were typically 1.5–3.7 ms. Physics was
+usually below 1 ms; the display-link trial had a 6.83 ms catch-up outlier, still
+below a frame budget. There is no evidence here for a collision-bound frame.
+
+Two attempts to obtain a macOS thread sample did not complete and were stopped;
+their benchmark runs are excluded. Xcode/Instruments and metalperftrace were not
+available. The exact OS sampling/locking path used by Activity Monitor has not
+been traced; the causal claim is based on the reversible running/paused/resumed
+control. Metal HUD logs can repeat samples, so HUD counts are not unique-frame
+counts. A short successful run does not prove a universally locked frame rate.
+
+For representative playing and profiling, close Activity Monitor or otherwise
+stop its live collection before taking baseline measurements. Keep the current
+art and collision settings. The benchmark flags remain diagnostic only:
+`--benchmark-display-link`, `--benchmark-msaa2`, `--benchmark-no-shadows`, and
+`--benchmark-chase-only`. No timing or rendering defaults changed.
+
+Artifacts and raw timelines: `../marvin-town-planning/frame-investigation/`.
+To reproduce a timeline summary, run:
+
+```sh
+python3 scripts/rendering/analyze-frame-timeline.py /path/to/benchmark-directory
+```
