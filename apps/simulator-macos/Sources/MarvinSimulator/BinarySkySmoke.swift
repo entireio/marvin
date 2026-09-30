@@ -14,10 +14,13 @@ extension AppController {
                     && s.separationDegrees>1.1 && s.separationDegrees<13
             }
             startDirtTrack();raceHUD.isHidden=true
-            for (name,range) in [("morning",0.025...0.045),("midday",0.43...0.57),("evening",0.95...0.975)] {
+            let horizonCapture=ProcessInfo.processInfo.environment["MARVIN_HORIZON_CAPTURE"] == "1"
+            let times = horizonCapture ? [("sunrise",0.015...0.015),("sunset",0.985...0.985)]
+                : [("morning",0.025...0.045),("midday",0.43...0.57),("evening",0.95...0.975)]
+            for (name,range) in times {
                 reset(nil);dirtIntro=nil;race.countDown(dt:3)
                 // Stratified random times exercise the full daylight range.
-                let s=BinaryDaylight(fraction:Double.random(in:range),phase:Double.random(in:0.8...2.0))
+                let s=BinaryDaylight(fraction:Double.random(in:range),phase:horizonCapture ? 0.35 : Double.random(in:0.8...2.0))
                 dirtWorld.sky.apply(s)
                 for (i,node) in dirtWorld.sky.suns.enumerated() {
                     let m=node.simdWorldTransform
