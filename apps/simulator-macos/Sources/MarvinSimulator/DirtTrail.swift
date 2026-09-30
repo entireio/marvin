@@ -7,7 +7,9 @@ final class DirtTrail {
     let root = SCNNode()
     private let style: Style
     private var uv: [CGPoint] = []
-    private let ink = material(0x382719, roughness: 1)
+    private let ink = material(0xffffff, roughness: 1)
+    private var normals: [SCNVector3] = []
+    private var strengths: [Float] = []
     private var chunks: [SCNNode] = []
     private var vertices: [SCNVector3] = []
     private var indices: [Int32] = []
@@ -18,14 +20,30 @@ final class DirtTrail {
 
     init(style: Style = .tracks) {
         self.style = style
-        ink.transparency = style == .tracks ? 0.65 : 0.48
+        root.name = "Surface-aware ground impressions"
+        ink.lightingModel = .constant
+        ink.blendMode = .multiply
+        ink.shaderModifiers = [.geometry: """
+        #pragma varyings
+        float impressionStrength;
+        #pragma body
+        out.impressionStrength=_geometry.color.r;
+        """, .surface: """
+        #pragma transparent
+        #pragma body
+        float2 uv=_surface.diffuseTexcoord;
+        float across=smoothstep(0.0,0.15,uv.x)*(1.0-smoothstep(0.85,1.0,uv.x));
+        float along=smoothstep(0.0,0.24,uv.y)*(1.0-smoothstep(0.65,1.0,uv.y));
+        float shade=1.0-in.impressionStrength*across*along;
+        _surface.diffuse=float4(float3(shade),1.0);
+        """]
         // The housing-fitted rollers have smooth, flat rubber tread.
         ink.isDoubleSided = true
         ink.writesToDepthBuffer = false
     }
     func reset() {
         chunks.forEach { $0.removeFromParentNode() }; chunks.removeAll()
-        vertices.removeAll(); uv.removeAll(); indices.removeAll(); chunkIndex = 0
+        vertices.removeAll(); normals.removeAll(); strengths.removeAll(); uv.removeAll(); indices.removeAll(); chunkIndex = 0
         previous = nil; remainder = 0; count = 0
     }
     func update(_ state: Simulation, contacts: [(x: Double, z: Double, width: Double)]) {
@@ -46,14 +64,22 @@ final class DirtTrail {
             for contact in contacts {
                 if vertices.count == 256*4 {
                     flush(); chunkIndex = (chunkIndex+1)%128
-                    vertices.removeAll(keepingCapacity:true); uv.removeAll(keepingCapacity:true); indices.removeAll(keepingCapacity:true)
+                    vertices.removeAll(keepingCapacity:true); normals.removeAll(keepingCapacity:true); strengths.removeAll(keepingCapacity:true); uv.removeAll(keepingCapacity:true); indices.removeAll(keepingCapacity:true)
                 }
                 let base = Int32(vertices.count)
+                let dune=max(0,min(1,(max(abs(x),abs(z))-DesertTerrain.townEdge)/30))
+                let strength=Float((style == .tracks ? 0.24:0.19)*(1-dune)+0.14*dune)
+                let e=0.04
+                let nx=DirtCourse.height(x:x-e,z:z)-DirtCourse.height(x:x+e,z:z)
+                let nz=DirtCourse.height(x:x,z:z-e)-DirtCourse.height(x:x,z:z+e)
+                let length=sqrt(nx*nx+4*e*e+nz*nz)
+                let normal=SCNVector3(nx/length,2*e/length,nz/length)
                 for (side, along) in [(-1.0,-1.0),(1,-1),(1,1),(-1,1)] {
                     let lateral = contact.x+side*contact.width/2
                     let forward = contact.z+along*(style == .tracks ? 0.021 : spacing*0.53)
                     let px = x+cos(heading)*lateral+sin(heading)*forward
                     let pz = z-sin(heading)*lateral+cos(heading)*forward
+                    normals.append(normal);strengths += [strength,0,0,1]
                     uv.append(CGPoint(x:(side+1)/2,y:(along+1)/2))
                     vertices.append(SCNVector3(px,DirtCourse.height(x:px,z:pz)+0.007,pz))
                 }
@@ -71,8 +97,9 @@ final class DirtTrail {
             let node = SCNNode(); node.castsShadow = false
             root.addChildNode(node); chunks.append(node)
         }
+        let tone=strengths.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:vertices.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
         let geometry = SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(textureCoordinates:uv),
-            SCNGeometrySource(normals:Array(repeating:SCNVector3(0,1,0),count:vertices.count))],
+            SCNGeometrySource(normals:normals),tone],
             elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
         geometry.materials = [ink]; chunks[chunkIndex].geometry = geometry
     }

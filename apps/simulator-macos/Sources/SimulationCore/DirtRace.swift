@@ -236,15 +236,21 @@ public struct DirtRace: Sendable {
     public private(set) var progress = 0.0
     private var previousPhase = 0.0, lapStart = 0.0
     public var finished: Bool { laps.count == 3 }
+    public private(set) var cooldownProgress = 0.0
+    public var completedCooldownLap:Bool { cooldownProgress >= 2 * .pi-1e-8 }
     public var currentLap: Double { elapsed - lapStart }
     public var wrongWay = false
     public init(startPhase: Double = 0) { previousPhase = startPhase; progress = startPhase }
     public mutating func countDown(dt: Double) { countdown = max(0, countdown - max(0, dt)) }
     public mutating func advance(x: Double, z: Double, dt: Double) {
-        guard countdown == 0, !finished, dt > 0, dt.isFinite else { return }
+        guard countdown == 0, dt > 0, dt.isFinite else { return }
         let phase = DirtCourse.phase(x: x, z: z)
         let delta = atan2(sin(phase - previousPhase), cos(phase - previousPhase))
         previousPhase = phase
+        if finished {
+            if DirtCourse.projection(x:x,z:z).distance<DirtCourse.fenceOffset && abs(delta)<0.3 { cooldownProgress += delta }
+            return
+        }
         let oldTime = elapsed; elapsed += dt
         wrongWay = delta < -0.0001
         // Reject teleports/off-course samples. Signed progress means reversing

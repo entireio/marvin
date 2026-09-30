@@ -8,10 +8,12 @@ public struct DirtRacePhysics: Sendable {
     public private(set) var contactCount = 0
     private var recovery = Array(repeating:CollisionRecovery(),count:4)
     public var gate=CityGate()
+    public private(set) var escape=PostRaceEscape()
     public let characters: [RacePerformance.Character]
-    public init(characters: [RacePerformance.Character] = RacePerformance.Character.allCases) {
+    public init(characters: [RacePerformance.Character] = RacePerformance.Character.allCases,townRoutes:[[SIMD2<Double>]] = []) {
         precondition(characters.count == 4 && Set(characters).count == 4)
         self.characters = characters
+        escape=PostRaceEscape(routes:townRoutes)
     }
     public mutating func advance(_ input: DriveInput, player: inout Simulation, race: inout DirtRace,
                                  opponents: inout [DirtOpponent], dt: Double, raceDT: Double,
@@ -28,19 +30,22 @@ public struct DirtRacePhysics: Sendable {
             let exitPosition=CityExit.local(SIMD2(player.x,player.z))
             let exploring=(projection.offset>0 && projection.distance>DirtCourse.fenceOffset) || ((gate.wantsOpen || gate.angle>0.02) && abs(exitPosition.x)<3 && exitPosition.y > -5 && exitPosition.y<8)
             let initialBodies=([player]+opponents.map{$0.simulation}).map{$0.collisionBody(profile:RobotCollisions.profiles[$0.character.rawValue])}
+            let states=[player]+opponents.map{$0.simulation}
+            escape.advance(races:[race]+opponents.map{$0.race},states:states,city:city,gateAngle:gate.angle)
+            if escape.active { gate.wantsOpen=true }
             gate.advance(dt:h,bodies:initialBodies)
-            let playerInput = exploring ? input : race.finished ? DirtOpponent.driveInput(for:player,cruising:true) : assists.apply(input,to:player)
+            let playerInput = escape.input(for:0,states:states) ?? (exploring ? input : race.finished ? DirtOpponent.driveInput(for:player,cruising:true) : assists.apply(input,to:player))
             player.advance(playerInput,dt:h)
             for i in opponents.indices {
                 opponents[i].simulation.enableRobotDynamics()
-                let drive = opponents[i].driveInput
+                let drive = escape.input(for:i+1,states:states) ?? opponents[i].driveInput
                 opponents[i].simulation.advance(drive,dt:h)
             }
             var bodies = ([player]+opponents.map { $0.simulation }).enumerated().map { $0.element.collisionBody(profile:RobotCollisions.profiles[characters[$0.offset].rawValue]) }
             contactCount += RobotCollisions.resolve(&bodies,terrain:true,betweenRobots:robotCollisionsEnabled,gate:gate,city:city,previousPositions:initialBodies.map{$0.position})
             for i in bodies.indices {
                 let p=DirtCourse.projection(x:bodies[i].position.x,z:bodies[i].position.z)
-                if (i != 0 || !exploring) && !(p.offset>0 && p.distance>DirtCourse.fenceOffset) { recovery[i].advance(&bodies[i],dt:h) }
+                if !escape.active && (i != 0 || !exploring) && !(p.offset>0 && p.distance>DirtCourse.fenceOffset) { recovery[i].advance(&bodies[i],dt:h) }
             }
             player.applyCollisionBody(bodies[0])
             race.advance(x:player.x,z:player.z,dt:clockStep)

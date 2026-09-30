@@ -799,3 +799,46 @@ These are SceneKit callback measurements, not GPU/display presentation timing,
 and do not establish a universal frame-rate guarantee. Artifacts are under
 `../marvin-town-planning/dunes-final`, `dunes-performance` and
 `dunes-performance-isolated`; movie: `../marvin-town-planning/marvin-enters-dunes.mp4`.
+
+### Surface-aware tracks, race departure and loading
+
+Ground impressions now multiply the already-lit surface color, preserving the
+underlying sand/clay hue and texture, instead of overlaying fixed brown paint.
+Edges are feathered; dune marks use lighter contrast. Vertex normals follow the
+sampled terrain. Native pixel comparisons on sand, clay and dark ground check
+that marks remain subtle and do not shift the ground hue.
+
+Three-lap classification and finish times remain frozen while a separate signed
+cooldown counter records actual travel. After **all four** racers finish and
+complete at least one additional lap, the city gate opens. Racers use ordinary
+steering, throttle, braking and collisions to leave in sequence, then follow four
+separate town routes. Routes are prepared while loading, with clearance for the
+tallest chassis; the narrow gate approach is reserved one racer at a time.
+The results panel becomes compact during departure. Once everyone arrives, the
+player can drive around town. Pause freezes the sequence and reset clears it.
+
+Choosing Dirt Track in the main menu displays a progress screen immediately.
+Town/terrain construction and route planning run on a worker queue; stage and
+tile completion reports update a monotonic progress bar on the main thread.
+Scene preparation is asynchronous, and 100% is shown only after the first frame
+is ready. Repeat visits reuse the constructed world. The progress bar exposes an
+accessibility role/value; its painted fill matches the numeric percentage.
+
+Validation commands (packaged executable):
+
+- `--trail-material-smoke-test <directory>` checks rendered hue/contrast on three ground colors.
+- `--loading-smoke-test <directory>` checks monotonic progress, completion, and responsive UI ticks, and captures the loading screen.
+- `--postrace-smoke-test <directory>` drives a real race through cooldown and four town destinations; checks no early opening, frozen results, pause, reset and static collision penetration.
+
+The 34 core checks include full cooldown-lap accounting, rejecting reverse/forward
+oscillation and teleports. Two native full-race runs with different shuffled grids
+completed all four escape routes with zero measured solid penetration. The dune
+recording was repeated with corrected marks and zero terrain penetration.
+
+Final 45 s 1080p dune timing check with Activity Monitor temporarily paused:
+59.983 render callbacks/s, one 26.33 ms interval, no intervals over 50 ms,
+CPU update p95 3.09 ms. Activity Monitor was restored. The delayed interval
+coincided with a 33.94 ms tick gap, while its local CPU update stayed at 2.30 ms;
+these callback measurements do not identify GPU/display presentation timing.
+Artifacts: `../marvin-town-planning/trails-performance`, `trail-material`,
+`loading-release`, `postrace-final`, and `dune-tracks-final`.

@@ -42,19 +42,30 @@ final class TownWorld {
         let phase: Double
     }
 
-    init() {
+    init(progress:((Double,String)->Void)? = nil) {
         root.name = "Mos Aster desert spaceport"
+        progress?(0.02,"Laying out town streets")
         buildRoads()
+        progress?(0.08,"Building spectator stands")
         buildGrandstand()
+        progress?(0.14,"Building town districts")
         buildSettlement()
+        progress?(0.38,"Preparing the repair yard")
         buildRepairPit()
+        progress?(0.43,"Building landmarks")
         buildLandmarks()
+        progress?(0.48,"Adding spectators")
         buildStreetLife()
+        progress?(0.54,"Adding town details")
         buildMarketDetails()
+        progress?(0.59,"Weathering the town")
         buildReferenceDetails()
+        progress?(0.64,"Placing signs")
         buildWayfinding()
         crowd.finish(into:root)
-        for key in cells.keys.sorted() {
+        let keys=cells.keys.sorted()
+        for (index,key) in keys.enumerated() {
+            progress?(0.70+0.30*Double(index)/Double(keys.count),"Preparing the town")
             let cell = cells[key]!
             let near = cell.near.geometry(material: surface, relativeTo: cell.origin)
             let far = cell.far.geometry(material: surface, relativeTo: cell.origin)

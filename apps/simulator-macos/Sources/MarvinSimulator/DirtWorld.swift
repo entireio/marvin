@@ -8,7 +8,8 @@ import simd
 final class DirtWorld {
     let scene = SCNScene()
     let cityGateNode=SCNNode()
-    let town = TownWorld()
+    let town: TownWorld
+    let escapeRoutes:[[SIMD2<Double>]]
     private let effects = SCNNode()
     private let dustBatch = SCNNode(), clodBatch = SCNNode()
     weak var camera: SCNNode?
@@ -41,7 +42,11 @@ final class DirtWorld {
         let image=NSImage(size:NSSize(width:size,height:size));image.addRepresentation(bitmap);return image
     }
 
-    init() {
+    init(progress: ((Double,String)->Void)? = nil) {
+        town=TownWorld(progress:{ fraction,label in progress?(0.05+fraction*0.43,label) })
+        progress?(0.49,"Planning routes through town")
+        escapeRoutes=PostRaceEscape.makeRoutes(city:town.collisionWorld)
+        progress?(0.495,"Preparing the sand and racecourse")
         scene.background.contents = color(0xb9c9cf)
         scene.lightingEnvironment.contents = CityMaterials.asset("sky.hdr")
         scene.lightingEnvironment.intensity = 0.65
@@ -68,7 +73,7 @@ final class DirtWorld {
         ground.materials = [earth]
         let terrain = SCNNode(geometry: ground); terrain.eulerAngles.x = -.pi/2; terrain.position.y = -0.025
         scene.rootNode.addChildNode(terrain)
-        addDesertTerrain(earth:earth)
+        addDesertTerrain(earth:earth,progress:{ fraction in progress?(0.50+fraction*0.34,"Building the dunes") })
         let clay = material(0x986441, roughness: 0.94)
         clay.diffuse.contents = soilTexture(track: true, normal: false)
         clay.normal.contents = soilTexture(track: true, normal: true); clay.normal.intensity = 0.65
@@ -110,6 +115,7 @@ final class DirtWorld {
         }
         addServiceEmbankment(clay:clay,earth:earth)
         addInfieldDirt()
+        progress?(0.86,"Building track walls and gate")
         addTrackWalls()
         addCityExit(clay:clay,earth:earth)
         // Start / finish checker paint, across the full lane at phase zero.
@@ -165,6 +171,7 @@ final class DirtWorld {
             batch.geometry=placeholder;batch.castsShadow=false;effects.addChildNode(batch)
         }
         for trail in trails { effects.addChildNode(trail.root) }
+        progress?(0.90,"Preparing robots and race")
     }
 
     /// Level brick courses rise from a common foundation, batched per boundary. The track-facing

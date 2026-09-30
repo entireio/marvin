@@ -10,6 +10,7 @@ final class RaceHUD: NSView {
     var race = DirtRace(), scores: [DirtScore] = []
     var x = 0.0, z = -10.0, heading = 0.0
     var introducing = false
+    var escaping = false, escapeComplete = false
     var paused = false, helpVisible = true
     var saveError: String?
     override var isFlipped: Bool { true }
@@ -27,6 +28,7 @@ final class RaceHUD: NSView {
         color(0x263029,alpha:0.9).setFill(); NSBezierPath(roundedRect:NSRect(x:x,y:y,width:w,height:h),xRadius:12,yRadius:12).fill()
     }
     override func draw(_ rect:NSRect) {
+        if escaping && !paused { drawTownDeparture(); return }
         if race.finished && !paused { drawResults(); return }
         let races = [race]+opponents.map { $0.race }
         let inset:CGFloat = 18, rowsY:CGFloat = 242, rowSpacing:CGFloat = 22
@@ -150,6 +152,18 @@ final class RaceHUD: NSView {
         label(paused ? "The race is waiting for you." : "Get ready to race",in:NSRect(x:x+24,y:y+h-106,width:w-48,height:25),size:17,alignment:.center)
         rule(NSRect(x:x+28,y:y+h-68,width:w-56,height:1))
         label(paused ? "P / Esc  Resume    ·    ⌘R  Restart" : "WASD / ↑↓←→  Drive    ·    Shift  Boost",in:NSRect(x:x+16,y:y+h-46,width:w-32,height:24),size:13,weight:.medium,tint:0xffd78d,alignment:.center)
+    }
+    private func drawTownDeparture() {
+        let races=[race]+opponents.map{$0.race},names=[playerName]+racerNames
+        let w=min(CGFloat(310),bounds.width-44)
+        panel(22,22,w,178)
+        label(escapeComplete ? "WELCOME TO MOS ASTER":"OFF TO TOWN",in:NSRect(x:40,y:37,width:w-36,height:23),size:16,weight:.bold,tint:0xffd78d)
+        for (rank,index) in DirtStandings.order(races).enumerated() {
+            let y=CGFloat(70+rank*23)
+            label("\(rank+1).  \(names[index])",in:NSRect(x:40,y:y,width:w-125,height:20),size:13,weight:.medium)
+            label(Self.time(races[index].elapsed),in:NSRect(x:w-60,y:y,width:70,height:20),size:12,weight:.medium)
+        }
+        label(escapeComplete ? "Drive to explore · ⌘R to race again":"Autopilot · Separate routes through town",in:NSRect(x:40,y:169,width:w-36,height:20),size:11,tint:0xb8c2b6)
     }
     private func drawResults() {
         let races = [race]+opponents.map { $0.race }

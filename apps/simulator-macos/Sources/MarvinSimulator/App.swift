@@ -13,7 +13,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var outroPosition = SCNVector3Zero, outroTarget = SCNVector3Zero
     var dirtIntro: Double?
     let dirtIntroDuration = 3.2
-    lazy var dirtWorld = DirtWorld()
+    var cachedDirtWorld:DirtWorld?
+    var dirtWorld:DirtWorld {
+        get { if let value=cachedDirtWorld { return value };let value=DirtWorld();cachedDirtWorld=value;return value }
+        set { cachedDirtWorld=newValue }
+    }
+    var isLoadingDirt=false
+    var loadingHeartbeats=0
+    let loadingView=LevelLoadingView()
     let raceHUD = RaceHUD()
     var race = DirtRace()
     var racePhysics = DirtRacePhysics()
@@ -68,7 +75,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -135,7 +142,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         mainMenu.frame = view.bounds; mainMenu.autoresizingMask = [.width, .height]
         view.addSubview(mainMenu)
         mainMenu.onSandbox = { [weak self] in self?.startSandbox() }
-        mainMenu.onDirtTrack = { [weak self] in self?.startDirtTrack() }
+        mainMenu.onDirtTrack = { [weak self] in self?.loadDirtTrack() }
         makeMenu()
         window.center(); window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true)
@@ -163,7 +170,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             else {
                 if isDirtTrack {
                     advanceRacePhysics(view.driveInput,dt:step,raceDT:raceDelta)
-                    if race.finished {
+                    if racePhysics.escape.active {
+                        dirtOutro=nil
+                    } else if race.finished {
                         if dirtOutro == nil {
                             dirtOutro = 0; outroPosition = world.camera.position
                             let front = world.camera.simdWorldFront
@@ -182,12 +191,20 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let now = ProcessInfo.processInfo.systemUptime
         let wallDelta = max(0, now-lastTime)
         let dt = min(wallDelta, 0.1); lastTime = now
+        if isLoadingDirt { loadingHeartbeats += 1; return }
         if townBenchmarkStart != nil { tickTownBenchmark(now:now,dt:dt); return }
         if !inSandbox {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt)
             if let directory = smokeDirectory {
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
+                if CommandLine.arguments.contains("--loading-smoke-test") { loadDirtTrack();return }
+                if CommandLine.arguments.contains("--trail-material-smoke-test") {
+                    timer?.invalidate();let passed=checkTrailMaterial(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--postrace-smoke-test") {
+                    timer?.invalidate();let passed=checkPostRaceEscape(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
                 if CommandLine.arguments.contains("--renderer-study") {
                     timer?.invalidate()
                     if #available(macOS 15.0, *) {
@@ -331,6 +348,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
+            raceHUD.escaping = racePhysics.escape.active;raceHUD.escapeComplete = racePhysics.escape.complete
             updateOpponents()
             raceHUD.race = race; raceHUD.scores = scores; raceHUD.paused = simulation.paused
             raceHUD.needsDisplay = true
@@ -384,7 +402,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         hud.isHidden = true; raceHUD.isHidden = true
         view.isHidden = true
         SCNTransaction.begin(); SCNTransaction.disableActions = true
-        raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = true
+        raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = !isLoadingDirt
         dirtWorld.camera = world.camera
         mainMenu.portrait.rendersContinuously = false
         view.antialiasingMode = .multisampling2X
@@ -402,12 +420,29 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         SCNTransaction.commit()
         // Compile materials/upload geometry and draw the first correct overview
         // before revealing the scene, avoiding a frame from the previous camera.
-        _ = view.prepare(dirtWorld.scene, shouldAbortBlock:nil)
+        if isLoadingDirt {
+            loadingView.update(0.93,"Getting ready to race")
+            view.prepare([dirtWorld.scene]) { [weak self] success in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    if success { self.revealDirtTrack() }
+                    else { self.failDirtLoading() }
+                }
+            }
+        } else {
+            _ = view.prepare(dirtWorld.scene, shouldAbortBlock:nil)
+            revealDirtTrack()
+        }
+    }
+    func revealDirtTrack() {
         _ = view.snapshot()
         raceHUD.race = race; raceHUD.introducing = true; raceHUD.scores = scores
         mainMenu.isHidden = true; raceHUD.isHidden = false; view.isHidden = false
+        loadingView.update(1,"Ready")
+        isLoadingDirt=false;loadingView.removeFromSuperview();window.toolbar?.isVisible=true
         window.makeFirstResponder(view)
         lastTime = ProcessInfo.processInfo.systemUptime
+        finishLoadingCheckIfNeeded()
     }
     func updateCamera(snap: Bool) {
         if let outro = dirtOutro, isDirtTrack {
@@ -465,9 +500,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         window.makeFirstResponder(view)
     }
     @objc func reset(_ sender: Any?) {
+        if isLoadingDirt && sender != nil { return }
         guard inSandbox else { return }
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil; dirtOutro = nil
+        raceHUD.escaping=false;raceHUD.escapeComplete=false
         simulation.reset(); updatePlayerModel()
         if isDirtTrack {
             var random = SystemRandomNumberGenerator()
@@ -478,7 +515,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             wallEOpponent = DirtOpponent(slot:slots[3],laneOffset:-0.65)
             performances = lineup.map { RacePerformance($0) }
             updateOpponents()
-            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup); dirtWorld.updateGate(racePhysics.gate); scoreSaved = false
+            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup,townRoutes:dirtWorld.escapeRoutes); dirtWorld.updateGate(racePhysics.gate); scoreSaved = false
             dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
         }
         view.clearInput(); pauseItem?.label = "Pause"

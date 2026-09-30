@@ -539,6 +539,7 @@ struct SimulationTests {
 @main struct CheckRunner {
     static func main() {
         let checks = SimulationTests()
+        checks.testCooldownLap()
         checks.testDesertTerrain()
         if CommandLine.arguments.contains("--dunes-only") { return }
         checks.testCityEscape()
@@ -575,6 +576,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 33 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 34 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

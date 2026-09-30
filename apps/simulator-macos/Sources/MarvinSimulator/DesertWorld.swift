@@ -5,7 +5,7 @@ import simd
 extension DirtWorld {
     /// Fixed, prebuilt tiles: no mesh allocation during play. Near tiles use the
     /// exact collision grid; distant LODs retain matching vertices along their shared edges.
-    func addDesertTerrain(earth:SCNMaterial) {
+    func addDesertTerrain(earth:SCNMaterial,progress:((Double)->Void)? = nil) {
         let sand=earth.copy() as! SCNMaterial
         sand.diffuse.contentsTransform=SCNMatrix4Identity
         sand.roughness.contents=0.94
@@ -69,7 +69,7 @@ extension DirtWorld {
             let node=SCNNode(geometry:mesh);node.position=SCNVector3(x,0,z)
             node.name="Wind-shaped sand dunes";node.castsShadow=false
             scene.rootNode.addChildNode(node)
-        }}
+        };progress?(Double(j+13)/24) }
         // Fill beyond the finite dune field; its perimeter eases back to flat.
         let horizon=SCNNode(geometry:SCNPlane(width:4000,height:4000))
         horizon.geometry?.materials=[earth];horizon.eulerAngles.x = -.pi/2;horizon.position.y = -0.05
