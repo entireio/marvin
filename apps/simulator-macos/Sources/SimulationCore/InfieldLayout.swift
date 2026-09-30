@@ -4,11 +4,13 @@ import simd
 /// Shared authored fixtures and seeded salvage: rendering and collision use the
 /// same transforms. Seeded placement keeps race resets and tests reproducible.
 public enum InfieldLayout {
-    public static let tentOrigins=[SIMD2<Double>(-4.6,-9.4),SIMD2<Double>(-8.5,3.5)]
+    public static let tentOrigins=[SIMD2<Double>(-3.8,-9.2),SIMD2<Double>(-8.5,3.5)]
     public static let orangeCorners=[SIMD2<Double>(-1.6,-1.6),SIMD2<Double>(-1.6,1.6),SIMD2<Double>(1.4,1.6)]
     public static let serviceLane:[SIMD2<Double>]=[SIMD2(-7.5,-12.5),SIMD2(-8.8,-10.8),SIMD2(-8.8,-6.2),SIMD2(-8.5,-3),SIMD2(-8.5,1.8)]
+    public static let tentYaws:[Double]=[5 * .pi/6,0]
     public static func tentPoint(_ index:Int,_ local:SIMD2<Double>)->SIMD2<Double> {
-        tentOrigins[index]+local*(index==0 ? -1.0:1.0)
+        let yaw=tentYaws[index]
+        return tentOrigins[index]+SIMD2(local.x*cos(yaw)+local.y*sin(yaw),-local.x*sin(yaw)+local.y*cos(yaw))
     }
     public static func laneDistance(_ p:SIMD2<Double>)->Double {
         zip(serviceLane,serviceLane.dropFirst()).map { a,b in
@@ -30,7 +32,8 @@ public enum InfieldLayout {
             let p=DirtCourse.projection(x:x,z:z)
             guard p.offset<0,p.distance>DirtCourse.fenceOffset+1.3 else { continue }
             // Reserve the entrance-to-east-side aisle and both repair footprints.
-            guard laneDistance(SIMD2(x,z))>1.35,
+            guard DirtCourse.height(x:x,z:z) < -0.02,
+                  laneDistance(SIMD2(x,z))>1.35,
                   hypot((x-tentOrigins[0].x)/2.7,(z-tentOrigins[0].y)/2.7)>1,
                   hypot((x+8.5)/3.0,(z-3.5)/3.0)>1 else { continue }
             guard result.allSatisfy({hypot($0.x-x,$0.z-z)>1.45}) else { continue }
@@ -80,13 +83,13 @@ public enum InfieldLayout {
             // Stationary mechanic occupies the same footprint as the visible figure.
             box(origin.x+(i==0 ? 0.65:0.73),origin.y+(i==0 ? -0.25:-0.35),0.40,0.4,0.9,0.055,0,true)
             if i==0 { for j in first..<result.count {
-                result[j].position.x=2*origin.x-result[j].position.x
-                result[j].position.z=2*origin.y-result[j].position.z
-                result[j].heading += .pi
+                let q=tentPoint(i,SIMD2(result[j].position.x-origin.x,result[j].position.z-origin.y))
+                result[j].position.x=q.x;result[j].position.z=q.y
+                result[j].heading += tentYaws[i]
             } }
         }
-        for side in [-1.0,1.0] { box(DirtCourse.serviceEntryX+side*1.4,-12.2,0.09,0.09,0.56,0,0,true) }
-        box(DirtCourse.serviceEntryX-1.85,-12.21,0.05,0.05,0.67)
+        for side in [-1.0,1.0] { let x=DirtCourse.serviceEntryX+side*1.4;box(x,-12.2,0.09,0.09,0.56,DirtCourse.height(x:x,z:-12.2),0,true) }
+        box(DirtCourse.serviceEntryX-1.85,-12.21,0.05,0.05,0.67,DirtCourse.height(x:DirtCourse.serviceEntryX-1.85,z:-12.21))
         for p in parts { box(p.x,p.z,p.width,p.depth,p.height,0,p.yaw,p.kind==0) }
         return result
     }()

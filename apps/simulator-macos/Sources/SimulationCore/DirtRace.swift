@@ -178,16 +178,19 @@ public enum DirtCourse {
             let crest = offset > 0 ? 0.10 : 0.055
             return base + sin((distance-width)/bermWidth * .pi)*crest
         }
-        // Retaining walls replace the earthen slope, except at the service ramp.
+        // The service entrance is a broad earth embankment. Its 3.6 m run and
+        // tapered side shoulders are shared by the rendered heightfield.
         let location=point(phase,offset:offset)
-        let ramp=offset<0 && serviceAccess(x:location.x,z:location.z)
-        if !ramp {
-            return distance<=fenceOffset+boundaryWallThickness ? base : -0.025
+        if offset<0 && distance>fenceOffset && location.z > -15.4 && location.z < -5.3 {
+            let lateral=abs(location.x-serviceEntryX)
+            if lateral<3.0 {
+                let t=max(0,min(1,(distance-fenceOffset)/3.6))
+                let side=max(0,min(1,(lateral-serviceEntryHalfWidth)/(3.0-serviceEntryHalfWidth)))
+                let along=1-t*t*(3-2*t),across=1-side*side*(3-2*side)
+                return (base+0.025)*along*across-0.025
+            }
         }
-        if distance <= shoulderEdge { return base }
-        let t = max(0,min(1,(distance-shoulderEdge)/(terrainEdge-shoulderEdge)))
-        let blend = t*t*(3-2*t)
-        return base*(1-blend) - 0.025*blend
+        return distance<=fenceOffset+boundaryWallThickness ? base : -0.025
     }
     /// Project only against the fence. The robot can slide along it and reverse
     /// away; the compacted lane edge is a traction change, not a collision wall.

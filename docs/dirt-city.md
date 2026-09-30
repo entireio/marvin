@@ -572,3 +572,37 @@ GPU p95/p99 was 15.50/16.13 ms; presentation p95/p99 16.67/16.67 ms, maximum
 33.33 ms. Nominal thermal state. This is comparable to the preceding run,
 not proof of locked 60 fps; HUD logging may repeat samples and adds overhead.
 Results: `../marvin-town-planning/mos-layout-performance/`.
+
+## Filled service entrance and rotated repair tent
+
+The previous entrance fell from the track shoulder to flat ground over only
+0.45 m. Cropping an offset ribbon to the gate left its lateral edges open.
+The entrance now descends over 3.6 m, with smooth longitudinal easing and broad
+side shoulders. Rendering samples the same height function as driving. A closed
+heightfield covers the opening and overlaps the existing track beneath its
+surface; perimeter skirts and a bottom face fill it below ground. A small render
+bias avoids coplanar surfaces. The sand base uses the surrounding ground material,
+with irregularly distributed track clay fading over it. The existing infield
+and outside-wall dirt deposits remain in place.
+
+The orange tent is at (-3.8, -9.2), rotated 30 degrees clockwise from its previous
+orientation. Canopy, triangular woven rug, furniture, mechanic, sign and collision
+bodies all share its transform. Placement validation samples the actual triangular
+footprint, instead of rejecting usable space outside its shape. The entry-facing
+canopy corner clears the opening by more than 1.5 m. The service route remains
+clear to the blue tent. Salvage placement excludes the raised ramp, and the gate
+markers follow its ground height.
+
+All 31 simulation checks pass, including a new centimetre-resolution slope check
+below 1:4 through the driving corridor, gate passage in both directions for every
+chassis, turns along the full service route, canopy clearance and salvage contacts.
+Native scene checks also pass. New low front and side camera captures explicitly
+inspect the entrance for exposed undersides. Screenshots are in
+`../marvin-town-planning/service-embankment/`.
+
+The final 45-second 1080p benchmark averaged 59.91 render callbacks/s, with CPU
+update p95 2.86 ms and four intervals over 25 ms (none over 50 ms). Metal HUD GPU
+p95/p99 was 15.49/16.31 ms; presentation p95/p99 16.67/16.67 ms, maximum 33.33 ms.
+Thermal state was nominal. This short run remains comparable to the preceding
+layout, with occasional missed frames; HUD samples may repeat and logging adds
+overhead. Results: `../marvin-town-planning/service-embankment-performance/`.

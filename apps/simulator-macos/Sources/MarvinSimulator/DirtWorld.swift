@@ -106,9 +106,7 @@ final class DirtWorld {
             let shoulder = courseSurface(inner:innerEdge,outer:outerEdge,y:-1)
             shoulder.materials = [clay]; scene.rootNode.addChildNode(SCNNode(geometry:shoulder))
         }
-        // Retain the earthen access ramp only within the service opening.
-        let access=courseSurface(inner:-DirtCourse.terrainEdge,outer:-DirtCourse.fenceOffset,y:-1,serviceOnly:true)
-        access.materials=[clay];scene.rootNode.addChildNode(SCNNode(geometry:access))
+        addServiceEmbankment(clay:clay,earth:earth)
         addInfieldDirt()
         addTrackWalls()
         // Start / finish checker paint, across the full lane at phase zero.
@@ -222,6 +220,78 @@ final class DirtWorld {
             node.name=side<0 ? "Inner irregular brick track wall":"Outer irregular brick track wall"
             scene.rootNode.addChildNode(node)
         }
+    }
+
+    /// A closed heightfield across the entire opening, including its side slopes.
+    /// No cropped offset ribbons or exposed underside; physics samples this height.
+    private func addServiceEmbankment(clay:SCNMaterial,earth:SCNMaterial) {
+        let nx=68,nz=62,x0=DirtCourse.serviceEntryX-3.4,z0 = -13.2
+        let dx=0.1,dz=0.1
+        var vertices:[SCNVector3]=[],normals:[SCNVector3]=[],uv:[CGPoint]=[],colors:[Float]=[],indices:[Int32]=[]
+        func add(_ x:Double,_ z:Double,_ y:Double?=nil) {
+            let h=y ?? (DirtCourse.height(x:x,z:z)-0.008)
+            vertices.append(SCNVector3(x,h,z))
+            let epsilon=0.025
+            var n=SIMD3<Double>(DirtCourse.height(x:x-epsilon,z:z)-DirtCourse.height(x:x+epsilon,z:z),2*epsilon,DirtCourse.height(x:x,z:z-epsilon)-DirtCourse.height(x:x,z:z+epsilon))
+            n /= simd_length(n);normals.append(SCNVector3(n.x,n.y,n.z))
+            uv.append(CGPoint(x:x/4,y:z/4))
+            let projection=DirtCourse.projection(x:x,z:z)
+            let run=max(0,min(1,(projection.distance-DirtCourse.fenceOffset)/3.6))
+            let side=max(0,min(1,(abs(x-DirtCourse.serviceEntryX)-1.0)/2.0))
+            let noise=CityMaterials.surfaceNoise(x/12,z/12,cells:7,seed:197)
+            let red=max(0,min(1,(1-run)*(1-side)+run*(1-run)*(noise-0.5)*0.85))
+            let foot=max(0,min(1,(h+0.025)/0.06))
+            colors += [Float(red*foot*foot*(3-2*foot)),0,0,1]
+        }
+        for j in 0...nz { for i in 0...nx { add(x0+Double(i)*dx,z0+Double(j)*dz) } }
+        for j in 0..<nz { for i in 0..<nx {
+            let a=Int32(j*(nx+1)+i),b=a+1,c=a+Int32(nx+1),d=c+1
+            indices += [a,c,b,b,c,d]
+        }}
+        // Fill every perimeter edge down below the ground plane, including the
+        // concealed track-side seam. The underside can never be seen through.
+        let border=(0...nx).map{$0}+(1...nz).map{$0*(nx+1)+nx}+(0..<nx).reversed().map{nz*(nx+1)+$0}+(1..<nz).reversed().map{$0*(nx+1)}
+        let bottom=Int32(vertices.count)
+        for index in border { let v=vertices[index];add(Double(v.x),Double(v.z),-0.08) }
+        for i in border.indices {
+            let j=(i+1)%border.count,a=Int32(border[i]),b=Int32(border[j]),c=bottom+Int32(i),d=bottom+Int32(j)
+            indices += [a,b,c,b,d,c]
+        }
+        for i in 1..<border.count-1 { indices += [bottom,bottom+Int32(i+1),bottom+Int32(i)] }
+        let colorSource=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:vertices.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
+        let sources=[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv)]
+        let elements=[SCNGeometryElement(indices:indices,primitiveType:.triangles)]
+        let sandGeometry=SCNGeometry(sources:sources,elements:elements)
+        // Use the actual surrounding ground material, not an approximate tint.
+        let sandMaterial=earth.copy() as! SCNMaterial
+        sandMaterial.diffuse.contentsTransform=SCNMatrix4Identity
+        sandGeometry.materials=[sandMaterial]
+        let base=SCNNode(geometry:sandGeometry);base.name="Filled service embankment"
+        base.castsShadow=false;scene.rootNode.addChildNode(base)
+        let geometry=SCNGeometry(sources:sources+[colorSource],elements:elements)
+        let material=clay.copy() as! SCNMaterial
+        material.diffuse.contentsTransform=SCNMatrix4Identity
+        material.normal.contentsTransform=SCNMatrix4Identity
+        material.roughness.contentsTransform=SCNMatrix4Identity
+        var modifiers=material.shaderModifiers ?? [:]
+        modifiers[.geometry]="""
+        #pragma varyings
+        half redSoil;
+        #pragma body
+        out.redSoil=half(_geometry.color.r);
+        """
+        modifiers[.fragment]="""
+        #pragma transparent
+        #pragma body
+        _output.color.rgb *= float(in.redSoil);
+        _output.color.a=float(in.redSoil);
+        """
+        material.shaderModifiers=modifiers
+        material.transparencyMode = .aOne;material.writesToDepthBuffer=false
+        geometry.materials=[material]
+        let pigment=SCNNode(geometry:geometry);pigment.name="Track clay mixed into service sand"
+        pigment.position.y=0.002;pigment.castsShadow=false
+        scene.rootNode.addChildNode(pigment)
     }
 
     /// One startup-baked decal: no per-frame projection work or individual dirt nodes.

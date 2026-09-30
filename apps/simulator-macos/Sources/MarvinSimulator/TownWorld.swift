@@ -457,27 +457,41 @@ final class TownWorld {
         return inside
     }
 
+    private func repairFootprintClear(_ index:Int)->Bool {
+        let points=InfieldLayout.canopies[index].points
+        for i in 1..<points.count-1 {
+            for u in 0...24 { for v in 0...(24-u) {
+                let p=points[0]+(points[i]-points[0])*Double(u)/24+(points[i+1]-points[0])*Double(v)/24
+                if !infield(p.x,p.y) || DirtCourse.projection(x:p.x,z:p.y).distance<DirtCourse.terrainEdge+0.6 { return false }
+            }}
+        }
+        return true
+    }
+
     private var repairLots:[TownLot] = []
     private func buildRepairPit() {
         let entry=paint(DirtCourse.serviceEntryX,-12.2)
         for side in [-1.0,1.0] {
-            entry.cylinder(side*1.40,0.28,0,0.045,0.045,0.56,0xb59b62,sides:8,detail:true)
-            entry.cylinder(side*1.40,0.40,0,0.046,0.046,0.075,0x554c40,sides:8,detail:true)
+            let ground=DirtCourse.height(x:DirtCourse.serviceEntryX+side*1.4,z:-12.2)
+            entry.cylinder(side*1.40,ground+0.28,0,0.045,0.045,0.56,0xb59b62,sides:8,detail:true)
+            entry.cylinder(side*1.40,ground+0.40,0,0.046,0.046,0.075,0x554c40,sides:8,detail:true)
         }
+        let signGround=DirtCourse.height(x:DirtCourse.serviceEntryX-1.85,z:-12.21)
         signs.plate("SERVICE ACCESS",eyebrow:"REPAIR BAY",footer:"KEEP CLEAR",badge:"S",
-                    at:SCNVector3(DirtCourse.serviceEntryX-1.85,0.68,-12.2),width:1.02,height:0.34,yaw:.pi,accent:rust,into:root)
-        entry.beam(SIMD3(-1.85,0,-0.01),SIMD3(-1.85,0.67,-0.01),0.025,trim,sides:6)
+                    at:SCNVector3(DirtCourse.serviceEntryX-1.85,signGround+0.68,-12.2),width:1.02,height:0.34,yaw:.pi,accent:rust,into:root)
+        entry.beam(SIMD3(-1.85,signGround,-0.01),SIMD3(-1.85,signGround+0.67,-0.01),0.025,trim,sides:6)
         // Two pockets on the west side of the infield, clear of the dirt shoulder.
         for (i,location) in InfieldLayout.tentOrigins.enumerated() {
             let x=location.x,z=location.y,w=i==0 ? 3.2:4.0,d=i==0 ? 3.2:4.0
-            guard infield(x,z),clearLot(x,z,w+0.3,d+0.3) else { continue }
+            guard repairFootprintClear(i) else { continue }
             repairLots.append(TownLot(x:x,z:z,width:w+0.3,depth:d+0.3))
-            var p=paint(x,z,yaw:i==0 ? .pi:0)
+            var p=paint(x,z,yaw:InfieldLayout.tentYaws[i])
             p.repairRug(w-0.2,d-0.2,i)
             if i==0 { p.triangularRepairCanopy(rust) }
             else { p.canopy(0,0,w,d,2.0,0.65,teal) }
-            if i==0 { let center=InfieldLayout.tentPoint(0,SIMD2(-0.1,0.35));p=paint(center.x,center.y,yaw:.pi) }
-            cameraBounds.append((SIMD3(x-w/2,2.0,z-d/2),SIMD3(x+w/2,2.65,z+d/2)))
+            if i==0 { let center=InfieldLayout.tentPoint(0,SIMD2(-0.1,0.35));p=paint(center.x,center.y,yaw:InfieldLayout.tentYaws[0]) }
+            let roof=InfieldLayout.canopies[i].points
+            cameraBounds.append((SIMD3(roof.map{$0.x}.min()!,2.0,roof.map{$0.y}.min()!),SIMD3(roof.map{$0.x}.max()!,2.65,roof.map{$0.y}.max()!)))
             // Open sides reveal benches, parts racks and a robot on a lift.
             p.box(-0.92,0.69,0.15,0.64,0.12,1.7,trim)
             for zz in [-0.55,0.85] { p.box(-0.92,0.33,zz,0.48,0.66,0.09,dark,detail:true) }
@@ -515,12 +529,14 @@ final class TownWorld {
                 p.cylinder(i==0 ? -0.1:1.03,0.12+Double(k)*0.17,i==0 ? 0.85:-0.86,0.27,0.27,0.15,dark,sides:10,detail:true)
                 p.cylinder(i==0 ? -0.1:1.03,0.20+Double(k)*0.17,i==0 ? 0.85:-0.86,0.14,0.14,0.015,cream,sides:10,detail:true)
             }
-            citizen(x+(i==0 ? -0.65:0.73),z+(i==0 ? 0.25:-0.35),y:0.055,yaw:i==0 ? .pi-1.2:-1.2,index:707+i,seated:false)
+            let mechanic=InfieldLayout.tentPoint(i,SIMD2(i==0 ? 0.65:0.73,i==0 ? -0.25:-0.35))
+            citizen(mechanic.x,mechanic.y,y:0.055,yaw:InfieldLayout.tentYaws[i]-1.2,index:707+i,seated:false)
             p.box(-0.96,0.19,-1.06,0.60,0.36,0.40,teal)
             p.box(-0.96,0.40,-1.06,0.21,0.06,0.08,dark,detail:true)
             if i==1 { for sx in [-0.65,0.65] { p.beam(SIMD3(sx,1.98,-2.015),SIMD3(sx,2.44,-2.015),0.012,dark,sides:5) } }
+            let sign=InfieldLayout.tentPoint(i,SIMD2(i==0 ? -1.625:0,i==0 ? -0.65:-2.035))
             signs.plate(i==0 ? "DROID REPAIR":"PARTS & SALVAGE",eyebrow:"RACE SERVICE",footer:"CREW ACCESS ONLY",badge:i==0 ? "01":"02",
-                        at:SCNVector3(x+(i==0 ? 1.625:0),1.74,z+(i==0 ? 0.65:-2.035)),width:1.85,height:0.46,yaw:i==0 ? .pi/2:.pi,accent:rust,into:root)
+                        at:SCNVector3(sign.x,1.74,sign.y),width:1.85,height:0.46,yaw:InfieldLayout.tentYaws[i]+(i==0 ? -.pi/2:.pi),accent:rust,into:root)
         }
         for (index,part) in InfieldLayout.parts.enumerated() {
             let p=paint(part.x,part.z,yaw:part.yaw)
@@ -688,7 +704,7 @@ final class TownWorld {
         }
         // Visible cables and hardware turn the repair pockets into a paddock.
         for (i,origin) in InfieldLayout.tentOrigins.enumerated() {
-            let z=origin.y,center=InfieldLayout.tentPoint(i,SIMD2(i==0 ? -0.1:0,i==0 ? 0.35:0)),p=paint(center.x,center.y,yaw:i==0 ? .pi:0)
+            let z=origin.y,center=InfieldLayout.tentPoint(i,SIMD2(i==0 ? -0.1:0,i==0 ? 0.35:0)),p=paint(center.x,center.y,yaw:InfieldLayout.tentYaws[i])
             for k in 0..<5 {
                 p.beam(SIMD3(-1.25,0.08,-0.35+Double(k)*0.22),SIMD3(-0.5,0.08,-0.55+Double(k)*0.2),0.023,0x554a3d,sides:5)
             }
@@ -763,7 +779,7 @@ final class TownWorld {
         }
         // The hero pit is a functioning workshop: a workboard, drawers, hoist
         // hardware, engine fins and a hose resting on the packed-earth apron.
-        let center=InfieldLayout.tentPoint(0,SIMD2(-0.1,0.35)),q=paint(center.x,center.y,yaw:.pi)
+        let center=InfieldLayout.tentPoint(0,SIMD2(-0.1,0.35)),q=paint(center.x,center.y,yaw:InfieldLayout.tentYaws[0])
         q.box(-1.54,1.05,0.15,0.08,0.77,1.75,0x586157,detail:true)
         for j in 0..<9 {
             let zz = -0.55+Double(j)*0.17
@@ -872,7 +888,7 @@ final class TownWorld {
             && signs.valid && signs.count>=20 && crowd.valid && cityCoveragePassed && streetNetworkPassed
             && repairLots.count == 2
             && lots.allSatisfy { !infield($0.x,$0.z) && clearLot($0.x,$0.z,$0.width,$0.depth) }
-            && repairLots.allSatisfy { infield($0.x,$0.z) && clearLot($0.x,$0.z,$0.width,$0.depth) }
+            && InfieldLayout.tentOrigins.indices.allSatisfy { repairFootprintClear($0) }
     }
 
 }

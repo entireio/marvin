@@ -51,6 +51,8 @@ extension AppController {
                 ("town-citizens",SCNVector3(-6.0,1.35,-28.1),SCNVector3(-6.7,0.65,-25.4)),
                 ("town-spectators",SCNVector3(3.3,2.5,DirtCourse.point(0).z-1.5),SCNVector3(3,2.03,DirtCourse.point(0).z-4.18)),
                 ("town-market",SCNVector3(-14,2.6,-27.8),SCNVector3(0,1.3,-24.5)),
+                ("town-ramp-ground",SCNVector3(-7.5,0.58,-8.9),SCNVector3(-7.5,0.26,-12.3)),
+                ("town-ramp-side",SCNVector3(-10.0,0.85,-10.0),SCNVector3(-7.5,0.20,-11.5)),
                 ("town-service-access",SCNVector3(-2,5.8,-18),SCNVector3(-7.5,0.15,-10.8)),
                 ("town-repair",SCNVector3(-3.6,2.9,-13.0),SCNVector3(-7.5,0.95,-7.5)),
                 ("town-outskirts",SCNVector3(-46,13,-26),SCNVector3(-21,3,-3)),

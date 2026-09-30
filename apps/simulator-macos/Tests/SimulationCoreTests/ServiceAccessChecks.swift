@@ -16,6 +16,17 @@ extension SimulationTests {
                 }
             }
         }
+        // Walk the driving corridor at centimetre resolution. A natural access
+        // slope must be continuous and below a 1:4 grade in either direction.
+        for x in [DirtCourse.serviceEntryX-0.7,DirtCourse.serviceEntryX,DirtCourse.serviceEntryX+0.7] {
+            var previous=DirtCourse.height(x:x,z:-12.2)
+            for i in 1...400 {
+                let z = -12.2+Double(i)*0.01,h=DirtCourse.height(x:x,z:z)
+                require(abs(h-previous)<0.0025)
+                previous=h
+            }
+            near(previous,-0.025,accuracy:0.001)
+        }
         // Once through, movement around the repair apron must not snap back to the course.
         for x in [-9.0,-7.5,-6.0] {
             let p=DirtCourse.projection(x:x,z:-8)

@@ -50,7 +50,7 @@ extension SimulationTests {
         }
         let canopy=InfieldLayout.canopies[0]
         let profile=RobotCollisions.profiles[0]
-        require(canopy.points.map{$0.x}.min()! > DirtCourse.serviceEntryX+DirtCourse.serviceEntryHalfWidth+0.15)
+        require(canopy.points.map{$0.x}.min()! > DirtCourse.serviceEntryX+DirtCourse.serviceEntryHalfWidth+1.5)
         for (local,y,expected) in [(SIMD2<Double>(-1.1,0.3),0.0,false),(SIMD2<Double>(1.2,-1.3),2.0,false),(SIMD2<Double>(-1.1,0.3),2.0,true)] {
             let p=InfieldLayout.tentPoint(0,local)
             let body=RobotCollisions.Body(position:SIMD3(p.x,y,p.y),profile:profile)
