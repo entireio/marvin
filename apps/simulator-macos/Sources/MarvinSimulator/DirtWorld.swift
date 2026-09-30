@@ -13,7 +13,17 @@ final class DirtWorld {
     private let effects = SCNNode()
     private let dustBatch = SCNNode(), clodBatch = SCNNode()
     weak var camera: SCNNode?
-    private var flecks: [(node: SCNNode, velocity: SIMD3<Double>, life: Double, dust: Bool)] = []
+    private struct Fleck {
+        let node: SCNNode
+        var velocity = SIMD3<Double>.zero
+        var life = 0.0
+        var dust: Bool
+        var duration = 1.0
+        var tint = SIMD3<Float>(repeating: 1)
+        var radius: Float = 0.003
+        var opacity = 0.0
+    }
+    private var flecks: [Fleck] = []
     private let trails = [DirtTrail(style:.tracks), DirtTrail(style:.tires), DirtTrail(style:.tires), DirtTrail(style:.tracks)]
     private var emission = [[0.0, 0.0], [0.0, 0.0, 0.0], [0.0], [0.0,0.0]]
     private(set) var racerEmittedCount = [0, 0, 0, 0]
@@ -155,16 +165,16 @@ final class DirtWorld {
         }
         scene.rootNode.addChildNode(town.root)
         scene.rootNode.addChildNode(effects)
-        clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0x705033,roughness:1)]
+        clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0xffffff,roughness:1)]
         dustMaterial.lightingModel = .constant; dustMaterial.diffuse.contents = dustTexture()
         dustMaterial.writesToDepthBuffer = false; dustMaterial.isDoubleSided = true
         for i in 0..<poolSize {
-            let dust = i % 3 == 0
+            let dust = i % 3 != 0
             let node = SCNNode(geometry: dust ? SCNPlane(width: 0.18,height: 0.18) : clodGeometry)
             if dust { node.geometry?.materials = [dustMaterial]; node.constraints = [SCNBillboardConstraint()] }
             node.castsShadow = false; node.isHidden = true
             // Simulation slots are not individual render submissions.
-            flecks.append((node,.zero,0,dust))
+            flecks.append(Fleck(node:node,dust:dust))
         }
         for (batch, mat) in [(dustBatch,dustMaterial),(clodBatch,clodGeometry.materials[0])] {
             let placeholder=SCNPlane(width:0,height:0);placeholder.materials=[mat]
@@ -452,7 +462,7 @@ final class DirtWorld {
     }
     private func dustTexture() -> NSImage {
         let image = NSImage(size:NSSize(width:64,height:64)); image.lockFocus()
-        NSGradient(starting:color(0xb58b5e,alpha:0.40),ending:color(0xb58b5e,alpha:0))!.draw(in:NSBezierPath(ovalIn:NSRect(x:0,y:0,width:64,height:64)),relativeCenterPosition:.zero)
+        NSGradient(starting:color(0xffffff,alpha:0.32),ending:color(0xffffff,alpha:0))!.draw(in:NSBezierPath(ovalIn:NSRect(x:0,y:0,width:64,height:64)),relativeCenterPosition:.zero)
         image.unlockFocus(); return image
     }
     @discardableResult private func box(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ mat:SCNMaterial)->SCNNode {
@@ -472,15 +482,24 @@ final class DirtWorld {
         for i in flecks.indices where flecks[i].life > 0 {
             flecks[i].life -= dt
             var f = flecks[i]
-            f.velocity.y -= dt * (f.dust ? 0.15 : 9.8)
+            // Fine dust loses its launch momentum quickly; grains fall and settle.
+            f.velocity *= exp(-dt * (f.dust ? 2.8 : 0.7))
+            f.velocity.y += dt * (f.dust ? 0.045 : -9.8)
             f.node.simdPosition += SIMD3<Float>(Float(f.velocity.x*dt),Float(f.velocity.y*dt),Float(f.velocity.z*dt))
-            let ground = CGFloat(DirtCourse.height(x:Double(f.node.position.x),z:Double(f.node.position.z))+0.012)
-            if f.node.position.y < ground {
-                f.node.position.y = ground; f.velocity.y = abs(f.velocity.y)*0.2
-                f.velocity.x *= 0.5; f.velocity.z *= 0.5
+            let ground = CGFloat(DirtCourse.height(x:Double(f.node.position.x),z:Double(f.node.position.z)))
+            if f.node.position.y < ground + CGFloat(f.radius) {
+                f.node.position.y = ground + CGFloat(f.radius)
+                f.velocity = .zero
+                if !f.dust { f.life = min(f.life,0.09) }
             }
-            f.node.opacity = CGFloat(min(1,max(0,f.life)/(f.dust ? 0.7 : 0.3)))
-            if f.dust { let size = CGFloat(1+(1.6-f.life)*1.5); f.node.scale = SCNVector3(size,size,size) }
+            let age = f.duration - f.life
+            let fadeIn = min(1,age / (f.dust ? 0.12 : 0.025))
+            let fadeOut = min(1,max(0,f.life) / (f.dust ? f.duration*0.65 : 0.12))
+            f.node.opacity = CGFloat(f.opacity * fadeIn * fadeOut)
+            if f.dust {
+                let size = CGFloat(1 + age*0.9)
+                f.node.scale = SCNVector3(size,size,size)
+            }
             f.node.isHidden = f.life <= 0; flecks[i] = f
         }
         emit(state, racer:0, dt:dt, contacts:[
@@ -493,7 +512,7 @@ final class DirtWorld {
         rebuildDebrisBatches()
     }
     /// Two draw submissions replace up to 1,600 individual particle nodes.
-    /// Pool lifetime, emission counts, contact behavior and reset stay unchanged.
+    /// Per-vertex tints keep the source soil color without per-particle materials.
     private func rebuildDebrisBatches() {
         let transform=camera?.simdWorldTransform ?? matrix_identity_float4x4
         let right=SIMD3(transform.columns.0.x,transform.columns.0.y,transform.columns.0.z)
@@ -504,7 +523,7 @@ final class DirtWorld {
             for f in flecks where f.life>0 && f.dust==dust {
                 let center=f.node.simdPosition,base=Int32(vertices.count)
                 if dust {
-                    let radius=Float(0.09)*f.node.simdScale.x
+                    let radius=f.radius*f.node.simdScale.x
                     for (sx,sy) in [(-1.0,-1.0),(1.0,-1.0),(1.0,1.0),(-1.0,1.0)] {
                         vertices.append(SCNVector3(center+right*Float(sx)*radius+up*Float(sy)*radius))
                         normals.append(SCNVector3(normal));uv.append(CGPoint(x:(sx+1)/2,y:(sy+1)/2))
@@ -512,11 +531,11 @@ final class DirtWorld {
                     indices += [base,base+1,base+2,base,base+2,base+3]
                 } else {
                     for v:SIMD3<Float> in [SIMD3(0,1,0),SIMD3(-0.87,-0.5,-0.5),SIMD3(0.87,-0.5,-0.5),SIMD3(0,-0.5,1)] {
-                        vertices.append(SCNVector3(center+v*0.014));normals.append(SCNVector3(simd_normalize(v)));uv.append(.zero)
+                        vertices.append(SCNVector3(center+v*f.radius));normals.append(SCNVector3(simd_normalize(v)));uv.append(.zero)
                     }
                     indices += [base,base+2,base+1,base,base+3,base+2,base,base+1,base+3,base+1,base+2,base+3]
                 }
-                for _ in 0..<4 { rgba += [1,1,1,Float(f.node.opacity)] }
+                for _ in 0..<4 { rgba += [f.tint.x,f.tint.y,f.tint.z,Float(f.node.opacity)] }
             }
             let batch=dust ? dustBatch:clodBatch
             batch.isHidden=indices.isEmpty
@@ -536,20 +555,98 @@ final class DirtWorld {
         for (side, contact) in contacts.enumerated() {
             let speed = contacts.count == 1 ? state.speed : side == 0 ? state.leftSpeed : side == 1 ? state.rightSpeed : state.speed
             let magnitude = abs(speed)
-            guard magnitude > 0.08, !state.contacting, state.hasDirtContact else { continue }
+            guard magnitude > 0.18, !state.contacting, state.hasDirtContact else { continue }
             let sign = speed > 0 ? 1.0 : -1.0
-            emission[racer][side] += dt*magnitude*42
+            emission[racer][side] += dt*min(2.5,magnitude)*22
             while emission[racer][side] >= 1 {
                 emission[racer][side] -= 1
                 let i = poolIndex; poolIndex = (poolIndex+1)%poolSize
-                let position = origin + lateral*contact.x + forward*contact.z
-                let velocity = -forward*sign*magnitude*Double.random(in:0.35...0.85) + lateral*Double.random(in:-0.35...0.35)
-                flecks[i].velocity = velocity + SIMD3<Double>(0,Double.random(in:0.4...1.1)*sqrt(magnitude),0)
-                flecks[i].life = flecks[i].dust ? 1.6 : 0.9
-                flecks[i].node.position = SCNVector3(position.x,position.y,position.z)
-                flecks[i].node.scale = SCNVector3(1,1,1); flecks[i].node.opacity = 1; flecks[i].node.isHidden = false
+                // Tracks shed from their trailing end. Fixed wheel contacts stay
+                // in place when reversing (including R2's front wheel).
+                let contactZ = (racer == 0 || racer == 3) ? contact.z*sign : contact.z
+                var position = origin + lateral*(contact.x + Double.random(in:-contact.width*0.35...contact.width*0.35)) + forward*contactZ
+                position.y = DirtCourse.height(x:position.x,z:position.z) + 0.018
+                // Match the dune shader's feather at the town edge. Track clay
+                // transitions to town soil across the same sandy shoulder.
+                let edge = max(abs(position.x),abs(position.z))
+                let t = max(0,min(1,(edge-156)/36))
+                let dune = t*t*(3-2*t)
+                let clay = edge < 80 ? max(0,min(1,(DirtCourse.width+0.7-DirtCourse.projection(x:position.x,z:position.z).distance)/0.9)) : 0
+                let town = SIMD3<Float>(0.62,0.55,0.45)
+                let track = SIMD3<Float>(0.64,0.43,0.31)
+                let sand = SIMD3<Float>(0.78,0.57,0.34)
+                let soil = (town+(track-town)*Float(clay))*(1-Float(dune))+sand*Float(dune)
+                var f = flecks[i]
+                let clayWeight = clay*(1-dune)
+                // Clay throws cohesive clods; dry dune sand mostly lofts fines.
+                f.dust = Double.random(in:0...1) > (0.25 + 0.42*clayWeight)
+                f.tint = soil * Float.random(in:0.94...1.06)
+                // Suspended fines scatter light; grains retain the soil albedo.
+                if f.dust { f.tint = f.tint*0.78 + SIMD3<Float>(0.22,0.20,0.16) }
+                let kick = min(1.6,magnitude)
+                f.velocity = -forward*sign*kick*Double.random(in:0.08...0.22)
+                    + lateral*Double.random(in:-0.09...0.09)
+                    + SIMD3(0,Double.random(in:f.dust ? 0.08...0.20 : 0.16...0.38)*sqrt(kick),0)
+                if !f.dust {
+                    f.velocity += -forward*sign*kick*(0.35*clayWeight)
+                        + SIMD3(0,Double.random(in:0.25...0.65)*sqrt(kick)*clayWeight,0)
+                }
+                f.duration = f.dust ? Double.random(in:0.65...1.15) : Double.random(in:0.22...0.38)+clayWeight*0.5
+                f.life = f.duration
+                f.radius = f.dust ? Float.random(in:0.055...0.10) : Float.random(in:0.0015...0.0035)+Float(clayWeight)*Float.random(in:0.006...0.012)
+                f.opacity = f.dust ? 0.38 : 0.70
+                f.node.position = SCNVector3(position.x,position.y,position.z)
+                f.node.scale = SCNVector3(1,1,1); f.node.opacity = 0; f.node.isHidden = false
+                flecks[i] = f
                 emittedCount += 1; racerEmittedCount[racer] += 1
             }
         }
+    }
+}
+
+extension DirtWorld {
+    /// Exercise actual emission and pooled geometry on clay, town soil and dunes.
+    func checkDebris() -> Bool {
+        var passed = true
+        var grainSizes: [Double] = []
+        var grainColors: [SIMD3<Float>] = []
+        for (name, point) in [("clay",SIMD2<Double>(0,-15)),("town",SIMD2<Double>(90,40)),("dunes",SIMD2<Double>(210,65))] {
+            reset()
+            let p = DirtCourse.projection(x:point.x,z:point.y)
+            var state = Simulation(dirtTrack:true,dirtStartOffset:p.offset,dirtStartPhase:p.phase)
+            if name == "clay" { state = Simulation(dirtTrack:true) }
+            var input = DriveInput(); input.throttle = 0.7
+            var physics = DirtRacePhysics(), race = DirtRace()
+            race.countDown(dt:3)
+            var opponents = [DirtOpponent(),DirtOpponent(slot:DirtCourse.startingGrid[2]),DirtOpponent(slot:DirtCourse.startingGrid[3])]
+            for _ in 0..<30 { physics.advance(input,player:&state,race:&race,opponents:&opponents,dt:1.0/60,raceDT:1.0/60,robotCollisionsEnabled:false) }
+            for _ in 0..<90 { emit(state,racer:0,dt:1.0/60,contacts:[(0.26,-0.23,0.15),(-0.26,-0.23,0.15)]) }
+            let live = flecks.filter { $0.life > 0 }, grains = live.filter { !$0.dust }
+            let average = grains.map { Double($0.radius) }.reduce(0,+)/Double(max(1,grains.count))
+            grainSizes.append(average)
+            grainColors.append(grains.map { $0.tint }.reduce(.zero,+)/Float(max(1,grains.count)))
+            let grounded = live.allSatisfy { abs(Double($0.node.position.y)-DirtCourse.height(x:Double($0.node.position.x),z:Double($0.node.position.z))-0.018)<0.0001 }
+            let finite = live.allSatisfy { $0.tint.x.isFinite && $0.velocity.y.isFinite }
+            passed = passed && live.count>20 && !grains.isEmpty && grounded && finite
+            if name == "dunes" { passed = passed && grains.allSatisfy { $0.radius<=0.0035 } }
+            rebuildDebrisBatches()
+            let colors = clodBatch.geometry?.sources(for:.color).first
+            passed = passed && colors != nil && !(clodBatch.isHidden || dustBatch.isHidden)
+            let count = emittedCount
+            let tint = live.first?.tint
+            update(state,opponent:state,dt:0,modelScale:1,additional:[])
+            passed = passed && count == emittedCount && tint == flecks.first(where:{$0.life>0})?.tint
+            state.stop()
+            for _ in 0..<120 { update(state,opponent:state,dt:1.0/60,modelScale:1,additional:[]) }
+            passed = passed && emittedCount == count && flecks.allSatisfy { $0.life<=0 } && dustBatch.isHidden && clodBatch.isHidden
+            print("Debris \(name): \(live.count) particles, average grain radius \(average*1000) mm, contact heights \(grounded)")
+        }
+        passed = passed && grainSizes[0]>grainSizes[2]*3
+            && grainColors[2].x>grainColors[0].x+0.08
+            && grainColors[2].y>grainColors[0].y+0.08
+        reset()
+        passed = passed && emittedCount == 0 && racerEmittedCount == [0,0,0,0]
+        print("Ground-dependent debris: \(passed ? "PASS":"FAIL")")
+        return passed
     }
 }

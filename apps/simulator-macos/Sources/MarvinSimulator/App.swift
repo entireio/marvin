@@ -75,7 +75,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -199,6 +199,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
                 if CommandLine.arguments.contains("--loading-smoke-test") { loadDirtTrack();return }
+                if CommandLine.arguments.contains("--debris-smoke-test") {
+                    timer?.invalidate();let passed=dirtWorld.checkDebris();exit(passed ? 0:1)
+                }
                 if CommandLine.arguments.contains("--trail-material-smoke-test") {
                     timer?.invalidate();let passed=checkTrailMaterial(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }

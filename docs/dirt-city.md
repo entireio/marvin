@@ -842,3 +842,28 @@ coincided with a 33.94 ms tick gap, while its local CPU update stayed at 2.30 ms
 these callback measurements do not identify GPU/display presentation timing.
 Artifacts: `../marvin-town-planning/trails-performance`, `trail-material`,
 `loading-release`, `postrace-final`, and `dune-tracks-final`.
+
+### Ground-dependent spray and dust
+
+Debris now takes its color and cohesion from its emission location. Clay retains
+large clods; packed town earth and dunes emit millimeter-scale grit, with a
+higher proportion of fine dust. The town-to-dune blend follows the terrain
+shader's 156–192 m feather. Particles retain their source color throughout their
+lifetime. Pale dust fades in/out, expands slowly and loses launch momentum;
+grains follow gravity and settle against the terrain heightfield. Ground contact
+is sampled separately for each emitter, including slopes and reverse driving.
+Tread impressions are unchanged. The pool remains bounded to 1,600 slots and two
+draw batches; emission is capped with speed.
+
+`--debris-smoke-test <directory>` checks clay/dune size and color differences,
+contact heights, batched vertex colors, pause, stopped emission, expiry and reset.
+The native tread pixel checks and 34 simulation checks also pass. A 65-second
+close-up departure capture traversed 66.7 m with zero measured terrain/solid
+penetration. Set `MARVIN_DEPARTURE_CLOSEUP=1` with `--town-departure-movie` to
+repeat that framing.
+
+A 45 s 1080p dune run measured 59.997 render callbacks/s, zero intervals over
+25 ms, and CPU update p95 1.28 ms. Activity Monitor was temporarily paused and
+restored. These are SceneKit callback timings, not GPU presentation measurements.
+Artifacts: `../marvin-town-planning/ground-spray-closeup`, `spray-performance`,
+and `marvin-ground-aware-spray.mp4`.

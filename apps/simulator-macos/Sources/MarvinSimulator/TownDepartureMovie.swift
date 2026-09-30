@@ -63,7 +63,8 @@ extension AppController {
                 // Ease around to a rear quarter view once clear of the town,
                 // revealing the dune field ahead while keeping Marvin visible.
                 let orbit=max(0,min(1,(simulation.x-155)/20)) * Double.pi*0.85
-                let desired=target+SIMD3(6*cos(orbit),2.5,6*sin(orbit)+1.3)
+                let closeup = ProcessInfo.processInfo.environment["MARVIN_DEPARTURE_CLOSEUP"] == "1"
+                let desired=target+(closeup ? SIMD3(2.6*cos(orbit),1.05,2.6*sin(orbit)+0.55) : SIMD3(6*cos(orbit),2.5,6*sin(orbit)+1.3))
                 camera += (desired-camera)*0.08
                 camera.y=max(camera.y,DirtCourse.height(x:camera.x,z:camera.z)+1.2)
                 world.camera.position=dirtWorld.town.clearCamera(from:SCNVector3(target.x,target.y,target.z),to:SCNVector3(camera.x,camera.y,camera.z))
