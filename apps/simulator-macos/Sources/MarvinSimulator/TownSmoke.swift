@@ -97,6 +97,16 @@ extension AppController {
         wallEOpponent=DirtOpponent(slot:DirtCourse.startingGrid[3],laneOffset:-0.65)
         race=DirtRace(startPhase:DirtCourse.startingGrid[0].phase);race.countDown(dt:3)
         racePhysics=DirtRacePhysics(characters:lineup)
+        if CommandLine.arguments.contains("--city-roam") {
+            simulation=Simulation(dirtTrack:true,dirtStartOffset:DirtCourse.fenceOffset+8.08,dirtStartPhase:CityExit.phase)
+            racePhysics.gate.wantsOpen=true
+            var current=SIMD2(simulation.x,simulation.z)
+            let planner=TownEscapeRoute(city:dirtWorld.town.collisionWorld,origin:current)
+            for destination in [SIMD2<Double>(29,-10),SIMD2(33,3),SIMD2(35,14),SIMD2(36,28)] {
+                if let route=planner.route(from:current,to:destination) { townBenchmarkRoute += route;current=route.last! }
+            }
+            townBenchmarkRoute += townBenchmarkRoute.reversed()
+        }
         updateOpponents()
         // Explicit 960x540 points at 2x backing gives the target 1080p drawable.
         window.minSize=NSSize(width:640,height:400)
@@ -112,9 +122,19 @@ extension AppController {
         let elapsed=now-start
         if elapsed<3 { townMeter.reset();townBenchmarkCPU=[] }
         let begin=ProcessInfo.processInfo.systemUptime
-        advanceRacePhysics(DirtOpponent.driveInput(for:simulation),dt:dt,raceDT:dt)
+        var input=DirtOpponent.driveInput(for:simulation)
+        if !townBenchmarkRoute.isEmpty {
+            var target=townBenchmarkRoute[townBenchmarkWaypoint]
+            if hypot(target.x-simulation.x,target.y-simulation.z)<0.24 {
+                townBenchmarkWaypoint=(townBenchmarkWaypoint+1)%townBenchmarkRoute.count
+                target=townBenchmarkRoute[townBenchmarkWaypoint]
+            }
+            let error=atan2(sin(atan2(target.x-simulation.x,target.y-simulation.z)-simulation.heading),cos(atan2(target.x-simulation.x,target.y-simulation.z)-simulation.heading))
+            input=DriveInput();input.turn=max(-1,min(1,-error*2.5));input.throttle=abs(error)<0.22 ? 0.5:0
+        }
+        advanceRacePhysics(input,dt:dt,raceDT:dt)
         updateOpponents();updateRaceWorld(dt:dt)
-        if elapsed.truncatingRemainder(dividingBy:24)>18 {
+        if townBenchmarkRoute.isEmpty && elapsed.truncatingRemainder(dividingBy:24)>18 {
             world.camera.position=SCNVector3(0,42,-44);world.camera.look(at:SCNVector3(0,0,0),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
         } else { updateCamera(snap:true) }
         if !dirtWorld.town.root.isHidden {

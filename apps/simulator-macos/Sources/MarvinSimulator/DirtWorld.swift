@@ -7,6 +7,7 @@ import simd
 /// Geometry and textures are generated locally; no network assets are required.
 final class DirtWorld {
     let scene = SCNScene()
+    let cityGateNode=SCNNode()
     let town = TownWorld()
     private let effects = SCNNode()
     private let dustBatch = SCNNode(), clodBatch = SCNNode()
@@ -56,13 +57,13 @@ final class DirtWorld {
         sun.light?.orthographicScale = 58; sun.light?.shadowRadius = 5
         sun.light?.shadowColor = NSColor.black.withAlphaComponent(0.58)
         scene.rootNode.addChildNode(sun)
-        let ground = SCNPlane(width: 300, height: 300)
+        let ground = SCNPlane(width: 2000, height: 2000)
         let earth = material(0x827656, roughness: 1)
         earth.diffuse.contents = packedEarthTexture()
         earth.normal.contents = nil
         for channel in [earth.diffuse, earth.normal] {
             channel.wrapS = .repeat; channel.wrapT = .repeat
-            channel.contentsTransform = SCNMatrix4MakeScale(75, 75, 1)
+            channel.contentsTransform = SCNMatrix4MakeScale(500, 500, 1)
         }
         ground.materials = [earth]
         let terrain = SCNNode(geometry: ground); terrain.eulerAngles.x = -.pi/2; terrain.position.y = -0.025
@@ -109,6 +110,7 @@ final class DirtWorld {
         addServiceEmbankment(clay:clay,earth:earth)
         addInfieldDirt()
         addTrackWalls()
+        addCityExit(clay:clay,earth:earth)
         // Start / finish checker paint, across the full lane at phase zero.
         let start = DirtCourse.point(0)
         for row in 0..<2 { for cell in 0..<10 {
@@ -184,6 +186,11 @@ final class DirtWorld {
             func quad(_ a:SIMD3<Float>,_ b:SIMD3<Float>,_ c:SIMD3<Float>,_ d:SIMD3<Float>,_ ink:UInt32) {
                 mesh.triangle(a,c,b,ink);mesh.triangle(a,d,c,ink)
             }
+            func wallGround(_ p:SIMD2<Double>)->Double {
+                // The exit apron slopes away below this retaining wall; its
+                // tapered fill must not carve a notch into adjacent masonry.
+                side>0 ? DirtCourse.elevation(DirtCourse.phase(x:p.x,z:p.y),offset:DirtCourse.width):DirtCourse.height(x:p.x,z:p.y)
+            }
             let courseHeight=0.13,foundation = -0.04
             let maxHeight=boundary.map { DirtCourse.height(x:$0.x,z:$0.y) }.max()!+DirtCourse.postHeight
             let rows=Int(ceil((maxHeight-foundation)/courseHeight))
@@ -192,11 +199,12 @@ final class DirtWorld {
                 let a=sample(distance+0.004),b=sample(distance+step-0.004),center=(a+b)*0.5
                 // Do not bridge the service entrance, even with staggered end bricks.
                 if side<0 && [a,b,center].contains(where:{DirtCourse.serviceAccess(x:$0.x,z:$0.y)}) { continue }
+                if side>0 && [a,b,center].contains(where:{CityExit.opening($0,clearance:-0.08)}) { continue }
                 let direction=simd_normalize(b-a),normal=SIMD2(-direction.y,direction.x)*(DirtCourse.boundaryWallThickness/2)
                 let seed=i*73+row*193+(side>0 ? 31:0)
                 // Global horizontal bed joints: hills add courses from the same
                 // foundation instead of tilting the individual bricks uphill.
-                let target=max(DirtCourse.height(x:a.x,z:a.y),DirtCourse.height(x:b.x,z:b.y))+DirtCourse.postHeight
+                let target=side>0 ? max(CityExit.wallTop(a),CityExit.wallTop(b)):max(wallGround(a),wallGround(b))+DirtCourse.postHeight
                 let localRows=max(3,Int(ceil((target-foundation)/courseHeight)))
                 guard row<localRows else { continue }
                 let base=foundation+Double(row)*courseHeight

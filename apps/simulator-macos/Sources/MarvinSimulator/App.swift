@@ -34,7 +34,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     func advanceRacePhysics(_ input: DriveInput, dt: Double, raceDT: Double) {
         var rivals = opponents
         racePhysics.advance(input,player:&simulation,race:&race,opponents:&rivals,dt:dt,raceDT:raceDT,
-            robotCollisionsEnabled:mainMenu.raceRobotCollisions, assists:mainMenu.raceAssists)
+            robotCollisionsEnabled:mainMenu.raceRobotCollisions, assists:mainMenu.raceAssists,city:dirtWorld.town.collisionWorld)
+        dirtWorld.updateGate(racePhysics.gate)
         opponent = rivals[0]; bb8Opponent = rivals[1]; wallEOpponent = rivals[2]
     }
     var scores: [DirtScore] = []
@@ -60,10 +61,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var townBenchmarkStart: Double?
     var townBenchmarkDirectory: URL?
     var townBenchmarkCPU: [Double] = []
+    var townBenchmarkRoute:[SIMD2<Double>]=[]
+    var townBenchmarkWaypoint=0
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -103,6 +106,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         view.onCommand = { [weak self] code in
             guard let self else { return }
             switch code {
+            case 5: if self.isDirtTrack && self.inSandbox { self.racePhysics.gate.wantsOpen.toggle() }
             case 8: self.cycleCamera(nil)
             case 35, 53: self.togglePause(nil)
             case 4: self.simulation.centerHead()
@@ -196,6 +200,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--town-benchmark") {
                     startTownBenchmark(at:URL(fileURLWithPath:directory)); return
+                }
+                if CommandLine.arguments.contains("--city-escape-smoke-test") {
+                    timer?.invalidate()
+                    let passed=checkCityEscape(at:URL(fileURLWithPath:directory))
+                    print("City escape: \(passed ? "PASS" : "FAIL") · \(directory)")
+                    exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--town-smoke-test") {
                     timer?.invalidate()
@@ -432,6 +442,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             current.y+(desired.y-current.y)*mix, current.z+(desired.z-current.z)*mix)
         if isDirtTrack && cameraMode != 2 {
             world.camera.position = dirtWorld.town.clearCamera(from:target,to:world.camera.position)
+            world.camera.position.y=max(world.camera.position.y,CGFloat(DirtCourse.height(x:Double(world.camera.position.x),z:Double(world.camera.position.z))+0.18))
         }
         world.camera.look(at: cameraMode == 2 ? SCNVector3(0, 0, 0) : target,
             up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, -1))
@@ -457,7 +468,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             wallEOpponent = DirtOpponent(slot:slots[3],laneOffset:-0.65)
             performances = lineup.map { RacePerformance($0) }
             updateOpponents()
-            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup); scoreSaved = false
+            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup); dirtWorld.updateGate(racePhysics.gate); scoreSaved = false
             dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
         }
         view.clearInput(); pauseItem?.label = "Pause"

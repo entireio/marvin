@@ -33,13 +33,19 @@ public struct DirtOpponent: Sendable {
     public var driveInput: DriveInput { Self.driveInput(for:simulation,laneOffset:laneOffset,cruising:race.finished) }
 
     public static func driveInput(for simulation: Simulation, laneOffset: Double = 0, cruising: Bool = false) -> DriveInput {
-        let phase = DirtCourse.phase(x: simulation.x, z: simulation.z)
-        let target = DirtCourse.point(phase+0.05, offset: laneOffset)
+        let projection=DirtCourse.projection(x:simulation.x,z:simulation.z)
+        let phase=projection.phase
+        // A rival nudged through the open exit returns via the doorway instead
+        // of steering into the retaining wall from the city side.
+        let outside=projection.offset>0 && projection.distance>DirtCourse.fenceOffset
+        let q=CityExit.local(SIMD2(simulation.x,simulation.z))
+        let reentry=abs(q.x)>0.45 ? CityExit.point(q.y<3 ? q.x:0,3.5):CityExit.point(0,-1.25)
+        let target=outside ? (x:reentry.x,z:reentry.y):DirtCourse.point(phase+0.05,offset:laneOffset)
         let desired = atan2(target.x-simulation.x, target.z-simulation.z)
         let error = atan2(sin(desired-simulation.heading), cos(desired-simulation.heading))
         var input = DriveInput()
-        input.throttle = max(0.15, 1-abs(error)*1.5)
-        input.boost = !cruising && abs(error) < 0.08
+        input.throttle = outside ? (abs(error)<0.25 ? 0.55:0):max(0.15, 1-abs(error)*1.5)
+        input.boost = !outside && !cruising && abs(error) < 0.08
         if cruising { input.throttle *= 0.65 }
         input.turn = -error*3
         return input

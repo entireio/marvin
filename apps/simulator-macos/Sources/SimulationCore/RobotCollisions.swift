@@ -121,7 +121,7 @@ public enum RobotCollisions {
     }
     /// Low restitution for robot shells/rubber, with Coulomb contact friction.
     /// Positional correction is separate from velocity so overlap adds no energy.
-    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false, betweenRobots: Bool = true) -> Int {
+    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false, betweenRobots: Bool = true, gate:CityGate? = nil, city:CityCollisionWorld? = nil, previousPositions:[SIMD3<Double>]? = nil) -> Int {
         var pairs = Set<Int>()
         for iteration in 0..<24 {
             var worstOverlap = 0.0
@@ -153,8 +153,8 @@ public enum RobotCollisions {
                 bodies[j].position += c.normal*correction*inverseB
             } }
             if terrain { for i in bodies.indices {
-                constrainToCourse(&bodies[i])
-                for obstacle in InfieldLayout.obstacles {
+                constrainToCourse(&bodies[i],escape:gate != nil,previous:previousPositions?[i])
+                for obstacle in InfieldLayout.obstacles+(gate.map{[$0.body]+CityExit.posts} ?? [])+(city?.nearby(bodies[i]) ?? []) {
                     let delta=bodies[i].center-obstacle.center
                     let radius=hypot(bodies[i].profile.halfWidth,bodies[i].profile.halfDepth)+hypot(obstacle.profile.halfWidth,obstacle.profile.halfDepth)
                     guard simd_length_squared(delta)<radius*radius,
@@ -179,15 +179,17 @@ public enum RobotCollisions {
         }
         return pairs.count
     }
-    private static func constrainToCourse(_ body: inout Body) {
+    private static func constrainToCourse(_ body: inout Body,escape:Bool,previous:SIMD3<Double>?) {
         let projection = DirtCourse.projection(x:body.position.x,z:body.position.z)
         let heading = DirtCourse.heading(projection.phase)
         let outward = SIMD2(cos(heading),-sin(heading))*(projection.offset < 0 ? -1.0 : 1.0)
-        let insideField = projection.offset < 0 && projection.distance > DirtCourse.fenceOffset
+        let prior=previous.map{DirtCourse.projection(x:$0.x,z:$0.z)} ?? projection
+        let insideField = projection.offset<0 ? projection.distance>DirtCourse.fenceOffset : escape && prior.offset>0 && prior.distance>DirtCourse.fenceOffset
         let support = body.extent(outward)+0.025
         let limit = DirtCourse.fenceOffset+(insideField ? DirtCourse.boundaryWallThickness+support : -support)
         let serviceAccess = projection.offset < 0 && DirtCourse.serviceAccess(x:body.position.x,z:body.position.z,clearance:body.extent(SIMD2(1,0)))
-        if (insideField ? projection.distance < limit : projection.distance > limit) && !serviceAccess {
+        let exitAccess=escape && projection.offset>0 && CityExit.opening(body.center,clearance:body.extent(CityExit.tangent))
+        if (insideField ? projection.distance < limit : projection.distance > limit) && !serviceAccess && !exitAccess {
             let point = DirtCourse.point(projection.phase,offset:projection.offset < 0 ? -limit : limit)
             body.position.x = point.x; body.position.z = point.z
             let normal = SIMD3(outward.x,0,outward.y)*(insideField ? -1.0:1.0), speed = simd_dot(body.velocity,normal)

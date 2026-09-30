@@ -4,9 +4,11 @@ import SimulationCore
 import simd
 
 /// A compact, deterministic desert port. Static geometry is baked into spatial
-/// cells with two detail levels; the race never acquires scenery physics bodies.
+/// cells with two detail levels; matching collision proxies use a spatial index.
 final class TownWorld {
     let root = SCNNode()
+    fileprivate let collisionBuilder=TownCollisionBuilder()
+    lazy var collisionWorld=CityCollisionWorld(collisionBuilder.bodies)
     private let surface = CityMaterials.plaster
     private let crowd = TownCrowd()
     private let signs = TownSigns()
@@ -77,7 +79,7 @@ final class TownWorld {
     }
     private func paint(_ x: Double, _ z: Double, yaw: Double = 0) -> TownPainter {
         let c = cell(x,z)
-        return TownPainter(near: c.near, far: c.far, origin: SIMD3(Float(x),0,Float(z)), yaw: Float(yaw))
+        return TownPainter(near: c.near, far: c.far, origin: SIMD3(Float(x),0,Float(z)), yaw: Float(yaw),collisions:collisionBuilder)
     }
     /// Entire footprint plus a margin must clear every part of the spline.
     /// Dense edge/interior samples also prevent a lot spanning another branch.
@@ -293,7 +295,7 @@ final class TownWorld {
         return Double(citySeed >> 32)/Double(UInt32.max)
     }
     private func reserved(_ x:Double,_ z:Double,_ w:Double,_ d:Double)->Bool {
-        if infield(x,z) || !clearLot(x,z,w,d) { return true }
+        if infield(x,z) || !clearLot(x,z,w,d) || CityExit.reserved(SIMD2(x,z),radius:hypot(w,d)/2) { return true }
         if streetDistance(x,z)<hypot(w,d)*0.44 { return true }
         if abs(x)<11+w/2 && abs(z-(finishZ-6))<3.8+d/2 { return true }
         if abs(x-26)<5.2+w/2 && abs(z-17)<7.0+d/2 { return true }
@@ -342,7 +344,7 @@ final class TownWorld {
         let boundW=w*cos(yaw)+d*abs(sin(yaw)),boundD=d*cos(yaw)+w*abs(sin(yaw))
         lots.append(TownLot(x:x,z:z,width:boundW+0.2,depth:boundD+0.2))
         buildings += 1
-        if near { cameraBounds.append((SIMD3(x-boundW/2,0,z-boundD/2),SIMD3(x+boundW/2,h+min(w,d)*0.5,z+boundD/2))) }
+        cameraBounds.append((SIMD3(x-boundW/2,0,z-boundD/2),SIMD3(x+boundW/2,h+min(w,d)*0.5,z+boundD/2)))
         let colors:[UInt32]=[0xb5a084,0xbdaa8c,0xc4ad8c,0xa58c70,0xc9b89b,0x9e8872,0xb7a890,0xc0a786]
         let ink=colors[(index*7+index/11)%colors.count]
         let roof:UInt32=0x9e8970
@@ -716,6 +718,10 @@ final class TownWorld {
 
     private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,animated:Bool=false,walking:Bool=false) {
         population += 1
+        let projection=DirtCourse.projection(x:x,z:z)
+        if projection.offset>0 && projection.distance>DirtCourse.fenceOffset {
+            collisionBuilder.bodies.append(.init(position:SIMD3(x,y,z),heading:yaw,profile:.init(mass:70,halfWidth:0.20,halfDepth:0.20,height:seated ? 0.8:1.45,round:true)))
+        }
         let node = crowd.add(x:x,y:y,z:z,yaw:yaw,index:index,seated:seated,
                              animated:animated && people.count<(walking ? 16:12))
         if let node {
@@ -835,7 +841,7 @@ final class TownWorld {
         for p in people { p.node.position=p.origin;p.node.eulerAngles.z=0 }
     }
     /// Clip the chase/orbit boom against simple scenery bounds, with a small
-    /// near-plane margin. Does not add any scene geometry to race physics.
+    /// near-plane margin, including buildings beyond the race-side district.
     func clearCamera(from target:SCNVector3,to desired:SCNVector3)->SCNVector3 {
         let a=SIMD3<Double>(Double(target.x),Double(target.y),Double(target.z))
         let b=SIMD3<Double>(Double(desired.x),Double(desired.y),Double(desired.z)), delta=b-a
@@ -928,8 +934,19 @@ final class TownMesh {
         g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]};return g
     }
 }
+final class TownCollisionBuilder { var bodies:[RobotCollisions.Body]=[] }
+
 private struct TownPainter {
     let near:TownMesh,far:TownMesh,origin:SIMD3<Float>,yaw:Float
+    var collisions:TownCollisionBuilder? = nil
+    private func solid(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,round:Bool=false,turn:Double=0) {
+        guard h>0.08,w>0.04,d>0.04,y+h/2>0.10 else { return }
+        let p=point(x,y-h/2,z)
+        // Infield fixtures already have their detailed shared collision layout.
+        let projection=DirtCourse.projection(x:Double(p.x),z:Double(p.z))
+        guard projection.offset>0 && projection.distance>DirtCourse.fenceOffset else { return }
+        collisions?.bodies.append(.init(position:SIMD3(Double(p.x),Double(p.y),Double(p.z)),heading:Double(yaw)+turn,profile:.init(mass:1,halfWidth:w/2,halfDepth:d/2,height:h,round:round)))
+    }
     private func point(_ x:Double,_ y:Double,_ z:Double)->SIMD3<Float> {
         let c=cos(yaw),s=sin(yaw)
         return origin+SIMD3(Float(x)*c+Float(z)*s,Float(y),-Float(x)*s+Float(z)*c)
@@ -941,6 +958,8 @@ private struct TownPainter {
         tri(a,b,c,ink,detail);tri(a,c,d,ink,detail)
     }
     func beam(_ from:SIMD3<Double>,_ to:SIMD3<Double>,_ radius:Double,_ ink:UInt32,sides:Int=8) {
+        let middle=(from+to)/2,delta=to-from
+        solid(middle.x,middle.y,middle.z,radius*2,abs(delta.y)+radius*2,hypot(delta.x,delta.z)+radius*2,turn:atan2(delta.x,delta.z))
         near.materialSlot=2;far.materialSlot=2
         defer { near.materialSlot=0;far.materialSlot=0 }
         let axis=simd_normalize(to-from)
@@ -982,6 +1001,7 @@ private struct TownPainter {
 
     func adobe(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,simple:Bool=false) {
         if simple { box(x,y,z,w,h,d,ink);return }
+        solid(x,y,z,w,h,d)
         let bevel=min(0.18,min(w,d)*0.12)
         var outline:[(Double,Double,Double)]=[]
         for (cx,cz,start) in [(w/2-bevel,-d/2+bevel,-Double.pi/2),(w/2-bevel,d/2-bevel,0),(-w/2+bevel,d/2-bevel,Double.pi/2),(-w/2+bevel,-d/2+bevel,Double.pi)] {
@@ -1043,6 +1063,8 @@ private struct TownPainter {
         for i in 0..<sides {
             let a=Double(i)*2 * Double.pi/Double(sides),b=Double(i+1)*2 * Double.pi/Double(sides)
             if entry && abs((a+b)/2-Double.pi/2)<Double.pi/8 { continue }
+            let mid=(a+b)/2,r=(outer+inner)/2
+            solid(x+cos(mid)*r,y,z+sin(mid)*r,(b-a)*r+0.02,h,outer-inner,turn:Double.pi/2-mid)
             let lo=y-h/2,hi=y+h/2
             let a0=point(x+cos(a)*outer,lo,z+sin(a)*outer),b0=point(x+cos(b)*outer,lo,z+sin(b)*outer)
             let a1=point(x+cos(a)*outer,hi,z+sin(a)*outer),b1=point(x+cos(b)*outer,hi,z+sin(b)*outer)
@@ -1291,10 +1313,12 @@ private struct TownPainter {
         return r<<16 | g<<8 | b
     }
     func box(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,detail:Bool=false) {
+        solid(x,y,z,w,h,d)
         let v=[point(x-w/2,y-h/2,z-d/2),point(x+w/2,y-h/2,z-d/2),point(x+w/2,y+h/2,z-d/2),point(x-w/2,y+h/2,z-d/2),point(x-w/2,y-h/2,z+d/2),point(x+w/2,y-h/2,z+d/2),point(x+w/2,y+h/2,z+d/2),point(x-w/2,y+h/2,z+d/2)]
         for f in [[0,3,2,1],[4,5,6,7],[0,4,7,3],[1,2,6,5],[3,7,6,2],[0,1,5,4]] { quad(v[f[0]],v[f[1]],v[f[2]],v[f[3]],ink,detail) }
     }
     func cylinder(_ x:Double,_ y:Double,_ z:Double,_ bottom:Double,_ top:Double,_ h:Double,_ ink:UInt32,sides:Int=12,detail:Bool=false) {
+        solid(x,y,z,max(bottom,top)*2,h,max(bottom,top)*2,round:true)
         for i in 0..<sides {
             let a=Double(i)*2 * Double.pi/Double(sides),b=Double(i+1)*2 * Double.pi/Double(sides)
             let v0=point(x+cos(a)*bottom,y-h/2,z+sin(a)*bottom),v1=point(x+cos(b)*bottom,y-h/2,z+sin(b)*bottom)

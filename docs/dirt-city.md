@@ -606,3 +606,49 @@ p95/p99 was 15.49/16.31 ms; presentation p95/p99 16.67/16.67 ms, maximum 33.33 m
 Thermal state was nominal. This short run remains comparable to the preceding
 layout, with occasional missed frames; HUD samples may repeat and logging adds
 overhead. Results: `../marvin-town-planning/service-embankment-performance/`.
+
+## Turn-one city escape
+
+G is an unlisted Dirt Track command that toggles a 3.2 m metal gate on the
+outside of the first bend. It opens outward through 100 degrees on a motor-driven
+hinge, with bounded acceleration and angular speed. Its rendered transform and
+upright collision body share the same angle. Current and predicted robot contact
+stalls the motor; G can reverse it. Pause stops the gate, key repeats do not toggle
+it repeatedly, and reset closes it. Both adjacent walls rise to the gate head,
+then step down in level brick courses into the original wall.
+
+The exit has a filled 5.5 m earth ramp with a closed underside, a flattened and
+feathered threshold, broad shoulders, and irregular clay fading into town sand.
+The physics heightfield owns the driving surface. The moving leaf clears the
+terrain throughout its swing; both fixed posts also collide. Only the apron and
+swing corridor reserve space in the city layout. Existing infield access is intact.
+
+Town construction now emits conservative upright collision proxies alongside its
+render geometry: adobe walls, boxes, cylinders, support beams, landing-bay wall
+segments and citizens. The 6,400 solids use 8 m spatial buckets rather than scanning
+the whole town per robot. Buildings and citizens are immovable; there is no
+ragdoll or destruction simulation. Existing robot motion is an upright game
+simulation with traction, momentum and vertical terrain response, not a full
+six-axis rigid-body engine. Camera bounds extend to the outer neighbourhoods.
+
+Race assists and collision recovery yield to manual control near an open exit
+and while outside. A previous-position wall-side check prevents impacts from
+pushing racers through other parts of the outer wall. Rivals accidentally nudged
+through the doorway steer back through it instead of driving into the wall.
+
+Validation includes all 32 SimulationChecks, gate ground-clearance and acceleration
+sweeps, blocked closing/reopening, closed/open crossings for all four chassis,
+centimetre-resolution ramp slopes below 1:4, outer-wall impulse containment, and
+spatial bucket boundary coverage. The native `--city-escape-smoke-test <directory>`
+drives ordinary inputs through the live coupled simulation: G, exit, four town
+locations, return, close, pause and reset. No route step teleports Marvin. It also
+runs boosted impacts and reversing against 12 generated fixtures per chassis.
+The final route exceeded 100 m with no detected town/gate penetration and retained
+all rivals in the race. Screenshots include closed, moving and open gate states,
+Marvin crossing the ramp, town locations, robot-eye and bird's-eye views. Results
+are in `../marvin-town-planning/city-escape-final/`.
+
+`--town-benchmark <directory> --city-roam` exercises the town route with the normal
+chase camera. Without `--city-roam`, the benchmark retains its racing and overhead
+camera sequence. Benchmarks use a 1920 × 1080 drawable and separate CPU callback
+measurements from Apple Metal HUD GPU/presentation samples.
