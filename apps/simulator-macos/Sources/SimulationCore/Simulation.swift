@@ -33,6 +33,10 @@ public struct Simulation: Sendable {
         Obstacle(0.0, 3.3, 1.6, 0.65, 0.35),
     ]
     public private(set) var dirtTrack = false
+    public var storm=Sandstorm()
+    public var windShelter=1.0
+    var aerodynamicProfile:RobotCollisions.Profile?
+    public func terrainHeight(x:Double,z:Double)->Double { storm.height(x:x,z:z) }
     public let character: RacePerformance.Character
     public private(set) var groundY = 0.0, bodyPitch = 0.0, bodyRoll = 0.0
     public private(set) var airborne = false
@@ -57,7 +61,7 @@ public struct Simulation: Sendable {
     /// height can flutter a few millimeters above terrain over shallow ripples;
     /// do not tear the trail each time the rigid-body airborne flag toggles.
     public var hasDirtContact: Bool {
-        !airborne || (dirtTrack && groundY-DirtCourse.height(x:x,z:z) <= 0.006)
+        !airborne || (dirtTrack && groundY-terrainHeight(x:x,z:z) <= 0.006)
     }
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
     /// Chassis motion can differ from drivetrain speed during braking/sliding
@@ -90,7 +94,7 @@ public struct Simulation: Sendable {
         x = body.position.x; z = body.position.z; groundY = body.position.y
         heading = atan2(sin(body.heading),cos(body.heading))
         velocity = body.velocity; angularVelocity = body.angularVelocity; verticalSpeed = velocity.y
-        let ground = DirtCourse.height(x:x,z:z)
+        let ground = terrainHeight(x:x,z:z)
         airborne = groundY > ground+0.001
         previousGround = ground
         contacting = contacting || body.contacted
@@ -139,7 +143,8 @@ public struct Simulation: Sendable {
         elapsed += dt
         let throttle = max(-1, min(1, input.throttle))
         let turn = max(-1, min(1, input.turn))
-        let grip = dirtTrack ? DirtCourse.traction(x:x,z:z) : 1
+        let depth=storm.depth(x:x,z:z)
+        let grip = dirtTrack ? DirtCourse.traction(x:x,z:z)*max(0.55,1-depth*2.5) : 1
         let acceleration = dirtTrack ? 11.4 : 3.8
         let limit = dirtTrack ? (input.boost ? 12.0 : 6.0)*grip : (input.boost ? 2.2 : 1.15)
         // Dirt steering is an angular-rate request, independent of drive speed.
@@ -200,11 +205,18 @@ public struct Simulation: Sendable {
                     let downhill = -9.8/(1+grade.x*grade.x+grade.y*grade.y)
                     force += SIMD3(grade.x*downhill,0,grade.y*downhill)
                 }
+                if storm.enabled {
+                    let e=0.08
+                    let grade=SIMD2((storm.depth(x:x+e,z:z)-storm.depth(x:x-e,z:z))/(2*e),(storm.depth(x:x,z:z+e)-storm.depth(x:x,z:z-e))/(2*e))
+                    force += SIMD3(-grade.x*9.8,0,-grade.y*9.8)
+                    force -= SIMD3(velocity.x,0,velocity.z)*(depth*10)
+                }
                 velocity += force*dt
                 // Finite steering torque lets off-center impacts rotate a robot
                 // before the drivetrain progressively regains heading control.
                 angularVelocity += max(-7*dt,min(7*dt,omega-angularVelocity))
             }
+            velocity += storm.acceleration(velocity:velocity,x:x,z:z,profile:aerodynamicProfile ?? RobotCollisions.profiles[character.rawValue],shelter:windShelter)*dt
             omega = angularVelocity
             dx = velocity.x*dt; dz = velocity.z*dt
         }
@@ -226,7 +238,7 @@ public struct Simulation: Sendable {
         rollingTravel += SIMD2(sin(rollingHeading),cos(rollingHeading))*speed*dt
         heading = atan2(sin(heading + omega*dt), cos(heading + omega*dt))
         if dirtTrack {
-            let ground = DirtCourse.height(x:x,z:z)
+            let ground = terrainHeight(x:x,z:z)
             let slopeVelocity = (ground-previousGround)/dt
             if !airborne && verticalSpeed > slopeVelocity+0.55 && abs(speed) > 1 { airborne = true }
             if airborne {
@@ -237,8 +249,8 @@ public struct Simulation: Sendable {
             if robotDynamics { velocity.y = verticalSpeed }
             let fx = sin(heading)*0.24, fz = cos(heading)*0.24
             let lx = cos(heading)*0.26, lz = -sin(heading)*0.26
-            let pitchTarget = -atan2(DirtCourse.height(x:x+fx,z:z+fz)-DirtCourse.height(x:x-fx,z:z-fz),0.48)
-            let rollTarget = atan2(DirtCourse.height(x:x+lx,z:z+lz)-DirtCourse.height(x:x-lx,z:z-lz),0.52)
+            let pitchTarget = -atan2(terrainHeight(x:x+fx,z:z+fz)-terrainHeight(x:x-fx,z:z-fz),0.48)
+            let rollTarget = atan2(terrainHeight(x:x+lx,z:z+lz)-terrainHeight(x:x-lx,z:z-lz),0.52)
             let blend = min(1,dt*15)
             bodyPitch += (pitchTarget-bodyPitch)*blend; bodyRoll += (rollTarget-bodyRoll)*blend
         }

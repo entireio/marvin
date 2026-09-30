@@ -41,7 +41,12 @@ final class MainMenuView: NSView {
     private var buttons: [MenuButton] = []
     var onSandbox: (() -> Void)?
     var onDirtTrack: (() -> Void)?
-    private var optionCount: Int { settings ? 6 : 4 }
+    private var optionCount: Int { settings ? 7 : 4 }
+    var weatherOverride:Bool?
+    var sandstorm:Bool {
+        get { weatherOverride ?? UserDefaults.standard.bool(forKey:"sandstormRace") }
+        set { UserDefaults.standard.set(newValue,forKey:"sandstormRace") }
+    }
     var settings = false
     var selection = 0
     var idleAnimation: Bool {
@@ -107,7 +112,7 @@ final class MainMenuView: NSView {
         subtitle.font = .systemFont(ofSize: 18, weight: .regular)
         hint.font = .systemFont(ofSize: 12)
         for label in [title, subtitle, hint] { label.textColor = color(0x304e44); addSubview(label) }
-        for index in 0..<6 {
+        for index in 0..<7 {
             let button = MenuButton(title: "", target: self, action: #selector(activateButton(_:)))
             button.tag = index; button.isBordered = false; button.wantsLayer = true
             button.layer?.cornerRadius = 14
@@ -125,14 +130,14 @@ final class MainMenuView: NSView {
         title.frame = NSRect(x: split, y: top - 72, width: width, height: 76)
         subtitle.frame = NSRect(x: split + 3, y: top - 108, width: width, height: 30)
         for (i, button) in buttons.enumerated() {
-            button.frame = NSRect(x: split, y: top - 198 - CGFloat(i)*(settings ? 54 : 72), width: width, height: settings ? 46 : 58)
+            button.frame = NSRect(x: split, y: top - (settings ? 184:198) - CGFloat(i)*(settings ? 48 : 72), width: width, height: settings ? 42 : 58)
         }
-        hint.frame = NSRect(x: split + 3, y: top - (settings ? 504 : 458), width: width, height: 24)
+        hint.frame = NSRect(x: split + 3, y: max(4,top - (settings ? 516 : 458)), width: width, height: 24)
     }
     func refresh() {
         title.stringValue = settings ? "Settings" : "Marvin"
-        subtitle.stringValue = settings ? "Race assists still need your input." : "Beep, boop... just some fun."
-        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Robot collisions: \(raceRobotCollisions ? "On" : "Off")", "Steering assist: \(steeringAssist ? "On" : "Off")", "Braking assist: \(brakingAssist ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
+        subtitle.stringValue = settings ? "Choose your assists and race weather." : "Beep, boop... just some fun."
+        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Robot collisions: \(raceRobotCollisions ? "On" : "Off")", "Steering assist: \(steeringAssist ? "On" : "Off")", "Braking assist: \(brakingAssist ? "On" : "Off")", "Weather: \(sandstorm ? "Sandstorm" : "Clear")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
         for (i, button) in buttons.enumerated() {
             button.isHidden = i >= names.count
             guard i < names.count else { continue }
@@ -156,6 +161,7 @@ final class MainMenuView: NSView {
             case 2: raceRobotCollisions.toggle()
             case 3: steeringAssist.toggle()
             case 4: brakingAssist.toggle()
+            case 5: sandstorm.toggle()
             default: settings = false; selection = 2
             }
         } else {

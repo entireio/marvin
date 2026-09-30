@@ -26,8 +26,12 @@ final class DirtTrail {
         ink.shaderModifiers = [.geometry: """
         #pragma varyings
         float impressionStrength;
+        float trailBorn;
+        float trailDistance;
         #pragma body
         out.impressionStrength=_geometry.color.r;
+        out.trailBorn=_geometry.color.g;
+        out.trailDistance=length((scn_node.modelViewTransform*_geometry.position).xyz);
         """, .surface: """
         #pragma transparent
         #pragma body
@@ -36,7 +40,19 @@ final class DirtTrail {
         float along=smoothstep(0.0,0.24,uv.y)*(1.0-smoothstep(0.65,1.0,uv.y));
         float shade=1.0-in.impressionStrength*across*along;
         _surface.diffuse=float4(float3(shade),1.0);
+        """,.fragment:"""
+        #pragma arguments
+        float stormTime;
+        float stormActive;
+        #pragma body
+        if(stormActive>0.5) {
+            float age=max(0.0,stormTime-in.trailBorn);
+            float visibility=exp(-age/10.0)*(1.0-smoothstep(3.0,65.0,in.trailDistance));
+            // Multiply decals must fade toward white, not toward brown fog.
+            _output.color=float4(mix(float3(1.0),_surface.diffuse.rgb,visibility),1.0);
+        }
         """]
+        ink.setValue(Float(0),forKey:"stormTime");ink.setValue(Float(0),forKey:"stormActive")
         // The housing-fitted rollers have smooth, flat rubber tread.
         ink.isDoubleSided = true
         ink.writesToDepthBuffer = false
@@ -47,6 +63,8 @@ final class DirtTrail {
         previous = nil; remainder = 0; count = 0
     }
     func update(_ state: Simulation, contacts: [(x: Double, z: Double, width: Double)]) {
+        ink.setValue(Float(state.storm.elapsed),forKey:"stormTime")
+        ink.setValue(Float(state.storm.enabled ? 1:0),forKey:"stormActive")
         guard state.hasDirtContact else { previous = nil; remainder = 0; return }
         defer { previous = (state.x, state.z, state.heading) }
         guard let previous else { return }
@@ -70,8 +88,8 @@ final class DirtTrail {
                 let dune=max(0,min(1,(max(abs(x),abs(z))-DesertTerrain.townEdge)/30))
                 let strength=Float((style == .tracks ? 0.24:0.19)*(1-dune)+0.14*dune)
                 let e=0.04
-                let nx=DirtCourse.height(x:x-e,z:z)-DirtCourse.height(x:x+e,z:z)
-                let nz=DirtCourse.height(x:x,z:z-e)-DirtCourse.height(x:x,z:z+e)
+                let nx=state.terrainHeight(x:x-e,z:z)-state.terrainHeight(x:x+e,z:z)
+                let nz=state.terrainHeight(x:x,z:z-e)-state.terrainHeight(x:x,z:z+e)
                 let length=sqrt(nx*nx+4*e*e+nz*nz)
                 let normal=SCNVector3(nx/length,2*e/length,nz/length)
                 for (side, along) in [(-1.0,-1.0),(1,-1),(1,1),(-1,1)] {
@@ -79,9 +97,9 @@ final class DirtTrail {
                     let forward = contact.z+along*(style == .tracks ? 0.021 : spacing*0.53)
                     let px = x+cos(heading)*lateral+sin(heading)*forward
                     let pz = z-sin(heading)*lateral+cos(heading)*forward
-                    normals.append(normal);strengths += [strength,0,0,1]
+                    normals.append(normal);strengths += [strength,Float(state.storm.elapsed),0,1]
                     uv.append(CGPoint(x:(side+1)/2,y:(along+1)/2))
-                    vertices.append(SCNVector3(px,DirtCourse.height(x:px,z:pz)+0.007,pz))
+                    vertices.append(SCNVector3(px,state.terrainHeight(x:px,z:pz)+0.007,pz))
                 }
                 indices += [base,base+2,base+1,base,base+3,base+2]
                 count += 1

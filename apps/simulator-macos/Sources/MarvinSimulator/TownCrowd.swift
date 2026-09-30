@@ -189,7 +189,11 @@ final class TownCrowd {
             return g
         }
     }
-    private struct Cell { let origin:SIMD3<Float>;let lod:[Batch] }
+    private struct Cell { let origin:SIMD3<Float>;let lod:[Batch];let stays:Bool }
+    private var weatherNodes:[(SCNNode,Bool)]=[]
+    private(set) var stormPopulation=0
+    static func staysOutside(x:Double,z:Double,index:Int)->Bool { abs(index*17+Int(x*13)+Int(z*7))%31==0 }
+    func setStorm(_ active:Bool) { for (node,stays) in weatherNodes { node.isHidden=active && !stays } }
     private var models:[String:[Model]]=[:]
     private var cells:[String:Cell]=[:]
     private(set) var triangles=0,farTriangles=0,cellCount=0
@@ -203,6 +207,8 @@ final class TownCrowd {
     func add(x:Double,y:Double,z:Double,yaw:Double,index:Int,seated:Bool,animated:Bool)->SCNNode? {
         let key="\(index%2==0 ? "male":"female")-\(seated ? "sit":"stand")-\((index/2)%3)"
         guard let model=models[key] else { return nil }
+        let stays=Self.staysOutside(x:x,z:z,index:index)
+        if stays { stormPopulation += 1 }
         let position=SIMD3(Float(x),Float(y),Float(z))
         if animated {
             let lod=(0..<3).map{_ in Batch()}
@@ -210,12 +216,12 @@ final class TownCrowd {
             let near=lod[0].geometry()
             near.levelsOfDetail=[SCNLevelOfDetail(geometry:lod[1].geometry(),worldSpaceDistance:8),SCNLevelOfDetail(geometry:lod[2].geometry(),worldSpaceDistance:24)]
             let node=SCNNode(geometry:near);node.simdPosition=position;node.eulerAngles.y=CGFloat(yaw)
-            node.castsShadow=false
+            node.castsShadow=false;weatherNodes.append((node,stays))
             triangles += lod[0].triangles;farTriangles += lod[2].triangles
             return node
         }
-        let ix=Int(floor(x/8)),iz=Int(floor(z/8)),cellKey="\(ix),\(iz)"
-        if cells[cellKey]==nil { cells[cellKey]=Cell(origin:SIMD3(Float(ix*8+4),0,Float(iz*8+4)),lod:(0..<3).map{_ in Batch()}) }
+        let ix=Int(floor(x/8)),iz=Int(floor(z/8)),cellKey="\(ix),\(iz),\(stays)"
+        if cells[cellKey]==nil { cells[cellKey]=Cell(origin:SIMD3(Float(ix*8+4),0,Float(iz*8+4)),lod:(0..<3).map{_ in Batch()},stays:stays) }
         let cell=cells[cellKey]!
         for i in 0..<3 { cell.lod[i].add(model[i],at:position-cell.origin,yaw:Float(yaw),index:index,seated:seated) }
         return nil
@@ -225,7 +231,7 @@ final class TownCrowd {
             let cell=cells[key]!,near=cell.lod[0].geometry()
             near.levelsOfDetail=[SCNLevelOfDetail(geometry:cell.lod[1].geometry(),worldSpaceDistance:10),SCNLevelOfDetail(geometry:cell.lod[2].geometry(),worldSpaceDistance:26)]
             let node=SCNNode(geometry:near);node.simdPosition=cell.origin
-            node.name="Crowd cell \(key)";node.castsShadow=false;root.addChildNode(node)
+            node.name="Crowd cell \(key)";node.castsShadow=false;root.addChildNode(node);weatherNodes.append((node,cell.stays))
             triangles += cell.lod[0].triangles;farTriangles += cell.lod[2].triangles
         }
         cellCount=cells.count

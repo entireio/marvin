@@ -8,7 +8,13 @@ import simd
 final class TownWorld {
     let root = SCNNode()
     fileprivate let collisionBuilder=TownCollisionBuilder()
-    lazy var collisionWorld=CityCollisionWorld(collisionBuilder.bodies)
+    private var stormActive=false
+    private var absentPeople=Set<Int>()
+    private lazy var clearCollisions=CityCollisionWorld(collisionBuilder.bodies)
+    private lazy var stormCollisions=CityCollisionWorld(collisionBuilder.bodies.enumerated().filter{!absentPeople.contains($0.offset)}.map{$0.element})
+    var collisionWorld:CityCollisionWorld { stormActive ? stormCollisions:clearCollisions }
+    var visiblePopulation:Int { stormActive ? crowd.stormPopulation:population }
+    func setStorm(_ active:Bool) { stormActive=active;crowd.setStorm(active) }
     private let surface = CityMaterials.plaster
     private let crowd = TownCrowd()
     private let signs = TownSigns()
@@ -731,6 +737,7 @@ final class TownWorld {
         population += 1
         let projection=DirtCourse.projection(x:x,z:z)
         if projection.offset>0 && projection.distance>DirtCourse.fenceOffset {
+            if !TownCrowd.staysOutside(x:x,z:z,index:index) { absentPeople.insert(collisionBuilder.bodies.count) }
             collisionBuilder.bodies.append(.init(position:SIMD3(x,y,z),heading:yaw,profile:.init(mass:70,halfWidth:0.20,halfDepth:0.20,height:seated ? 0.8:1.45,round:true)))
         }
         let node = crowd.add(x:x,y:y,z:z,yaw:yaw,index:index,seated:seated,
@@ -838,12 +845,12 @@ final class TownWorld {
             for person in people {
                 let d=hypot(Double(camera.x-person.origin.x),Double(camera.z-person.origin.z))
                 // Far animated figures remain visible in their resting pose.
-                if d<24 { animatedCount += 1 }
+                if d<24 && !person.node.isHidden { animatedCount += 1 }
             }
         }
         for person in people {
             let d=hypot(Double(camera.x-person.origin.x),Double(camera.z-person.origin.z))
-            guard d<24 else { continue }
+            guard d<24 && !person.node.isHidden else { continue }
             person.node.eulerAngles.z=CGFloat(sin(clock*0.8+person.phase)*0.012)
         }
     }

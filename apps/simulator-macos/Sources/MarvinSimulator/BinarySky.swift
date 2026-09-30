@@ -28,6 +28,8 @@ struct BinaryDaylight {
 }
 
 final class BinarySky {
+    private var stormActive=false
+    func setStorm(_ enabled:Bool) { stormActive=enabled;apply(daylight) }
     let root=SCNNode()
     private let dome=SCNNode()
     private let skyMaterial=SCNMaterial()
@@ -59,6 +61,8 @@ final class BinarySky {
             float2 sunRadii;
             float daylight;
             float3 duskBand;
+            float storm;
+            float3 stormTint;
             #pragma body
             float3 d=normalize(in.skyDirection);
             float height=max(d.y,0.0);
@@ -83,7 +87,7 @@ final class BinarySky {
             sky=mix(sky,tintA*(3.8+2.4*limbA),discA);
             sky=mix(sky,tintB*(2.5+1.5*limbB),discB);
             // This is an infinitely distant sky: bypass scene distance fog.
-            _output.color=float4(sky,1.0);
+            _output.color=float4(mix(sky,stormTint+sky*0.025,storm*0.97),1.0);
             """]
         sphere.materials=[skyMaterial];dome.geometry=sphere;dome.castsShadow=false
         dome.renderingOrder = -10000;root.addChildNode(dome)
@@ -112,6 +116,8 @@ final class BinarySky {
     }
     func apply(_ value:BinaryDaylight) {
         daylight=value
+        skyMaterial.setValue(Float(stormActive ? 1:0),forKey:"storm")
+        skyMaterial.setValue(NSValue(scnVector3:SCNVector3(0.46,0.29,0.14)),forKey:"stormTint")
         skyMaterial.setValue(NSValue(point:NSPoint(x:value.radii[0],y:value.radii[1])),forKey:"sunRadii")
         let elevation=max(0,value.directions.map{$0.y}.max()!)
         let day=min(1,elevation/0.55)
@@ -138,7 +144,7 @@ final class BinarySky {
             suns[i].position=SCNVector3(d*80)
             suns[i].look(at:SCNVector3Zero,up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
             suns[i].light?.color=ink(tint)
-            suns[i].light?.intensity=i==0 ? 1550:470
+            suns[i].light?.intensity=(i==0 ? 1550:470)*(stormActive ? 0.20:1)
             skyMaterial.setValue(NSValue(scnVector3:SCNVector3(d)),forKey:i==0 ? "sunA":"sunB")
             skyMaterial.setValue(NSValue(scnVector3:SCNVector3(tint)),forKey:i==0 ? "tintA":"tintB")
         }
@@ -148,8 +154,12 @@ final class BinarySky {
         scene?.fogColor=ink(horizon);scene?.fogStartDistance=115;scene?.fogEndDistance=240
         // A diffuse sky probe has no baked sun at the old lighting direction.
         // Directional lights supply the correctly positioned specular highlights.
-        scene?.lightingEnvironment.contents=skyProbe(zenith:zenith,horizon:horizon)
-        scene?.lightingEnvironment.intensity=0.95-0.20*day
+        scene?.lightingEnvironment.contents=stormActive ? skyProbe(zenith:SIMD3(0.46,0.34,0.23),horizon:SIMD3(0.68,0.50,0.32)):skyProbe(zenith:zenith,horizon:horizon)
+        scene?.lightingEnvironment.intensity=stormActive ? 0.75:0.95-0.20*day
+        if stormActive {
+            scene?.fogColor=color(0xae865b);scene?.fogStartDistance=3;scene?.fogEndDistance=65
+            ambient.light?.color=color(0xd4b48a);ambient.light?.intensity=320
+        }
     }
     private func skyProbe(zenith:SIMD3<Float>,horizon:SIMD3<Float>)->NSImage {
         let w=64,h=32

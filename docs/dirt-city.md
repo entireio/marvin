@@ -930,3 +930,45 @@ The revised 45 s 1080p low-sun circuit benchmark averaged 59.974 render callback
 with one interval over 25 ms, none over 50 ms, and CPU update p95 1.00 ms.
 Activity Monitor was restored after the run. Callback timing is not GPU/display
 presentation timing. Report: `../marvin-town-planning/atmosphere-performance`.
+
+## Sandstorm weather
+
+Settings → Weather selects Clear or Sandstorm before entering the dirt race.
+Clear is the default; the choice persists. A storm shares the race's 240 Hz
+clock, so pause stops wind, deposition and effects, and reset starts fresh.
+Only 11 of the normal 296 people remain outside, including sparse spectators;
+absent citizens also lose their collision bodies.
+
+`Sandstorm` supplies gusting crosswinds to every chassis using relative air
+velocity, frontal area and mass. Nearby buildings reduce wind exposure.
+Wind advects robot dust faster than heavy clods. Seventeen irregular deposits
+grow over three minutes to roughly 7–15 cm, reducing traction, adding rolling
+resistance and changing body pitch/roll. Rendered sand and collision heights
+use the same analytic field; a 10 cm mesh approximates it within 4.02 mm in the
+coverage test. Fresh spray transitions from clay clods to fine sand on deposits;
+tread impressions fade as wind buries them. This is a bounded game weather
+model, not fluid dynamics or a simulation of every transported sand grain.
+
+Rendering adds one static displaced drift mesh and two bounded particle batches
+(960 grains/haze quads total), without new shadow-casting lights. Dust fog and a
+muted sky/environment probe obscure the twin suns. Thin near-ground sheets and
+streaks move with wind; distance clipping keeps the effect local to the camera.
+
+Validation: all 35 core checks pass, including identical storm simulation at
+30/60/120 Hz and unchanged clear terrain. Native full-race tests verify all four
+finish, collision contact over deposits, pause/reset, reduced population and
+removed citizen colliders. The storm post-race test also completed the cooldown
+lap and four separate town escape routes, with no measured obstacle penetration.
+`--sandstorm-smoke-test <directory>` captures overview, chase, deposits and stands;
+`MARVIN_STORM_MOVIE=1` additionally records 450 JPEG frames at 30 fps.
+`MARVIN_SANDSTORM=1` enables storm benchmark and post-race test runs.
+
+The 45-second 1920×1080 circuit comparison measured 59.977 render callbacks/s
+in the storm versus 59.975 clear. Both recorded two intervals over 25 ms and
+none over 50 ms. CPU update p95 was 1.70 ms storm versus 1.01 ms clear. The storm
+gaps occurred at a delayed timer tick and the first aerial camera transition;
+there was no sustained frame-rate loss. Activity Monitor was temporarily paused
+and restored for each run. These are SceneKit callback/CPU measurements, not GPU
+completion or display presentation timestamps. Reports and native captures are
+in `../marvin-town-planning/storm-performance`, `storm-clear-baseline`,
+`storm-release`, `storm-menu`, and `storm-clear-trails`.

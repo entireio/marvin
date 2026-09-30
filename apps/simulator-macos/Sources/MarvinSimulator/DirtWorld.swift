@@ -8,6 +8,13 @@ import simd
 final class DirtWorld {
     let scene = SCNScene()
     private(set) var sky: BinarySky!
+    private var stormVisual:SandstormWorld!
+    private(set) var storm=Sandstorm()
+    func configureStorm(_ value:Sandstorm) {
+        storm=value;stormVisual.root.isHidden = !value.enabled;stormVisual.reset()
+        town.setStorm(value.enabled);sky.setStorm(value.enabled)
+        if let camera { stormVisual.update(value,camera:camera,dt:1.0/60) }
+    }
     let cityGateNode=SCNNode()
     let town: TownWorld
     let escapeRoutes:[[SIMD2<Double>]]
@@ -59,6 +66,7 @@ final class DirtWorld {
         escapeRoutes=PostRaceEscape.makeRoutes(city:town.collisionWorld)
         progress?(0.495,"Preparing the sand and racecourse")
         sky=BinarySky(scene:scene)
+        stormVisual=SandstormWorld(texture:packedEarthTexture());scene.rootNode.addChildNode(stormVisual.root)
         let ground = SCNPlane(width: 256, height: 256)
         let earth = material(0x827656, roughness: 1)
         earth.diffuse.contents = packedEarthTexture()
@@ -466,14 +474,20 @@ final class DirtWorld {
     var additionalContacts: [[(x: Double,z: Double,width: Double)]] = []
     func update(_ state: Simulation, opponent: Simulation, dt: Double, modelScale: Double, additional: [Simulation]) {
         guard dt > 0 else { return }
+        storm=state.storm
+        if let camera { stormVisual.update(storm,camera:camera,dt:dt) }
         for i in flecks.indices where flecks[i].life > 0 {
             flecks[i].life -= dt
             var f = flecks[i]
             // Fine dust loses its launch momentum quickly; grains fall and settle.
             f.velocity *= exp(-dt * (f.dust ? 2.8 : 0.7))
             f.velocity.y += dt * (f.dust ? 0.045 : -9.8)
+            if storm.enabled {
+                let wind=storm.wind(x:Double(f.node.position.x),z:Double(f.node.position.z))
+                f.velocity += (wind-f.velocity)*min(1,dt*(f.dust ? 1.8:0.10))
+            }
             f.node.simdPosition += SIMD3<Float>(Float(f.velocity.x*dt),Float(f.velocity.y*dt),Float(f.velocity.z*dt))
-            let ground = CGFloat(DirtCourse.height(x:Double(f.node.position.x),z:Double(f.node.position.z)))
+            let ground = CGFloat(storm.height(x:Double(f.node.position.x),z:Double(f.node.position.z)))
             if f.node.position.y < ground + CGFloat(f.radius) {
                 f.node.position.y = ground + CGFloat(f.radius)
                 f.velocity = .zero
@@ -552,19 +566,20 @@ final class DirtWorld {
                 // in place when reversing (including R2's front wheel).
                 let contactZ = (racer == 0 || racer == 3) ? contact.z*sign : contact.z
                 var position = origin + lateral*(contact.x + Double.random(in:-contact.width*0.35...contact.width*0.35)) + forward*contactZ
-                position.y = DirtCourse.height(x:position.x,z:position.z) + 0.018
+                position.y = state.terrainHeight(x:position.x,z:position.z) + 0.018
                 // Match the dune shader's feather at the town edge. Track clay
                 // transitions to town soil across the same sandy shoulder.
                 let edge = max(abs(position.x),abs(position.z))
                 let t = max(0,min(1,(edge-156)/36))
                 let dune = t*t*(3-2*t)
+                let cover=min(1,state.storm.depth(x:position.x,z:position.z)/0.025)
                 let clay = edge < 80 ? max(0,min(1,(DirtCourse.width+0.7-DirtCourse.projection(x:position.x,z:position.z).distance)/0.9)) : 0
                 let town = SIMD3<Float>(0.62,0.55,0.45)
                 let track = SIMD3<Float>(0.64,0.43,0.31)
                 let sand = SIMD3<Float>(0.78,0.57,0.34)
-                let soil = (town+(track-town)*Float(clay))*(1-Float(dune))+sand*Float(dune)
+                let soil = ((town+(track-town)*Float(clay))*(1-Float(dune))+sand*Float(dune))*(1-Float(cover))+sand*Float(cover)
                 var f = flecks[i]
-                let clayWeight = clay*(1-dune)
+                let clayWeight = clay*(1-dune)*(1-cover)
                 // Clay throws cohesive clods; dry dune sand mostly lofts fines.
                 f.dust = Double.random(in:0...1) > (0.25 + 0.42*clayWeight)
                 f.tint = soil * Float.random(in:0.94...1.06)

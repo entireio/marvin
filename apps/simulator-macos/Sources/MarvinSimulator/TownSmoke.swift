@@ -107,6 +107,7 @@ extension AppController {
     }
     @objc func benchmarkDisplayTick(_ sender:AnyObject) { tick() }
     func startTownBenchmark(at directory:URL) {
+        mainMenu.weatherOverride=ProcessInfo.processInfo.environment["MARVIN_SANDSTORM"]=="1"
         try? FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
         startDirtTrack(); dirtIntro=nil;race.countDown(dt:3)
         if let text=ProcessInfo.processInfo.environment["MARVIN_DAYLIGHT_FRACTION"],let fraction=Double(text),fraction.isFinite {
@@ -119,6 +120,7 @@ extension AppController {
         wallEOpponent=DirtOpponent(slot:DirtCourse.startingGrid[3],laneOffset:-0.65)
         race=DirtRace(startPhase:DirtCourse.startingGrid[0].phase);race.countDown(dt:3)
         racePhysics=DirtRacePhysics(characters:lineup)
+        racePhysics.storm=Sandstorm(enabled:mainMenu.sandstorm)
         if CommandLine.arguments.contains("--city-roam") {
             simulation=Simulation(dirtTrack:true,dirtStartOffset:DirtCourse.fenceOffset+8.08,dirtStartPhase:CityExit.phase)
             racePhysics.gate.wantsOpen=true
@@ -195,6 +197,8 @@ extension AppController {
             report["cpuUpdateP95MS"]=cpu.isEmpty ? 0:cpu[Int(Double(cpu.count-1)*0.95)]*1000
             report["durationSeconds"]=elapsed;report["townEnabled"] = !dirtWorld.town.root.isHidden
             report["town"]=dirtWorld.town.statistics
+            report["sandstorm"]=racePhysics.storm.enabled
+            report["visiblePeople"]=dirtWorld.town.visiblePopulation
             report["daylightFraction"]=dirtWorld.sky.daylight.fraction
             report["sunElevationsDegrees"]=dirtWorld.sky.daylight.directions.map{asin($0.y)*180/Double.pi}
             report["drawableWidth"]=view.convertToBacking(view.bounds).width
