@@ -37,9 +37,9 @@ extension AppController {
                         try saveTownFrame("\(name)-race",at:directory)
                         let direction=simd_normalize(s.directions[0]+s.directions[1])
                         let horizontal=simd_normalize(SIMD3(direction.x,0,direction.z))
-                        let eye = -horizontal*38+SIMD3<Double>(0,11,0)
+                        let eye = -horizontal*27+SIMD3<Double>(0,7.5,0)
                         world.camera.position=SCNVector3(eye)
-                        let framing = name == "midday" ? direction : simd_normalize(horizontal+SIMD3(0,0.04,0))
+                        let framing = name == "midday" ? direction : simd_normalize(horizontal+SIMD3(0,0.01,0))
                         world.camera.look(at:SCNVector3(eye+framing*80),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
                         try saveTownFrame("\(name)-suns",at:directory)
                         captured=true

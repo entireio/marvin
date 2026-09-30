@@ -57,19 +57,31 @@ final class BinarySky {
             float3 tintA;
             float3 tintB;
             float2 sunRadii;
+            float daylight;
+            float3 duskBand;
             #pragma body
             float3 d=normalize(in.skyDirection);
-            float h=pow(clamp(d.y,0.0,1.0),0.42);
+            float height=max(d.y,0.0);
+            float h=1.0-exp(-height/mix(0.085,0.35,daylight));
             float3 sky=mix(horizon,zenith,h);
+            float3 solarAxis=normalize(sunA+sunB);
+            float facing=pow(max(0.0,dot(d.xz,solarAxis.xz)/(max(length(d.xz),0.00001)*max(length(solarAxis.xz),0.00001))),3.0);
+            // A narrow warm horizon beneath cool upper air, with a dusty
+            // rose transition at dusk. Scattering is strongest toward the suns.
+            float band=exp(-pow((height-0.12)/0.10,2.0));
+            sky+=duskBand*band*(1.0-daylight)*(0.35+0.65*facing);
+            sky+=float3(0.34,0.095,0.018)*facing*exp(-height/0.15)*(1.0-daylight);
             float a=acos(clamp(dot(d,sunA),-1.0,1.0));
             float b=acos(clamp(dot(d,sunB),-1.0,1.0));
-            // Forward scattering is confined to each actual sun direction.
-            sky+=tintA*(0.13*exp(-a*a/0.020)+0.16*exp(-a/0.022));
-            sky+=tintB*(0.065*exp(-b*b/0.014)+0.10*exp(-b/0.018));
-            float discA=1.0-smoothstep(sunRadii.x*0.97,sunRadii.x,a);
-            float discB=1.0-smoothstep(sunRadii.y*0.97,sunRadii.y,b);
-            sky=mix(sky,tintA*5.0,discA);
-            sky=mix(sky,tintB*3.4,discB);
+            float haze=mix(1.0,0.35,daylight);
+            sky+=tintA*haze*(0.5*exp(-a*a/0.006)+0.65*exp(-a/0.017));
+            sky+=tintB*haze*(0.3*exp(-b*b/0.004)+0.4*exp(-b/0.013));
+            float discA=1.0-smoothstep(sunRadii.x*0.91,sunRadii.x*1.05,a);
+            float discB=1.0-smoothstep(sunRadii.y*0.91,sunRadii.y*1.05,b);
+            float limbA=sqrt(max(0.0,1.0-pow(a/sunRadii.x,2.0)));
+            float limbB=sqrt(max(0.0,1.0-pow(b/sunRadii.y,2.0)));
+            sky=mix(sky,tintA*(3.8+2.4*limbA),discA);
+            sky=mix(sky,tintB*(2.5+1.5*limbB),discB);
             // This is an infinitely distant sky: bypass scene distance fog.
             _output.color=float4(sky,1.0);
             """]
@@ -95,16 +107,22 @@ final class BinarySky {
         guard let lens=camera.camera else { return }
         lens.wantsHDR=true; lens.wantsExposureAdaptation=false
         // Fixed exposure avoids pumping when a tiny sun enters/leaves frame.
-        lens.exposureOffset = -0.25; lens.bloomIntensity=0.16
-        lens.bloomThreshold=1.6;lens.bloomBlurRadius=7
+        lens.exposureOffset = 0; lens.bloomIntensity=0.38
+        lens.bloomThreshold=1.2;lens.bloomBlurRadius=12
     }
     func apply(_ value:BinaryDaylight) {
         daylight=value
         skyMaterial.setValue(NSValue(point:NSPoint(x:value.radii[0],y:value.radii[1])),forKey:"sunRadii")
         let elevation=max(0,value.directions.map{$0.y}.max()!)
         let day=min(1,elevation/0.55)
-        let zenith=SIMD3<Float>(0.23,0.32,0.46)+(SIMD3<Float>(0.32,0.49,0.67)-SIMD3<Float>(0.23,0.32,0.46))*Float(day)
-        let horizon=SIMD3<Float>(0.73,0.39,0.23)+(SIMD3<Float>(0.73,0.76,0.73)-SIMD3<Float>(0.73,0.39,0.23))*Float(day)
+        let evening=Float(value.fraction>0.5 ? 1:0)
+        let lowZenith=SIMD3<Float>(0.018,0.070,0.17)*(1-evening)+SIMD3<Float>(0.065,0.027,0.10)*evening
+        let lowHorizon=SIMD3<Float>(0.95,0.36,0.09)*(1-evening)+SIMD3<Float>(0.85,0.19,0.035)*evening
+        let zenith=lowZenith+(SIMD3<Float>(0.20,0.38,0.62)-lowZenith)*Float(day)
+        let horizon=lowHorizon+(SIMD3<Float>(0.65,0.72,0.75)-lowHorizon)*Float(day)
+        skyMaterial.setValue(Float(day),forKey:"daylight")
+        let band=SIMD3<Float>(0.04,0.055,0.06)*(1-evening)+SIMD3<Float>(0.22,0.045,0.085)*evening
+        skyMaterial.setValue(NSValue(scnVector3:SCNVector3(band)),forKey:"duskBand")
         func ink(_ p:SIMD3<Float>)->NSColor { NSColor(calibratedRed:CGFloat(p.x),green:CGFloat(p.y),blue:CGFloat(p.z),alpha:1) }
         for (key,v) in [("zenith",zenith),("horizon",horizon)] { skyMaterial.setValue(NSValue(scnVector3:SCNVector3(v)),forKey:key) }
         for i in 0..<2 {
@@ -120,16 +138,18 @@ final class BinarySky {
             suns[i].position=SCNVector3(d*80)
             suns[i].look(at:SCNVector3Zero,up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
             suns[i].light?.color=ink(tint)
-            suns[i].light?.intensity=i==0 ? 1120:340
+            suns[i].light?.intensity=i==0 ? 1550:470
             skyMaterial.setValue(NSValue(scnVector3:SCNVector3(d)),forKey:i==0 ? "sunA":"sunB")
             skyMaterial.setValue(NSValue(scnVector3:SCNVector3(tint)),forKey:i==0 ? "tintA":"tintB")
         }
-        ambient.light?.color=ink(zenith);ambient.light?.intensity=110+80*day
+        // Open-sky fill keeps racing surfaces readable in backlight. It is
+        // deliberately weaker than direct light, not a camera-facing key light.
+        ambient.light?.color=ink(SIMD3<Float>(0.54,0.62,0.78));ambient.light?.intensity=260-70*day
         scene?.fogColor=ink(horizon);scene?.fogStartDistance=115;scene?.fogEndDistance=240
         // A diffuse sky probe has no baked sun at the old lighting direction.
         // Directional lights supply the correctly positioned specular highlights.
         scene?.lightingEnvironment.contents=skyProbe(zenith:zenith,horizon:horizon)
-        scene?.lightingEnvironment.intensity=0.45+0.18*day
+        scene?.lightingEnvironment.intensity=0.95-0.20*day
     }
     private func skyProbe(zenith:SIMD3<Float>,horizon:SIMD3<Float>)->NSImage {
         let w=64,h=32

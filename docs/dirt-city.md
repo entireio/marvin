@@ -916,3 +916,17 @@ simulation tick gap (local update 1.25 ms, renderer cycle 4.41 ms). The evening
 1.13 ms). These measurements do not prove GPU/display presentation cadence.
 Activity Monitor was temporarily paused and restored for both runs. Artifacts:
 `binary-perf-midday` and `binary-perf-evening` beside the captures.
+
+Low-sun art pass: a narrow golden horizon now transitions into cool dawn air or
+copper/rose dusk. Directional atmospheric haze follows the same two sun vectors;
+soft disc edges, limb darkening and restrained bloom replace the hard flat discs.
+Brighter sky fill and stronger direct lighting preserve rooftop highlights and
+readable racing shadows. The sky still uses one dome draw, with the existing two
+shadow maps; no screen-space flare overlays or added lights. Native captures use
+a lower 7.5 m viewpoint. Five full four-robot race runs (sunrise, sunset, morning,
+midday, evening), random-daylight checks and the opaque-screen glare test passed.
+Captures: `../marvin-town-planning/atmosphere-v2` and `atmosphere-daylight-check`.
+The revised 45 s 1080p low-sun circuit benchmark averaged 59.974 render callbacks/s,
+with one interval over 25 ms, none over 50 ms, and CPU update p95 1.00 ms.
+Activity Monitor was restored after the run. Callback timing is not GPU/display
+presentation timing. Report: `../marvin-town-planning/atmosphere-performance`.
