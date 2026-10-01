@@ -23,6 +23,22 @@ final class TownWorld {
     private let signs = TownSigns()
     private var storefrontSigns=0
     private var cells: [String: TownCell] = [:]
+    private var explorationCells: [String: TownCell] = [:]
+    private var explorationNodes: [SCNNode] = []
+    private(set) var explorationTriangles = 0
+    var explorationDetailEnabled = true // native benchmark comparison only
+    var activeExplorationCells:Int { explorationNodes.filter { !$0.isHidden }.count }
+    func updateExplorationDetail(camera:SCNVector3,player:SIMD2<Double>) {
+        // A street-level view outside the circuit gets a moving detail window.
+        // Neither the racing cameras nor the locked finish overview needs it.
+        let exploring=explorationDetailEnabled && max(abs(player.x),abs(player.y))>24 && camera.y<12
+        for node in explorationNodes {
+            let distance=hypot(Double(camera.x-node.position.x),Double(camera.z-node.position.z))
+            let amount=exploring ? max(0,min(1,(58-distance)/16)):0
+            node.isHidden=amount==0
+            if amount>0 { node.opacity=CGFloat(amount*amount*(3-2*amount)) }
+        }
+    }
     private(set) var buildings = 0
     private(set) var population = 0
     private(set) var triangleCount = 0
@@ -85,8 +101,25 @@ final class TownWorld {
             triangleCount += cell.near.indices.count / 3
             coarseTriangles += cell.far.indices.count / 3
         }
+        for key in explorationCells.keys.sorted() {
+            let cell=explorationCells[key]!
+            let node=SCNNode(geometry:cell.near.geometry(material:surface,relativeTo:cell.origin))
+            node.simdPosition=cell.origin;node.name="Exploration detail \(key)"
+            node.castsShadow=false;node.isHidden=true
+            explorationTriangles += cell.near.indices.count/3
+            explorationNodes.append(node);root.addChildNode(node)
+        }
+        // CPU mesh builders are no longer needed once the GPU buffers exist.
+        explorationCells.removeAll()
+
     }
 
+    private func explorationPainter(_ x:Double,_ z:Double,yaw:Double)->TownPainter {
+        let ix=Int(floor(x/16)),iz=Int(floor(z/16)),key="\(ix),\(iz)"
+        let cell=explorationCells[key] ?? TownCell(Float(ix*16+8),Float(iz*16+8))
+        explorationCells[key]=cell
+        return TownPainter(near:cell.near,far:cell.far,origin:SIMD3(Float(x),0,Float(z)),yaw:Float(yaw))
+    }
     private func cell(_ x: Double, _ z: Double) -> TownCell {
         let span = max(abs(x),abs(z)) < 48 ? 16.0 : 32.0
         let ix = Int(floor(x / span)), iz = Int(floor(z / span)), key = "\(Int(span)):\(ix),\(iz)"
@@ -150,6 +183,12 @@ final class TownWorld {
     ]
 
 
+    // Native visual/performance survey follows the actual eastbound street.
+    func explorationSurveyPoint(_ fraction:Double)->SIMD2<Double> {
+        let path=streets[4].path,t=max(0,min(1,fraction))*Double(path.count-1)
+        let i=min(path.count-2,Int(t)),blend=t-Double(i)
+        return path[i]*(1-blend)+path[i+1]*blend
+    }
     private func streetDistance(_ x:Double,_ z:Double)->Double {
         let p=SIMD2(x,z)
         var distance=Double.greatestFiniteMagnitude
@@ -327,7 +366,7 @@ final class TownWorld {
         var index=0, row=0
         var z = -145.0
         // Dense irregular compounds, extending well past every overview edge.
-        // The outer city gets only silhouette geometry, never small props/people.
+        // Outer silhouettes stay cheap; separate facade batches wake near explorers.
         while z<145 {
             let stepZ=6.4+random()*2.4
             var x = -150.0+random()*6
@@ -357,7 +396,7 @@ final class TownWorld {
 
     private func cityCompound(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double) {
         let near=max(abs(x),abs(z))<52
-        let p=paint(x,z,yaw:yaw)
+        var p=paint(x,z,yaw:yaw)
         let boundW=w*cos(yaw)+d*abs(sin(yaw)),boundD=d*cos(yaw)+w*abs(sin(yaw))
         lots.append(TownLot(x:x,z:z,width:boundW+0.2,depth:boundD+0.2))
         buildings += 1
@@ -411,7 +450,7 @@ final class TownWorld {
             p.adobe(w*0.26,h*0.29,0,w*0.47,h*0.58,d,ink,simple:!near)
             p.box(-w*0.23,h+0.07,-d*0.05,w*0.48,0.15,d*0.83,roof)
         }
-        guard near else { return }
+        if !near { p=explorationPainter(x,z,yaw:yaw) }
         // Equipment on usable flat roofs, with cables/pipes at the near tier.
         if style==3 || style==4 || style==8 {
             let roofY=style==8 ? h*0.58:h*0.60
@@ -441,31 +480,32 @@ final class TownWorld {
                             accent:storefrontSigns%2==0 ? rust:teal,into:root)
                 storefrontSigns += 1
             }
-            for k in 0..<2 where !(entrance && side>0) {
+            for k in 0..<(style==6 && !near ? 1:2) where !(entrance && side>0) {
                 let xx = -w*0.32+Double(k)*w*0.55
-                p.box(xx,h*0.41,face,0.24,0.57,0.035,0x39332c,detail:true)
-                p.box(xx,h*0.41-0.27,face+side*0.045,0.30,0.075,0.12,roof,detail:true)
+                let wy = !near && style==5 ? min(h*0.28,h*0.44-0.32):h*0.41
+                p.box(xx,wy,face,0.24,0.57,0.035,0x39332c,detail:true)
+                p.box(xx,wy-0.27,face+side*0.045,0.30,0.075,0.12,roof,detail:true)
             }
             if index%3==0 {
                 p.awning(doorX,face+side*0.38,w*0.37,0.90,min(1.9,h*0.70),index%2==0 ? 0x7e6a50:0x8f5140)
             }
         }
-        if style<5 || style==8 {
+        if near && (style<5 || style==8) {
             for side in [-1.0,1] {
                 p.adobe(side*w*0.43,h*0.26,d*0.41,0.28,h*0.52,0.35,ink)
             }
         }
         // Roof equipment is useful silhouette at medium distance, tiny wires LOD out.
-        let ry = style==5 ? h*1.10 : (style<3 ? h*0.65:h*0.65)
-        if index%3==0 {
+        let ry = near ? (style==5 ? h*1.10:h*0.65):h*(style==8 ? 0.58:0.60)
+        if index%3==0 && (near || style==3 || style==4 || style==7 || style==8) {
             p.cylinder(w*0.28,ry+0.3,-d*0.21,0.32,0.29,0.60,roof,sides:8,detail:true)
             p.box(w*0.28,ry+0.64,-d*0.21,0.72,0.10,0.72,0x756654,detail:true)
         }
-        if index%5==0 {
+        if index%5==0 && (near || style==8) {
             p.cylinder(-w*0.31,h+0.30,-d*0.1,0.08,0.065,0.90,0x5c5449,sides:6,detail:true)
             p.box(-w*0.31,h+0.62,-d*0.1,0.66,0.045,0.045,0x65594b,detail:true)
         }
-        for k in 0..<(index%3) {
+        for k in 0..<(near ? index%3:0) {
             p.box(w*0.31,0.19+Double(k)*0.29,d*0.33,0.51,0.36,0.43,k%2==0 ? 0x715642:0x6a7870,detail:true)
         }
     }
@@ -840,12 +880,14 @@ final class TownWorld {
     }
 
     func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>,robots:[RobotCollisions.Body]=[],visible:((SCNNode)->Bool)?=nil) {
+        updateExplorationDetail(camera:camera,player:player)
         guard dt>0 else { return }
         clock += dt
         crowd.update(time:clock);residents?.update(dt:dt,robots:robots,visible:visible)
     }
     func reset() {
         clock=0;crowd.update(time:0);residents?.reset()
+        for node in explorationNodes { node.isHidden=true }
     }
     /// Clip the chase/orbit boom against simple scenery bounds, with a small
     /// near-plane margin, including buildings beyond the race-side district.
@@ -880,7 +922,7 @@ final class TownWorld {
         return SCNVector3(result.x,result.y,result.z)
     }
     var statistics: [String:Int] {
-        ["streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
+        ["explorationCells":explorationNodes.count,"explorationTriangles":explorationTriangles,"streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
          "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":residents?.walkers.count ?? 0,"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
     }
     var cityCoveragePassed:Bool {

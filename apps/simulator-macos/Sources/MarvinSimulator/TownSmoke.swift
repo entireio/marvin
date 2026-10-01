@@ -92,14 +92,30 @@ extension AppController {
             world.camera.position=eye
             world.camera.look(at:SCNVector3(simulation.x+forward.x*12,simulation.groundY+0.46,simulation.z+forward.y*12),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
             try saveTownFrame("town-robot-pov",at:directory)
+            var detailsPassed=true
+            for fraction in [0.25,0.60,0.90] {
+                let p=dirtWorld.town.explorationSurveyPoint(fraction),ahead=dirtWorld.town.explorationSurveyPoint(fraction+0.03)
+                world.camera.position=SCNVector3(p.x,1.5,p.y)
+                world.camera.look(at:SCNVector3(ahead.x,1.5,ahead.y),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+                for enabled in [false,true] {
+                    dirtWorld.town.explorationDetailEnabled=enabled
+                    dirtWorld.town.updateExplorationDetail(camera:world.camera.position,player:p)
+                    detailsPassed = detailsPassed && (enabled ? dirtWorld.town.activeExplorationCells>0:dirtWorld.town.activeExplorationCells==0)
+                    try saveTownFrame("outer-\(Int(fraction*100))-\(enabled ? "detailed":"simple")",at:directory)
+                }
+            }
+            dirtWorld.town.updateExplorationDetail(camera:SCNVector3(0,38,-33),player:SIMD2(90,45))
+            detailsPassed = detailsPassed && dirtWorld.town.activeExplorationCells==0
+            dirtWorld.town.updateExplorationDetail(camera:SCNVector3(25,2,-10),player:.zero)
+            detailsPassed = detailsPassed && dirtWorld.town.activeExplorationCells==0
             let count=dirtWorld.town.statistics
             let children=dirtWorld.town.root.childNodes.count
             reset(nil)
             let resetPassed=dirtWorld.town.statistics==count && dirtWorld.town.root.childNodes.count==children && race.countdown==3
-            let report:[String:Any] = ["passed":valid && resetPassed && cameraPassed && pausePassed,"layoutClearancePassed":valid,"cityCoveragePassed":dirtWorld.town.cityCoveragePassed,"streetNetworkPassed":dirtWorld.town.streetNetworkPassed,"resetPassed":resetPassed,"cameraObstructionPassed":cameraPassed,"crowdPausePassed":pausePassed,
+            let report:[String:Any] = ["passed":valid && resetPassed && cameraPassed && pausePassed && detailsPassed,"explorationDetailPassed":detailsPassed,"layoutClearancePassed":valid,"cityCoveragePassed":dirtWorld.town.cityCoveragePassed,"streetNetworkPassed":dirtWorld.town.streetNetworkPassed,"resetPassed":resetPassed,"cameraObstructionPassed":cameraPassed,"crowdPausePassed":pausePassed,
                                       "town":count,"images":cameras.map{$0.0} + ["town-racing","town-robot-pov"]]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("town-smoke.json"))
-            return valid && resetPassed && cameraPassed && pausePassed
+            return valid && resetPassed && cameraPassed && pausePassed && detailsPassed
         } catch { print("Town smoke: \(error)");return false }
     }
     func saveTownFrame(_ name:String,at directory:URL) throws {
@@ -148,6 +164,7 @@ extension AppController {
             precondition(racePhysics.escape.complete,"Post-race benchmark did not reach town roaming")
             updateDepartureHUD()
         }
+        dirtWorld.town.explorationDetailEnabled = !CommandLine.arguments.contains("--benchmark-simple-town")
         updateOpponents()
         // Explicit 960x540 points at 2x backing gives the target 1080p drawable.
         window.minSize=NSSize(width:640,height:400)
@@ -193,9 +210,17 @@ extension AppController {
         if aerial {
             world.camera.position=SCNVector3(0,42,-44);world.camera.look(at:SCNVector3(0,0,0),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
         } else { updateCamera(snap:true) }
+        var detailPlayer=SIMD2(simulation.x,simulation.z)
+        if CommandLine.arguments.contains("--outer-town-survey") {
+            let fraction=0.10+0.85*min(1,elapsed/45)
+            detailPlayer=dirtWorld.town.explorationSurveyPoint(fraction)
+            let ahead=dirtWorld.town.explorationSurveyPoint(min(1,fraction+0.025))
+            world.camera.position=SCNVector3(detailPlayer.x,1.5,detailPlayer.y)
+            world.camera.look(at:SCNVector3(ahead.x,1.5,ahead.y),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+        }
         let cameraEnd=ProcessInfo.processInfo.systemUptime
         if !dirtWorld.town.root.isHidden {
-            dirtWorld.town.update(dt:dt,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
+            dirtWorld.town.update(dt:dt,camera:world.camera.position,player:detailPlayer,robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
             },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
         }
@@ -212,6 +237,7 @@ extension AppController {
             report["durationSeconds"]=elapsed;report["townEnabled"] = !dirtWorld.town.root.isHidden
             report["postRaceRoaming"]=racePhysics.escape.active
             report["town"]=dirtWorld.town.statistics
+            report["activeExplorationCells"]=dirtWorld.town.activeExplorationCells
             report["sandstorm"]=racePhysics.storm.enabled
             report["visiblePeople"]=dirtWorld.town.visiblePopulation
             report["residentUpdates"]=dirtWorld.town.residents?.updateStatistics ?? [:]

@@ -1381,3 +1381,64 @@ removed at the start and is absent for clear races, pause and results. Cmd-R
 updates the warning from the newly selected weather. The native weather-reset
 check captures both weather states during introduction/countdown and verifies
 that the warning becomes inactive when the countdown reaches zero.
+
+### Outer-town detail during exploration
+
+The old outer compounds (beyond 52 metres on either axis) were permanently
+silhouettes, rather than merely distant LODs. Their doors, windows, awnings and
+roof fittings now have separate, prebuilt 16-metre geometry batches. A moving
+camera window enables those batches only with the player outside the central
+24-metre square and the camera below 12 metres. Detail is fully visible within
+42 metres of each batch center and smoothly fades to hidden at 58 metres.
+SceneKit still performs frustum culling. The overhead finish view and racing
+views leave this extra geometry hidden; their original architecture meshes and
+82-metre LOD threshold are unchanged.
+
+The new fittings are cosmetic dressing on existing solid buildings. They do
+not add ground obstacles, change collision hulls or navigation, add animated
+people, or submit extra shadow casters. Outer courtyard windows and low-roof
+fittings are constrained to their supporting walls/roofs. Meshes are generated
+once during loading and CPU builders released afterward; no generation or
+asset loading occurs while driving. This trades additional resident geometry
+memory/loading work for richer nearby views, rather than drawing a detailed
+whole town every frame.
+
+`--town-smoke-test` now compares simple/detailed shots at three distances along
+the actual eastbound street and checks that race and overhead views disable the
+extra batches. `--outer-town-survey` on the live benchmark follows that same
+street with a low camera; `--benchmark-simple-town` disables the added detail
+for a same-build comparison. This is a rendering survey while race physics
+continues, not an autonomous robot navigation test.
+
+Same-build 45-second, 1920×1080 Apple M2 Metal comparisons:
+- Simple street survey: 60.004 callbacks/s, p95 interval 17.488 ms, CPU update
+  p95 1.634 ms, zero intervals over 25/50 ms.
+- Detailed street survey: 59.975 callbacks/s, p95 interval 17.402 ms, CPU update
+  p95 1.817 ms, one interval over 25 ms and none over 50 ms; 26 detail batches
+  active at the final camera position.
+
+These are SceneKit render callback measurements, not GPU/display timestamps.
+Activity Monitor was paused/restored and no builds or other simulation tests
+ran alongside the benchmarks. The extra detail preserved approximately 60 FPS
+in this survey; it does not establish zero cost or a guarantee on other hardware.
+
+The 45-second race-camera benchmark (`exploration-perf-racing`) records 59.974
+callbacks/s, CPU update p95 1.230 ms, one interval above 25 ms and none above
+50 ms, with zero exploration batches active. The base near/far architecture
+triangle counts remain 350,392 / 251,522.
+
+Final visual verification (`exploration-detail-final`) passes town layout,
+coverage, camera clearance, pause/reset and exploration visibility checks. The
+added meshes total 982,044 triangles across 327 mostly hidden batches; base
+architecture counts are unchanged. Three paired screenshots verify detail
+from the outer district through the edge of the dunes.
+
+The final long roaming check (`exploration-soak-final`) ran 849.1 simulated
+seconds from first departure, including 720 after all four left. Camera/HUD,
+score, gate timing, resident movement and collision tolerance checks pass
+(maximum measured robot overlap 0.000774 m). **The full endurance test fails**:
+R2-D2 and BB-8 complete only one circuit and several minutes have too little
+spatial progress. The earlier exploratory run (`exploration-collision-soak`)
+also failed, with a blocked resident and WALL-E reversals. These traffic findings
+remain open; the final cosmetic meshes do not modify the existing collision
+world or navigation, and endurance thresholds were not relaxed.
