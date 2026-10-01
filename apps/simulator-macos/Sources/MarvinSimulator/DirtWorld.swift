@@ -162,7 +162,7 @@ final class DirtWorld {
         scene.rootNode.addChildNode(effects)
         clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0xffffff,roughness:1)]
         WindblownDust.configure(clodGeometry.materials[0])
-        dustMaterial.lightingModel = .constant; dustMaterial.diffuse.contents = dustTexture()
+        dustMaterial.lightingModel = .lambert; dustMaterial.diffuse.contents = dustTexture()
         WindblownDust.configure(dustMaterial)
         dustMaterial.writesToDepthBuffer = false; dustMaterial.isDoubleSided = true
         for i in 0..<poolSize {
@@ -458,7 +458,7 @@ final class DirtWorld {
         let image = NSImage(size:NSSize(width:w,height:h)); image.addRepresentation(bitmap); return image
     }
     private func dustTexture() -> NSImage {
-        WindblownDust.texture()
+        WindblownDust.texture(plume:true)
     }
     @discardableResult private func box(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ mat:SCNMaterial)->SCNNode {
         let shape = SCNBox(width:w,height:h,length:d,chamferRadius:0.008); shape.materials = [mat]
@@ -480,7 +480,7 @@ final class DirtWorld {
             flecks[i].life -= dt
             var f = flecks[i]
             // Fine dust loses its launch momentum quickly; grains fall and settle.
-            f.velocity *= exp(-dt * (f.dust ? 2.8 : 0.7))
+            f.velocity *= exp(-dt * (f.dust ? 1.4 : 0.7))
             f.velocity.y += dt * (f.dust ? 0.045 : -9.8)
             if storm.enabled {
                 let wind=storm.wind(x:Double(f.node.position.x),z:Double(f.node.position.z))
@@ -490,8 +490,12 @@ final class DirtWorld {
             let ground = CGFloat(storm.height(x:Double(f.node.position.x),z:Double(f.node.position.z)))
             if f.node.position.y < ground + CGFloat(f.radius) {
                 f.node.position.y = ground + CGFloat(f.radius)
-                f.velocity = .zero
-                if !f.dust { f.life = min(f.life,0.09) }
+                if f.dust {
+                    // Floor correction must not cancel the initial upward kick.
+                    f.velocity.y = max(0,f.velocity.y)
+                } else {
+                    f.velocity = .zero;f.life = min(f.life,0.09)
+                }
             }
             let age = f.duration - f.life
             let fadeIn = min(1,age / (f.dust ? 0.12 : 0.025))
@@ -594,15 +598,15 @@ final class DirtWorld {
                 let kick = min(1.6,magnitude)
                 f.velocity = -forward*sign*kick*Double.random(in:0.08...0.22)
                     + lateral*Double.random(in:-0.09...0.09)
-                    + SIMD3(0,Double.random(in:f.dust ? 0.08...0.20 : 0.16...0.38)*sqrt(kick),0)
+                    + SIMD3(0,Double.random(in:f.dust ? 0.30...0.55 : 0.16...0.38)*sqrt(kick),0)
                 if !f.dust {
                     f.velocity += -forward*sign*kick*(0.35*clayWeight)
                         + SIMD3(0,Double.random(in:0.25...0.65)*sqrt(kick)*clayWeight,0)
                 }
-                f.duration = f.dust ? Double.random(in:0.65...1.15) : Double.random(in:0.22...0.38)+clayWeight*0.5
+                f.duration = f.dust ? Double.random(in:1.2...1.8) : Double.random(in:0.22...0.38)+clayWeight*0.5
                 f.life = f.duration
-                f.radius = f.dust ? Float.random(in:0.055...0.10) : Float.random(in:0.0015...0.0035)+Float(clayWeight)*Float.random(in:0.006...0.012)
-                f.opacity = f.dust ? (state.storm.enabled ? 0.20:0.30) : 0.70
+                f.radius = f.dust ? Float.random(in:0.12...0.20) : Float.random(in:0.0015...0.0035)+Float(clayWeight)*Float.random(in:0.006...0.012)
+                f.opacity = f.dust ? (state.storm.enabled ? 0.36:0.48) : 0.70
                 f.node.position = SCNVector3(position.x,position.y,position.z)
                 f.node.scale = SCNVector3(1,1,1); f.node.opacity = 0; f.node.isHidden = false
                 flecks[i] = f

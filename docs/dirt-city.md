@@ -1037,3 +1037,23 @@ and tread marks remain visible. This diagnostic changes no gameplay visuals;
 further tuning should improve plume size, persistence and optical density
 while preserving source-ground color and the existing two particle batches.
 Captures: `../marvin-town-planning/dust-visibility`.
+
+### Visible airborne dust correction
+
+Tire dust now uses a denser irregular texture, 12–20 cm initial particle radii,
+1.2–1.8 second lifetimes and greater loft with slower air damping. Ground contact
+preserves upward dust velocity instead of cancelling the launch kick; clods
+still settle normally. Lambert lighting replaces unlit tire dust so it responds
+to scene lights. Soil tint, clay clods, ambient storm texture, premultiplied
+blending, emission rate, 1,600-particle pool and two draw batches are preserved.
+Mean texture coverage rises from 6.6% to 15%; clear particle opacity is 48%,
+with lower opacity in storms. This gives about 7.2% mean initial coverage before
+fading, rather than 2%. Capture comparisons rejected an overly dense dark plume
+and an incorrect straight-alpha experiment before selecting the final result.
+
+The packaged build, native debris color/contact/pause/expiry checks, and a full
+four-robot storm race pass. Final clay/town/dune paired captures were inspected
+in `../marvin-town-planning/dust-lift-final`; storm captures are in
+`../marvin-town-planning/dust-lift-storm`.
+
+Final 45-second 1080p timing: 59.975 SceneKit callbacks/s, 1 intervals over 25 ms, 0 over 50 ms; CPU update p95 1.19 ms. These measure callbacks, not GPU completion or display presentation. Activity Monitor was paused and restored. Report: `../marvin-town-planning/dust-lift-performance`.
