@@ -47,6 +47,11 @@ public struct Sandstorm: Sendable {
     }
     public func depth(x:Double,z:Double)->Double { enabled ? accumulation*Self.deposit(x:x,z:z):0 }
     public func height(x:Double,z:Double)->Double { DirtCourse.height(x:x,z:z)+depth(x:x,z:z) }
+    public func surfaceNormal(x:Double,z:Double)->SIMD3<Double> {
+        let e=0.04
+        return simd_normalize(SIMD3(-(height(x:x+e,z:z)-height(x:x-e,z:z))/(2*e),1,
+                                   -(height(x:x,z:z+e)-height(x:x,z:z-e))/(2*e)))
+    }
     public func acceleration(velocity:SIMD3<Double>,x:Double,z:Double,profile:RobotCollisions.Profile,shelter:Double=1)->SIMD3<Double> {
         guard enabled else { return .zero }
         let relative=wind(x:x,z:z)*shelter-SIMD3(velocity.x,0,velocity.z)

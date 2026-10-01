@@ -1303,8 +1303,8 @@ and collision checks pass. The storm follow-up (`visibility-recovery-storm`)
 **does not pass**: BB-8 stalls during the race after one lap at approximately
 (19.944, -9.132), before the gate opens. Residents continue their shelter schedule
 (26 entries by the outdoor resident), but this is not a successful storm escape
-endurance run. The race/closed-gate stall is retained as an unresolved finding;
-it is not hidden by retrying random starting grids until one passes.
+endurance run. The race/closed-gate stall was investigated and fixed in the
+follow-up below; this original failed result is retained for comparison.
 
 Final visibility-aware pedestrian capture (`visibility-people-final`) passes ten
 minutes, 38 house entries, camera wake-up/phase, pause, shelter and reset, with
@@ -1315,3 +1315,48 @@ measures 59.975 callbacks/s, one interval over 25 ms, none over 50 ms, and CPU
 update p95 of 1.368 ms. It records 10,453 resident navigation updates and 5,203
 pose updates. Activity Monitor was paused/restored as before. These callback
 measurements do not establish GPU utilization or display-presentation timing.
+
+
+### BB-8 storm race stall: closed-gate vault
+
+The stalled position was outside the closed gate. A native deterministic sweep
+of all 24 starting-grid permutations reproduced the escape with grid
+`[1, 2, 0, 3]` at 35.25 seconds (`bb8-diagnosis/escape.json`). BB-8 hit a storm
+drift while boosting at approximately 10.7 m/s, then landed on the rising bank.
+At that landing, vertical speed changed from -4.31 to +4.79 m/s without a
+corresponding horizontal slowdown: the old terrain attachment added energy.
+BB-8 subsequently slid across the closed gate's top and fell outside. The gate
+collider was present; the AI then tried unsuccessfully to rejoin through it.
+
+Rigid-body terrain landings now remove inward normal velocity and preserve
+only tangential motion, using the actual terrain plus storm-deposit normal.
+Storm AI previews deposits ahead on its lane, disables automatic boost and
+uses proportional braking with a 3.2–5.2 m/s target. Clear-weather AI and manual
+player boost are unchanged. There are no teleport recoveries or invisible
+barriers above the gate.
+
+`--storm-race-test DIR` resets all 24 grid permutations and uses the native race
+physics, city collisions and wind shelter. It fails on premature BB-8 escape
+or any unfinished racer, saves the last two seconds of motion on escape, and
+writes `storm-grids.json` on success. This race-only test does not advance
+resident animation; the separate endurance test does. All 24 arrangements
+passed after the fix, each with all four racers finishing. All 37 core checks
+pass, including conservation of tangential landing velocity, non-increasing
+impact energy, storm accumulation pacing and retained clear-weather boost.
+
+The clear endurance run (`bb8-fixed-clear`) passes 899.2 simulated seconds from
+first departure, including 720 seconds after all robots leave. In
+`bb8-fixed-storm`, the race stall is gone: all robots finish, the gate opens
+only after cooldown, all four leave and complete two town circuits, and
+camera/HUD, collision, resident and frozen-score checks pass over 891.8 seconds
+from first departure. **The storm endurance test as a whole still fails** its
+sustained-progress criteria: BB-8 has a 20-second stop and several minute bins
+have too little spatial progress. This is a remaining town-roaming issue,
+not a successful full endurance result; its thresholds were not relaxed.
+
+A 45-second 1920×1080 storm **racing** benchmark (`bb8-storm-performance`)
+includes the new AI preview cost: Apple M2 Metal renderer, 59.975 callbacks/s,
+one interval over 25 ms, none over 50 ms, CPU update p95 2.003 ms. Activity
+Monitor was paused and restored; no builds or other simulations ran during this
+measurement. These are renderer callback intervals, not GPU utilization or
+presentation timing, and this workload is not the earlier clear postrace one.

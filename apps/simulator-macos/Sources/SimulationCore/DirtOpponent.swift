@@ -47,6 +47,20 @@ public struct DirtOpponent: Sendable {
         input.throttle = outside ? (abs(error)<0.25 ? 0.55:0):max(0.15, 1-abs(error)*1.5)
         input.boost = !outside && !cruising && abs(error) < 0.08
         if cruising { input.throttle *= 0.65 }
+        if simulation.storm.enabled && !outside {
+            // Preview deposits on the actual lane before reaching their crest.
+            // Airborne robots cannot steer; blindly boosting here can launch a
+            // light chassis over the closed exit gate.
+            let depth=(0...6).map { sample -> Double in
+                let p=DirtCourse.point(phase+Double(sample)*0.018,offset:laneOffset)
+                return simulation.storm.depth(x:p.x,z:p.z)
+            }.max() ?? 0
+            let pace=max(3.2,5.2-depth*18)
+            input.boost=false
+            input.throttle=min(input.throttle,pace/6)
+            input.assistedBrakePressure=max(0,min(1,(simulation.groundSpeed-pace)*0.65))
+            input.assistedBraking=input.assistedBrakePressure>0
+        }
         input.turn = -error*3
         return input
     }

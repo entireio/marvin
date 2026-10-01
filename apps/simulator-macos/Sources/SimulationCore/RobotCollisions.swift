@@ -49,6 +49,12 @@ public enum RobotCollisions {
         public let normal, point: SIMD3<Double>
         public let penetration: Double
     }
+    /// Inelastic terrain impact: remove velocity into the surface, retaining
+    /// tangential motion without creating kinetic energy or a rebound impulse.
+    public static func landingVelocity(_ velocity:SIMD3<Double>,normal:SIMD3<Double>)->SIMD3<Double> {
+        let n=simd_normalize(normal)
+        return velocity-n*min(0,simd_dot(velocity,n))
+    }
     public static func contact(_ a: Body, _ b: Body) -> Contact? {
         let low = max(a.position.y,b.position.y)
         let high = min(a.position.y+a.profile.height,b.position.y+b.profile.height)

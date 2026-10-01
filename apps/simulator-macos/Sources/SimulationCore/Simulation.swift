@@ -252,7 +252,15 @@ public struct Simulation: Sendable {
             if !airborne && verticalSpeed > slopeVelocity+0.55 && abs(speed) > 1 { airborne = true }
             if airborne {
                 verticalSpeed -= 9.8*dt; groundY += verticalSpeed*dt
-                if groundY <= ground { groundY = ground; airborne = false; verticalSpeed = slopeVelocity }
+                if groundY <= ground {
+                    groundY = ground; airborne = false
+                    if robotDynamics {
+                        // Landing on a rising bank must redirect the incoming
+                        // momentum, not add an upward kick at unchanged speed.
+                        velocity=RobotCollisions.landingVelocity(SIMD3(velocity.x,verticalSpeed,velocity.z),normal:storm.surfaceNormal(x:x,z:z))
+                        verticalSpeed=velocity.y
+                    } else { verticalSpeed = slopeVelocity }
+                }
             } else { groundY = ground; verticalSpeed = slopeVelocity }
             previousGround = ground
             if robotDynamics { velocity.y = verticalSpeed }
