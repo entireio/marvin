@@ -35,7 +35,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         raceHUD.opponents = opponents
         let states = [simulation]+opponents.map { $0.simulation }
         let actors = states.map { RacePerformance.Actor($0) }
-        for i in performances.indices { performances[i].update(index:i,actors:actors) }
+        for i in performances.indices { performances[i].update(index:i,actors:actors,followingCourse:racePhysics.escape.waypoint[i]<0) }
         for i in lineup.indices { updateModel(lineup[i], state: states[i], expression: performances[i].pose) }
     }
     func advanceRacePhysics(_ input: DriveInput, dt: Double, raceDT: Double) {

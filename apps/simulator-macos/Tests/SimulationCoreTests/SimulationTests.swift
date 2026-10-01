@@ -539,6 +539,7 @@ struct SimulationTests {
 @main struct CheckRunner {
     static func main() {
         let checks = SimulationTests()
+        checks.testTownSpeedAndGaze()
         checks.testSandstorm()
         checks.testCooldownLap()
         checks.testDesertTerrain()
@@ -577,6 +578,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 35 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: 36 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

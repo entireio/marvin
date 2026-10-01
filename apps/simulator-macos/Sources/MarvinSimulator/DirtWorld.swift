@@ -161,6 +161,7 @@ final class DirtWorld {
         scene.rootNode.addChildNode(town.root)
         scene.rootNode.addChildNode(effects)
         clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0xffffff,roughness:1)]
+        WindblownDust.configure(clodGeometry.materials[0])
         dustMaterial.lightingModel = .constant; dustMaterial.diffuse.contents = dustTexture()
         WindblownDust.configure(dustMaterial)
         dustMaterial.writesToDepthBuffer = false; dustMaterial.isDoubleSided = true
@@ -614,7 +615,7 @@ final class DirtWorld {
 extension DirtWorld {
     /// Exercise actual emission and pooled geometry on clay, town soil and dunes.
     func checkDebris() -> Bool {
-        var passed = true
+        var passed = checkClodRendering()
         var grainSizes: [Double] = []
         var grainColors: [SIMD3<Float>] = []
         for (name, point) in [("clay",SIMD2<Double>(0,-15)),("town",SIMD2<Double>(90,40)),("dunes",SIMD2<Double>(210,65))] {
@@ -654,6 +655,33 @@ extension DirtWorld {
         reset()
         passed = passed && emittedCount == 0 && racerEmittedCount == [0,0,0,0]
         print("Ground-dependent debris: \(passed ? "PASS":"FAIL")")
+        return passed
+    }
+}
+
+
+extension DirtWorld {
+    private func checkClodRendering()->Bool {
+        let testScene=SCNScene(),camera=SCNNode(),light=SCNNode(),sample=SCNNode()
+        testScene.background.contents=NSColor.black
+        camera.camera=SCNCamera();camera.camera?.usesOrthographicProjection=true;camera.camera?.orthographicScale=1
+        camera.position=SCNVector3(0,0,2)
+        light.light=SCNLight();light.light?.type = .ambient;light.light?.color=NSColor.white;light.light?.intensity=1000
+        for node in [camera,light,sample] { testScene.rootNode.addChildNode(node) }
+        let renderer=SCNRenderer(device:nil,options:nil);renderer.scene=testScene;renderer.pointOfView=camera
+        var pixels=[SIMD3<Double>]()
+        for tint:SIMD3<Float> in [SIMD3(0.64,0.43,0.31),SIMD3(0.78,0.57,0.34)] {
+            let rgba=(0..<4).flatMap{_ in [tint.x,tint.y,tint.z,Float(1)]}
+            let colors=rgba.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:4,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
+            let mesh=SCNGeometry(sources:[SCNGeometrySource(vertices:[SCNVector3(-1,-1,0),SCNVector3(1,-1,0),SCNVector3(1,1,0),SCNVector3(-1,1,0)]),SCNGeometrySource(normals:Array(repeating:SCNVector3(0,0,1),count:4)),colors],elements:[SCNGeometryElement(indices:[Int32(0),1,2,0,2,3],primitiveType:.triangles)])
+            mesh.materials=clodGeometry.materials;sample.geometry=mesh
+            let image=renderer.snapshot(atTime:0,with:CGSize(width:64,height:64),antialiasingMode:.none)
+            guard let tiff=image.tiffRepresentation,let bitmap=NSBitmapImageRep(data:tiff),let c=bitmap.colorAt(x:32,y:32)?.usingColorSpace(.deviceRGB) else { return false }
+            pixels.append(SIMD3(Double(c.redComponent),Double(c.greenComponent),Double(c.blueComponent)))
+        }
+        let clay=pixels[0],sand=pixels[1]
+        let passed=clay.x>clay.y*1.15 && clay.y>clay.z*1.1 && sand.x>clay.x+0.03 && sand.y>clay.y+0.03
+        print("Rendered clod colors: clay \(clay), sand \(sand): \(passed ? "PASS":"FAIL")")
         return passed
     }
 }

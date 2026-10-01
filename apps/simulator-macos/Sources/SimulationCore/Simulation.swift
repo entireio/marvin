@@ -146,7 +146,10 @@ public struct Simulation: Sendable {
         let depth=storm.depth(x:x,z:z)
         let grip = dirtTrack ? DirtCourse.traction(x:x,z:z)*max(0.55,1-depth*2.5) : 1
         let acceleration = dirtTrack ? 11.4 : 3.8
-        let limit = dirtTrack ? (input.boost ? 12.0 : 6.0)*grip : (input.boost ? 2.2 : 1.15)
+        // The circuit shoulder penalty must not become a town-wide speed cap.
+        // Loose sand still limits grip; accumulated drifts retain physical drag.
+        let courseSpeed = dirtTrack && DirtCourse.projection(x:x,z:z).distance<=DirtCourse.fenceOffset ? DirtCourse.traction(x:x,z:z):1
+        let limit = dirtTrack ? (input.boost ? 12.0 : 6.0)*courseSpeed : (input.boost ? 2.2 : 1.15)
         // Dirt steering is an angular-rate request, independent of drive speed.
         // Ramp keyboard input so a short tap makes a small correction.
         steering += max(-3*dt,min(3*dt,turn-steering))

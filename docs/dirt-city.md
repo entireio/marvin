@@ -999,3 +999,23 @@ four-robot storm race checks pass. The revised 45 s 1080p benchmark averaged
 update p95 1.78 ms. Activity Monitor was restored. Capture/report directories:
 `../marvin-town-planning/storm-film-reference`, `storm-natural-menu`,
 `storm-natural-debris`, and `storm-natural-performance`.
+
+### Town driving, clod color and gaze corrections
+
+The circuit shoulder speed penalty previously applied everywhere outside the
+track, reducing the drivetrain cap by 72% even on open town and dune sand.
+It now applies only inside the track boundary. Loose-ground traction, slopes,
+wind and physical drag from accumulated storm sand still affect motion.
+Track-bend head lookahead stops when a robot starts its escape route or leaves
+the circuit; nearby-robot glances and manual head controls remain available.
+
+Clod materials now explicitly consume their per-particle ground tint and alpha,
+as dust already did. The native debris check renders the actual clod material
+under white lighting and samples pixels, verifying distinct brown clay and
+lighter sand, in addition to emission size, tint and terrain contact checks.
+
+Validation: the packaged macOS build and all 36 core checks pass. Native debris,
+four-route post-race escape and full four-robot storm race checks pass. Escape
+reported zero obstacle penetration; maximum storm terrain penetration was
+0.083 mm. Captures are in `../marvin-town-planning/town-driving-fixes` and
+`../marvin-town-planning/town-fixes-storm`.
