@@ -1151,3 +1151,47 @@ The native daylight regression also passes three complete four-robot races
 (morning, midday, evening), 2,000 sampled sun configurations and the sun/glare
 occlusion check. Overhead captures were inspected at both low-sun extremes;
 reports are in `../marvin-town-planning/quality-daylight`.
+
+### Continuous post-race town exploration
+
+Once every competitor has completed its extra lap, the HUD and toolbar disappear.
+The existing fixed overhead camera remains locked. Departures use different gate
+lanes and approach timing, and keep the ordinary drive, terrain and collision
+simulation. After leaving, robots follow closed town circuits and switch circuits
+on subsequent visits, with different cruising speeds and short pauses. They do
+not park permanently or return control to the player at a final waypoint.
+
+Town routes are prepared during level loading. Navigation includes building
+footprint clearance, gate posts and the open gate leaf. Swept, rounded corners
+and local lookahead steering replace the previous stop/pivot/straight movement.
+Opposing traffic can pull into checked street space; blocked robots can reverse
+briefly using the same physical controls and collision solver. Steering rejoins
+the local route segment after yielding instead of aiming across an inside corner
+at a distant waypoint.
+
+`--postrace-smoke-test DIR` now runs twelve simulated minutes **after** departure
+begins, in addition to the complete race and extra laps. It rejects persistent
+stops, repeated recovery loops, missing tours, lack of late exploration, or a
+minute without moving robots passing near the track. It checks static and robot
+contacts, camera locking, hidden HUD/toolbar, frozen results, pause and reset.
+`MARVIN_SANDSTORM=1` exercises the same run in a storm. Optional
+`MARVIN_ROAM_MOVIE=1` records normal-speed 10 fps excerpts of the first three
+minutes and thirty seconds beginning at minute eleven, using the locked camera.
+The rest of the endurance simulation is accelerated; these are not claims of a
+continuous real-time rendering benchmark.
+
+Final validation: `../marvin-town-planning/roam-release` (clear) and
+`roam-v9-storm` both pass twelve minutes after departure. All four robots complete
+two circuits, visit new two-metre cells in every minute after departure settles,
+and pass near the track throughout. Clear-weather travel is 921–1,264 m per robot,
+with no reverse recoveries; storm travel is 933–1,054 m with 1–4 recoveries. The
+largest measured contact overlap is 0.22 mm (solver tolerance), with no building
+or gate penetration beyond tolerance. HUD, toolbar, camera-input lock, cooldown,
+frozen scores, pause and reset checks pass. All 36 simulation checks also pass.
+
+`--town-benchmark DIR --postrace-roam` advances into town exploration before
+measuring the actual live renderer. The 45-second 1920×1080 release run averages
+59.975 callbacks/s, with one interval over 25 ms, none over 50 ms and CPU update
+p95 of 1.261 ms. Activity Monitor was paused and restored for this measurement.
+These are SceneKit callback timings, not GPU/presentation guarantees. Report:
+`../marvin-town-planning/roam-performance/benchmark.json`.

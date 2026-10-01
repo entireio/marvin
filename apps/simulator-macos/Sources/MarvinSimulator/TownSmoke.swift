@@ -119,7 +119,7 @@ extension AppController {
         bb8Opponent=DirtOpponent(slot:DirtCourse.startingGrid[2],laneOffset:0)
         wallEOpponent=DirtOpponent(slot:DirtCourse.startingGrid[3],laneOffset:-0.65)
         race=DirtRace(startPhase:DirtCourse.startingGrid[0].phase);race.countDown(dt:3)
-        racePhysics=DirtRacePhysics(characters:lineup)
+        racePhysics=DirtRacePhysics(characters:lineup,townRoutes:dirtWorld.escapeRoutes)
         racePhysics.storm=Sandstorm(enabled:weatherOverride ?? false)
         if CommandLine.arguments.contains("--city-roam") {
             simulation=Simulation(dirtTrack:true,dirtStartOffset:DirtCourse.fenceOffset+8.08,dirtStartPhase:CityExit.phase)
@@ -135,6 +135,16 @@ extension AppController {
             let p=DirtCourse.projection(x:175,z:57)
             simulation=Simulation(dirtTrack:true,dirtStartOffset:p.distance,dirtStartPhase:p.phase)
             townBenchmarkRoute=[SIMD2(205,65),SIMD2(178,57)]
+        }
+        if CommandLine.arguments.contains("--postrace-roam") {
+            var roamingFrames=0
+            for _ in 0..<54000 {
+                advanceRacePhysics(DirtOpponent.driveInput(for:simulation),dt:1.0/60,raceDT:1.0/60)
+                if racePhysics.escape.complete { roamingFrames += 1 }
+                if roamingFrames>=60*120 { break }
+            }
+            precondition(racePhysics.escape.complete,"Post-race benchmark did not reach town roaming")
+            updateDepartureHUD()
         }
         updateOpponents()
         // Explicit 960x540 points at 2x backing gives the target 1080p drawable.
@@ -177,7 +187,7 @@ extension AppController {
         let modelsEnd=ProcessInfo.processInfo.systemUptime
         updateRaceWorld(dt:dt)
         let effectsEnd=ProcessInfo.processInfo.systemUptime
-        let aerial=townBenchmarkRoute.isEmpty && !CommandLine.arguments.contains("--benchmark-chase-only") && elapsed.truncatingRemainder(dividingBy:24)>18
+        let aerial = !raceCameraLocked && townBenchmarkRoute.isEmpty && !CommandLine.arguments.contains("--benchmark-chase-only") && elapsed.truncatingRemainder(dividingBy:24)>18
         if aerial {
             world.camera.position=SCNVector3(0,42,-44);world.camera.look(at:SCNVector3(0,0,0),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
         } else { updateCamera(snap:true) }
@@ -196,6 +206,7 @@ extension AppController {
             let cpu=townBenchmarkCPU.sorted()
             report["cpuUpdateP95MS"]=cpu.isEmpty ? 0:cpu[Int(Double(cpu.count-1)*0.95)]*1000
             report["durationSeconds"]=elapsed;report["townEnabled"] = !dirtWorld.town.root.isHidden
+            report["postRaceRoaming"]=racePhysics.escape.active
             report["town"]=dirtWorld.town.statistics
             report["sandstorm"]=racePhysics.storm.enabled
             report["visiblePeople"]=dirtWorld.town.visiblePopulation

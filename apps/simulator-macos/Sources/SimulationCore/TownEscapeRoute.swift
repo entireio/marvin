@@ -5,15 +5,15 @@ import simd
 public struct TownEscapeRoute {
     let city:CityCollisionWorld,origin:SIMD2<Double>
     public init(city:CityCollisionWorld,origin:SIMD2<Double>) { self.city=city;self.origin=origin }
-    public func route(from start:SIMD2<Double>,to goal:SIMD2<Double>)->[SIMD2<Double>]? {
+    public func route(from start:SIMD2<Double>,to goal:SIMD2<Double>,rounded:Bool=false,clearance:Double=0.53,goalTolerance:Double=3,avoiding:[RobotCollisions.Body]=[])->[SIMD2<Double>]? {
         typealias Cell=SIMD2<Int>
         func cell(_ p:SIMD2<Double>)->Cell { let d=(p-origin)*2;return Cell(Int(d.x.rounded()),Int(d.y.rounded())) }
         func point(_ c:Cell)->SIMD2<Double> { origin+SIMD2(Double(c.x),Double(c.y))/2 }
         func free(_ p:SIMD2<Double>)->Bool {
             let projection=DirtCourse.projection(x:p.x,z:p.y)
             guard projection.offset>0,projection.distance>DirtCourse.fenceOffset+0.8 else { return false }
-            let body=RobotCollisions.Body(position:SIMD3(p.x,DirtCourse.height(x:p.x,z:p.y),p.y),profile:.init(mass:18,halfWidth:0.53,halfDepth:0.53,height:1.0,round:true))
-            return city.nearby(body).allSatisfy{RobotCollisions.contact(body,$0)==nil}
+            let body=RobotCollisions.Body(position:SIMD3(p.x,DirtCourse.height(x:p.x,z:p.y),p.y),profile:.init(mass:18,halfWidth:clearance,halfDepth:clearance,height:1.0,round:true))
+            return (city.nearby(body)+avoiding).allSatisfy{RobotCollisions.contact(body,$0)==nil}
         }
         let source=cell(start),target=cell(goal)
         var parents:[Cell:Cell]=[source:source],queue=[source],head=0,best=source,bestDistance=Double.infinity,cache:[Cell:Bool]=[:]
@@ -30,7 +30,7 @@ public struct TownEscapeRoute {
                 if available { parents[next]=c;queue.append(next) }
             }
         }
-        guard bestDistance<3 else { return nil }
+        guard bestDistance<goalTolerance else { print("Town route nearest reachable point is \(bestDistance)m from \(goal)");return nil }
         var path=[point(best)],cursor=best
         while cursor != source { cursor=parents[cursor]!;path.append(point(cursor)) }
         path.reverse()
@@ -44,7 +44,20 @@ public struct TownEscapeRoute {
             for j in (i+1)..<path.count { if clear(result.last!,path[j]) { next=j } else { break } }
             result.append(path[next]);i=next
         }
-        return result
+        guard rounded,result.count>2 else { return result }
+        var rounded=[result[0]]
+        for k in 1..<(result.count-1) {
+            let a=result[k-1],b=result[k],c=result[k+1]
+            let trim=min(1.4,min(simd_distance(a,b),simd_distance(b,c))*0.35)
+            let entry=b+simd_normalize(a-b)*trim,exit=b+simd_normalize(c-b)*trim
+            let curve=(0...8).map { step -> SIMD2<Double> in
+                let t=Double(step)/8;return entry*(1-t)*(1-t)+b*2*t*(1-t)+exit*t*t
+            }
+            if zip(curve,curve.dropFirst()).allSatisfy({clear($0.0,$0.1)}) { rounded += curve }
+            else { rounded.append(b) }
+        }
+        rounded.append(result.last!)
+        return zip(rounded,rounded.dropFirst()).allSatisfy({clear($0.0,$0.1)}) ? rounded:result
     }
 }
 

@@ -364,6 +364,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
+            updateDepartureHUD()
             raceHUD.escaping = racePhysics.escape.active;raceHUD.escapeComplete = racePhysics.escape.complete
             updateOpponents()
             raceHUD.race = race; raceHUD.scores = scores; raceHUD.paused = simulation.paused
@@ -529,6 +530,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil; dirtOutro = nil
         raceHUD.escaping=false;raceHUD.escapeComplete=false
+        if isDirtTrack { raceHUD.isHidden=false;window.toolbar?.isVisible=true }
         simulation.reset(); updatePlayerModel()
         if isDirtTrack {
             var random = SystemRandomNumberGenerator()
@@ -554,6 +556,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         guard inSandbox, dirtIntro == nil, !raceCameraLocked else { return }
         cameraMode = (cameraMode+1)%3; updateCamera(snap: true)
         window.makeFirstResponder(view)
+    }
+    func updateDepartureHUD() {
+        guard isDirtTrack else { return }
+        raceHUD.isHidden=racePhysics.escape.active
+        hud.isHidden=true
+        window.toolbar?.isVisible = !racePhysics.escape.active
     }
     @objc func toggleHelp(_ sender: Any?) { if isDirtTrack { raceHUD.helpVisible.toggle() } else { hud.helpVisible.toggle() } }
     func applicationWillResignActive(_ notification: Notification) {
