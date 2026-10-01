@@ -102,6 +102,13 @@ static void event(void *arg,esp_event_base_t base,int32_t id,void *data){
  }
  if(id!=WEBSOCKET_EVENT_DATA||atomic_load(&failed))return;
  esp_websocket_event_data_t *e=data;
+ if(e->op_code==0x08){
+  /* esp_websocket_client reports the close control frame as DATA before its
+   * CLOSED event. Capture the RFC 6455 status here so a 4401 revocation cannot
+   * race ahead of the queued JSON error and survive the next power cycle. */
+  if(e->data_len>=2&&((((uint16_t)(uint8_t)e->data_ptr[0]<<8)|(uint8_t)e->data_ptr[1])==4401))atomic_store(&revocation_requested,true);
+  fail(1);atomic_store(&online,false);return;
+ }
  marvin_wire_result_t result=marvin_wire_append(&wire,e->op_code,e->fin,e->payload_offset,e->payload_len,e->data_ptr,e->data_len);
  if(result==MARVIN_WIRE_ERROR)fail(2);
  if(result==MARVIN_WIRE_COMPLETE){atomic_fetch_add(&rx_frames,1);if(wire.message.binary)atomic_fetch_add(&rx_binary,1);if(xQueueSend(incoming,&wire.message,pdMS_TO_TICKS(100))!=pdTRUE)fail(3);}
