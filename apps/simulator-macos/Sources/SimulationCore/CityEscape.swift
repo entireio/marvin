@@ -44,10 +44,16 @@ public enum CityExit {
     public static func rampHeight(_ p:SIMD2<Double>)->Double? {
         let q=local(p)
         guard abs(q.x)<=4.001,q.y > -2.5,q.y<run else { return nil }
-        let start=DirtCourse.point(DirtCourse.projection(x:p.x,z:p.y).phase,offset:DirtCourse.fenceOffset)
-        let base=DirtCourse.elevation(DirtCourse.phase(x:start.x,z:start.z),offset:DirtCourse.width)
-        let t=max(0,min(1,q.y/run)),s=max(0,min(1,(abs(q.x)-width/2)/(4-width/2)))
-        return (base+0.025)*(1-t*t*(3-2*t))*(1-s*s*(3-2*s))-0.025
+        // A level sill supports the straight gate; the original bank varied
+        // along its length, leaving a triangular opening beneath the leaf.
+        let t=max(0,min(1,(q.y-0.2)/(run-0.2)))
+        let s=max(0,min(1,(abs(q.x)-(width/2+0.1))/(4-width/2-0.1)))
+        let across=1-s*s*(3-2*s)
+        let approach=max(0,min(1,(q.y+2.5)/2.3))
+        let projection=DirtCourse.projection(x:p.x,z:p.y)
+        let bank=DirtCourse.elevation(projection.phase,offset:max(-DirtCourse.width,min(DirtCourse.width,projection.offset)))
+        if q.y<0 { return (bank+0.025+max(0,floor-bank)*approach*approach*(3-2*approach))*across-0.025 }
+        return (floor+0.025)*(1-t*t*(3-2*t))*across-0.025
     }
 }
 

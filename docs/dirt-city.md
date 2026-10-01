@@ -1057,3 +1057,20 @@ in `../marvin-town-planning/dust-lift-final`; storm captures are in
 `../marvin-town-planning/dust-lift-storm`.
 
 Final 45-second 1080p timing: 59.975 SceneKit callbacks/s, 1 intervals over 25 ms, 0 over 50 ms; CPU update p95 1.19 ms. These measure callbacks, not GPU completion or display presentation. Activity Monitor was paused and restored. Report: `../marvin-town-planning/dust-lift-performance`.
+
+### Level city-gate threshold
+
+Raised the banked approach to a level sill across the closed gate's full width,
+retaining its small uniform operating clearance. A 2.3 m trackward blend feeds
+the threshold; the outside ramp holds that level for 20 cm before smoothly
+falling to town soil over the existing 5.5 m run. Lateral shoulders taper into
+the ground. Terrain rendering, tread placement and chassis contacts all use the
+shared height function, including a short continuous blend at the lane edge.
+
+Validation: packaged macOS build and all 36 simulation checks pass. New samples
+across the complete gate width/depth stay within 3 mm of the sill; existing
+ramp grade, gate-sweep clearance, closed-gate blocking and four-chassis
+bidirectional crossing checks pass. Native gate opening, town roaming, return,
+closing/reset, rival containment and obstacle collision checks pass with zero
+measured solid penetration. Closed/open screenshots were inspected in
+`../marvin-town-planning/gate-threshold-release`.

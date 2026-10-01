@@ -8,6 +8,13 @@ extension SimulationTests {
         for side in [-1.0,1.0] {
             require(CityExit.wallTop(CityExit.point(side*2,0))>=CityExit.floor+CityExit.gateHeight+0.035-0.00001)
         }
+        // The straight leaf needs a level sill across its full width and depth.
+        for along in stride(from:-CityExit.width/2,through:CityExit.width/2,by:0.025) {
+            for out in [-0.055,0,0.055] {
+                let p=CityExit.point(along,out)
+                near(DirtCourse.height(x:p.x,z:p.y),CityExit.floor,accuracy:0.003)
+            }
+        }
         var gate=CityGate()
         gate.wantsOpen=true
         var previousSpeed=0.0

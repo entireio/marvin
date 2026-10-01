@@ -171,19 +171,18 @@ public enum DirtCourse {
         return table+rollers+rhythm+hill+whoops+terrain+bank
     }
     public static func surfaceHeight(_ phase: Double, offset: Double) -> Double {
-        let distance = abs(offset)
-        if offset>width {
+        let base=courseHeight(phase,offset:offset)
+        if offset>0 {
             let p=point(phase,offset:offset)
             if let ramp=CityExit.rampHeight(SIMD2(p.x,p.z)) {
-                // Feather the flattened threshold into the racing lane; an
-                // override at the road edge would introduce a vertical step.
-                let t=max(0,min(1,(offset-width)/(fenceOffset-width)))
-                let blend=t*t*(3-2*t)
-                let base=elevation(phase,offset:width)
-                let berm=offset<=width+bermWidth ? sin((offset-width)/bermWidth * .pi)*0.10:0
-                return (base+berm)*(1-blend)+ramp*blend
+                let t=max(0,min(1,(offset-width)/0.25)),blend=t*t*(3-2*t)
+                return max(base,ramp)*(1-blend)+ramp*blend
             }
         }
+        return base
+    }
+    private static func courseHeight(_ phase:Double,offset:Double)->Double {
+        let distance=abs(offset)
         let base = elevation(phase,offset:max(-width,min(width,offset)))
         if distance <= width { return base }
         if distance <= width+bermWidth {
