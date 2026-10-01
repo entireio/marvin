@@ -9,6 +9,8 @@ final class RaceHUD: NSView {
     var position: Int { 1 + opponents.filter { $0.playerPosition(race) == 2 }.count }
     var race = DirtRace(), scores: [DirtScore] = []
     var x = 0.0, z = -10.0, heading = 0.0
+    var stormSelected = false
+    var stormWarningVisible: Bool { stormSelected && race.countdown > 0 && !paused && !escaping && !race.finished }
     var introducing = false
     var escaping = false, escapeComplete = false
     var paused = false, helpVisible = true
@@ -30,6 +32,13 @@ final class RaceHUD: NSView {
     override func draw(_ rect:NSRect) {
         if escaping && !paused { drawTownDeparture(); return }
         if race.finished && !paused { drawResults(); return }
+        if stormWarningVisible && introducing {
+            let w=min(CGFloat(420),bounds.width-44),h:CGFloat=88
+            let x=(bounds.width-w)/2,y=(bounds.height-h)/2
+            panel(x,y,w,h)
+            label("A storm is coming...",in:NSRect(x:x+20,y:y+28,width:w-40,height:34),size:26,weight:.semibold,tint:0xffd78d,alignment:.center)
+            return
+        }
         let races = [race]+opponents.map { $0.race }
         let inset:CGFloat = 18, rowsY:CGFloat = 242, rowSpacing:CGFloat = 22
         let rowHeight = ceil(("Marvin" as NSString).size(withAttributes:textAttributes(13)).height)
@@ -149,7 +158,7 @@ final class RaceHUD: NSView {
         panel(x,y,w,h)
         label(paused ? "TAKE A BREATHER" : "DIRT TRACK · 3 LAPS",in:NSRect(x:x+24,y:y+26,width:w-48,height:22),size:12,weight:.semibold,tint:0xffd78d,alignment:.center)
         label(paused ? "Paused" : "\(Int(ceil(race.countdown)))",in:NSRect(x:x+24,y:y+58,width:w-48,height:100),size:paused ? 44 : 80,weight:.bold,alignment:.center)
-        label(paused ? "The race is waiting for you." : "Get ready to race",in:NSRect(x:x+24,y:y+h-106,width:w-48,height:25),size:17,alignment:.center)
+        label(paused ? "The race is waiting for you." : (stormWarningVisible ? "A storm is coming...":"Get ready to race"),in:NSRect(x:x+24,y:y+h-106,width:w-48,height:25),size:17,alignment:.center)
         rule(NSRect(x:x+28,y:y+h-68,width:w-56,height:1))
         label(paused ? "P / Esc  Resume    ·    ⌘R  Restart" : "WASD / ↑↓←→  Drive    ·    Shift  Boost",in:NSRect(x:x+16,y:y+h-46,width:w-32,height:24),size:13,weight:.medium,tint:0xffd78d,alignment:.center)
     }

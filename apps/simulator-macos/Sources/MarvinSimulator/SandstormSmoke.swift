@@ -28,6 +28,25 @@ extension AppController {
                 if i==0 || i==1 {
                     updateOpponents();updateRaceWorld(dt:1.0/60);updateCamera(snap:true)
                     try saveTownFrame(i==0 ? "reset-storm":"reset-clear",at:directory)
+                    raceHUD.race=race;raceHUD.paused=false
+                    for intro in [true,false] {
+                        raceHUD.introducing=intro
+                        let image=NSImage(size:raceHUD.bounds.size)
+                        image.lockFocus();view.snapshot().draw(in:raceHUD.bounds)
+                        NSGraphicsContext.saveGraphicsState()
+                        let transform=NSAffineTransform()
+                        transform.translateX(by:0,yBy:raceHUD.bounds.height);transform.scaleX(by:1,yBy:-1);transform.concat()
+                        NSGraphicsContext.current=NSGraphicsContext(cgContext:NSGraphicsContext.current!.cgContext,flipped:true)
+                        raceHUD.draw(raceHUD.bounds)
+                        NSGraphicsContext.restoreGraphicsState();image.unlockFocus()
+                        if let tiff=image.tiffRepresentation,let png=NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) {
+                            try png.write(to:directory.appendingPathComponent("overlay-\(storm ? "storm":"clear")-\(intro ? "intro":"countdown").png"))
+                        }
+                        synchronized = synchronized && raceHUD.stormWarningVisible==storm
+                    }
+                    raceHUD.race.countDown(dt:3)
+                    synchronized = synchronized && !raceHUD.stormWarningVisible
+
                 }
             }
             let report:[String:Any]=["passed":handled && synchronized,"commandRHandled":handled,

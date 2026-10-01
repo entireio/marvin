@@ -559,6 +559,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup,townRoutes:dirtWorld.escapeRoutes); dirtWorld.updateGate(racePhysics.gate); scoreSaved = false
             dirtWorld.reset(); dirtWorld.sky.apply(.random())
             racePhysics.storm=Sandstorm(enabled:weatherOverride ?? Sandstorm.drawForRace())
+            raceHUD.stormSelected=racePhysics.storm.enabled
             window.title=racePhysics.storm.enabled ? "Marvin · Dirt Track · Sandstorm":"Marvin · Dirt Track"
             dirtWorld.configureStorm(racePhysics.storm)
             cameraMode = 0; cameraDistance = 4.5

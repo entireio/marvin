@@ -1374,3 +1374,10 @@ was necessary: each reset has an independent 10% chance (a 20-reset dry streak
 has probability 0.9^20, approximately 12.2%). Smoke-test launches intentionally
 force weather; ordinary app launches leave `weatherOverride` nil. This test
 explicitly clears that override before testing random resets.
+
+Storm races show “A storm is coming...” in a centered amber pre-race overlay
+during the camera introduction, then in the countdown card. The message is
+removed at the start and is absent for clear races, pause and results. Cmd-R
+updates the warning from the newly selected weather. The native weather-reset
+check captures both weather states during introduction/countdown and verifies
+that the warning becomes inactive when the countdown reaches zero.
