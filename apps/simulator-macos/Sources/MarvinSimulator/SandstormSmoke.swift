@@ -4,6 +4,39 @@ import SimulationCore
 import simd
 
 extension AppController {
+    /// Exercise the real Command-R menu dispatch, not a direct reset call.
+    func checkWeatherReset(at directory:URL)->Bool {
+        do {
+            try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+            weatherOverride=nil;defer { weatherOverride=nil }
+            startDirtTrack();dirtIntro=nil
+            var draws=[Bool](),handled=true,synchronized=true
+            for i in 0..<102 {
+                // First verify both outcomes deterministically, then use the
+                // production system RNG for 100 independent race restarts.
+                weatherOverride=i<2 ? i==0:nil
+                let event=NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:.command,
+                    timestamp:ProcessInfo.processInfo.systemUptime,windowNumber:window.windowNumber,
+                    context:nil,characters:"r",charactersIgnoringModifiers:"r",isARepeat:false,keyCode:15)!
+                handled = (NSApp.mainMenu?.performKeyEquivalent(with:event) ?? false) && handled
+                let storm=racePhysics.storm.enabled
+                synchronized = synchronized && dirtWorld.storm.enabled==storm
+                    && window.title.contains("Sandstorm")==storm
+                    && (storm ? dirtWorld.town.visiblePopulation<20:dirtWorld.town.visiblePopulation>20)
+                if i<2 { synchronized = synchronized && storm==(i==0) }
+                else { draws.append(storm) }
+                if i==0 || i==1 {
+                    updateOpponents();updateRaceWorld(dt:1.0/60);updateCamera(snap:true)
+                    try saveTownFrame(i==0 ? "reset-storm":"reset-clear",at:directory)
+                }
+            }
+            let report:[String:Any]=["passed":handled && synchronized,"commandRHandled":handled,
+                "weatherSynchronized":synchronized,"randomResets":draws.count,
+                "storms":draws.filter{$0}.count,"draws":draws]
+            try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("weather-reset.json"))
+            print(report);return handled && synchronized
+        } catch { print(error);return false }
+    }
     func checkSandstorm(at directory:URL)->Bool {
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)

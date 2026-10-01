@@ -1360,3 +1360,17 @@ one interval over 25 ms, none over 50 ms, CPU update p95 2.003 ms. Activity
 Monitor was paused and restored; no builds or other simulations ran during this
 measurement. These are renderer callback intervals, not GPU utilization or
 presentation timing, and this workload is not the earlier clear postrace one.
+
+### Command-R weather verification
+
+`--weather-reset-test DIR` dispatches actual Command-R key equivalents through
+AppKit's main menu. It verifies forced storm and clear outcomes, including the
+rendered-world weather, population and window title, then removes the test-only
+weather override and performs 100 independent production-RNG resets. The run
+in `weather-command-r` handled all shortcuts and produced 14 storms; both
+weather screenshots were inspected. The seeded 10,000-draw core check produced
+1,006 storms and all 37 core checks passed. No production probability change
+was necessary: each reset has an independent 10% chance (a 20-reset dry streak
+has probability 0.9^20, approximately 12.2%). Smoke-test launches intentionally
+force weather; ordinary app launches leave `weatherOverride` nil. This test
+explicitly clears that override before testing random resets.
