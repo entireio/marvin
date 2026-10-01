@@ -53,7 +53,7 @@ extension AppController {
             let target=SCNVector3(0,1,-15), blocked=SCNVector3(0,1,-22)
             let safe=dirtWorld.town.clearCamera(from:target,to:blocked)
             let cameraPassed=safe.z>blocked.z+1 && safe.z<target.z
-            let crowd=dirtWorld.town.root.childNodes.filter{$0.name=="Animated town spectator"}
+            let crowd=dirtWorld.town.residents?.walkers.map{$0.node} ?? []
             let before=crowd.map{$0.simdTransform}
             dirtWorld.town.update(dt:0,camera:world.camera.position,player:.zero)
             let pausePassed=zip(before,crowd).allSatisfy{$0.0==$0.1.simdTransform}
@@ -61,7 +61,9 @@ extension AppController {
             for _ in 0..<90 {
                 advanceRacePhysics(DirtOpponent.driveInput(for:simulation),dt:1.0/60,raceDT:1.0/60)
                 updateOpponents();updateRaceWorld(dt:1.0/60)
-                dirtWorld.town.update(dt:1.0/60,camera:SCNVector3(0,5,-12),player:SIMD2(simulation.x,simulation.z))
+                dirtWorld.town.update(dt:1.0/60,camera:SCNVector3(0,5,-12),player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
+                RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
+            })
             }
             let cameras:[(String,SCNVector3,SCNVector3)] = [
                 ("town-overview",SCNVector3(0,46,-52),SCNVector3(0,0,0)),
@@ -193,7 +195,9 @@ extension AppController {
         } else { updateCamera(snap:true) }
         let cameraEnd=ProcessInfo.processInfo.systemUptime
         if !dirtWorld.town.root.isHidden {
-            dirtWorld.town.update(dt:dt,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z))
+            dirtWorld.town.update(dt:dt,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
+                RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
+            })
         }
         let finish=ProcessInfo.processInfo.systemUptime
         townBenchmarkCPU.append(finish-begin)

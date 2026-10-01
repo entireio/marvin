@@ -1195,3 +1195,51 @@ measuring the actual live renderer. The 45-second 1920×1080 release run average
 p95 of 1.261 ms. Activity Monitor was paused and restored for this measurement.
 These are SceneKit callback timings, not GPU/presentation guarantees. Report:
 `../marvin-town-planning/roam-performance/benchmark.json`.
+
+### Animated spectators and residents
+
+`CitizenMotion` keeps spectator head turns and intermittent, independently phased
+one-arm waves inside the existing crowd batches. Joint masks follow the authored
+sleeve/hand mesh islands at every LOD, so a seated skirt cannot be mistaken for an
+arm. Extra texture-coordinate channels carry each person's bind frame and joint
+weights (SceneKit supports [multiple texture-coordinate sources](https://developer.apple.com/documentation/SceneKit/SCNGeometrySource/Semantic-swift.struct/texcoord)).
+The shader also updates normals; conservative geometry bounds include gestures.
+Only walking residents require separate nodes/material uniforms. Gait phase is
+based on distance travelled, and CPU evaluation of the same sole transforms
+keeps the lowest boot on the street or doorway threshold.
+
+Ten residents use twenty cached routes between thirteen physical house entrances.
+The selected facades contain actual openings and recessed vestibules, with
+sliding door leaves whose collision proxies follow their rendered positions.
+Residents appear behind closed doors, wait for clearance before leaving, and
+remain visible inside until the door closes. Schedules vary their destination,
+pace and time indoors. Narrow routes are reserved before departure to avoid
+opposing pedestrian queues; approaching robots trigger collision-checked
+step-aside motion where space permits. Doors, residents, scenery and robots
+participate in collision checks. Moving proxies are attached to the immutable
+city spatial index without rebuilding it every frame. Most residents shelter
+indoors during a storm; spectators still use the existing reduced storm crowd.
+
+`--people-smoke-test DIR` simulates ten minutes of repeated trips, checking every
+resident makes progress, house entries, overlaps, pause, storm shelter and reset.
+`MARVIN_PEOPLE_MOVIE=1` also records normal-speed close-ups of walking/doorways,
+spectator reactions and an overhead view. The twelve-minute post-race test now
+updates residents alongside all four robots and checks both populations remain
+active, in addition to its existing camera, HUD and route-progress assertions.
+
+Validation for this change: all 36 SimulationChecks and the bundled crowd asset
+checks pass. The isolated ten-minute run (`../marvin-town-planning/people-release`)
+completed 37 entries/39 exits, with every resident visiting another house and
+zero measured pedestrian penetration. The mixed twelve-minute clear run
+(`people-roaming-v3`) completed 52 entries and two circuits per robot; the storm
+run (`people-roaming-storm`) completed eleven entries for its single outdoor
+resident and two circuits per robot. Both preserve the fixed camera and hidden
+HUD, pass collision tolerances, and keep residents moving.
+
+The 45-second 1920×1080 post-race rendering benchmark (`people-performance`)
+measured 59.976 SceneKit callbacks/s, one interval over 25 ms, none over 50 ms,
+and CPU update p95 of 1.397 ms. The preceding implementation measured 59.975
+callbacks/s and CPU p95 of 1.261 ms with the same benchmark setup. Activity
+Monitor was paused and restored; this is callback cadence, not a GPU timestamp
+or a guarantee about every displayed frame. No per-frame city-index rebuilds or
+route searches are introduced.

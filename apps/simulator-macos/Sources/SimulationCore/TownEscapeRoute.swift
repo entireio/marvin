@@ -5,10 +5,10 @@ import simd
 public struct TownEscapeRoute {
     let city:CityCollisionWorld,origin:SIMD2<Double>
     public init(city:CityCollisionWorld,origin:SIMD2<Double>) { self.city=city;self.origin=origin }
-    public func route(from start:SIMD2<Double>,to goal:SIMD2<Double>,rounded:Bool=false,clearance:Double=0.53,goalTolerance:Double=3,avoiding:[RobotCollisions.Body]=[])->[SIMD2<Double>]? {
+    public func route(from start:SIMD2<Double>,to goal:SIMD2<Double>,rounded:Bool=false,clearance:Double=0.53,goalTolerance:Double=3,avoiding:[RobotCollisions.Body]=[],cellSize:Double=0.5)->[SIMD2<Double>]? {
         typealias Cell=SIMD2<Int>
-        func cell(_ p:SIMD2<Double>)->Cell { let d=(p-origin)*2;return Cell(Int(d.x.rounded()),Int(d.y.rounded())) }
-        func point(_ c:Cell)->SIMD2<Double> { origin+SIMD2(Double(c.x),Double(c.y))/2 }
+        func cell(_ p:SIMD2<Double>)->Cell { let d=(p-origin)/cellSize;return Cell(Int(d.x.rounded()),Int(d.y.rounded())) }
+        func point(_ c:Cell)->SIMD2<Double> { origin+SIMD2(Double(c.x),Double(c.y))*cellSize }
         func free(_ p:SIMD2<Double>)->Bool {
             let projection=DirtCourse.projection(x:p.x,z:p.y)
             guard projection.offset>0,projection.distance>DirtCourse.fenceOffset+0.8 else { return false }
@@ -25,7 +25,7 @@ public struct TownEscapeRoute {
             if c==target { break }
             for d in directions {
                 let next=c&+d
-                guard abs(next.x)<100,abs(next.y)<100,parents[next]==nil else { continue }
+                guard abs(next.x)<Int(50/cellSize),abs(next.y)<Int(50/cellSize),parents[next]==nil else { continue }
                 let available=cache[next] ?? free(point(next));cache[next]=available
                 if available { parents[next]=c;queue.append(next) }
             }

@@ -97,6 +97,10 @@ public struct CityGate:Sendable {
 public struct CityCollisionWorld:Sendable {
     public let bodies:[RobotCollisions.Body]
     private var buckets:[SIMD2<Int>:[Int]]=[:]
+    private var dynamicBodies:[RobotCollisions.Body]=[]
+    public func withDynamicBodies(_ bodies:[RobotCollisions.Body])->Self {
+        var copy=self;copy.dynamicBodies=bodies;return copy
+    }
     public init(_ bodies:[RobotCollisions.Body]) {
         self.bodies=bodies
         for (i,b) in bodies.enumerated() {
@@ -112,9 +116,12 @@ public struct CityCollisionWorld:Sendable {
         for x in Int(floor((body.position.x-r)/8))...Int(floor((body.position.x+r)/8)) {
             for z in Int(floor((body.position.z-r)/8))...Int(floor((body.position.z+r)/8)) { for i in buckets[SIMD2(x,z)] ?? [] { ids.insert(i) } }
         }
-        return ids.sorted().compactMap { i in
+        let fixed=ids.sorted().compactMap { i -> RobotCollisions.Body? in
             let b=bodies[i],reach=r+hypot(b.profile.halfWidth,b.profile.halfDepth)
             return hypot(body.position.x-b.position.x,body.position.z-b.position.z)<reach ? b:nil
+        }
+        return fixed+dynamicBodies.filter { b in
+            simd_distance(body.center,b.center)<r+hypot(b.profile.halfWidth,b.profile.halfDepth)
         }
     }
 }

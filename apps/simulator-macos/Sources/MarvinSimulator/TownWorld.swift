@@ -12,24 +12,24 @@ final class TownWorld {
     private var absentPeople=Set<Int>()
     private lazy var clearCollisions=CityCollisionWorld(collisionBuilder.bodies)
     private lazy var stormCollisions=CityCollisionWorld(collisionBuilder.bodies.enumerated().filter{!absentPeople.contains($0.offset)}.map{$0.element})
-    var collisionWorld:CityCollisionWorld { stormActive ? stormCollisions:clearCollisions }
-    var visiblePopulation:Int { stormActive ? crowd.stormPopulation:population }
-    func setStorm(_ active:Bool) { stormActive=active;crowd.setStorm(active) }
+    var collisionWorld:CityCollisionWorld { (stormActive ? stormCollisions:clearCollisions).withDynamicBodies(residents?.bodies ?? []) }
+    private(set) var doorways:[TownDoorway]=[]
+    private(set) var residents:TownResidents?
+    private var walkingCount=0
+    var visiblePopulation:Int { (stormActive ? crowd.stormPopulation:population-walkingCount)+(residents?.visible ?? 0) }
+    func setStorm(_ active:Bool) { stormActive=active;crowd.setStorm(active);residents?.setStorm(active) }
     private let surface = CityMaterials.plaster
     private let crowd = TownCrowd()
     private let signs = TownSigns()
     private var storefrontSigns=0
     private var cells: [String: TownCell] = [:]
-    private var people: [TownPerson] = []
     private(set) var buildings = 0
     private(set) var population = 0
     private(set) var triangleCount = 0
     private(set) var coarseTriangles = 0
-    private(set) var animatedCount = 0
     private(set) var lots: [TownLot] = []
     private var cameraBounds: [(SIMD3<Double>,SIMD3<Double>)] = []
     private var clock = 0.0
-    private var visibilityClock = -1.0
     private let sand: UInt32 = 0xc5a174, cream: UInt32 = 0xe6c89c
     private let rust: UInt32 = 0xa25a40, teal: UInt32 = 0x427c80
     private let dark: UInt32 = 0x3e4545, trim: UInt32 = 0x9d805e
@@ -42,10 +42,6 @@ final class TownWorld {
         let near = TownMesh(), far = TownMesh()
         let origin: SIMD3<Float>
         init(_ x: Float, _ z: Float) { origin = SIMD3(x, 0, z) }
-    }
-    private struct TownPerson {
-        let node: SCNNode, origin: SCNVector3
-        let phase: Double
     }
 
     init(progress:((Double,String)->Void)? = nil) {
@@ -68,6 +64,10 @@ final class TownWorld {
         buildReferenceDetails()
         progress?(0.64,"Placing signs")
         buildWayfinding()
+        progress?(0.66,"Connecting residents to their homes")
+        residents=TownResidents(doors:doorways,city:clearCollisions,crowd:crowd,root:root,count:walkingCount)
+        population -= walkingCount-(residents?.walkers.count ?? 0)
+        walkingCount=residents?.walkers.count ?? 0
         crowd.finish(into:root)
         let keys=cells.keys.sorted()
         for (index,key) in keys.enumerated() {
@@ -253,7 +253,7 @@ final class TownWorld {
             for seat in 0..<22 where seat != 10 && seat != 11 && (seat*7+row*11)%13>1 {
                 let x = -5.7+Double(seat)*0.54+sin(Double(seat*17+row))*0.035
                 let turn=sin(Double(seat*7+row*13))*0.23
-                citizen(x,z+rz+cos(Double(seat*11))*0.035,y:y+0.12,yaw:turn,index:row*22+seat,seated:true,animated:row == 0 && seat%4 == 0)
+                citizen(x,z+rz+cos(Double(seat*11))*0.035,y:y+0.12,yaw:turn,index:row*22+seat,seated:true)
             }
         }
         // Central aisle and accessible-looking side stairs, not a solid slab.
@@ -366,6 +366,7 @@ final class TownWorld {
         let ink=colors[(index*7+index/11)%colors.count]
         let roof:UInt32=0x9e8970
         let style=(index*13+index/7)%9
+        let entrance=near && max(abs(x),abs(z))<43 && (style==3 || style==4 || style==7) && h*0.6>1.50 && doorways.count<18
         // Ground contact is baked into opaque strips, including far districts.
         p.box(0,-0.008,0,w+0.14,0.02,d+0.14,0x756c5f)
         if style<3 {
@@ -377,7 +378,8 @@ final class TownWorld {
             if style==1 { p.dome(w*0.25,h*0.64,d*0.1,w*0.22,w*0.15,w*0.22,ink,sides:near ? 16:10) }
         } else if style<5 {
             // Connected stepped roofscape with recessed terraces and parapets.
-            p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near)
+            if entrance { p.residentHouse(w,h*0.60,d,ink) }
+            else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near) }
             p.adobe(-w*0.18,h*0.78,-d*0.16,w*0.61,h*0.36,d*0.67,ink,simple:!near)
             p.box(w*0.23,h*0.606,d*0.16,w*0.47,0.025,d*0.58,roof)
             p.box(w*0.47,h*0.65,0,w*0.05,0.26,d,ink)
@@ -398,7 +400,8 @@ final class TownWorld {
             p.canopy(w*0.05,d*0.21,w*0.57,d*0.41,h*0.59,0.25,0x87725c)
         } else if style==7 {
             // Industrial block: vaulted hall, sunken rooftop machinery enclosure.
-            p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near)
+            if entrance { p.residentHouse(w,h*0.60,d,ink) }
+            else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near) }
             p.dome(-w*0.2,h*0.60,0,w*0.28,w*0.27,d*0.45,ink,sides:near ? 16:10)
             p.box(w*0.25,h*0.605,0,w*0.40,0.025,d*0.7,0x665c50)
             for k in 0..<3 { p.box(w*0.25,h*0.71,-d*0.23+Double(k)*d*0.23,w*0.29,0.35,0.17,roof,detail:near) }
@@ -421,7 +424,12 @@ final class TownWorld {
         for side in [-1.0,1] {
             let face=(style==8 && side>0 ? d*0.4 : side*d/2)+side*0.018
             let doorX = style==6 ? -w*0.34 : -w*0.16
-            p.door(doorX,face,0.70,min(1.4,h*0.57),0x3d352e,ink,side:side)
+            if entrance && side>0 {
+                let center=SIMD2(x+doorX*cos(yaw)+face*sin(yaw),z-doorX*sin(yaw)+face*cos(yaw))
+                doorways.append(TownDoorway(center:center,yaw:yaw,root:root))
+                for side in [-1.0,1.0] { p.box(doorX+side*0.5,0.68,face,0.12,1.36,0.16,ink) }
+                p.box(doorX,1.36,face,1.12,0.14,0.16,ink)
+            } else { p.door(doorX,face,0.70,min(1.4,h*0.57),0x3d352e,ink,side:side) }
             if side>0 && max(abs(x),abs(z))<36 && index%7==0 && storefrontSigns<8 {
                 let title=["MACHINE WORKS","CANTINA","OFFWORLD GOODS","REACTOR SUPPLY"][storefrontSigns%4]
                 let sy=min(h-0.22,min(1.4,h*0.57)+0.43)
@@ -433,7 +441,7 @@ final class TownWorld {
                             accent:storefrontSigns%2==0 ? rust:teal,into:root)
                 storefrontSigns += 1
             }
-            for k in 0..<2 {
+            for k in 0..<2 where !(entrance && side>0) {
                 let xx = -w*0.32+Double(k)*w*0.55
                 p.box(xx,h*0.41,face,0.24,0.57,0.035,0x39332c,detail:true)
                 p.box(xx,h*0.41-0.27,face+side*0.045,0.30,0.075,0.12,roof,detail:true)
@@ -649,7 +657,7 @@ final class TownWorld {
         for (i,lot) in lots.enumerated() where i%3 == 0 && max(abs(lot.x),abs(lot.z))<47 {
             let z=lot.z+lot.depth/2+0.25
             if DirtCourse.projection(x:lot.x,z:z).distance > 3.5 {
-                citizen(lot.x,z,y:0.03,yaw:Double(i),index:i+200,seated:false,animated:i%12 == 0)
+                citizen(lot.x,z,y:0.03,yaw:Double(i),index:i+200,seated:false)
                 if i%4 == 0 { citizen(lot.x+0.50,z+0.18,y:0.03,yaw:Double(i)+1,index:i+210,seated:false) }
             }
         }
@@ -657,7 +665,7 @@ final class TownWorld {
             let group=i/3,member=i%3,angle=Double(member)*2.1+Double(group)*0.6
             let x = -8.3+Double(group%6)*3.2+cos(angle)*0.42
             let z=finishZ-8.0-Double(group/6)*1.25+sin(angle)*0.42
-            citizen(x,z,y:0.04,yaw:-angle-Double.pi/2,index:i+400,seated:false,animated:i%9 == 0,walking:i%9 == 0)
+            citizen(x,z,y:0.04,yaw:-angle-Double.pi/2,index:i+400,seated:false,walking:i%9 == 0)
         }
         // Side terrace: civic spectators overlooking the northern sweeping turn.
         let p=paint(3,22)
@@ -703,7 +711,7 @@ final class TownWorld {
                     let center=street.path[nearest]+curvedNormal*((k%2==0 ? 1.0:-1.0)*(street.width/2-0.32))
                     guard max(abs(center.x),abs(center.y))<52 else { continue }
                     let index=2000+roadIndex*100+i*13+k
-                    citizen(center.x,center.y,y:0.02,yaw:atan2(tangent.x,tangent.y),index:index,seated:false)
+                    citizen(center.x,center.y,y:0.02,yaw:atan2(tangent.x,tangent.y),index:index,seated:false,walking:k%2==0)
                     if k%4==0 { citizen(center.x+normal.x*0.40,center.y+normal.y*0.40,y:0.02,yaw:1.3,index:index+17,seated:false) }
                 }
             }
@@ -733,21 +741,15 @@ final class TownWorld {
         }
     }
 
-    private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,animated:Bool=false,walking:Bool=false) {
+    private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,walking:Bool=false) {
         population += 1
+        if walking && walkingCount<18 { walkingCount += 1;return }
         let projection=DirtCourse.projection(x:x,z:z)
         if projection.offset>0 && projection.distance>DirtCourse.fenceOffset {
             if !TownCrowd.staysOutside(x:x,z:z,index:index) { absentPeople.insert(collisionBuilder.bodies.count) }
             collisionBuilder.bodies.append(.init(position:SIMD3(x,y,z),heading:yaw,profile:.init(mass:70,halfWidth:0.20,halfDepth:0.20,height:seated ? 0.8:1.45,round:true)))
         }
-        let node = crowd.add(x:x,y:y,z:z,yaw:yaw,index:index,seated:seated,
-                             animated:animated && people.count<(walking ? 16:12))
-        if let node {
-            node.name="Animated town spectator"
-            root.addChildNode(node)
-            // The full body uses a relaxed authored pose with bounded idle motion.
-            people.append(TownPerson(node:node,origin:node.position,phase:Double(index)*1.618))
-        }
+        _ = crowd.add(x:x,y:y,z:z,yaw:yaw,index:index,seated:seated,animated:false)
     }
     /// Authored reference block: construction, repairs and usable objects have
     /// specific placements rather than scattering decoration over the whole city.
@@ -837,26 +839,13 @@ final class TownWorld {
                     at:SCNVector3(3,0.82,20.76),width:3.6,height:0.55,yaw:.pi,into:root)
     }
 
-    func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>) {
+    func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>,robots:[RobotCollisions.Body]=[]) {
         guard dt>0 else { return }
         clock += dt
-        if clock-visibilityClock>0.25 {
-            visibilityClock=clock; animatedCount=0
-            for person in people {
-                let d=hypot(Double(camera.x-person.origin.x),Double(camera.z-person.origin.z))
-                // Far animated figures remain visible in their resting pose.
-                if d<24 && !person.node.isHidden { animatedCount += 1 }
-            }
-        }
-        for person in people {
-            let d=hypot(Double(camera.x-person.origin.x),Double(camera.z-person.origin.z))
-            guard d<24 && !person.node.isHidden else { continue }
-            person.node.eulerAngles.z=CGFloat(sin(clock*0.8+person.phase)*0.012)
-        }
+        crowd.update(time:clock);residents?.update(dt:dt,robots:robots)
     }
     func reset() {
-        clock=0;visibilityClock = -1
-        for p in people { p.node.position=p.origin;p.node.eulerAngles.z=0 }
+        clock=0;crowd.update(time:0);residents?.reset()
     }
     /// Clip the chase/orbit boom against simple scenery bounds, with a small
     /// near-plane margin, including buildings beyond the race-side district.
@@ -891,8 +880,8 @@ final class TownWorld {
         return SCNVector3(result.x,result.y,result.z)
     }
     var statistics: [String:Int] {
-        ["streetRoutes":streets.count,"doorConnections":0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":people.count,
-         "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":0,"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
+        ["streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
+         "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":residents?.walkers.count ?? 0,"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
     }
     var cityCoveragePassed:Bool {
         (0..<8).allSatisfy { sector in
@@ -917,7 +906,7 @@ final class TownWorld {
         return reached.count==streets.count
     }
     func validate() -> Bool {
-        buildings>800 && population>120 && people.count<=16 && triangleCount<360_000 && coarseTriangles<290_000 && cells.count<150
+        buildings>800 && population>120 && (residents?.walkers.count ?? 0)<=18 && (residents?.connections ?? 0)>=4 && triangleCount<360_000 && coarseTriangles<290_000 && cells.count<150
             && signs.valid && signs.count>=20 && crowd.valid && cityCoveragePassed && streetNetworkPassed
             && repairLots.count == 2
             && lots.allSatisfy { !infield($0.x,$0.z) && clearLot($0.x,$0.z,$0.width,$0.depth) }
@@ -1101,6 +1090,16 @@ private struct TownPainter {
             if entry && abs(a-Double.pi*5/8)<0.001 { quad(a0,a3,a2,a1,ink,false) }
             if entry && abs(b-Double.pi*3/8)<0.001 { quad(b0,b1,b2,b3,ink,false) }
         }
+    }
+    /// Three solid wall pieces leave an actual walkable vestibule in the facade.
+    func residentHouse(_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32) {
+        let x = -w*0.16,opening=0.92,depth=min(1.2,d*0.45)
+        let left=x-opening/2+w/2,right=w/2-x-opening/2
+        adobe(-w/2+left/2,h/2,0,left,h,d,ink)
+        adobe(w/2-right/2,h/2,0,right,h,d,ink)
+        adobe(x,(h+1.3)/2,d/2-depth/2,opening,h-1.3,depth,ink)
+        adobe(x,h/2,-depth/2,opening,h,d-depth,ink)
+        box(x,0.005,d/2-depth/2,opening,0.01,depth,0x71634e)
     }
     func door(_ x:Double,_ z:Double,_ w:Double,_ h:Double,_ ink:UInt32,_ trim:UInt32,side:Double) {
         box(x,h*0.43,z,w,h*0.86,0.05,ink)

@@ -77,7 +77,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -217,6 +217,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--trail-material-smoke-test") {
                     timer?.invalidate();let passed=checkTrailMaterial(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--people-smoke-test") {
+                    timer?.invalidate();let passed=checkTownPeople(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--postrace-smoke-test") {
                     timer?.invalidate();let passed=checkPostRaceEscape(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
@@ -360,7 +363,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
         if isDirtTrack {
             updateRaceWorld(dt: advancing ? step : 0)
-            dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z))
+            dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
+                RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
+            })
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil

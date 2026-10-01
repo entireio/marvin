@@ -118,12 +118,42 @@ enum CityMaterials {
 }
 
 /// Indexed authored humans, batched by eight-meter cells, with independent crowd LOD.
-/// Only the small idle-animation set has individual nodes. No crowd physics bodies.
+/// Spectator reactions stay batched; only walking residents use individual nodes.
 final class TownCrowd {
-    private struct Model:Decodable { let vertices:[[Float]],indices:[Int32] }
+    private struct Model:Decodable {
+        let vertices:[[Float]],indices:[Int32],arms:[Bool],armTops:[Float]
+        private enum CodingKeys:String,CodingKey { case vertices,indices }
+        init(from decoder:Decoder)throws {
+            let c=try decoder.container(keyedBy:CodingKeys.self)
+            vertices=try c.decode([[Float]].self,forKey:.vertices);indices=try c.decode([Int32].self,forKey:.indices)
+            // Clothing islands identify sleeves and hands at every authored LOD.
+            // Position-only masks accidentally include a seated person's skirt.
+            var parent=Array(vertices.indices)
+            func root(_ input:Int)->Int { var i=input;while parent[i] != i { parent[i]=parent[parent[i]];i=parent[i] };return i }
+            for i in stride(from:0,to:indices.count,by:3) {
+                let a=Int(indices[i]),b=Int(indices[i+1]),d=Int(indices[i+2])
+                if vertices[a][8]==0 || vertices[a][8]==1 { parent[root(b)]=root(a);parent[root(d)]=root(a) }
+            }
+            var bounds:[Int:SIMD2<Float>]=[:]
+            for i in vertices.indices where vertices[i][8]==0 || vertices[i][8]==1 {
+                let r=root(i),x=vertices[i][0],old=bounds[r] ?? SIMD2(x,x)
+                bounds[r]=SIMD2(min(old.x,x),max(old.y,x))
+            }
+            let armFlags=vertices.indices.map { i -> Bool in
+                guard let b=bounds[root(i)] else { return false };return b.x>0.07 || b.y < -0.07
+            }
+            arms=armFlags
+            var tops:[Float]=[0,0]
+            for i in vertices.indices where armFlags[i] && vertices[i][8]==1 {
+                let side=vertices[i][0]<0 ? 0:1;tops[side]=max(tops[side],vertices[i][1])
+            }
+            armTops=vertices.map{tops[$0[0]<0 ? 0:1]}
+        }
+    }
     private final class Batch {
         var vertices:[SCNVector3]=[],normals:[SCNVector3]=[],uv:[CGPoint]=[],colors:[Float]=[]
         var groups:[[Int32]]=[[],[],[]]
+        var motion=[[CGPoint]](repeating:[],count:7)
         func add(_ model:Model,at position:SIMD3<Float>,yaw:Float,index:Int,seated:Bool) {
             let c=cos(yaw),s=sin(yaw),base=Int32(vertices.count)
             let outfits:[UInt32]=[0x746354,0x566866,0xa99b81,0x6d6a53,0x5b6266,0x907451,0x82756b,0xb8ab91]
@@ -146,7 +176,18 @@ final class TownCrowd {
                 v *= scale;n=simd_normalize(n/scale)
                 return (position+SIMD3(v.x*c+v.z*s,v.y,-v.x*s+v.z*c),SIMD3(n.x*c+n.z*s,n.y,-n.x*s+n.z*c))
             }
-            for v in model.vertices {
+            func motionData(_ p:SIMD3<Float>,semantic:Int,armIsland:Bool=false,armTop:Float=0) {
+                let arm:Float=armIsland ? min(1,max(0,(armTop-p.y)/0.075)):0
+                motion[0].append(CGPoint(x:Double(position.x),y:Double(position.z)))
+                motion[1].append(CGPoint(x:Double(yaw),y:Double(position.y)))
+                motion[2].append(CGPoint(x:Double(mix%1000)*0.071,y:Double(neck*scale.y)))
+                motion[3].append(CGPoint(x:Double(arm),y:p.x<0 ? -1:1))
+                motion[4].append(CGPoint(x:Double(0.53*scale.y),y:Double(0.28*scale.y)))
+                motion[5].append(CGPoint(x:seated ? 1:0,y:semantic))
+                motion[6].append(CGPoint(x:Double(0.12*scale.x),y:Double(armTop*scale.y)))
+            }
+            for (vertexIndex,v) in model.vertices.enumerated() {
+                motionData(SIMD3(v[0],v[1],v[2]),semantic:Int(v[8]),armIsland:model.arms[vertexIndex],armTop:model.armTops[vertexIndex])
                 let (p,n)=posed(SIMD3(v[0],v[1],v[2]),SIMD3(v[3],v[4],v[5]))
                 vertices.append(SCNVector3(p));normals.append(SCNVector3(n))
                 uv.append(CGPoint(x:Double(v[6])*12,y:Double(v[7])*12))
@@ -173,6 +214,7 @@ final class TownCrowd {
                         let start=Int32(vertices.count)
                         for q in points {
                             let (v,n)=posed(q,normal)
+                            motionData(q,semantic:1)
                             vertices.append(SCNVector3(v));normals.append(SCNVector3(n));uv.append(CGPoint(x:Double(q.x)*18,y:Double(q.y)*18))
                             colors += [Float((ink>>16)&255)/255,Float((ink>>8)&255)/255,Float(ink&255)/255,1]
                         }
@@ -182,17 +224,23 @@ final class TownCrowd {
             }
         }
         var triangles:Int { groups.reduce(0){$0+$1.count/3} }
-        func geometry()->SCNGeometry {
+        func geometry(materials:[SCNMaterial] = CityMaterialsArray.shared)->SCNGeometry {
             let color=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:vertices.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
-            let g=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),color],elements:groups.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
-            g.materials=[CityMaterials.skin,CityMaterials.crowdCloth,CityMaterials.leather]
+            let g=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),color]+motion.map{SCNGeometrySource(textureCoordinates:$0)},elements:groups.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
+            g.materials=materials
+            // Shader-deformed hands and feet may extend beyond the bind pose.
+            let bounds=g.boundingBox
+            g.boundingBox=(SCNVector3(bounds.min.x-0.35,bounds.min.y-0.12,bounds.min.z-0.35),
+                           SCNVector3(bounds.max.x+0.35,bounds.max.y+0.2,bounds.max.z+0.35))
             return g
         }
     }
+    private enum CityMaterialsArray { static let shared=CitizenMotion.materials() }
     private struct Cell { let origin:SIMD3<Float>;let lod:[Batch];let stays:Bool }
     private var weatherNodes:[(SCNNode,Bool)]=[]
     private(set) var stormPopulation=0
     static func staysOutside(x:Double,z:Double,index:Int)->Bool { abs(index*17+Int(x*13)+Int(z*7))%31==0 }
+    func update(time:Double) { for material in CityMaterialsArray.shared { material.setValue(Float(time),forKey:"crowdTime") } }
     func setStorm(_ active:Bool) { for (node,stays) in weatherNodes { node.isHidden=active && !stays } }
     private var models:[String:[Model]]=[:]
     private var cells:[String:Cell]=[:]
@@ -208,15 +256,16 @@ final class TownCrowd {
         let key="\(index%2==0 ? "male":"female")-\(seated ? "sit":"stand")-\((index/2)%3)"
         guard let model=models[key] else { return nil }
         let stays=Self.staysOutside(x:x,z:z,index:index)
-        if stays { stormPopulation += 1 }
-        let position=SIMD3(Float(x),Float(y),Float(z))
+        if stays && !animated { stormPopulation += 1 }
+        let position=SIMD3(Float(x),Float(!seated && y<0.1 ? -0.03:y),Float(z))
         if animated {
             let lod=(0..<3).map{_ in Batch()}
             for i in 0..<3 { lod[i].add(model[i],at:.zero,yaw:0,index:index,seated:seated) }
-            let near=lod[0].geometry()
-            near.levelsOfDetail=[SCNLevelOfDetail(geometry:lod[1].geometry(),worldSpaceDistance:8),SCNLevelOfDetail(geometry:lod[2].geometry(),worldSpaceDistance:24)]
+            let materials=CitizenMotion.materials()
+            let near=lod[0].geometry(materials:materials)
+            near.levelsOfDetail=[SCNLevelOfDetail(geometry:lod[1].geometry(materials:materials),worldSpaceDistance:8),SCNLevelOfDetail(geometry:lod[2].geometry(materials:materials),worldSpaceDistance:24)]
             let node=SCNNode(geometry:near);node.simdPosition=position;node.eulerAngles.y=CGFloat(yaw)
-            node.castsShadow=false;weatherNodes.append((node,stays))
+            node.castsShadow=false
             triangles += lod[0].triangles;farTriangles += lod[2].triangles
             return node
         }

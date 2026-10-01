@@ -93,5 +93,15 @@ extension SimulationTests {
         let city=CityCollisionWorld([fixture])
         let body=RobotCollisions.Body(position:SIMD3(5.9,0,8),profile:RobotCollisions.profiles[0])
         require(city.nearby(body).count==1)
+        // Updating a pedestrian must move its collision proxy, without stale
+        // bucket entries or rebuilding the immutable architectural index.
+        var pedestrian=RobotCollisions.Body(position:SIMD3(6,0,8),profile:.init(mass:70,halfWidth:0.17,halfDepth:0.17,height:1.05,round:true))
+        let occupied=city.withDynamicBodies([pedestrian])
+        require(occupied.nearby(body).count==2)
+        pedestrian.position=SIMD3(32,0,8)
+        let moved=city.withDynamicBodies([pedestrian])
+        require(moved.nearby(body).count==1)
+        require(moved.nearby(pedestrian).count==1)
+        require(city.nearby(pedestrian).isEmpty)
     }
 }

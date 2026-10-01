@@ -34,6 +34,10 @@ extension AppController {
             }
             for frame in 0..<72000 {
                 advanceRacePhysics(DirtOpponent.driveInput(for:simulation),dt:1.0/60,raceDT:1.0/60)
+                let robotBodies=([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
+                    RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
+                }
+                dirtWorld.town.update(dt:1.0/60,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),robots:robotBodies)
                 let races=[race]+opponents.map{$0.race}
                 if racePhysics.escape.active && activeStart==nil { activeStart=frame }
                 if let start=activeStart {
@@ -127,11 +131,13 @@ extension AppController {
                 && racePhysics.escape.reversals.allSatisfy{$0<20}
                 && minuteCells.dropFirst(3).allSatisfy{$0.allSatisfy{$0.count>8}}
                 && lateDistance.allSatisfy{$0>100} && lateCells.allSatisfy{$0.count>25}
-            let passed=sustained && hudHidden && cameraLocked && racePhysics.escape.complete && !early && timesFrozen && pauseChecked && distinct && maxPenetration<0.005
+            let people=dirtWorld.town.residents
+            let peopleMoving=people?.walkers.allSatisfy{racePhysics.storm.enabled && $0.index%11 != 0 ? $0.node.isHidden:($0.visits>0 && $0.blocked<20)} ?? false
+            let passed=peopleMoving && (people?.maximumPenetration ?? 1)<0.005 && sustained && hudHidden && cameraLocked && racePhysics.escape.complete && !early && timesFrozen && pauseChecked && distinct && maxPenetration<0.005
             updateOpponents();updateRaceWorld(dt:1.0/60)
             updateCamera(snap:true)
             try saveTownFrame("postrace-town",at:directory)
-            let report:[String:Any]=["passed":passed,"roamingSeconds":720,"lateDistance":lateDistance,"lateUniqueCells":lateCells.map{$0.count},"uniqueCellsPerMinute":minuteCells.map{$0.map{$0.count}},"movieFrames":movieFrames,"reversals":racePhysics.escape.reversals,"yields":racePhysics.escape.yields,"tours":racePhysics.escape.tours,"distanceTravelled":travelled,"maximumStationarySeconds":maxStationary,"visibleRobotsPerMinute":visibleWindows.map{Array($0).sorted()},"hudHidden":hudHidden,"sustained":sustained,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
+            let report:[String:Any]=["passed":passed,"peopleMoving":peopleMoving,"houseEntries":people?.entries ?? 0,"residentVisits":people?.walkers.map{$0.visits} ?? [],"residentBlocked":people?.walkers.map{$0.blocked} ?? [],"roamingSeconds":720,"lateDistance":lateDistance,"lateUniqueCells":lateCells.map{$0.count},"uniqueCellsPerMinute":minuteCells.map{$0.map{$0.count}},"movieFrames":movieFrames,"reversals":racePhysics.escape.reversals,"yields":racePhysics.escape.yields,"tours":racePhysics.escape.tours,"distanceTravelled":travelled,"maximumStationarySeconds":maxStationary,"visibleRobotsPerMinute":visibleWindows.map{Array($0).sorted()},"hudHidden":hudHidden,"sustained":sustained,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("postrace.json"))
             print(report.filter{$0.key != "routes"})
             reset(nil);return passed && !racePhysics.escape.active && racePhysics.gate.angle==0 && !raceHUD.isHidden && window.toolbar?.isVisible==true
