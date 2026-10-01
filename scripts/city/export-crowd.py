@@ -111,13 +111,21 @@ def build(sex,pose,variant):
  # Closed boots with shaped toes, ankle shafts, and a thick sole.
  for side in [-1,1]:
   base=len(vs);n=24
-  rings=[(.018,.060,.125,-.036),(.045,.060,.125,-.036),(.085,.056,.12,-.034),(.12,.050,.075,-.008),(.19,.046,.051,.004)]
+  # Fit the boot to each authored ankle, rather than a fixed unisex center.
+  ankle=[p for p in raw if p.x*side>0 and .17<p.z<.27]
+  cx=(min(p.x for p in ankle)+max(p.x for p in ankle))/2
+  cy=(min(p.y for p in ankle)+max(p.y for p in ankle))/2
+  rx=(max(p.x for p in ankle)-min(p.x for p in ankle))/2+.018
+  ry=(max(p.y for p in ankle)-min(p.y for p in ankle))/2+.018
+  rings=[(.018,.060,.125,cy-.036),(.045,.060,.125,cy-.036),(.085,.056,.12,cy-.034),(.16,rx,ry,cy),(.27,rx,ry,cy)]
   for z,rx,ry,cy in rings:
    for k in range(n):
-    a=k*math.tau/n;vs.append((side*.095+rx*math.cos(a),cy+ry*math.sin(a),z))
+    a=k*math.tau/n;vs.append((cx+rx*math.cos(a),cy+ry*math.sin(a),z))
   for j in range(len(rings)-1):
    for k in range(n):
     faces.append((base+j*n+k,base+j*n+(k+1)%n,base+(j+1)*n+(k+1)%n,base+(j+1)*n+k));slots.append(3)
+  faces.append(tuple(base+k for k in reversed(range(n))));slots.append(3)
+  faces.append(tuple(base+(len(rings)-1)*n+k for k in range(n)));slots.append(3)
  # Pose after clothing assembly, then recalculate smooth normals.
  posed=[]
  for vertex_index,rawv in enumerate(vs):
