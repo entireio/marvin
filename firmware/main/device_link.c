@@ -1,4 +1,5 @@
 #include "device_link.h"
+#include "owner_setup.h"
 #include "device_wire.h"
 #include "body_audio.h"
 #include "actuators.h"
@@ -40,7 +41,7 @@ static QueueHandle_t incoming;
 static StaticQueue_t incoming_control;
 static marvin_link_snapshot_t read_identity;
 static const char *trusted_ca;
-static atomic_bool connected,failed,online,quiescing,link_parked;
+static atomic_bool connected,failed,online,quiescing,link_parked,revocation_requested;
 static atomic_uint voice_request,link_fault,rx_frames,rx_binary,rx_max_us,control_max_us;
 static atomic_bool audio_settings_pending,head_calibration_pending,eye_settings_pending,display_settings_pending;
 static void fail(unsigned reason){unsigned zero=0;atomic_compare_exchange_strong(&link_fault,&zero,reason);atomic_store(&failed,true);}
@@ -66,7 +67,7 @@ static motion_ledger_t motion_ledger;
 static nvs_handle_t motion_nvs;
 static bool motion_ledger_ready;
 static nvs_handle_t display_preferences_nvs;
-static bool show_battery_icon=true;
+static bool show_battery_icon=false;
 static char active_motion_id[37];
 static int64_t active_motion_until;
 static bool active_motion_tracks;
@@ -78,6 +79,7 @@ enum { MOTION_PWM_PERCENT=100, MOTION_SEGMENT_MS=500, MOTION_SEGMENTS=4 };
 static motion_step_t motion_steps[MOTION_SEGMENTS];
 static unsigned motion_step_count,motion_step_index;
 static void head_signal(unsigned state);
+static bool apply_revocation(uint32_t epoch);
 static int64_t milliseconds(void){struct timeval t;gettimeofday(&t,NULL);return (int64_t)t.tv_sec*1000+t.tv_usec/1000;}
 /* Credentials and TLS validation both require a usable wall clock.  A USB
  * reset clears the ESP32-S3 clock, so do not wait for the authenticated link
@@ -93,7 +95,11 @@ static bool sync_clock(void){
 static void event(void *arg,esp_event_base_t base,int32_t id,void *data){
  (void)arg;(void)base;
  if(id==WEBSOCKET_EVENT_CONNECTED){atomic_store(&connected,true);return;}
- if(id==WEBSOCKET_EVENT_DISCONNECTED||id==WEBSOCKET_EVENT_CLOSED||id==WEBSOCKET_EVENT_ERROR){fail(1);atomic_store(&online,false);return;}
+ if(id==WEBSOCKET_EVENT_DISCONNECTED||id==WEBSOCKET_EVENT_CLOSED||id==WEBSOCKET_EVENT_ERROR){
+  esp_websocket_event_data_t *e=data;
+  if(e&&(e->close_status_code==4401||e->error_handle.esp_ws_handshake_status_code==401||e->error_handle.esp_ws_handshake_status_code==403))atomic_store(&revocation_requested,true);
+  fail(1);atomic_store(&online,false);return;
+ }
  if(id!=WEBSOCKET_EVENT_DATA||atomic_load(&failed))return;
  esp_websocket_event_data_t *e=data;
  marvin_wire_result_t result=marvin_wire_append(&wire,e->op_code,e->fin,e->payload_offset,e->payload_len,e->data_ptr,e->data_len);
@@ -283,6 +289,11 @@ static void head_signal(unsigned state){
 }
 static bool voice_command(esp_websocket_client_handle_t client,const char *type){cJSON *m=cJSON_CreateObject();cJSON_AddStringToObject(m,"type",type);if(!strcmp(type,"voice_start"))cJSON_AddStringToObject(m,"reason",wake_requested?"wake":"button");return send_json(client,m);}
 static void voice_stop_local(void){atomic_store(&uplink_enabled,false);marvin_body_capture(false);marvin_body_audio_flush();voice_pending=voice_active=false;playback_done_id[0]=0;esp_wifi_set_ps(WIFI_PS_MIN_MODEM);}
+static bool apply_revocation(uint32_t epoch){
+ if(!marvin_owner_setup_revoke(epoch))return false;
+ voice_stop_local();head_signal(0);marvin_body_wake_activation(false);marvin_motion_connection(false);marvin_tracks_stop();
+ marvin_eyes_linked(false);marvin_eyes_connection(false,true);atomic_store(&online,false);return true;
+}
 static bool receive(esp_websocket_client_handle_t client,bool welcomed){
  if(frame.binary){if(welcomed&&voice_active&&head_signal_state!=3)head_signal(3);return welcomed&&marvin_body_audio_available()&&marvin_body_audio_append((const uint8_t*)frame.text,frame.length);}
  bool ok=marvin_wire_control(frame.text,identity.epoch,welcomed);
@@ -299,6 +310,7 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
    cJSON_Delete(welcome);
    if(settimeofday(&wall,NULL)!=0)return false;
    atomic_store(&online,true);
+   marvin_eyes_linked(true);marvin_eyes_connection(true,true);marvin_body_wake_activation(true);
 #ifdef CONFIG_MARVIN_CONNECTION_EYES_ANIMATION
    /* This is the authenticated server transition, not merely Wi-Fi. The
     * controller coordinates head, tracks and eyes and remains cancellable. */
@@ -313,8 +325,23 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
   }
   return true;
  }
- if(!welcomed)return false;
+ if(!welcomed){
+  /* A rejected hello is still received over the pinned WSS channel. Treat
+   * definitive credential rejection as durable unlink so stale ownership
+   * cannot survive a reboot even if the close frame races this error. */
+  cJSON *rejection=cJSON_ParseWithOpts(frame.text,NULL,true);
+  const cJSON *type=cJSON_GetObjectItemCaseSensitive(rejection,"type"),*code=cJSON_GetObjectItemCaseSensitive(rejection,"code");
+  bool revoked=unique_fields(rejection)&&cJSON_IsString(type)&&!strcmp(type->valuestring,"error")&&cJSON_IsString(code)&&(!strcmp(code->valuestring,"DEVICE_UNAUTHENTICATED")||!strcmp(code->valuestring,"DEVICE_REVOKED"));
+  cJSON_Delete(rejection);if(revoked)atomic_store(&revocation_requested,true);return false;
+ }
  cJSON *m=cJSON_ParseWithOpts(frame.text,NULL,true);const cJSON *type=cJSON_GetObjectItemCaseSensitive(m,"type");
+ if(cJSON_IsString(type)&&!strcmp(type->valuestring,"unlink")){
+  const cJSON *device=cJSON_GetObjectItemCaseSensitive(m,"deviceId"),*epoch=cJSON_GetObjectItemCaseSensitive(m,"epoch");
+  ok=unique_fields(m)&&cJSON_IsString(device)&&!strcmp(device->valuestring,identity.device_id)&&whole(epoch,1,UINT32_MAX)&&epoch->valuedouble==identity.epoch&&apply_revocation(identity.epoch);
+  cJSON_Delete(m);if(!ok)return false;
+  cJSON *ack=cJSON_CreateObject();cJSON_AddStringToObject(ack,"type","unlink_ack");cJSON_AddStringToObject(ack,"deviceId",identity.device_id);cJSON_AddNumberToObject(ack,"epoch",identity.epoch);
+  bool sent=send_json(client,ack);atomic_store(&failed,true);return sent;
+ }
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"command")){bool result=motion_command(client,m);cJSON_Delete(m);return result;}
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"cancel")){bool result=motion_cancel(client,m);cJSON_Delete(m);return result;}
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"head_calibration")){
@@ -392,7 +419,7 @@ static void run(void *unused){
   mbedtls_platform_zeroize(&identity,sizeof(identity));
   if(!read_identity(&identity)){atomic_store(&link_state,1);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
   if(!sync_clock()){atomic_store(&link_state,2);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
-  if(milliseconds()>=identity.expires_ms){atomic_store(&link_state,3);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
+  if(milliseconds()>=identity.expires_ms){atomic_store(&link_state,3);(void)apply_revocation(identity.epoch);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
   char uri[240],headers[128];
   if(strncmp(identity.origin,"https://",8)||strpbrk(identity.origin+8,"/?#@\r\n")||strpbrk(identity.credential,"\r\n")){atomic_store(&link_state,4);vTaskDelay(pdMS_TO_TICKS(1000));continue;}
   snprintf(uri,sizeof(uri),"wss://%.192s/api/device/socket",identity.origin+8);snprintf(headers,sizeof(headers),"Authorization: Bearer %.95s\r\n",identity.credential);
@@ -434,7 +461,8 @@ static void run(void *unused){
     if(atomic_load(&online))retry=0;
     vTaskDelay(pdMS_TO_TICKS(20));
    }
-   printf("{\"linkFault\":%u,\"rxFrames\":%u,\"rxBinary\":%u,\"rxMaxUs\":%u,\"controlMaxUs\":%u}\n",atomic_load(&link_fault),atomic_load(&rx_frames),atomic_load(&rx_binary),atomic_load(&rx_max_us),atomic_load(&control_max_us));marvin_motion_connection(false);marvin_tracks_stop();if(active_motion_id[0]){motion_record(active_motion_id,3);active_motion_id[0]=0;}voice_stop_local();head_signal(0);atomic_store(&online,false);xSemaphoreTake(uplink_lock,portMAX_DELAY);uplink_client=NULL;xSemaphoreGive(uplink_lock);if(started)esp_websocket_client_stop(client);esp_websocket_client_destroy(client);
+   printf("{\"linkFault\":%u,\"rxFrames\":%u,\"rxBinary\":%u,\"rxMaxUs\":%u,\"controlMaxUs\":%u}\n",atomic_load(&link_fault),atomic_load(&rx_frames),atomic_load(&rx_binary),atomic_load(&rx_max_us),atomic_load(&control_max_us));marvin_motion_connection(false);marvin_tracks_stop();if(active_motion_id[0]){motion_record(active_motion_id,3);active_motion_id[0]=0;}voice_stop_local();head_signal(0);marvin_body_wake_activation(false);marvin_eyes_connection(false,true);atomic_store(&online,false);xSemaphoreTake(uplink_lock,portMAX_DELAY);uplink_client=NULL;xSemaphoreGive(uplink_lock);if(started)esp_websocket_client_stop(client);esp_websocket_client_destroy(client);
+   if(atomic_exchange(&revocation_requested,false))(void)apply_revocation(identity.epoch);
   }else{
    atomic_store(&link_state,7);
   }
@@ -446,7 +474,7 @@ esp_err_t marvin_device_link_start(marvin_link_snapshot_t snapshot,const char *c
  if(incoming||!snapshot)return ESP_ERR_INVALID_STATE;
  esp_err_t battery_error=marvin_battery_monitor_init();if(battery_error!=ESP_OK)ESP_LOGW("marvin","Battery ADC unavailable: %s",esp_err_to_name(battery_error));
  esp_err_t display_error=nvs_open("pet_display",NVS_READWRITE,&display_preferences_nvs);
- if(display_error==ESP_OK){uint8_t saved=1;display_error=nvs_get_u8(display_preferences_nvs,"show_battery",&saved);if(display_error==ESP_OK&&saved<=1)show_battery_icon=saved!=0;else if(display_error!=ESP_ERR_NVS_NOT_FOUND){(void)nvs_erase_key(display_preferences_nvs,"show_battery");(void)nvs_commit(display_preferences_nvs);}}
+ if(display_error==ESP_OK){uint8_t saved=0;display_error=nvs_get_u8(display_preferences_nvs,"show_battery",&saved);if(display_error==ESP_OK&&saved<=1)show_battery_icon=saved!=0;else if(display_error!=ESP_ERR_NVS_NOT_FOUND){(void)nvs_erase_key(display_preferences_nvs,"show_battery");(void)nvs_commit(display_preferences_nvs);}}
  else display_preferences_nvs=0;
  marvin_eyes_show_battery(show_battery_icon);
  esp_err_t ledger_error=nvs_open("motion",NVS_READWRITE,&motion_nvs);

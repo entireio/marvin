@@ -75,6 +75,29 @@ int main(void){
  assert(lit(pixels,19,1));             /* and adds an unmistakable alert */
  assert(lit(pixels,19,7));
 
+ marvin_eye_render(pixels,&empty,MARVIN_EYE_RENDER_CLASSIC);
+ marvin_eye_render_ble(pixels,true);
+ assert(lit(pixels,8,13));             /* connected Bluetooth rune */
+ assert(lit(pixels,13,18));
+ assert(lit(pixels,3,17));
+ assert(lit(pixels,8,29));
+ assert(!lit(pixels,1,13));            /* no disconnect slash */
+
+ marvin_eye_render(pixels,&empty,MARVIN_EYE_RENDER_CLASSIC);
+ marvin_eye_render_ble(pixels,false);
+ assert(lit(pixels,8,13));             /* rune remains recognizable */
+ assert(lit(pixels,1,13));             /* disconnected slash endpoints */
+ assert(lit(pixels,15,29));
+
+ marvin_eye_render(pixels,&empty,MARVIN_EYE_RENDER_CLASSIC);
+ marvin_eye_render_unlinked(pixels);
+ assert(lit(pixels,4,52));              /* compact X at bottom of status column */
+ assert(lit(pixels,14,52));
+ assert(lit(pixels,9,57));
+ assert(lit(pixels,4,61));
+ assert(lit(pixels,14,61));
+ assert(!lit(pixels,8,51));             /* separated from temporary BLE mark */
+
  eye=(marvin_eye_pose_t){.center_x=64,.center_y=32,.outer_rx=32,.outer_ry=32,.inner_rx=12,.inner_ry=12};
  marvin_eye_render(pixels,&eye,MARVIN_EYE_RENDER_SOLID);
  assert(lit(pixels,64,32));            /* pupil-free design stays white */

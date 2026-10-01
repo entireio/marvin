@@ -122,7 +122,20 @@ export class DeviceGateway {
   return this.dispatchConnection(c,action,args,id,ttlMs,true);
  }
  async cancel(ownerId:string,deviceId:string,id:string){const c=this.online.get(deviceId);if(!c||c.identity.ownerId!==ownerId)throw new DomainError('DEVICE_OFFLINE','Your Desktop Pet is offline.',409);const identity=await this.current(c);if(await this.persistence.cancel(identity,id))await this.send(c,{type:'cancel',id,bootId:c.bootId,epoch:identity.epoch});}
- revoke(ownerId:string){for(const [id,r] of this.recent)if(r.connection.identity.ownerId===ownerId)this.recent.delete(id);for(const c of this.online.values())if(c.identity.ownerId===ownerId){c.closed=true;this.online.delete(c.identity.deviceId);c.socket.close(4401,'Device access revoked');void this.voice?.disconnect(c.identity.deviceId);this.events.emit('offline',c.identity);}}
+ private revokeConnection(ownerId:string){for(const [id,r] of this.recent)if(r.connection.identity.ownerId===ownerId)this.recent.delete(id);for(const c of this.online.values())if(c.identity.ownerId===ownerId){c.closed=true;this.online.delete(c.identity.deviceId);c.socket.close(4401,'Device access revoked');void this.voice?.disconnect(c.identity.deviceId);this.events.emit('offline',c.identity);}}
+ revoke(ownerId:string){this.revokeConnection(ownerId);}
+ async revokeAndClear(ownerId:string,deviceId:string,epoch:number){
+  const c=this.online.get(deviceId);let confirmed=false;
+  if(c&&!c.closed&&c.identity.ownerId===ownerId&&c.identity.epoch===epoch&&c.protocolMinor>=14){
+   let finish:(value:boolean)=>void=()=>{};const acknowledged=new Promise<boolean>(resolve=>{finish=resolve;});
+   const listener=(source:DeviceIdentity,value:{deviceId:string;epoch:number})=>{if(source.deviceId===deviceId&&value.deviceId===deviceId&&value.epoch===epoch)finish(true);};
+   this.events.on('unlink_ack',listener);const timeout=setTimeout(()=>finish(false),1500);
+   try{this.sendConnected(c,{type:'unlink',deviceId,epoch});confirmed=await acknowledged;}
+   catch{confirmed=false;}
+   finally{clearTimeout(timeout);this.events.off('unlink_ack',listener);}
+  }
+  this.revokeConnection(ownerId);return confirmed;
+ }
  close(){for(const c of this.online.values()){c.socket.close(1001,'Server shutting down');void this.voice?.disconnect(c.identity.deviceId);}this.online.clear();this.recent.clear();}
  register(app:FastifyInstance){app.get('/api/device/socket',{websocket:true},(socket,req)=>{
   if(req.headers.origin){socket.close(4403,'Use the native device transport');return;}
@@ -138,7 +151,7 @@ export class DeviceGateway {
     const message=DeviceControl.parse(JSON.parse(raw.toString()));
     if(message.type==='hello'){
      if(initialized)throw new DomainError('HELLO_DUPLICATE','Hello was already received.',400);initialized=true;
-     if(message.protocol.major!==1||message.protocol.minor<0||message.protocol.minor>13){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.13 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
+     if(message.protocol.major!==1||message.protocol.minor<0||message.protocol.minor>14){socket.send(JSON.stringify({type:'error',code:'UPGRADE_REQUIRED',message:'Use supported protocol 1.0–1.14 firmware.'}));close(4406,'Firmware protocol upgrade required');return;}
      if(message.audioInputRate&&message.protocol.minor<2)throw new DomainError('AUDIO_PROTOCOL','Native input rate requires protocol 1.2.',400);
      if(message.audioSettings&&message.protocol.minor<4)throw new DomainError('AUDIO_PROTOCOL','Audio settings require protocol 1.4.',400);
      if(message.audioSettings?.microphoneGainDb!==undefined&&message.protocol.minor<5)throw new DomainError('AUDIO_PROTOCOL','Microphone gain requires protocol 1.5.',400);
@@ -162,6 +175,13 @@ export class DeviceGateway {
      for(const command of await this.persistence.reconnect(identity,c.bootId))await this.send(c,command);this.events.emit('online',identity);void this.greet(c).catch(()=>{});return;
     }
     if(!c)throw new DomainError('HELLO_REQUIRED','Send hello first.',400);
+    /* The database revocation is committed before the server sends unlink.
+       Accept only the exact acknowledgement from that already-authenticated
+       socket; every other message still revalidates the now-revoked token. */
+    if(message.type==='unlink_ack'){
+     if(c.protocolMinor<14||message.deviceId!==c.identity.deviceId||message.epoch!==c.identity.epoch)throw new DomainError('UNLINK_ACK_INVALID','Unlink acknowledgement does not match this device connection.',400);
+     c.lastSeen=Date.now();this.events.emit('unlink_ack',c.identity,{deviceId:message.deviceId,epoch:message.epoch});return;
+    }
     /* Older firmware acknowledges every remote sample. Recognize those
        ephemeral IDs before the durable-command path so mixed-version fleets
        also avoid a credential query and no-op database update per sample. */
@@ -212,7 +232,7 @@ export class DeviceGateway {
      }catch{await this.send(current,{type:'voice_error',message:'Voice could not connect. Try again later; your Desktop Pet remains online.'});}return;
     }
     throw new DomainError('UNSUPPORTED_MESSAGE','Unsupported device message.',400);
-   }).catch(e=>{if(!closed){socket.send(JSON.stringify({type:'error',code:e instanceof DomainError?e.code:'INVALID_DEVICE_MESSAGE',message:e instanceof DomainError?e.message:'Invalid device message.'}));close(4400,'Device request rejected');}}).finally(()=>{pending--;});
+   }).catch(e=>{if(!closed){const code=e instanceof DomainError?e.code:'INVALID_DEVICE_MESSAGE';socket.send(JSON.stringify({type:'error',code,message:e instanceof DomainError?e.message:'Invalid device message.'}));close(code==='DEVICE_UNAUTHENTICATED'||code==='DEVICE_REVOKED'?4401:4400,code==='DEVICE_UNAUTHENTICATED'||code==='DEVICE_REVOKED'?'Device access revoked':'Device request rejected');}}).finally(()=>{pending--;});
   });
   socket.on('error',()=>close(1011,'Device connection failed'));
   socket.on('close',(code,reason)=>{closed=true;clearTimeout(setup);clearInterval(heartbeat);if(c&&this.online.get(c.identity.deviceId)===c){c.closed=true;this.online.delete(c.identity.deviceId);this.recent.set(c.identity.deviceId,{connection:c,expires:Date.now()+30000});setTimeout(()=>{if(this.recent.get(c!.identity.deviceId)?.connection===c)this.recent.delete(c!.identity.deviceId);},30000).unref();req.log.info({deviceId:c.identity.deviceId,bootId:c.bootId,code,reason:reason.toString(),connectedMs:Date.now()-c.openedAt,audioReceivedBytes:c.audioReceivedBytes},'Device connection closed');void this.voice?.disconnect(c.identity.deviceId);this.events.emit('offline',c.identity);}});

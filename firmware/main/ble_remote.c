@@ -1,6 +1,7 @@
 #include "ble_remote.h"
 #include "gear_vr_controller.h"
 #include "body_audio.h"
+#include "eyes.h"
 #include "sdkconfig.h"
 
 /* The ET-YO324's useful input stream is Samsung's custom GATT service, not
@@ -73,7 +74,7 @@ static void terminate_gatt(const char *step,int status){ESP_LOGW(TAG,"%s failed:
 static int sensor_write_done(uint16_t ch,const struct ble_gatt_error *e,struct ble_gatt_attr *a,void *arg){
     (void)ch;(void)a;(void)arg;if(e->status){terminate_gatt("sensor-mode write",e->status);return 0;}
     if(!have_saved_peer&&!persist_peer(&candidate_addr)){terminate_gatt("controller enrollment persistence",BLE_HS_ESTORE_CAP);return 0;}
-    enrolled=true;pairing_window_open=false;ESP_LOGW(TAG,"controller ready");return 0;
+    enrolled=true;pairing_window_open=false;marvin_eyes_ble_status(true);ESP_LOGW(TAG,"controller ready");return 0;
 }
 static int subscription_write_done(uint16_t ch,const struct ble_gatt_error *e,struct ble_gatt_attr *a,void *arg){
     (void)ch;(void)a;(void)arg;if(e->status){terminate_gatt("notification subscription",e->status);return 0;}
@@ -94,7 +95,7 @@ static int gap_event(struct ble_gap_event *event,void *arg){
     case BLE_GAP_EVENT_CONNECT:
         connecting=false;if(event->connect.status){ESP_LOGW(TAG,"connection failed: %d",event->connect.status);schedule_retry();return 0;}connected=true;conn_handle=event->connect.conn_handle;service_start=service_end=notify_handle=command_def_handle=command_handle=cccd_handle=0;enrolled=false;ESP_LOGW(TAG,"controller connected; discovering controls");discover();return 0;
     case BLE_GAP_EVENT_NOTIFY_RX:{if(event->notify_rx.attr_handle!=notify_handle)return 0;uint8_t buf[80];uint16_t len=OS_MBUF_PKTLEN(event->notify_rx.om);if(len>sizeof(buf))len=sizeof(buf);if(!os_mbuf_copydata(event->notify_rx.om,0,len,buf))marvin_gear_vr_report(buf,len);return 0;}
-    case BLE_GAP_EVENT_DISCONNECT:ESP_LOGW(TAG,"controller disconnected: %d",event->disconnect.reason);connected=false;connecting=false;conn_handle=BLE_HS_CONN_HANDLE_NONE;enrolled=false;marvin_gear_vr_reset();if(pairing_window_open)next_scan=xTaskGetTickCount();else schedule_retry();return 0;
+    case BLE_GAP_EVENT_DISCONNECT:ESP_LOGW(TAG,"controller disconnected: %d",event->disconnect.reason);connected=false;connecting=false;conn_handle=BLE_HS_CONN_HANDLE_NONE;enrolled=false;marvin_eyes_ble_status(false);marvin_gear_vr_reset();if(pairing_window_open)next_scan=xTaskGetTickCount();else schedule_retry();return 0;
     case BLE_GAP_EVENT_DISC_COMPLETE:scanning=false;schedule_retry();return 0;
     default:return 0;}
 }
@@ -104,6 +105,7 @@ static void remote_task(void *arg){
         if(atomic_exchange(&unpair_requested,false)){
             if(forget_peer()){
                 pairing_window_open=false;next_scan=portMAX_DELAY;stop_scan();
+                marvin_eyes_ble_status(false);
                 marvin_body_audio_flush();
                 marvin_body_audio_unpaired_cue();
                 ESP_LOGW(TAG,"Home hold accepted; controller forgotten and pairing remains closed");
@@ -113,6 +115,7 @@ static void remote_task(void *arg){
         if(atomic_exchange(&pairing_requested,false)){
             if(forget_peer()){
                 pairing_window_open=true;pairing_deadline=xTaskGetTickCount()+pdMS_TO_TICKS(PAIR_SCAN_SECONDS*1000);next_scan=0;
+                marvin_eyes_ble_status(false);
                 ESP_LOGW(TAG,"USB pairing request accepted; pairing scan open for %d seconds",PAIR_SCAN_SECONDS);
                 if(connected)ble_gap_terminate(conn_handle,BLE_ERR_REM_USER_CONN_TERM);else stop_scan();
             }else ESP_LOGE(TAG,"USB pairing request rejected; saved controller retained");

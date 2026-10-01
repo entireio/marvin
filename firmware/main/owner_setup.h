@@ -14,6 +14,10 @@ bool marvin_owner_setup_network(wifi_config_t *committed);
 bool marvin_owner_setup_linked(void);
 marvin_redeem_status_t marvin_owner_setup_redeem(const char *ca);
 bool marvin_owner_setup_cancel(void);
+/* Persistently clear the current owner only when the authenticated cloud epoch
+ * exactly matches the local journal. Network credentials are intentionally
+ * retained so the Pet can remain reachable for a new claim. */
+bool marvin_owner_setup_revoke(uint32_t epoch);
 /* Local-dev USB recovery only: removes the durable owner journal, never the
  * factory identity or factory trust. The caller must reboot after success. */
 bool marvin_owner_setup_reset_local_development(void);

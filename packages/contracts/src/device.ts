@@ -31,6 +31,7 @@ export const DeviceControl=z.discriminatedUnion('type',[
  z.object({type:z.literal('eye_settings'),...PetEyeSettings.shape}).strict(),
  z.object({type:z.literal('display_settings'),...PetDisplaySettings.shape}).strict(),
  z.object({type:z.literal('voice_playback_done'),interactionId:Id}).strict(),
+ z.object({type:z.literal('unlink_ack'),deviceId:Id,epoch:z.number().int().positive()}).strict(),
  z.object({type:z.literal('link_diagnostics'),wifiRssi:z.number().int().min(-127).max(0),audioTimeouts:z.number().int().nonnegative(),internalFreeBytes:z.number().int().nonnegative(),internalLargestBlock:z.number().int().nonnegative(),resetReason:z.number().int().nonnegative(),lastLinkFault:z.number().int().nonnegative()}).strict()
 ]);
 export const Actions={
