@@ -7,8 +7,8 @@ extension AppController {
     func checkSandstorm(at directory:URL)->Bool {
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
-            mainMenu.weatherOverride=true
-            defer { mainMenu.weatherOverride=nil }
+            weatherOverride=true
+            defer { weatherOverride=nil }
             startDirtTrack();dirtIntro=nil;race.countDown(dt:3);raceHUD.isHidden=true
             dirtWorld.sky.apply(BinaryDaylight(fraction:0.55,phase:1.2))
             let population=dirtWorld.town.visiblePopulation
@@ -25,12 +25,12 @@ extension AppController {
                 }
                 // Update effects at 30 Hz during this offline physics test.
                 if frame%2==0 { updateCamera(snap:false);updatePlayerModel();updateOpponents();updateRaceWorld(dt:1.0/30) }
-                if movie && frame>=6000 && frame<6900 && frame%2==0 {
+                if movie && frame>=1800 && frame<2700 && frame%2==0 {
                     cameraMode=0;updateCamera(snap:false)
                     try autoreleasepool {
                         let image=renderer.snapshot(atTime:Double(frame)/60,with:CGSize(width:1280,height:720),antialiasingMode:.multisampling4X)
                         guard let tiff=image.tiffRepresentation,let jpeg=NSBitmapImageRep(data:tiff)?.representation(using:.jpeg,properties:[.compressionFactor:0.92]) else { throw CocoaError(.fileWriteUnknown) }
-                        try jpeg.write(to:directory.appendingPathComponent(String(format:"frame-%05d.jpg",(frame-6000)/2)))
+                        try jpeg.write(to:directory.appendingPathComponent(String(format:"frame-%05d.jpg",(frame-1800)/2)))
                     }
                 }
                 if frame==7200 {
@@ -60,7 +60,7 @@ extension AppController {
             let sheltered=simd_length(racePhysics.storm.acceleration(velocity:.zero,x:0,z:0,profile:p,shelter:0.25))
             let exposed=simd_length(racePhysics.storm.acceleration(velocity:.zero,x:0,z:0,profile:p))
             let stormBodies=dirtWorld.town.collisionWorld.bodies.count
-            mainMenu.weatherOverride=false;reset(nil)
+            weatherOverride=false;reset(nil)
             let restored=dirtWorld.town.visiblePopulation>dirtWorld.town.population/2 && !racePhysics.storm.enabled && racePhysics.storm.elapsed==0
             let absentCollisions=stormBodies<dirtWorld.town.collisionWorld.bodies.count
             let passed=finished && captured && paused && restored && absentCollisions && population<20 && population>0 && floorError<0.003 && maximumDepth>0.025 && head>tail*1.5 && sheltered<exposed*0.2

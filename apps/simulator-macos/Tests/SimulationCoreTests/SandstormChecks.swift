@@ -4,6 +4,23 @@ import simd
 
 extension SimulationTests {
     func testSandstorm() {
+        struct Generator:RandomNumberGenerator {
+            var state:UInt64=918273
+            mutating func next()->UInt64 {
+                state &+= 0x9e3779b97f4a7c15
+                var z=state
+                z=(z ^ (z >> 30)) &* 0xbf58476d1ce4e5b9
+                z=(z ^ (z >> 27)) &* 0x94d049bb133111eb
+                return z ^ (z >> 31)
+            }
+        }
+        var random=Generator(),storms=0,consecutive=false,previous=false
+        for _ in 0..<10000 {
+            let storm=Sandstorm.drawForRace(using:&random)
+            if storm { storms += 1 };consecutive = consecutive || (previous && storm);previous=storm
+        }
+        require((900...1100).contains(storms));require(consecutive)
+        print("Weather draws: \(storms)/10000 storms; independent draws permit consecutive storms")
         var clear=Sandstorm(),storm=Sandstorm(enabled:true)
         clear.advance(300);equal(clear.elapsed,0);equal(clear.wind(x:0,z:0),.zero)
         let p=Sandstorm.drifts[0].center,early=storm.depth(x:p.x,z:p.y)

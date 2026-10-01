@@ -162,6 +162,7 @@ final class DirtWorld {
         scene.rootNode.addChildNode(effects)
         clodGeometry.segmentCount = 5; clodGeometry.materials = [material(0xffffff,roughness:1)]
         dustMaterial.lightingModel = .constant; dustMaterial.diffuse.contents = dustTexture()
+        WindblownDust.configure(dustMaterial)
         dustMaterial.writesToDepthBuffer = false; dustMaterial.isDoubleSided = true
         for i in 0..<poolSize {
             let dust = i % 3 != 0
@@ -456,9 +457,7 @@ final class DirtWorld {
         let image = NSImage(size:NSSize(width:w,height:h)); image.addRepresentation(bitmap); return image
     }
     private func dustTexture() -> NSImage {
-        let image = NSImage(size:NSSize(width:64,height:64)); image.lockFocus()
-        NSGradient(starting:color(0xffffff,alpha:0.32),ending:color(0xffffff,alpha:0))!.draw(in:NSBezierPath(ovalIn:NSRect(x:0,y:0,width:64,height:64)),relativeCenterPosition:.zero)
-        image.unlockFocus(); return image
+        WindblownDust.texture()
     }
     @discardableResult private func box(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ mat:SCNMaterial)->SCNNode {
         let shape = SCNBox(width:w,height:h,length:d,chamferRadius:0.008); shape.materials = [mat]
@@ -525,8 +524,14 @@ final class DirtWorld {
                 let center=f.node.simdPosition,base=Int32(vertices.count)
                 if dust {
                     let radius=f.radius*f.node.simdScale.x
+                    let w=storm.wind(x:Double(center.x),z:Double(center.z))
+                    let wind=SIMD3<Float>(Float(w.x),0,Float(w.z))
+                    let projected=wind-normal*simd_dot(wind,normal)
+                    let along=storm.enabled && simd_length(projected)>0.01 ? simd_normalize(projected):right
+                    let across=simd_normalize(simd_cross(normal,along))
+                    let stretch:Float=storm.enabled ? 3.8:1.6
                     for (sx,sy) in [(-1.0,-1.0),(1.0,-1.0),(1.0,1.0),(-1.0,1.0)] {
-                        vertices.append(SCNVector3(center+right*Float(sx)*radius+up*Float(sy)*radius))
+                        vertices.append(SCNVector3(center+along*Float(sx)*radius*stretch+across*Float(sy)*radius*0.65))
                         normals.append(SCNVector3(normal));uv.append(CGPoint(x:(sx+1)/2,y:(sy+1)/2))
                     }
                     indices += [base,base+1,base+2,base,base+2,base+3]
@@ -584,7 +589,7 @@ final class DirtWorld {
                 f.dust = Double.random(in:0...1) > (0.25 + 0.42*clayWeight)
                 f.tint = soil * Float.random(in:0.94...1.06)
                 // Suspended fines scatter light; grains retain the soil albedo.
-                if f.dust { f.tint = f.tint*0.78 + SIMD3<Float>(0.22,0.20,0.16) }
+                if f.dust { f.tint = f.tint*0.90 + SIMD3<Float>(0.07,0.055,0.035) }
                 let kick = min(1.6,magnitude)
                 f.velocity = -forward*sign*kick*Double.random(in:0.08...0.22)
                     + lateral*Double.random(in:-0.09...0.09)
@@ -596,7 +601,7 @@ final class DirtWorld {
                 f.duration = f.dust ? Double.random(in:0.65...1.15) : Double.random(in:0.22...0.38)+clayWeight*0.5
                 f.life = f.duration
                 f.radius = f.dust ? Float.random(in:0.055...0.10) : Float.random(in:0.0015...0.0035)+Float(clayWeight)*Float.random(in:0.006...0.012)
-                f.opacity = f.dust ? 0.38 : 0.70
+                f.opacity = f.dust ? (state.storm.enabled ? 0.20:0.30) : 0.70
                 f.node.position = SCNVector3(position.x,position.y,position.z)
                 f.node.scale = SCNVector3(1,1,1); f.node.opacity = 0; f.node.isHidden = false
                 flecks[i] = f

@@ -4,6 +4,14 @@ import simd
 /// Deterministic weather state, advanced only by the race's fixed-step clock.
 /// Wind is m/s; drift depth is metres. No shared mutable terrain globals.
 public struct Sandstorm: Sendable {
+    /// Independent 10% chance for each race/reset, not every tenth race.
+    public static func drawForRace<R:RandomNumberGenerator>(using generator:inout R)->Bool {
+        Int.random(in:0..<10,using:&generator)==0
+    }
+    public static func drawForRace()->Bool {
+        var generator=SystemRandomNumberGenerator()
+        return drawForRace(using:&generator)
+    }
     public var enabled:Bool
     public private(set) var elapsed=0.0
     public init(enabled:Bool=false) { self.enabled=enabled }

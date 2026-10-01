@@ -7,8 +7,8 @@ extension AppController {
     func checkPostRaceEscape(at directory:URL)->Bool {
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
-            mainMenu.weatherOverride=ProcessInfo.processInfo.environment["MARVIN_SANDSTORM"]=="1"
-            defer { mainMenu.weatherOverride=nil }
+            weatherOverride=ProcessInfo.processInfo.environment["MARVIN_SANDSTORM"]=="1"
+            defer { weatherOverride=nil }
             startDirtTrack();dirtIntro=nil;race.countDown(dt:3)
             var frozen=[Double?](repeating:nil,count:4),early=false,firstOpen:Double?,pauseChecked=false
             var maxPenetration=0.0

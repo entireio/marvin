@@ -933,8 +933,8 @@ presentation timing. Report: `../marvin-town-planning/atmosphere-performance`.
 
 ## Sandstorm weather
 
-Settings → Weather selects Clear or Sandstorm before entering the dirt race.
-Clear is the default; the choice persists. A storm shares the race's 240 Hz
+Each race/reset independently draws a 10% chance of Sandstorm; there is no
+weather setting or persisted preference. A storm shares the race's 240 Hz
 clock, so pause stops wind, deposition and effects, and reset starts fresh.
 Only 11 of the normal 296 people remain outside, including sparse spectators;
 absent citizens also lose their collision bodies.
@@ -972,3 +972,30 @@ and restored for each run. These are SceneKit callback/CPU measurements, not GPU
 completion or display presentation timestamps. Reports and native captures are
 in `../marvin-town-planning/storm-performance`, `storm-clear-baseline`,
 `storm-release`, `storm-menu`, and `storm-clear-trails`.
+
+
+### Natural dust revision
+
+Ground-level reference photos: [NWS Amarillo, February 14, 2023](https://www.weather.gov/ama/February_14_2023_HighWind_Dust),
+especially Chelsey Snook's Hooker street view and Dustin Sides Valdez's Guymon
+road view. These show continuous suspended dust and distance-dependent loss of
+contrast; the old isolated bright circles did not match that appearance.
+Particles now explicitly consume vertex tint/opacity, use irregular density
+textures instead of radial gradients, and stretch low dust along projected wind.
+Clay clods retain their existing geometry and physics. References were inspected
+as photographs; no claim of watching ground-level video is made.
+
+Star Wars still references also inspected:
+- [The Phantom Menace: Mos Espa sandstorm production still](https://starwarsaficionado.blogspot.com/2019/08/the-phantom-at-twenty-caught-in.html): thin low dust sweeping across the street, with buildings still legible.
+- [Lucasfilm's Return of the Jedi deleted-scene guide](https://www.starwars.com/news/jedi-at-40-deleted-scenes): the Tatooine sandstorm still has dense warm haze and obscured background detail. It is a deleted sequence, not part of the theatrical film.
+These guide low dust layers and earthy tint; movie imagery is reference only and
+is not included as a game texture. The ambient haze remains bounded to the same
+two particle batches.
+
+Revision validation: 35 core checks pass, including 1,006 storms from 10,000
+seeded independent weather draws. Native settings, debris emission and full
+four-robot storm race checks pass. The revised 45 s 1080p benchmark averaged
+59.975 render callbacks/s, two intervals over 25 ms, none over 50 ms, and CPU
+update p95 1.78 ms. Activity Monitor was restored. Capture/report directories:
+`../marvin-town-planning/storm-film-reference`, `storm-natural-menu`,
+`storm-natural-debris`, and `storm-natural-performance`.

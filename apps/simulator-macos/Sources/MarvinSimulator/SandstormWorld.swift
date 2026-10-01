@@ -64,10 +64,9 @@ final class SandstormWorld {
             let mat=SCNMaterial();mat.lightingModel = .constant;mat.diffuse.contents=color(0xd5b17c)
             mat.isDoubleSided=true;mat.writesToDepthBuffer=false
             if isHaze {
-                let image=NSImage(size:NSSize(width:64,height:64));image.lockFocus()
-                NSGradient(starting:NSColor.white,ending:NSColor.white.withAlphaComponent(0))!.draw(in:NSBezierPath(ovalIn:NSRect(x:0,y:0,width:64,height:64)),relativeCenterPosition:.zero)
-                image.unlockFocus();mat.diffuse.contents=image
+                mat.diffuse.contents=WindblownDust.texture()
             }
+            WindblownDust.configure(mat)
             let placeholder=SCNPlane(width:0,height:0);placeholder.materials=[mat];node.geometry=placeholder;node.castsShadow=false;root.addChildNode(node)
         }
         reset()
@@ -99,7 +98,7 @@ final class SandstormWorld {
                 let across=isHaze ? right*Float(1.8+Double(i%7)*0.2):right*0.012
                 let along=isHaze ? up*0.32:simd_normalize(wind)*0.13
                 let distance=simd_length(p-eye)
-                let alpha=Float(isHaze ? 0.18:0.34)*min(1,max(0,(32-distance)/8))
+                let alpha=Float(isHaze ? 0.28:0.34)*min(1,max(0,(32-distance)/8))
                 for (x,y) in [(-1.0,-1.0),(1,-1),(1,1),(-1,1)] {
                     vertices.append(SCNVector3(p+across*Float(x)+along*Float(y)));uv.append(CGPoint(x:(x+1)/2,y:(y+1)/2))
                     colors += isHaze ? [0.68,0.49,0.29,alpha]:[1,1,1,alpha]

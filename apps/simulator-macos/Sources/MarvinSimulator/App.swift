@@ -72,6 +72,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var benchmarkDisplayLink:AnyObject?
     var townBenchmarkRoute:[SIMD2<Double>]=[]
     var townBenchmarkWaypoint=0
+    var weatherOverride:Bool? // deterministic native test hook; never a user setting
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
@@ -80,6 +81,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if smokeDirectory != nil { weatherOverride=false }
         appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] app, _ in
             self?.updateApplicationIcon(for: app.effectiveAppearance)
         }
@@ -334,7 +336,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 mainMenu.keyDown(with: down); mainMenu.keyDown(with: down); mainMenu.keyDown(with: enter)
                 menuSmokePassed = menuSmokePassed && mainMenu.settings
                 menuSmokePassed = ((try? checkDrivingAssistSettings(at: URL(fileURLWithPath: directory))) ?? false) && menuSmokePassed
-                mainMenu.selection = 6; mainMenu.activate()
+                mainMenu.selection = 5; mainMenu.activate()
                 menuSmokePassed = menuSmokePassed && !mainMenu.settings
                 mainMenu.selection = 0; mainMenu.activate()
                 menuSmokePassed = menuSmokePassed && inSandbox && mainMenu.isHidden && !hud.isHidden
@@ -404,7 +406,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     func startDirtTrack() {
         configurePlayer()
-        window.title = mainMenu.sandstorm ? "Marvin · Dirt Track · Sandstorm":"Marvin · Dirt Track"; world.camera.camera?.zFar = 250
+        window.title = "Marvin · Dirt Track"; world.camera.camera?.zFar = 250
         world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0.70
         world.camera.camera?.screenSpaceAmbientOcclusionRadius = 1.6
         world.camera.camera?.screenSpaceAmbientOcclusionBias = 0.025
@@ -528,7 +530,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             updateOpponents()
             race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup,townRoutes:dirtWorld.escapeRoutes); dirtWorld.updateGate(racePhysics.gate); scoreSaved = false
             dirtWorld.reset(); dirtWorld.sky.apply(.random())
-            racePhysics.storm=Sandstorm(enabled:mainMenu.sandstorm)
+            racePhysics.storm=Sandstorm(enabled:weatherOverride ?? Sandstorm.drawForRace())
+            window.title=racePhysics.storm.enabled ? "Marvin · Dirt Track · Sandstorm":"Marvin · Dirt Track"
             dirtWorld.configureStorm(racePhysics.storm)
             cameraMode = 0; cameraDistance = 4.5
         }
