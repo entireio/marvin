@@ -224,6 +224,7 @@ extension AppController {
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
             },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
         }
+        updateRaceAudio(dt:dt,advancing:true)
         let finish=ProcessInfo.processInfo.systemUptime
         townBenchmarkCPU.append(finish-begin)
         townBenchmarkTimeline.append([now,elapsed,dt*1000,(physicsEnd-begin)*1000,(modelsEnd-physicsEnd)*1000,(effectsEnd-modelsEnd)*1000,(cameraEnd-effectsEnd)*1000,(finish-cameraEnd)*1000,(finish-begin)*1000,simulation.x,simulation.z,aerial ? 1:0])
@@ -241,6 +242,7 @@ extension AppController {
             report["sandstorm"]=racePhysics.storm.enabled
             report["visiblePeople"]=dirtWorld.town.visiblePopulation
             report["residentUpdates"]=dirtWorld.town.residents?.updateStatistics ?? [:]
+            report["audioActive"]=raceAudio?.active ?? false
             report["metalRenderer"]=view.renderingAPI == .metal
             report["gpuDevice"]=view.device?.name ?? "Unavailable"
             report["daylightFraction"]=dirtWorld.sky.daylight.fraction

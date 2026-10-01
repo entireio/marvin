@@ -73,11 +73,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var benchmarkDisplayLink:AnyObject?
     var townBenchmarkRoute:[SIMD2<Double>]=[]
     var townBenchmarkWaypoint=0
+    var raceAudio:RaceAudio?
+    var raceSoundMuted=UserDefaults.standard.bool(forKey:"raceSoundMuted")
     var weatherOverride:Bool? // deterministic native test hook; never a user setting
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -200,6 +202,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
                 if CommandLine.arguments.contains("--loading-smoke-test") { loadDirtTrack();return }
+                if CommandLine.arguments.contains("--audio-smoke-test") {
+                    timer?.invalidate();let passed=checkRaceAudio(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
                 if CommandLine.arguments.contains("--weather-reset-test") {
                     timer?.invalidate();let passed=checkWeatherReset(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
@@ -387,10 +392,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
         }
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
+        updateRaceAudio(dt:step,advancing:advancing)
         hud.needsDisplay = true
         if smokeDirectory != nil { smokeTest() }
     }
     @objc func showMainMenu(_ sender: Any?) {
+        raceAudio?.stop()
         window.title = "Marvin · Playground"
         mainMenu.portrait.rendersContinuously = true
         inSandbox = false; dirtIntro = nil; view.clearInput()
@@ -426,6 +433,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         catch { raceHUD.saveError = "Could not save score" }
     }
     func startDirtTrack() {
+        if raceAudio==nil && (smokeDirectory==nil || CommandLine.arguments.contains("--town-benchmark")) {
+            do { raceAudio=try RaceAudio(resources:Bundle.main.resourceURL!) }
+            catch { NSLog("Race audio assets unavailable: %@",String(describing:error)) }
+        }
         configurePlayer()
         window.title = "Marvin · Dirt Track"; world.camera.camera?.zFar = 250
         world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0.70
@@ -535,11 +546,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     @objc func togglePause(_ sender: Any?) {
         guard inSandbox else { return }
         simulation.paused.toggle(); view.clearInput()
+        if simulation.paused { raceAudio?.stop() }
         pauseItem?.label = simulation.paused ? "Resume" : "Pause"
         pauseItem?.image = NSImage(systemSymbolName: simulation.paused ? "play.fill" : "pause.fill", accessibilityDescription: nil)
         window.makeFirstResponder(view)
     }
     @objc func reset(_ sender: Any?) {
+        raceAudio?.stop()
         if isLoadingDirt && sender != nil { return }
         guard inSandbox else { return }
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
@@ -581,14 +594,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     @objc func toggleHelp(_ sender: Any?) { if isDirtTrack { raceHUD.helpVisible.toggle() } else { hud.helpVisible.toggle() } }
     func applicationWillResignActive(_ notification: Notification) {
-        active = false; view.clearInput()
+        active = false; view.clearInput();raceAudio?.stop()
     }
     func applicationDidBecomeActive(_ notification: Notification) {
         active = true; lastTime = ProcessInfo.processInfo.systemUptime
     }
     func windowDidResignKey(_ notification: Notification) { view.clearInput() }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
-    func applicationWillTerminate(_ notification: Notification) { timer?.invalidate() }
+    func applicationWillTerminate(_ notification: Notification) { timer?.invalidate();raceAudio?.stop() }
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
     }
@@ -611,6 +624,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         item.target = self; item.action = config.2
         return item
     }
+    @objc func toggleRaceSound(_ sender:NSMenuItem) {
+        raceSoundMuted.toggle();UserDefaults.standard.set(raceSoundMuted,forKey:"raceSoundMuted")
+        sender.state=raceSoundMuted ? .on:.off
+        if raceSoundMuted { raceAudio?.stop() }
+    }
     func makeMenu() {
         let bar = NSMenu(), appItem = NSMenuItem(), appMenu = NSMenu()
         appMenu.addItem(withTitle: "About Marvin Simulator", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
@@ -621,6 +639,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         for (title, selector, key) in [("Main Menu", #selector(showMainMenu), "m"), ("Reset playground", #selector(reset), "r"), ("Pause / resume", #selector(togglePause), "p"), ("Change camera", #selector(cycleCamera), "1")] {
             let item = simMenu.addItem(withTitle: title, action: selector, keyEquivalent: key); item.target = self
         }
+        let sound=simMenu.addItem(withTitle:"Mute race sound",action:#selector(toggleRaceSound(_:)),keyEquivalent:"")
+        sound.target=self;sound.state=raceSoundMuted ? .on:.off
         simItem.submenu = simMenu; bar.addItem(simItem); NSApp.mainMenu = bar
     }
     func smokeTest() {

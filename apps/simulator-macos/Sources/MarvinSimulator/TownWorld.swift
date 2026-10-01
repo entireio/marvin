@@ -41,6 +41,8 @@ final class TownWorld {
     }
     private(set) var buildings = 0
     private(set) var population = 0
+    private var spectatorZones:[String:SpectatorSoundZone]=[:]
+    var spectatorSoundZones:[SpectatorSoundZone] { spectatorZones.keys.sorted().map{spectatorZones[$0]!} }
     private(set) var triangleCount = 0
     private(set) var coarseTriangles = 0
     private(set) var lots: [TownLot] = []
@@ -783,6 +785,14 @@ final class TownWorld {
 
     private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,walking:Bool=false) {
         population += 1
+        if seated {
+            let ix=Int(floor(x/8)),iz=Int(floor(z/8)),key="\(ix),\(iz)"
+            var zone=spectatorZones[key] ?? SpectatorSoundZone(position:.zero,people:0,stormPeople:0)
+            zone.position=(zone.position*Double(zone.people)+SIMD2(x,z))/Double(zone.people+1)
+            zone.people += 1
+            if TownCrowd.staysOutside(x:x,z:z,index:index) { zone.stormPeople += 1 }
+            spectatorZones[key]=zone
+        }
         if walking && walkingCount<18 { walkingCount += 1;return }
         let projection=DirtCourse.projection(x:x,z:z)
         if projection.offset>0 && projection.distance>DirtCourse.fenceOffset {

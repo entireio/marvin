@@ -48,6 +48,8 @@ cp -R "$root/apps/simulator-macos/Resources/Dirt" "$app/Contents/Resources/"
 cp -R "$root/apps/simulator-macos/Resources/Marvin" "$app/Contents/Resources/"
 cp "$root/apps/simulator-macos/Resources/Icons/"*.icns "$app/Contents/Resources/"
 cp "$root/LICENSE-hardware" "$app/Contents/Resources/LICENSE-hardware"
+cp -R "$root/apps/simulator-macos/Resources/Audio" "$app/Contents/Resources/"
+cp "$root/apps/simulator-macos/Resources/Audio/Credits.rtf" "$app/Contents/Resources/Credits.rtf"
 status 'Signing Marvin Simulator'
 codesign --force --sign - "$app"
 printf '\nBuilt: %s\n' "$app"
