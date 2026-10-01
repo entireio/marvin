@@ -11,10 +11,24 @@ extension AppController {
             defer { weatherOverride=nil }
             startDirtTrack();dirtIntro=nil;race.countDown(dt:3)
             var frozen=[Double?](repeating:nil,count:4),early=false,firstOpen:Double?,pauseChecked=false
-            var maxPenetration=0.0
+            var maxPenetration=0.0,cameraLocked=true
+            var photographed=Set<Int>()
             for frame in 0..<72000 {
                 advanceRacePhysics(DirtOpponent.driveInput(for:simulation),dt:1.0/60,raceDT:1.0/60)
                 let races=[race]+opponents.map{$0.race}
+                if race.finished {
+                    updateCamera(snap:true)
+                    let before=world.camera.simdTransform
+                    cycleCamera(nil);view.onOrbit?(120,80);view.onZoom?(50)
+                    updateCamera(snap:true)
+                    cameraLocked = cameraLocked && cameraMode==2 && world.camera.simdTransform==before
+                        && world.camera.simdPosition==SIMD3<Float>(0,38,-33)
+                    let escaped=racePhysics.escape.waypoint.filter{$0>=3}.count
+                    if photographed.insert(escaped).inserted {
+                        updateOpponents();updateRaceWorld(dt:1.0/60)
+                        try saveTownFrame("postrace-overhead-\(escaped)",at:directory)
+                    }
+                }
                 for i in races.indices { if races[i].finished && frozen[i]==nil { frozen[i]=races[i].elapsed } }
                 if racePhysics.escape.active {
                     if !races.allSatisfy({$0.finished && $0.completedCooldownLap}) { early=true }
@@ -39,11 +53,11 @@ extension AppController {
             let timesFrozen=races.indices.allSatisfy{frozen[$0]==races[$0].elapsed}
             let goals=racePhysics.escape.routes.compactMap{$0.last}
             let distinct=goals.count==4 && (0..<4).allSatisfy { i in (0..<i).allSatisfy{simd_distance(goals[i],goals[$0])>3} }
-            let passed=racePhysics.escape.complete && !early && timesFrozen && pauseChecked && distinct && maxPenetration<0.005
+            let passed=cameraLocked && racePhysics.escape.complete && !early && timesFrozen && pauseChecked && distinct && maxPenetration<0.005
             updateOpponents();updateRaceWorld(dt:1.0/60)
-            world.camera.position=SCNVector3(48,35,-22);world.camera.look(at:SCNVector3(31,0,4),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+            updateCamera(snap:true)
             try saveTownFrame("postrace-town",at:directory)
-            let report:[String:Any]=["passed":passed,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
+            let report:[String:Any]=["passed":passed,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("postrace.json"))
             print(report)
             reset(nil);return passed && !racePhysics.escape.active && racePhysics.gate.angle==0

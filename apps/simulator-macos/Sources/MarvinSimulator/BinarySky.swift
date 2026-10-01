@@ -97,14 +97,34 @@ final class BinarySky {
             // Forward shadows attenuate each star separately. The companion
             // lights the other star's shadow instead of painting two dark decals.
             sun.light?.castsShadow=true;sun.light?.shadowMode = .forward
-            let resolution=i==0 ? 2048:1024
+            let resolution=i==0 ? 4096:2048
             sun.light?.shadowMapSize=CGSize(width:resolution,height:resolution)
+            sun.light?.automaticallyAdjustsShadowProjection=false
+            sun.light?.sampleDistributedShadowMaps=false
+            sun.light?.forcesBackFaceCasters=false
+            sun.light?.zNear=0.1;sun.light?.zFar=220
+            sun.light?.maximumShadowDistance=500
             sun.light?.orthographicScale=58;sun.light?.shadowRadius=i==0 ? 3:2
-            sun.light?.shadowSampleCount=4;sun.light?.shadowColor=NSColor.black
+            sun.light?.shadowSampleCount=8;sun.light?.shadowColor=NSColor.black
             sun.light?.shadowBias=0.6;root.addChildNode(sun)
         }
         scene.rootNode.addChildNode(root)
         apply(daylight)
+    }
+    /// World-anchored maps are independent of the viewing camera. Only exploration
+    /// moves their footprint, in light-space texel increments to avoid shimmer.
+    func updateShadowCenter(_ position:SIMD3<Double>) {
+        let center=max(abs(position.x),abs(position.z))<28 ? SIMD3<Double>.zero:position
+        for sun in suns {
+            let transform=sun.simdWorldTransform
+            let right=SIMD3<Double>(Double(transform.columns.0.x),Double(transform.columns.0.y),Double(transform.columns.0.z))
+            let up=SIMD3<Double>(Double(transform.columns.1.x),Double(transform.columns.1.y),Double(transform.columns.1.z))
+            let back=SIMD3<Double>(Double(transform.columns.2.x),Double(transform.columns.2.y),Double(transform.columns.2.z))
+            let texel=116/Double(sun.light!.shadowMapSize.width)
+            func snap(_ value:Double)->Double { (value/texel).rounded()*texel }
+            let anchor=right*snap(simd_dot(center,right))+up*snap(simd_dot(center,up))+back*snap(simd_dot(center,back))
+            sun.position=SCNVector3(anchor+back*80)
+        }
     }
     func attach(camera:SCNNode) {
         dome.constraints=[SCNTransformConstraint.positionConstraint(inWorldSpace:true) { [weak camera] _,_ in camera?.presentation.worldPosition ?? SCNVector3Zero }]

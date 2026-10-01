@@ -1074,3 +1074,80 @@ bidirectional crossing checks pass. Native gate opening, town roaming, return,
 closing/reset, rival containment and obstacle collision checks pass with zero
 measured solid penetration. Closed/open screenshots were inspected in
 `../marvin-town-planning/gate-threshold-release`.
+
+### Camera, crowd, shadows and driving-assist regression pass
+
+The race-finished camera now stays at the track overview throughout cooldown
+and all four escape routes. Camera cycling, orbit and zoom cannot change it;
+resetting or starting another race releases the lock. The post-race smoke test
+attempts all three inputs after every finished-race step and checks the exact
+camera transform, alongside the existing gate timing, frozen results, pause,
+route completion and obstacle-penetration checks.
+
+Crowd boots previously used a fixed unisex center that missed the authored
+ankles. The exporter now fits each shaft to its source ankle and overlaps the
+trouser hem before posing and simplification. All 12 variants and three LODs
+were rebuilt. `scripts/city/check-crowd.py` ray-tests each trouser-hem center
+against the closed boot volume: all 72 posed ankles pass; the old assets fail.
+This check runs as part of the existing asset/build validation.
+
+Directional shadow maps no longer refit when the camera rotates. They stay
+anchored over the track and move in light-space texel increments during town
+exploration. The primary/companion maps are 4096/2048 with eight samples,
+retaining the 58 m half-extent and independent forward lighting from both suns.
+The extra resolution addresses the large self-shadow breakup seen on the CAD
+shell at close range. Mesh subdivision, inset duplicate casters, back-face-only
+casting and deferred shadow compositing were tested and rejected; none ships.
+
+`--visual-regression-test <directory>` renders stationary robots from elevated
+and low cameras, compares shadowed/unshadowed ground samples in world space,
+checks that all four robots cast shadows, captures a close orbit in the actual
+town, and renders front/back sheets for every citizen LOD. Silhouette-edge
+samples are excluded from the interior stability metric because pixel coverage
+changes with viewing angle. The fixture includes distant buildings and the
+terrain's full extent rather than assuming a small isolated scene represents
+the town. `MARVIN_SHADOW_AUTO=1` restores the old projection/resolution settings
+for a negative control. The image metric does not replace inspecting the CAD
+surfaces, silhouette edges and citizen sheets.
+
+Assist design references: [Gran Turismo 7's official driving-options manual](https://www.gran-turismo.com/au/gt7/manual/drivingoption/03)
+separates predictive corner braking from steering/countersteering assistance
+and describes reserving tire grip for cornering under ABS. [Forza's official
+Drivatar/physics discussion](https://forza.net/news/forza-motorsport-drivatars-tire-physics)
+distinguishes planning braking points/entry speeds from the driving controller.
+These informed the approach; this is not either game's implementation.
+
+Brake help now previews curve speed limits and braking distance, trims excess
+throttle and applies proportional deceleration before a tight turn. The grip
+budget accounts for soil and storm accumulation and retains lateral grip under
+assisted braking. Manual braking takes priority. Steering keeps at least 80%
+of full directional input instead of the former 25%, never starts without
+input, and never reverses the requested turn. Off-track, reverse, paused and
+airborne control gates remain in place; assist-off dynamics are preserved.
+
+All 36 simulation checks pass, including independent switches, stopping
+authority, steering continuity and 30/120 Hz equivalence. Across 12 scripted
+missed-braking cases, wall-contact frames fell from 216 to 126 and summed peak
+line deviation fell from 24.15 to 22.56 m. The deliberately simple driver still
+makes mistakes: this evidence supports the change but does not prove subjective
+driving feel or perfect cornering. Centerline adherence alone is no longer the
+success criterion for steering help.
+
+Release validation: the final 24-view shadow sweep passes (2,686 repeated
+world samples, zero interior samples varying by more than 15%; shadows detected
+for every robot). Restoring the old projection/resolution produces 123 unstable
+samples and fails the same test. Clear and storm post-race runs both complete
+all four routes with the camera locked, results frozen and zero measured solid
+penetration. Captures/reports are in `../marvin-town-planning/quality-regression-final`,
+`quality-negative-control`, `quality-postrace` and `quality-postrace-storm`.
+
+The final 45-second 1080p run averages 59.974 SceneKit callbacks/s, with two
+intervals over 25 ms and none over 50 ms; CPU update p95 is 1.414 ms. Activity
+Monitor was paused for the run and restored afterward. These are callback
+measurements, not GPU-completion or display-presentation guarantees. Report:
+`../marvin-town-planning/quality-performance/benchmark.json`.
+
+The native daylight regression also passes three complete four-robot races
+(morning, midday, evening), 2,000 sampled sun configurations and the sun/glare
+occlusion check. Overhead captures were inspected at both low-sun extremes;
+reports are in `../marvin-town-planning/quality-daylight`.

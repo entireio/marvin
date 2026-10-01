@@ -12,6 +12,7 @@ public struct DriveInput: Sendable {
     public var boost = false, brake = false
     // Set only by the Dirt Track assist; preserves steering while braking.
     var assistedBraking = false
+    var assistedBrakePressure = 0.0
     public init() {}
 }
 
@@ -160,11 +161,12 @@ public struct Simulation: Sendable {
         func approach(_ value: Double, _ target: Double) -> Double {
             value + max(-acceleration*dt, min(acceleration*dt, target-value))
         }
-        if input.brake, dirtTrack, input.assistedBraking {
+        let brakePressure=input.brake ? 1:max(0,min(1,input.assistedBrakePressure))
+        if brakePressure>0, dirtTrack, input.assistedBraking {
             // Keep steering available while braking. Never accelerate toward a
             // corner-speed target: pressure only removes forward momentum.
             let longitudinal = robotDynamics ? velocity.x*sin(heading)+velocity.z*cos(heading) : speed
-            let brakingSpeed = max(0,min(speed,longitudinal)-16*dt)
+            let brakingSpeed = max(0,min(speed,longitudinal)-16*brakePressure*dt)
             leftSpeed = brakingSpeed+differential
             rightSpeed = brakingSpeed-differential
         } else if input.brake { leftSpeed = 0; rightSpeed = 0 }
@@ -194,14 +196,18 @@ public struct Simulation: Sendable {
                 let side = SIMD3<Double>(cos(heading),0,-sin(heading))
                 let longitudinal = velocity.x*forward.x+velocity.z*forward.z
                 let lateral = velocity.x*side.x+velocity.z*side.z
-                let driveLimit = input.brake ? 16.0 : acceleration
+                let driveLimit = brakePressure>0 ? 16.0 : acceleration
                 let drive: Double
-                if input.brake, input.assistedBraking {
-                    drive = -min(max(0,longitudinal)/dt,16)
+                if brakePressure>0, input.assistedBraking {
+                    drive = -min(max(0,longitudinal)/dt,16*brakePressure)
                 } else { drive = max(-driveLimit,min(driveLimit,(speed-longitudinal)*20)) }
                 let slip = max(-12.0,min(12.0,-lateral*14))
-                var force = forward*drive+side*slip
-                let magnitude = hypot(force.x,force.z), tractionLimit = 16*grip
+                let tractionLimit = 16*grip
+                let lateralForce=brakePressure>0 && input.assistedBraking ? max(-tractionLimit,min(tractionLimit,slip)):slip
+                let brakingBudget=sqrt(max(0,tractionLimit*tractionLimit-lateralForce*lateralForce))
+                let longitudinalForce=brakePressure>0 && input.assistedBraking ? max(-brakingBudget,min(brakingBudget,drive)):drive
+                var force = forward*longitudinalForce+side*lateralForce
+                let magnitude = hypot(force.x,force.z)
                 if magnitude > tractionLimit { force *= tractionLimit/magnitude }
                 if dirtTrack && max(abs(x),abs(z))>DesertTerrain.townEdge {
                     let grade=DesertTerrain.gradient(x:x,z:z)

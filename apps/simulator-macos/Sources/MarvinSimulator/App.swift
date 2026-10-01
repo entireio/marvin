@@ -58,6 +58,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var robot: Robot!
     var simulation = Simulation()
     var timer: Timer?, lastTime = ProcessInfo.processInfo.systemUptime
+    var raceCameraLocked:Bool { isDirtTrack && race.finished }
     var cameraMode = 1, orbitYaw = 0.65, orbitPitch = 0.5, cameraDistance = 3.5
     var active = true
     var pauseItem: NSToolbarItem?
@@ -76,7 +77,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -132,13 +133,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             if !self.isDirtTrack { self.simulation.stop() }
         }
         view.onOrbit = { [weak self] dx, dy in
-            guard let self, self.inSandbox, self.dirtIntro == nil else { return }
+            guard let self, self.inSandbox, self.dirtIntro == nil, !self.raceCameraLocked else { return }
             self.cameraMode = 1
             self.orbitYaw += Double(dx)*0.008
             self.orbitPitch = max(0.15, min(1.35, self.orbitPitch+Double(dy)*0.008))
         }
         view.onZoom = { [weak self] delta in
-            guard let self, self.inSandbox, self.dirtIntro == nil else { return }
+            guard let self, self.inSandbox, self.dirtIntro == nil, !self.raceCameraLocked else { return }
             self.cameraDistance = max(1.6, min(9, self.cameraDistance+Double(delta)*0.035))
         }
         mainMenu.frame = view.bounds; mainMenu.autoresizingMask = [.width, .height]
@@ -172,9 +173,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             else {
                 if isDirtTrack {
                     advanceRacePhysics(view.driveInput,dt:step,raceDT:raceDelta)
-                    if racePhysics.escape.active {
-                        dirtOutro=nil
-                    } else if race.finished {
+                    if race.finished {
                         if dirtOutro == nil {
                             dirtOutro = 0; outroPosition = world.camera.position
                             let front = world.camera.simdWorldFront
@@ -206,6 +205,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--binary-sky-smoke-test") {
                     timer?.invalidate();let passed=checkBinaryRaces(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--visual-regression-test") {
+                    timer?.invalidate();let passed=checkVisualRegressions(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--dust-visibility-test") {
                     timer?.invalidate();let passed=checkDustVisibility(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
@@ -461,6 +463,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         finishLoadingCheckIfNeeded()
     }
     func updateCamera(snap: Bool) {
+        if raceCameraLocked {
+            cameraMode=2
+            world.camera.position=SCNVector3(0,38,-33)
+            world.camera.look(at:SCNVector3Zero,up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+            return
+        }
         if let outro = dirtOutro, isDirtTrack {
             let t = min(1,outro/dirtIntroDuration)
             let blend = CGFloat(t*t*t*(t*(t*6-15)+10))
@@ -543,7 +551,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         updateCamera(snap: true); window.makeFirstResponder(view)
     }
     @objc func cycleCamera(_ sender: Any?) {
-        guard inSandbox, dirtIntro == nil else { return }
+        guard inSandbox, dirtIntro == nil, !raceCameraLocked else { return }
         cameraMode = (cameraMode+1)%3; updateCamera(snap: true)
         window.makeFirstResponder(view)
     }

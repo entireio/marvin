@@ -238,3 +238,15 @@ final class TownCrowd {
         cells.removeAll();models.removeAll()
     }
 }
+
+// Render every authored variant and LOD in the native regression capture.
+extension TownCrowd {
+    func inspectionFigures()->[(String,SCNNode)] {
+        models.keys.sorted().flatMap { key in
+            (0..<3).map { lod in
+                let batch=Batch();batch.add(models[key]![lod],at:.zero,yaw:0,index:1,seated:key.contains("sit"))
+                return ("\(key)-lod\(lod)",SCNNode(geometry:batch.geometry()))
+            }
+        }
+    }
+}
