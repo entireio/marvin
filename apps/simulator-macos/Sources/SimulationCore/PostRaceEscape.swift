@@ -21,6 +21,7 @@ public struct PostRaceEscape: Sendable {
     private var planningAttempted=false
     private var elapsed=0.0
     private var stopped=[Double](repeating:0,count:4)
+    private var rejoinPoints=[SIMD2<Double>?](repeating:nil,count:4)
     private var backingUntil=[Double](repeating:0,count:4)
     public private(set) var reversals=[Int](repeating:0,count:4)
     private var rests=[Double](repeating:0,count:4)
@@ -81,9 +82,19 @@ public struct PostRaceEscape: Sendable {
             if departed[i] && !safelyWaiting {
                 stopped[i]=states[i].groundSpeed<0.06 ? stopped[i]+dt:0
                 if stopped[i]>4+Double(3-i)*0.6 {
-                    stopped[i]=0;backingUntil[i]=elapsed+2.5;pullouts[i]=nil;reversals[i] += 1
+                    stopped[i]=0;backingUntil[i]=elapsed+2.5;pullouts[i]=nil;rejoinPoints[i]=nil;reversals[i] += 1
                 }
                 if backingUntil[i]>elapsed { continue }
+                if backingUntil[i]>0,let city {
+                    backingUntil[i]=0
+                    if let j=Self.recoveryWaypoint(route:routes[i],waypoint:waypoint[i],from:p,city:city) {
+                        waypoint[i]=j;rejoinPoints[i]=routes[i][j]
+                    }
+                }
+            }
+            if let target=rejoinPoints[i] {
+                if simd_distance(p,target)<0.25 { rejoinPoints[i]=nil }
+                else { continue }
             }
             if let other=yieldingTo[i],pullouts[i] != nil {
                 let delta=SIMD2(states[other].x,states[other].z)-p
@@ -141,6 +152,21 @@ public struct PostRaceEscape: Sendable {
             }
         }
     }
+    /// Reversing can leave the robot behind an earlier bend. Rejoin a reachable
+    /// earlier sample before resuming lookahead, never aim through that corner.
+    public static func recoveryWaypoint(route:[SIMD2<Double>],waypoint:Int,from p:SIMD2<Double>,city:CityCollisionWorld)->Int? {
+        guard waypoint>=3,waypoint<route.count else { return nil }
+        return (max(3,waypoint-24)...waypoint).sorted{simd_distance(p,route[$0])<simd_distance(p,route[$1])}.first { j in
+            let delta=route[j]-p,distance=simd_length(delta)
+            guard distance<5 else { return false }
+            let steps=max(1,Int(ceil(distance/0.08)))
+            return (1...steps).allSatisfy { step in
+                let q=p+delta*Double(step)/Double(steps)
+                let body=RobotCollisions.Body(position:SIMD3(q.x,DirtCourse.height(x:q.x,z:q.y),q.y),profile:.init(mass:85,halfWidth:0.5,halfDepth:0.5,height:1,round:true))
+                return city.nearby(body).allSatisfy{RobotCollisions.contact(body,$0)==nil}
+            }
+        }
+    }
     public func input(for index:Int,states:[Simulation])->DriveInput? {
         guard active,index<states.count else { return nil }
         var input=DriveInput()
@@ -148,11 +174,11 @@ public struct PostRaceEscape: Sendable {
         if rests[index]>0 { input.brake=true;return input }
         guard waypoint[index]>=0 else { return DirtOpponent.driveInput(for:states[index],cruising:true) }
         let state=states[index],p=SIMD2(state.x,state.z)
-        var target=pullouts[index] ?? routes[index][waypoint[index]]
+        var target=rejoinPoints[index] ?? pullouts[index] ?? routes[index][waypoint[index]]
         if pullouts[index] != nil && simd_distance(p,target)<0.25 { input.brake=true;return input }
         // Look through closely spaced samples on rounded corners rather than
         // stopping and pivoting at every navigation-grid vertex.
-        if waypoint[index]>=3 && pullouts[index]==nil {
+        if waypoint[index]>=3 && pullouts[index]==nil && rejoinPoints[index]==nil {
             let a=routes[index][waypoint[index]-1],b=target,segment=b-a
             let along=max(0,min(1,simd_dot(p-a,segment)/max(0.0001,simd_length_squared(segment))))
             target=a+segment*along

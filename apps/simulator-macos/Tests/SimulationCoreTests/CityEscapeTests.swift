@@ -103,5 +103,11 @@ extension SimulationTests {
         require(moved.nearby(body).count==1)
         require(moved.nearby(pedestrian).count==1)
         require(city.nearby(pedestrian).isEmpty)
+        // A reverse recovery behind a corner must select the clear earlier leg,
+        // not resume lookahead through the building toward the old waypoint.
+        let corner=CityCollisionWorld([.init(position:SIMD3(62,0,60),profile:.init(mass:100,halfWidth:0.2,halfDepth:1,height:3))])
+        let route:[SIMD2<Double>]=[.zero,.zero,.zero,SIMD2(60,62),SIMD2(64,62),SIMD2(64,60)]
+        require(PostRaceEscape.recoveryWaypoint(route:route,waypoint:5,from:SIMD2(60,60),city:corner)==3)
+        require(PostRaceEscape.recoveryWaypoint(route:Array(route.prefix(3))+[SIMD2(64,60)],waypoint:3,from:SIMD2(60,60),city:corner)==nil)
     }
 }

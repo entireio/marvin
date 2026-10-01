@@ -63,7 +63,7 @@ extension AppController {
                 updateOpponents();updateRaceWorld(dt:1.0/60)
                 dirtWorld.town.update(dt:1.0/60,camera:SCNVector3(0,5,-12),player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
-            })
+            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
             }
             let cameras:[(String,SCNVector3,SCNVector3)] = [
                 ("town-overview",SCNVector3(0,46,-52),SCNVector3(0,0,0)),
@@ -197,7 +197,7 @@ extension AppController {
         if !dirtWorld.town.root.isHidden {
             dirtWorld.town.update(dt:dt,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
-            })
+            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
         }
         let finish=ProcessInfo.processInfo.systemUptime
         townBenchmarkCPU.append(finish-begin)
@@ -214,6 +214,9 @@ extension AppController {
             report["town"]=dirtWorld.town.statistics
             report["sandstorm"]=racePhysics.storm.enabled
             report["visiblePeople"]=dirtWorld.town.visiblePopulation
+            report["residentUpdates"]=dirtWorld.town.residents?.updateStatistics ?? [:]
+            report["metalRenderer"]=view.renderingAPI == .metal
+            report["gpuDevice"]=view.device?.name ?? "Unavailable"
             report["daylightFraction"]=dirtWorld.sky.daylight.fraction
             report["sunElevationsDegrees"]=dirtWorld.sky.daylight.directions.map{asin($0.y)*180/Double.pi}
             report["drawableWidth"]=view.convertToBacking(view.bounds).width

@@ -363,9 +363,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
         if isDirtTrack {
             updateRaceWorld(dt: advancing ? step : 0)
-            dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
-                RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
-            })
+
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
@@ -376,6 +374,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             raceHUD.needsDisplay = true
         } else { updatePlayerModel(); world.update(simulation) }
         updateCamera(snap: false)
+        // Classify residents against this frame's camera, including camera cuts.
+        if isDirtTrack {
+            dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
+                RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
+            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
+        }
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
         hud.needsDisplay = true
         if smokeDirectory != nil { smokeTest() }

@@ -839,10 +839,10 @@ final class TownWorld {
                     at:SCNVector3(3,0.82,20.76),width:3.6,height:0.55,yaw:.pi,into:root)
     }
 
-    func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>,robots:[RobotCollisions.Body]=[]) {
+    func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>,robots:[RobotCollisions.Body]=[],visible:((SCNNode)->Bool)?=nil) {
         guard dt>0 else { return }
         clock += dt
-        crowd.update(time:clock);residents?.update(dt:dt,robots:robots)
+        crowd.update(time:clock);residents?.update(dt:dt,robots:robots,visible:visible)
     }
     func reset() {
         clock=0;crowd.update(time:0);residents?.reset()

@@ -1169,8 +1169,9 @@ briefly using the same physical controls and collision solver. Steering rejoins
 the local route segment after yielding instead of aiming across an inside corner
 at a distant waypoint.
 
-`--postrace-smoke-test DIR` now runs twelve simulated minutes **after** departure
-begins, in addition to the complete race and extra laps. It rejects persistent
+`--postrace-smoke-test DIR` now gives all four robots twelve simulated minutes
+after the last robot leaves, in addition to the complete race, extra laps and
+earlier departure time. It rejects persistent
 stops, repeated recovery loops, missing tours, lack of late exploration, or a
 minute without moving robots passing near the track. It checks static and robot
 contacts, camera locking, hidden HUD/toolbar, frozen results, pause and reset.
@@ -1243,3 +1244,74 @@ callbacks/s and CPU p95 of 1.261 ms with the same benchmark setup. Activity
 Monitor was paused and restored; this is callback cadence, not a GPU timestamp
 or a guarantee about every displayed frame. No per-frame city-index rebuilds or
 route searches are introduced.
+
+### Camera-aware resident updates
+
+The live game and benchmarks pass SceneKit's
+[frustum test](https://developer.apple.com/documentation/scenekit/scnscenerenderer/isnode(_:insidefrustumof:))
+to the resident scheduler. Visible walkers retain the normal update rate, with a
+350 ms grace period after leaving the view to avoid oscillating at its edges.
+Off-screen route movement and indoor schedules update at 10 Hz. Residents near
+robots, open-house thresholds or other pedestrians retain full-rate collision
+responsiveness. Coarse steps sweep their complete movement; they cannot jump
+through thin geometry between updates. Visibility returns gait to the current
+travelled-distance phase on the next update, without teleporting or resetting it.
+Off-screen walkers use a cached resting sole height instead of evaluating gait.
+
+This is conservative frustum culling, not a promise to detect people hidden
+behind buildings inside the view. The batched spectators still share just three
+clock uniforms: their limb deformation runs in GPU geometry shaders and their
+non-shadow-casting, off-screen batches are culled by the renderer. Duplicating
+materials per spectator merely to suppress those three assignments would add
+work. Off-screen residents keep collision proxies and doorway schedules alive.
+
+`MARVIN_PEOPLE_OFFSCREEN=1 --people-smoke-test DIR` exercises ten minutes with
+all detailed resident poses disabled, then checks immediate camera-cut wake-up,
+gait phase, bounded movement, pause, storm shelter and reset. The first run
+(`../marvin-town-planning/visibility-offscreen`) completed 38 house entries,
+zero measured overlaps, zero detailed pose updates and 83,169 navigation updates
+versus 360,000 full-rate resident updates (77% fewer). Benchmark reports now
+record the actual rendering API and GPU device, alongside update counters.
+
+Rendering uses SceneKit's GPU backend; lighting, materials, shadows and crowd
+geometry deformation are graphics work. The custom simulation, collision solver,
+route planning and race rules execute on the CPU. The implementation is not a
+GPU-compute physics or navigation engine. `metalRenderer` and `gpuDevice` in the
+benchmark report verify the active backend rather than assuming the default.
+
+The camera-throttling regression exposed a deadline assumption in the mixed
+traffic test: the last robot's queue/track-exit time was consuming its two-circuit
+window. In `visibility-roaming`, every resident progressed and robot movement,
+collision and per-minute checks passed, but one robot reached only waypoint 432
+of its second circuit before the old cutoff. The endurance window now starts
+when all four have departed. It retains the two-circuit minimum and checks every
+complete minute from first departure, including the longer run; the final partial
+minute is not treated as a full minute's required travel.
+
+The longer run then exposed a genuine recovery loop at the northeast building
+corner (`visibility-roaming-final`): WALL-E reversed away from traffic and tried
+to rejoin a route segment beyond the corner, repeatedly hitting the intervening
+building. Recovery now selects a swept-clear earlier route sample before
+restoring forward lookahead. This is a bounded check of existing route points,
+not a global route search. The core regression includes both a reachable earlier
+leg and a blocked direct rejoin; neither teleports nor bypasses collision.
+
+The clear follow-up (`visibility-recovery-clear`) passes 850.9 seconds from first
+departure, including 720 seconds after all four leave: every robot completes two
+circuits, residents complete 61 house entries, and camera/HUD, per-minute movement
+and collision checks pass. The storm follow-up (`visibility-recovery-storm`)
+**does not pass**: BB-8 stalls during the race after one lap at approximately
+(19.944, -9.132), before the gate opens. Residents continue their shelter schedule
+(26 entries by the outdoor resident), but this is not a successful storm escape
+endurance run. The race/closed-gate stall is retained as an unresolved finding;
+it is not hidden by retrying random starting grids until one passes.
+
+Final visibility-aware pedestrian capture (`visibility-people-final`) passes ten
+minutes, 38 house entries, camera wake-up/phase, pause, shelter and reset, with
+zero measured pedestrian penetration. All 36 SimulationChecks pass, including
+the new reverse-rejoin fixture. The 45-second 1920×1080 live benchmark
+(`visibility-performance`) confirms `metalRenderer: true` on **Apple M2** and
+measures 59.975 callbacks/s, one interval over 25 ms, none over 50 ms, and CPU
+update p95 of 1.368 ms. It records 10,453 resident navigation updates and 5,203
+pose updates. Activity Monitor was paused/restored as before. These callback
+measurements do not establish GPU utilization or display-presentation timing.

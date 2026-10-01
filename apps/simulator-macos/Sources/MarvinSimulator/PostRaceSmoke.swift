@@ -16,7 +16,8 @@ extension AppController {
             guard dirtWorld.escapeRoutes.count==4 else { print("FAIL: town circuit planning");return false }
             var frozen=[Double?](repeating:nil,count:4),early=false,firstOpen:Double?,pauseChecked=false
             var maxPenetration=0.0,cameraLocked=true
-            var photographed=Set<Int>(),activeStart:Int?
+            var photographed=Set<Int>(),activeStart:Int?,allDepartedStart:Int?
+            var roamingSeconds=0.0,secondsAfterAllDeparted=0.0
             var visibleWindows=[Set<Int>](repeating:[],count:12)
             var stationary=[Double](repeating:0,count:4),maxStationary=[Double](repeating:0,count:4)
             var lastPositions=[SIMD2<Double>](repeating:.zero,count:4),hudHidden=true
@@ -32,18 +33,24 @@ extension AppController {
                     try FileManager.default.createDirectory(at:directory.appendingPathComponent(name),withIntermediateDirectories:true)
                 }
             }
-            for frame in 0..<72000 {
+            for frame in 0..<108000 {
                 advanceRacePhysics(DirtOpponent.driveInput(for:simulation),dt:1.0/60,raceDT:1.0/60)
                 let robotBodies=([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
                     RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
                 }
-                dirtWorld.town.update(dt:1.0/60,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),robots:robotBodies)
+                dirtWorld.town.update(dt:1.0/60,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),robots:robotBodies,visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
                 let races=[race]+opponents.map{$0.race}
                 if racePhysics.escape.active && activeStart==nil { activeStart=frame }
+                if racePhysics.escape.complete && allDepartedStart==nil { allDepartedStart=frame }
                 if let start=activeStart {
                     updateDepartureHUD()
                     hudHidden = hudHidden && raceHUD.isHidden && hud.isHidden && window.toolbar?.isVisible==false
-                    let seconds=Double(frame-start)/60,bin=min(11,Int(seconds/60))
+                    let seconds=Double(frame-start)/60,bin=Int(seconds/60)
+                    roamingSeconds=seconds
+                    while visibleWindows.count<=bin {
+                        visibleWindows.append([])
+                        minuteCells.append([Set<SIMD2<Int>>](repeating:[],count:4))
+                    }
                     if frame%60==0 {
                         let all=[simulation]+opponents.map{$0.simulation}
                         for (i,state) in all.enumerated() {
@@ -80,7 +87,10 @@ extension AppController {
                             }
                         }
                     }
-                    if frame-start>=60*720 { break }
+                    if let departed=allDepartedStart {
+                        secondsAfterAllDeparted=Double(frame-departed)/60
+                        if secondsAfterAllDeparted>=720 { break }
+                    }
                     if (frame-start)%(60*60)==0 {
                         updateOpponents();updateRaceWorld(dt:1.0/60);updateCamera(snap:true)
                         try saveTownFrame("town-roaming-minute-\(Int(seconds/60))",at:directory)
@@ -125,11 +135,11 @@ extension AppController {
             let states=[simulation]+opponents.map{$0.simulation},races=[race]+opponents.map{$0.race}
             let timesFrozen=races.indices.allSatisfy{frozen[$0]==races[$0].elapsed}
             let distinct=Set(racePhysics.escape.routes.map{String(describing:$0)}).count>1
-            let sustained=activeStart != nil && racePhysics.escape.tours.allSatisfy{$0>=2}
+            let sustained=secondsAfterAllDeparted>=720 && racePhysics.escape.tours.allSatisfy{$0>=2}
                 && travelled.allSatisfy{$0>400} && maxStationary.allSatisfy{$0<20}
-                && visibleWindows.dropFirst(3).allSatisfy{!$0.isEmpty}
+                && visibleWindows.dropLast().dropFirst(3).allSatisfy{!$0.isEmpty}
                 && racePhysics.escape.reversals.allSatisfy{$0<20}
-                && minuteCells.dropFirst(3).allSatisfy{$0.allSatisfy{$0.count>8}}
+                && minuteCells.dropLast().dropFirst(3).allSatisfy{$0.allSatisfy{$0.count>8}}
                 && lateDistance.allSatisfy{$0>100} && lateCells.allSatisfy{$0.count>25}
             let people=dirtWorld.town.residents
             let peopleMoving=people?.walkers.allSatisfy{racePhysics.storm.enabled && $0.index%11 != 0 ? $0.node.isHidden:($0.visits>0 && $0.blocked<20)} ?? false
@@ -137,7 +147,7 @@ extension AppController {
             updateOpponents();updateRaceWorld(dt:1.0/60)
             updateCamera(snap:true)
             try saveTownFrame("postrace-town",at:directory)
-            let report:[String:Any]=["passed":passed,"peopleMoving":peopleMoving,"houseEntries":people?.entries ?? 0,"residentVisits":people?.walkers.map{$0.visits} ?? [],"residentBlocked":people?.walkers.map{$0.blocked} ?? [],"roamingSeconds":720,"lateDistance":lateDistance,"lateUniqueCells":lateCells.map{$0.count},"uniqueCellsPerMinute":minuteCells.map{$0.map{$0.count}},"movieFrames":movieFrames,"reversals":racePhysics.escape.reversals,"yields":racePhysics.escape.yields,"tours":racePhysics.escape.tours,"distanceTravelled":travelled,"maximumStationarySeconds":maxStationary,"visibleRobotsPerMinute":visibleWindows.map{Array($0).sorted()},"hudHidden":hudHidden,"sustained":sustained,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
+            let report:[String:Any]=["passed":passed,"peopleMoving":peopleMoving,"houseEntries":people?.entries ?? 0,"residentVisits":people?.walkers.map{$0.visits} ?? [],"residentBlocked":people?.walkers.map{$0.blocked} ?? [],"roamingSeconds":roamingSeconds,"secondsAfterAllDeparted":secondsAfterAllDeparted,"lateDistance":lateDistance,"lateUniqueCells":lateCells.map{$0.count},"uniqueCellsPerMinute":minuteCells.map{$0.map{$0.count}},"movieFrames":movieFrames,"reversals":racePhysics.escape.reversals,"yields":racePhysics.escape.yields,"tours":racePhysics.escape.tours,"distanceTravelled":travelled,"maximumStationarySeconds":maxStationary,"visibleRobotsPerMinute":visibleWindows.map{Array($0).sorted()},"hudHidden":hudHidden,"sustained":sustained,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("postrace.json"))
             print(report.filter{$0.key != "routes"})
             reset(nil);return passed && !racePhysics.escape.active && racePhysics.gate.angle==0 && !raceHUD.isHidden && window.toolbar?.isVisible==true

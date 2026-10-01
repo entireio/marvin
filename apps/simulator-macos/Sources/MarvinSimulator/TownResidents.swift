@@ -33,9 +33,11 @@ final class TownDoorway {
 final class TownResidents {
     final class Walker {
         let node:SCNNode,index:Int,initialHome:Int,speed:Double,materials:[SCNMaterial],feet:CitizenMotion.FootPlacement
+        let restingSole:Float
         var home:Int,destination:Int,path:[SIMD2<Double>]=[],waypoint=0
         var position:SIMD2<Double>,heading=0.0,wait:Double,indoors=true,distance=0.0,blend=0.0
         var visits=0,blocked=0.0,nextAttempt=0.0,firstEntry = -1.0
+        var pending=0.0,lastSeen = -1.0,wasDetailed=true
         var settlingInside=false
         var yieldPoint:SIMD2<Double>?,yieldUntil=0.0
         var reserved=Set<SIMD2<Int>>()
@@ -43,6 +45,7 @@ final class TownResidents {
             self.node=node;self.index=index;self.home=home;initialHome=home;destination=home;self.position=position
             speed=0.52+Double(index%5)*0.045;wait=Double(index%9)*1.7
             materials=node.geometry?.materials ?? [];feet=CitizenMotion.FootPlacement(node.geometry!)
+            restingSole=feet.minimum(cycle:0,blend:0)
         }
     }
     let doors:[TownDoorway],staticWorld:CityCollisionWorld
@@ -62,6 +65,8 @@ final class TownResidents {
         return cells
     }
     private(set) var entries=0,exits=0,maximumPenetration=0.0
+    private(set) var navigationUpdates=0,coarseUpdates=0,poseUpdates=0
+    var updateStatistics:[String:Int] { ["navigationUpdates":navigationUpdates,"coarseUpdates":coarseUpdates,"poseUpdates":poseUpdates] }
     var bodies:[RobotCollisions.Body] { walkers.filter{!$0.node.isHidden}.map{body($0.position)}+doors.map{$0.body} }
     var visible:Int { walkers.filter{!$0.node.isHidden}.count }
     var connections:Int { routes.values.reduce(0){$0+$1.count} }
@@ -98,14 +103,15 @@ final class TownResidents {
     func setStorm(_ value:Bool) { storm=value;reset() }
     func reset() {
         clock=0;entries=0;exits=0;maximumPenetration=0
+        navigationUpdates=0;coarseUpdates=0;poseUpdates=0
         for w in walkers {
             w.home=w.initialHome;w.position=doors[w.home].inside;w.indoors=true;w.wait=Double(w.index%9)*1.7
             w.path=[];w.settlingInside=false;w.firstEntry = -1;w.reserved=[];w.nextAttempt=0;w.waypoint=0;w.node.isHidden=true;w.distance=0;w.visits=0;w.blocked=0
-            w.yieldPoint=nil;w.yieldUntil=0
+            w.yieldPoint=nil;w.yieldUntil=0;w.pending=0;w.lastSeen = -1;w.wasDetailed=true
         }
         for door in doors { door.opening=0;door.hold=0;door.place() }
     }
-    func update(dt:Double,robots:[RobotCollisions.Body]) {
+    func update(dt:Double,robots:[RobotCollisions.Body],visible:((SCNNode)->Bool)?=nil) {
         guard dt>0 else { return }
         let dt=min(dt,0.05);clock += dt
         for (i,door) in doors.enumerated() {
@@ -118,6 +124,22 @@ final class TownResidents {
         }
         for w in walkers {
             guard !storm || w.index%11==0 else { continue }
+            w.pending += dt
+            if !w.node.isHidden && (visible?(w.node) ?? true) { w.lastSeen=clock }
+            // Grace prevents rate oscillation at a camera edge. Collision-critical
+            // residents stay responsive even outside the camera frustum.
+            let detailed=clock-w.lastSeen<0.35
+            let interactive=robots.contains{simd_distance(SIMD2($0.position.x,$0.position.z),w.position)<4}
+                || (!w.node.isHidden && doors.contains{simd_distance($0.center,w.position)<1.6})
+                || (!w.node.isHidden && walkers.contains{$0 !== w && !$0.node.isHidden && simd_distance($0.position,w.position)<1.2})
+            guard detailed || interactive || w.pending>=0.1-1e-8 else { continue }
+            let dt=w.pending;w.pending=0
+            navigationUpdates += 1
+            if !detailed && !interactive { coarseUpdates += 1 }
+            if w.wasDetailed && !detailed {
+                for m in w.materials { m.setValue(Float(0),forKey:"walkBlend") }
+            }
+            w.wasDetailed=detailed
             if w.indoors {
                 w.wait=max(0,w.wait-dt)
                 if w.settlingInside {
@@ -135,7 +157,7 @@ final class TownResidents {
                     w.path=[doors[w.home].outside]+route.1.dropFirst()+[doors[w.destination].inside]
                     // Reveal behind a closed door, never pop into an open doorway.
                     w.heading=doors[w.home].yaw;w.blend=0
-                    w.node.position=SCNVector3(w.position.x,0.01-Double(w.feet.minimum(cycle:Float(w.distance/0.24 * .pi),blend:0)),w.position.y)
+                    w.node.position=SCNVector3(w.position.x,0.01-Double(w.restingSole),w.position.y)
                     w.node.eulerAngles.y=CGFloat(w.heading);w.node.isHidden=false
                     for m in w.materials { m.setValue(Float(0),forKey:"walkBlend") }
                 }
@@ -148,7 +170,7 @@ final class TownResidents {
                 w.home=w.destination;w.visits += 1;entries += 1;w.indoors=true;w.settlingInside=true
                 if w.firstEntry<0 { w.firstEntry=clock }
                 for m in w.materials { m.setValue(Float(0),forKey:"walkBlend") }
-                w.node.position.y=CGFloat(0.01-Double(w.feet.minimum(cycle:Float(w.distance/0.24 * .pi),blend:0)))
+                w.node.position.y=CGFloat(0.01-Double(w.restingSole))
                 w.wait=8+Double((w.index*7+w.visits*13)%24);w.blend=0;continue
             }
             var target=w.path[w.waypoint]
@@ -199,8 +221,14 @@ final class TownResidents {
             let next=w.position+forward*min(step,simd_length(delta))
             let probe=body(next)
             let solids=staticWorld.nearby(probe)+doors.map{$0.body}+robots
-            let free=solids.allSatisfy{RobotCollisions.contact(probe,$0)==nil}
-                && walkers.allSatisfy{$0 === w || $0.node.isHidden || simd_distance(next,$0.position)>0.35}
+            // Coarse updates still sweep the whole step; thin scenery cannot
+            // disappear between the old and new positions.
+            let subdivisions=max(1,Int(ceil(simd_distance(next,w.position)/0.015)))
+            let free=(1...subdivisions).allSatisfy { i in
+                let p=w.position+(next-w.position)*Double(i)/Double(subdivisions)
+                return solids.allSatisfy{RobotCollisions.contact(body(p),$0)==nil}
+                    && walkers.allSatisfy{$0 === w || $0.node.isHidden || simd_distance(p,$0.position)>0.35}
+            }
             if free { moved=simd_distance(next,w.position);w.position=next }
             w.blocked=moved<0.0001 ? w.blocked+dt:0
             w.distance += moved;w.blend += ((moved>0.0001 ? 1.0:0)-w.blend)*min(1,dt*10)
@@ -208,11 +236,14 @@ final class TownResidents {
             let nearDoor=doors.first{simd_distance(w.position,$0.center)<1}
             let threshold=nearDoor.map{max(0,min(1,0.5-simd_dot(w.position-$0.center,$0.outward)*3))} ?? 0
             let floor = -0.016+threshold*0.026
-            let y=floor-Double(w.feet.minimum(cycle:cycle,blend:Float(w.blend)))
+            let y=floor-Double(detailed ? w.feet.minimum(cycle:cycle,blend:Float(w.blend)):w.restingSole)
             w.node.position=SCNVector3(w.position.x,y,w.position.y);w.node.eulerAngles.y=CGFloat(w.heading)
-            for m in w.materials {
-                m.setValue(Float(clock),forKey:"crowdTime");m.setValue(Float(w.distance/0.24 * .pi),forKey:"walkCycle")
-                m.setValue(Float(w.blend),forKey:"walkBlend")
+            if detailed {
+                poseUpdates += 1
+                for m in w.materials {
+                    m.setValue(Float(clock),forKey:"crowdTime");m.setValue(Float(w.distance/0.24 * .pi),forKey:"walkCycle")
+                    m.setValue(Float(w.blend),forKey:"walkBlend")
+                }
             }
             for obstacle in solids { if let c=RobotCollisions.contact(body(w.position),obstacle) { maximumPenetration=max(maximumPenetration,c.penetration) } }
         }
