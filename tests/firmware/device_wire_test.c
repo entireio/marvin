@@ -11,6 +11,10 @@ int main(void){
  assert(!marvin_wire_control("{\"type\":\"ping\"}",7,false));assert(marvin_wire_control("{\"type\":\"ping\"}",7,true));
  assert(!marvin_wire_control("{\"type\":\"ping\",\"type\":\"command\"}",7,true));assert(!marvin_wire_control("{\"type\":\"ping\\u0000command\"}",7,true));
  assert(!marvin_wire_control("{\"type\":\"command\",\"action\":\"tracks\"}",7,true));assert(!marvin_wire_control("{\"type\":\"error\",\"code\":\"DEVICE_REVOKED\"}",7,true));assert(!marvin_wire_control("{\"type\":\"ping\"}junk",7,true));
+ assert(marvin_wire_revocation("{\"type\":\"error\",\"code\":\"DEVICE_REVOKED\"}"));
+ assert(marvin_wire_revocation("{\"type\":\"error\",\"code\":\"DEVICE_UNAUTHENTICATED\",\"message\":\"Expired\"}"));
+ assert(!marvin_wire_revocation("{\"type\":\"error\",\"code\":\"INVALID_DEVICE_MESSAGE\"}"));
+ assert(!marvin_wire_revocation("{\"type\":\"error\",\"type\":\"error\",\"code\":\"DEVICE_REVOKED\"}"));
  size_t n=strlen(welcome);
  for(size_t split=1;split<n;split++){
   marvin_wire_reset(&w);assert(marvin_wire_append(&w,1,true,0,(int)n,welcome,(int)split)==MARVIN_WIRE_MORE);assert(marvin_wire_append(&w,1,true,(int)split,(int)n,welcome+split,(int)(n-split))==MARVIN_WIRE_COMPLETE);assert(!strcmp(w.message.text,welcome));

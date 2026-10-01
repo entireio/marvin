@@ -111,7 +111,13 @@ static void event(void *arg,esp_event_base_t base,int32_t id,void *data){
  }
  marvin_wire_result_t result=marvin_wire_append(&wire,e->op_code,e->fin,e->payload_offset,e->payload_len,e->data_ptr,e->data_len);
  if(result==MARVIN_WIRE_ERROR)fail(2);
- if(result==MARVIN_WIRE_COMPLETE){atomic_fetch_add(&rx_frames,1);if(wire.message.binary)atomic_fetch_add(&rx_binary,1);if(xQueueSend(incoming,&wire.message,pdMS_TO_TICKS(100))!=pdTRUE)fail(3);}
+ if(result==MARVIN_WIRE_COMPLETE){
+  /* The old cloud sends its JSON rejection immediately before closing. The
+   * disconnect callback may stop the consumer before it drains this queue, so
+   * persist the revocation intent at the frame-completion boundary. */
+  if(!wire.message.binary&&marvin_wire_revocation(wire.message.text))atomic_store(&revocation_requested,true);
+  atomic_fetch_add(&rx_frames,1);if(wire.message.binary)atomic_fetch_add(&rx_binary,1);if(xQueueSend(incoming,&wire.message,pdMS_TO_TICKS(100))!=pdTRUE)fail(3);
+ }
 }
 static bool send_json(esp_websocket_client_handle_t client,cJSON *message){
  char *text=message?cJSON_PrintUnformatted(message):NULL;cJSON_Delete(message);if(!text)return false;
@@ -336,10 +342,8 @@ static bool receive(esp_websocket_client_handle_t client,bool welcomed){
   /* A rejected hello is still received over the pinned WSS channel. Treat
    * definitive credential rejection as durable unlink so stale ownership
    * cannot survive a reboot even if the close frame races this error. */
-  cJSON *rejection=cJSON_ParseWithOpts(frame.text,NULL,true);
-  const cJSON *type=cJSON_GetObjectItemCaseSensitive(rejection,"type"),*code=cJSON_GetObjectItemCaseSensitive(rejection,"code");
-  bool revoked=unique_fields(rejection)&&cJSON_IsString(type)&&!strcmp(type->valuestring,"error")&&cJSON_IsString(code)&&(!strcmp(code->valuestring,"DEVICE_UNAUTHENTICATED")||!strcmp(code->valuestring,"DEVICE_REVOKED"));
-  cJSON_Delete(rejection);if(revoked)atomic_store(&revocation_requested,true);return false;
+  if(marvin_wire_revocation(frame.text))atomic_store(&revocation_requested,true);
+  return false;
  }
  cJSON *m=cJSON_ParseWithOpts(frame.text,NULL,true);const cJSON *type=cJSON_GetObjectItemCaseSensitive(m,"type");
  if(cJSON_IsString(type)&&!strcmp(type->valuestring,"unlink")){

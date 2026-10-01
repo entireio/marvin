@@ -44,3 +44,9 @@ bool marvin_wire_control(const char *text,uint32_t epoch,bool welcomed){
  }else if(unique(m)&&cJSON_IsString(type)&&!strcmp(type->valuestring,"ping")&&welcomed)ok=true;
  cJSON_Delete(m);return ok;
 }
+bool marvin_wire_revocation(const char *text){
+ if(!text||strstr(text,"\\u0000"))return false;
+ cJSON *m=cJSON_ParseWithOpts(text,NULL,true);const cJSON *type=cJSON_GetObjectItemCaseSensitive(m,"type"),*code=cJSON_GetObjectItemCaseSensitive(m,"code");
+ bool revoked=unique(m)&&cJSON_IsString(type)&&!strcmp(type->valuestring,"error")&&cJSON_IsString(code)&&(!strcmp(code->valuestring,"DEVICE_UNAUTHENTICATED")||!strcmp(code->valuestring,"DEVICE_REVOKED"));
+ cJSON_Delete(m);return revoked;
+}

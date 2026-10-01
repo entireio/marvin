@@ -12,3 +12,7 @@ void marvin_wire_reset(marvin_wire_t *wire);
 marvin_wire_result_t marvin_wire_append(marvin_wire_t *wire,uint8_t opcode,bool fin,int offset,int total,const char *data,int length);
 /* Presence profile accepts only a matching welcome followed by application pings. */
 bool marvin_wire_control(const char *message,uint32_t epoch,bool welcomed);
+/* Recognizes the cloud's definitive stale-credential response. This is kept
+ * beside the frame assembler so the socket callback can record revocation
+ * before a following disconnect event races the consumer task. */
+bool marvin_wire_revocation(const char *message);
