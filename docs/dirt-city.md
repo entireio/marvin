@@ -1019,3 +1019,21 @@ four-route post-race escape and full four-robot storm race checks pass. Escape
 reported zero obstacle penetration; maximum storm terrain penetration was
 0.083 mm. Captures are in `../marvin-town-planning/town-driving-fixes` and
 `../marvin-town-planning/town-fixes-storm`.
+
+### Dust visibility investigation
+
+`--dust-visibility-test <directory>` drives Marvin for 1.5 seconds on clay,
+town soil and dunes at 70% throttle (4.2 m/s drivetrain speed), under fixed
+midday lighting. It captures identical states with only the dust batch toggled.
+The diagnostic reports emission and image differences; its exit status checks
+emission, not visual quality. Particle variation remains stochastic.
+
+The inspected captures confirm dust is emitted but visually too weak: one run
+contained 35/77/83 live dust particles on clay/town/dunes. Texture alpha averages
+0.0665, multiplied by a maximum particle alpha of 0.30: about 2% mean coverage
+before lifetime fading (17% at the strongest texture point). Small, low puffs
+lasting 0.65–1.15 seconds blend into their soil-colored background. Clay clods
+and tread marks remain visible. This diagnostic changes no gameplay visuals;
+further tuning should improve plume size, persistence and optical density
+while preserving source-ground color and the existing two particle batches.
+Captures: `../marvin-town-planning/dust-visibility`.

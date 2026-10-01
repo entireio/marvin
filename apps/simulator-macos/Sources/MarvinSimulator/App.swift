@@ -76,7 +76,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -206,6 +206,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--binary-sky-smoke-test") {
                     timer?.invalidate();let passed=checkBinaryRaces(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--dust-visibility-test") {
+                    timer?.invalidate();let passed=checkDustVisibility(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--debris-smoke-test") {
                     timer?.invalidate();let passed=dirtWorld.checkDebris();exit(passed ? 0:1)

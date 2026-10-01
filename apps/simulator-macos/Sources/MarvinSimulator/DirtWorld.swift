@@ -685,3 +685,22 @@ extension DirtWorld {
         return passed
     }
 }
+
+// Diagnostic pairs retain identical simulation state and vary only dust visibility.
+extension DirtWorld {
+    func diagnosticDust(_ visible:Bool) { rebuildDebrisBatches();dustBatch.isHidden = !visible }
+    var diagnosticDustCount:Int { flecks.filter{$0.life>0 && $0.dust}.count }
+}
+
+extension DirtWorld {
+    func printDustOpacity() {
+        let bitmap=NSBitmapImageRep(data:dustTexture().tiffRepresentation!)!
+        var maximum=0.0,total=0.0
+        for y in 0..<bitmap.pixelsHigh { for x in 0..<bitmap.pixelsWide {
+            let a=Double(bitmap.colorAt(x:x,y:y)!.alphaComponent);maximum=max(maximum,a);total += a
+        }}
+        let live=flecks.filter{$0.life>0 && $0.dust}
+        let opacity=live.map{Double($0.node.opacity)}.max() ?? 0
+        print("Dust opacity: texture peak \(maximum), texture mean \(total/Double(bitmap.pixelsHigh*bitmap.pixelsWide)), live peak \(opacity), effective peak \(maximum*opacity)")
+    }
+}
