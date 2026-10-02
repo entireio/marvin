@@ -545,6 +545,7 @@ struct SimulationTests {
         checks.testCooldownLap()
         checks.testDesertTerrain()
         checks.testSandDeformation()
+        checks.testNavigationMap()
         if CommandLine.arguments.contains("--dunes-only") { return }
         checks.testCityEscape()
         if CommandLine.arguments.contains("--escape-only") { return }

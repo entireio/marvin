@@ -60,6 +60,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var simulation = Simulation()
     var timer: Timer?, lastTime = ProcessInfo.processInfo.systemUptime
     var raceCameraLocked:Bool { isDirtTrack && race.finished }
+    var overviewMotion=OverviewMotion()
+    var cameraAim=SCNVector3Zero
     var cameraMode = 1, orbitYaw = 0.65, orbitPitch = 0.5, cameraDistance = 3.5
     var active = true
     var pauseItem: NSToolbarItem?
@@ -80,7 +82,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--navigation-smoke-test", "--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -228,6 +230,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--storm-race-test") {
                     timer?.invalidate();let passed=checkStormRace(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--navigation-smoke-test") {
+                    timer?.invalidate();let passed=checkNavigation(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--dune-contact-test") {
                     timer?.invalidate();let passed=checkDuneContacts(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
@@ -393,7 +398,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             raceHUD.race = race; raceHUD.scores = scores; raceHUD.paused = simulation.paused
             raceHUD.needsDisplay = true
         } else { updatePlayerModel(); world.update(simulation) }
-        updateCamera(snap: false)
+        updateCamera(snap:false,dt:step)
         // Classify residents against this frame's camera, including camera cuts.
         if isDirtTrack {
             dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
@@ -465,6 +470,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         dirtWorld.scene.rootNode.addChildNode(r2d2.root)
         dirtWorld.scene.rootNode.addChildNode(bb8.root); dirtWorld.scene.rootNode.addChildNode(wallE.root)
         dirtWorld.additionalContacts = [bb8.contacts,wallE.contacts]
+        raceHUD.mapRegion = .course;cameraAim = SCNVector3Zero
+        raceHUD.configureNavigationMap(town:dirtWorld.town)
         view.pointOfView = world.camera
         scoreLoadFailed = false; raceHUD.saveError = nil
         do { scores = try DirtScores.load(scoreURL) }
@@ -498,7 +505,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         lastTime = ProcessInfo.processInfo.systemUptime
         finishLoadingCheckIfNeeded()
     }
-    func updateCamera(snap: Bool) {
+    func updateCamera(snap: Bool,dt:Double=1.0/60) {
+        if isDirtTrack { raceHUD.mapRegion=RaceMapRegion.at(SIMD2(simulation.x,simulation.z),previous:raceHUD.mapRegion) }
         if raceCameraLocked {
             cameraMode=2
             world.camera.position=SCNVector3(0,38,-33)
@@ -523,7 +531,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         }
         let desired: SCNVector3
         if cameraMode == 2 {
-            desired = isDirtTrack ? SCNVector3(0, 38, -33) : SCNVector3(0, 11.7, -10)
+            if isDirtTrack && raceHUD.mapRegion != .course {
+                desired=SCNVector3(target.x,target.y+38,target.z-33)
+            } else { desired = isDirtTrack ? SCNVector3(0,38,-33):SCNVector3(0,11.7,-10) }
         } else {
             let angle = cameraMode == 0 ? simulation.heading + .pi + (isDirtTrack ? 0 : 0.45) : orbitYaw
             let elevation = cameraMode == 0 ? (isDirtTrack ? 0.30 : 0.48) : orbitPitch
@@ -541,17 +551,31 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
             return
         }
-        let current = world.camera.position
-        let mix: CGFloat = snap ? 1 : 0.12
-        world.camera.position = SCNVector3(current.x+(desired.x-current.x)*mix,
-            current.y+(desired.y-current.y)*mix, current.z+(desired.z-current.z)*mix)
-        if isDirtTrack && cameraMode != 2 {
-            world.camera.position = dirtWorld.town.clearCamera(from:target,to:world.camera.position)
+        let aim=cameraMode == 2 && (!isDirtTrack || raceHUD.mapRegion == .course) ? SCNVector3Zero:target
+        if cameraMode == 2 {
+            let eye=SIMD3(Double(desired.x),Double(desired.y),Double(desired.z)),focus=SIMD3(Double(aim.x),Double(aim.y),Double(aim.z))
+            if snap { overviewMotion.reset(eye:eye,aim:focus) }
+            else { overviewMotion.advance(eye:eye,aim:focus,dt:dt) }
+            let p=overviewMotion.eye,q=overviewMotion.aim
+            world.camera.position=SCNVector3(p.x,p.y,p.z);cameraAim=SCNVector3(q.x,q.y,q.z)
+        } else {
+            let current=world.camera.position,mix:CGFloat=snap ? 1:0.12
+            world.camera.position=SCNVector3(current.x+(desired.x-current.x)*mix,current.y+(desired.y-current.y)*mix,current.z+(desired.z-current.z)*mix)
+            cameraAim=target
+        }
+        if isDirtTrack {
+            if cameraMode != 2 || world.camera.position.y<cameraAim.y+12 {
+                world.camera.position=dirtWorld.town.clearCamera(from:cameraAim,to:world.camera.position)
+            }
             world.camera.position.y=max(world.camera.position.y,CGFloat(DirtCourse.height(x:Double(world.camera.position.x),z:Double(world.camera.position.z))+0.18))
         }
-        world.camera.look(at: cameraMode == 2 ? SCNVector3(0, 0, 0) : target,
-            up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, -1))
+        world.camera.look(at:cameraAim,up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+        if cameraMode != 2 {
+            let p=world.camera.position,q=cameraAim
+            overviewMotion.reset(eye:SIMD3(Double(p.x),Double(p.y),Double(p.z)),aim:SIMD3(Double(q.x),Double(q.y),Double(q.z)))
+        }
     }
+
     @objc func togglePause(_ sender: Any?) {
         guard inSandbox else { return }
         simulation.paused.toggle(); view.clearInput()
@@ -584,7 +608,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             raceHUD.stormSelected=racePhysics.storm.enabled
             window.title=racePhysics.storm.enabled ? "Marvin · Dirt Track · Sandstorm":"Marvin · Dirt Track"
             dirtWorld.configureStorm(racePhysics.storm)
-            cameraMode = 0; cameraDistance = 4.5
+            cameraMode = 0; cameraDistance = 4.5;raceHUD.mapRegion = .course;cameraAim=SCNVector3Zero
         }
         view.clearInput(); pauseItem?.label = "Pause"
         pauseItem?.image = NSImage(systemSymbolName: "pause.fill", accessibilityDescription: nil)
@@ -592,7 +616,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     @objc func cycleCamera(_ sender: Any?) {
         guard inSandbox, dirtIntro == nil, !raceCameraLocked else { return }
-        cameraMode = (cameraMode+1)%3; updateCamera(snap: true)
+        cameraMode = (cameraMode+1)%3; updateCamera(snap:cameraMode != 2)
         window.makeFirstResponder(view)
     }
     func updateDepartureHUD() {

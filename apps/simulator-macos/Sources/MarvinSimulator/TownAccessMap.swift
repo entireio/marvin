@@ -6,12 +6,20 @@ import SimulationCore
 final class TownAccessMap {
     private let size=1320,origin = -165.0,step=0.25
     private var distance:[Int32]
-    init(lots:[TownWorld.TownLot],streets:[[SIMD2<Double>]]) {
+    struct Footprint {
+        let center:SIMD2<Double>,width:Double,depth:Double,yaw:Double
+    }
+    init(lots:[TownWorld.TownLot]=[],footprints:[Footprint]=[],streets:[[SIMD2<Double>]]) {
         distance=Array(repeating:-1,count:size*size)
-        for lot in lots {
-            let lo=cell(SIMD2(lot.x-lot.width/2-0.19,lot.z-lot.depth/2-0.19))
-            let hi=cell(SIMD2(lot.x+lot.width/2+0.19,lot.z+lot.depth/2+0.19))
-            for z in max(0,lo.y)...min(size-1,hi.y) { for x in max(0,lo.x)...min(size-1,hi.x) { distance[z*size+x] = -2 } }
+        let obstacles=footprints+lots.map{Footprint(center:SIMD2($0.x,$0.z),width:$0.width,depth:$0.depth,yaw:0)}
+        for lot in obstacles {
+            let c=cos(lot.yaw),s=sin(lot.yaw),halfW=lot.width/2+0.38,halfD=lot.depth/2+0.38
+            let radius=SIMD2(abs(c)*halfW+abs(s)*halfD,abs(s)*halfW+abs(c)*halfD)
+            let lo=cell(lot.center-radius),hi=cell(lot.center+radius)
+            for z in max(0,lo.y)...min(size-1,hi.y) { for x in max(0,lo.x)...min(size-1,hi.x) {
+                let q=SIMD2(origin+(Double(x)+0.5)*step,origin+(Double(z)+0.5)*step)-lot.center
+                if abs(q.x*c-q.y*s)<halfW && abs(q.x*s+q.y*c)<halfD { distance[z*size+x] = -2 }
+            }}
         }
         // The racing surface and infield are not public alley connections.
         let lo=cell(SIMD2(-28.0,-28.0)),hi=cell(SIMD2(28.0,28.0))
@@ -44,4 +52,22 @@ final class TownAccessMap {
         let d=distance[c.y*size+c.x]
         return d>=0 ? Double(d)*step:nil
     }
+    /// Follow the shared flood field to a public street, retaining enough
+    /// samples to audit the entire corridor against the final collision mesh.
+    func routeToStreet(from p:SIMD2<Double>)->[SIMD2<Double>]? {
+        var c=cell(p)
+        guard c.x>=0,c.x<size,c.y>=0,c.y<size,distance[c.y*size+c.x]>=0 else { return nil }
+        var result=[p]
+        for _ in 0..<3000 {
+            let value=distance[c.y*size+c.x]
+            result.append(SIMD2(origin+(Double(c.x)+0.5)*step,origin+(Double(c.y)+0.5)*step))
+            if value==0 { return result }
+            guard let next=[SIMD2(c.x+1,c.y),SIMD2(c.x-1,c.y),SIMD2(c.x,c.y+1),SIMD2(c.x,c.y-1)].first(where:{ q in
+                q.x>=0 && q.x<size && q.y>=0 && q.y<size && distance[q.y*size+q.x]==value-1
+            }) else { return nil }
+            c=next
+        }
+        return nil
+    }
+
 }

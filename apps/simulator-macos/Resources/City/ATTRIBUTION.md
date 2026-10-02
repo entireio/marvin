@@ -10,6 +10,8 @@ https://creativecommons.org/publicdomain/zero/1.0/
   eyes from that bundle. `crowd.json` is our derivative: clothed, posed, scaled,
   triangulated, decimated, and converted to SceneKit coordinates. No subdivision
   source or Blender runtime is shipped in the application.
+- **Clay Plaster**, Amal Kumar / Poly Haven: https://polyhaven.com/a/clay_plaster (2K diffuse, OpenGL normal, roughness; MD5-verified against API manifest).
+- **Park Sand**, Poly Haven: https://polyhaven.com/a/park_sand (2K diffuse, OpenGL normal, roughness; downloaded from the API manifest and MD5-verified).
 - **Painted Plaster Wall**, Poly Haven: https://polyhaven.com/a/painted_plaster_wall
 - **Fabric Pattern 07**, Poly Haven: https://polyhaven.com/a/fabric_pattern_07
 - **Kloppenheim 02 Pure Sky**, Poly Haven: https://polyhaven.com/a/kloppenheim_02_puresky (1K Radiance HDR environment).

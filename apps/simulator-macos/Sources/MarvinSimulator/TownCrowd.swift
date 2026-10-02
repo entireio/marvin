@@ -60,9 +60,9 @@ enum CityMaterials {
                 let warp=(macro-0.5)*0.14+(fine-0.5)*0.045
                 let base=max(0,1-v/(baseHeight+warp))
                 var level=1.0
-                if tile>0 { level=0.975+(macro-0.5)*0.025 }
+                if tile>0 { level=0.955+(macro-0.5)*0.12+(fine-0.5)*0.035 }
                 if history>0 {
-                    let exposure=history==1 ? 0.12:(history==2 ? 0.08:0.20)
+                    let exposure=history==1 ? 0.19:(history==2 ? 0.10:0.30)
                     level -= base*exposure*(0.65+macro*0.55)
                 }
                 if history==2 {
@@ -71,14 +71,14 @@ enum CityMaterials {
                     let cy=0.25+Double(tile%4)*0.12
                     let boundary=pow(abs((u-centerX)/radiusX),4)+pow(abs((v-cy)/radiusY),4)+warp*12
                     let patch=max(0,min(1,(1.1-boundary)*5))
-                    level=level*(1-patch)+patch*(tile%2==0 ? 0.995:0.94)
+                    level=level*(1-patch)+patch*(tile%2==0 ? 0.995:0.85)
                 }
                 if history==3 {
                     // A narrow runoff/soot mark tied to the roof edge, fading before ground.
                     let drift=centerX+(macro-0.5)*0.065
                     let stain=exp(-pow((u-drift)/(0.025+(1-v)*0.035),2))
                         * max(0,min(1,(v-0.24)*1.6))*(0.65+fine*0.35)
-                    level -= stain*0.13
+                    level -= stain*0.21
                 }
                 let i=((tile/8*tileSize+y)*size+tile%8*tileSize+x)*4
                 pixels[i]=UInt8(255*max(0.60,min(1,level)))
@@ -90,10 +90,24 @@ enum CityMaterials {
         let image=NSImage(size:NSSize(width:size,height:size));image.addRepresentation(bitmap);return image
     }
     static let plaster:SCNMaterial = {
-        let m=scanned("plaster",normal:0.95)
+        let m=scanned("plaster",normal:1.0)
+        tint(m,surface:"""
+        float grain=dot(_surface.diffuse.rgb,float3(0.2126,0.7152,0.0722));
+        _surface.diffuse.rgb=float3(in.cityTint)*(0.50+grain*1.1);
+        """)
         m.multiply.contents=plasterWear();m.multiply.mappingChannel=1
         m.multiply.wrapS = .clamp;m.multiply.wrapT = .clamp
         m.multiply.mipFilter = .linear;m.multiply.maxAnisotropy=4
+        return m
+    }()
+    static let adobe:SCNMaterial = {
+        let m=scanned("adobe",normal:0.85)
+        tint(m,surface:"""
+        float grain=dot(_surface.diffuse.rgb,float3(0.2126,0.7152,0.0722));
+        _surface.diffuse.rgb=float3(in.cityTint)*(0.60+grain*1.25);
+        """)
+        m.multiply.contents=plasterWear();m.multiply.mappingChannel=1
+        m.multiply.wrapS = .clamp;m.multiply.wrapT = .clamp;m.multiply.mipFilter = .linear
         return m
     }()
     static let cloth:SCNMaterial = {

@@ -4,8 +4,9 @@ The dirt circuit now sits inside a continuous city. The rectangular perimeter
 road and distant mesa ring are removed. Market and dock roads form an irregular,
 connected branching network, and the city extends roughly 150 scene units in each
 direction so neither the original comparison overview nor the gameplay overview
-shows an empty desert outskirts. Scenery ground is worn paving; the racing spline,
-track mesh and physics remain unchanged.
+shows an empty desert outskirts. The historical rebuild below used worn paving. The October 2 revision uses
+trampled sand, reachable courtyards, and an irregular settlement boundary; see
+the latest comparison and validation notes at the end of this document.
 
 ## Film references and visual comparisons
 
@@ -1442,3 +1443,89 @@ spatial progress. The earlier exploratory run (`exploration-collision-soak`)
 also failed, with a blocked resident and WALL-E reversals. These traffic findings
 remain open; the final cosmetic meshes do not modify the existing collision
 world or navigation, and endurance thresholds were not relaxed.
+
+
+## October 2: accessible districts and reference-driven iteration
+
+The current pass replaces the square, nearly touching outer grid with street-facing
+compounds and connected pedestrian alleys. The established circuit, stands, gate,
+service area, and trackside building centers remain in place. Larger core compounds
+are narrowed where necessary to open walking access; the test audits final scenery,
+not just the initial placement plan.
+
+### Reference comparison
+
+Directly inspected the Mos Eisley establishing frame in the SHOT.CAFE collection
+above and the Mos Espa street and market film frames in the Mitch Darby collection.
+The official Mos Espa databank aerial is a later television depiction; it was not
+misidentified as a Phantom Menace aerial. Film images are research only.
+
+The aerial reference has joined low volumes, domes, circular landing courts,
+unequal heights, and distinct civic towers. Street references show rough plaster,
+deep shade, recessed openings, worn sand, and useful objects collected at façades.
+An iteration is not accepted simply because its collision tests pass.
+
+| Observed gap in native captures | Change and evidence |
+| --- | --- |
+| Impenetrable residential blocks and repeated entrance positions | Rotated footprint clearance, five door families, entrance selection using a connected pedestrian grid, and final obstacle audit. 492/492 compounds and all three public venues connect to streets. |
+| Same roof silhouette and no identifiable destinations | Nine compound families: unequal domed rooms, stepped terraces, windcatchers, vaulted workshops, open patios, and linked flat-roof rooms. Droid Exchange has a repair crane and dismantled equipment; Twin Suns has shaded tables; Traders Court has varied stalls and wares. |
+| Flat, unshadowed outskirts | Architecture shadow casters now follow exploration within a bounded 75-unit radius. Fixed postrace overview retains the race-centered caster set. Survey captures also move the sun-shadow footprint correctly. |
+| Featureless ground | Bundled CC0 Park Sand diffuse/normal/roughness maps provide trampled relief. A static mesh blends this finish out before the track and dunes. Separate soft patches follow actual doorway approaches. No paving grid or driveway stamp. |
+| Uniform smooth walls | Two plaster scans, independently seeded maintenance histories, repaired areas, lower-wall dirt, selected roof runoff, and existing geometric cavities. Clay plaster is used on selected compounds outside the protected core. |
+| Oversized, repetitive market props | Lower counters, staggered stalls, hanging wares, arched shopfronts, cantina cups and table supports, finned motors and dismantled droids. Storage, water containers, benches, and deliveries are placed beside clear entrances. |
+| Stair treads did not reach upper rooms | Flights now terminate at the actual upper-room edge; rise and run follow the level difference. |
+| Repeated skyline utilities | Four distinct towers now serve communications, observation, ventilation, and condensation, within their established reserved plots. |
+| Windows floated beside nonrectangular buildings | Door and window placement share actual exposed wall faces; 1,886 probes verify wall support behind both ends of every window. |
+| Residents cut doorway corners and stalled | Residents turn before stepping around tight corners and follow their swept planned direction, with a smaller waypoint arrival threshold. |
+
+### Native evidence so far
+
+Artifacts are under `/Users/thomi/Projects/marvin-town-planning/`:
+
+- `town-reference-v3` through `town-reference-v13`: nine district aerial views,
+  three public-place aerial views, three pedestrian-height venue views, three
+  alley views, five door families, and activity/collision reports. The comparison
+  uses the same daylight and camera coordinates across passes.
+- `town-reference-v10-navigation`: a physical 163.9-second track → town → dunes →
+  town → track drive, including camera cycling in town and dunes. Region sequence
+  and smooth-follow checks pass. This includes whole-town and course overviews,
+  town/dune overview transitions, and robot chase-view captures along the route.
+- `town-reference-v10-postrace`: 720 seconds after all robots have departed;
+  all four continue visiting town, 60 resident house entries, no blocked residents
+  at completion, zero maximum measured robot penetration, locked overview, hidden HUD.
+- `town-reference-v13`: 492 house routes and three venue routes, 21,212
+  pedestrian samples, zero blocked approaches/routes, and 1,886 supported-window
+  probes. Nine district aerials plus the oblique and street views were inspected.
+- `town-reference-v13-viewport`: HUD hide/show and restart preserve the camera,
+  viewport, and projected landmarks at three window sizes (zero measured drift).
+- `town-reference-v13-perf-race`: 45 seconds at 1920×1080 on Apple M2, 59.97 mean
+  renderer callbacks/s, p95 17.22 ms, p99 18.42 ms, one interval >25 ms and none
+  >50 ms. CPU update p95 2.05 ms.
+- `town-reference-v13-perf-town`: same duration/device/resolution, 59.98 mean
+  callbacks/s, p95 17.50 ms, p99 18.03 ms, one interval >25 ms and none >50 ms.
+  CPU update p95 5.08 ms with up to 16 exploration cells active at completion.
+  Both slow intervals occurred near simulated 15.07 seconds, with measured CPU
+  updates of 1.76/3.69 ms. These measurements do not identify the cause of that
+  isolated delay. They measure SceneKit callback intervals, not GPU execution or
+  display presentation timestamps; they are not a guarantee of zero dropped frames.
+- Core simulation checks and city asset integrity/attribution checks pass.
+
+Current map behavior: COURSE uses the racing map. TOWN caches the actual street
+and building layout; DUNES adds terrain contours and the player's relation to the
+town. TOWN and DUNES do not plot rival positions. The 270-wide panel is unchanged.
+Outside the circuit, bird's-eye view follows the player through a critically damped
+transition; reentry restores the course overview. The postrace camera lock takes
+precedence over this exploration behavior.
+
+The second density pass adds 64 small workshops in safe gaps and three enclosed
+residential forecourts. Outdoor spaces are accepted only when final pedestrian
+routes remain clear; no density target overrides access. The market has deep
+masonry arcades with filled spandrels, hanging stock, and open produce trays.
+Venue plots are included in the cached town map.
+
+The comparison includes high district aerials, a low oblique establishing angle,
+pedestrian-height venue views, and actual physical drive-through captures. This is
+not a claim of photographic equivalence to film imagery: the procedural residents,
+merchandise and regular building silhouettes remain visibly simpler than the sets.
+The improved composition, material relief, enclosure, and destination detail are
+separately assessed rather than using a successful collision test as visual approval.

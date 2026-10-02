@@ -172,7 +172,7 @@ final class TownResidents {
                       walkers.allSatisfy({$0 === w || $0.node.isHidden || simd_distance($0.position,doors[w.home].center)>1.5}) else { continue }
                 w.waypoint=0;w.indoors=false;w.node.isHidden=false;exits += 1
             }
-            while w.waypoint<w.path.count && simd_distance(w.position,w.path[w.waypoint])<0.13 { w.waypoint += 1 }
+            while w.waypoint<w.path.count && simd_distance(w.position,w.path[w.waypoint])<0.06 { w.waypoint += 1 }
             if w.waypoint==w.path.count {
                 w.home=w.destination;w.visits += 1;entries += 1;w.indoors=true;w.settlingInside=true
                 if w.firstEntry<0 { w.firstEntry=clock }
@@ -229,9 +229,10 @@ final class TownResidents {
             let heading=atan2(steering.x,steering.y)
             let angle=atan2(sin(heading-w.heading),cos(heading-w.heading))
             w.heading += max(-dt*3,min(dt*3,angle))
-            let forward=SIMD2(sin(w.heading),cos(w.heading))
-            let step=w.speed*dt*max(0,cos(angle))*(robotNear && w.yieldPoint==nil ? 0:1)
-            let next=w.position+forward*min(step,simd_length(delta))
+            // Turn before stepping around tight door jambs. The swept path must
+            // follow the planned clearance, not cut the corner in a heading arc.
+            let step=w.speed*dt*(abs(angle)<0.35 ? max(0,cos(angle)):0)*(robotNear && w.yieldPoint==nil ? 0:1)
+            let next=w.position+direction*min(step,simd_length(delta))
             let probe=body(next)
             let solids=staticWorld.nearby(probe)+doors.map{$0.body}+robots+pedestrians
             // Coarse updates still sweep the whole step; thin scenery cannot

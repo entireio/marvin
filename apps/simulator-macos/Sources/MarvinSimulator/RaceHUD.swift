@@ -9,6 +9,8 @@ final class RaceHUD: NSView {
     var position: Int { 1 + opponents.filter { $0.playerPosition(race) == 2 }.count }
     var race = DirtRace(), scores: [DirtScore] = []
     var x = 0.0, z = -10.0, heading = 0.0
+    var mapRegion=RaceMapRegion.course
+    var townMapImage:NSImage?,planetMapImage:NSImage?
     var stormSelected = false
     var stormWarningVisible: Bool { stormSelected && race.countdown > 0 && !paused && !escaping && !race.finished }
     var introducing = false
@@ -23,7 +25,7 @@ final class RaceHUD: NSView {
     private func textAttributes(_ size:CGFloat, _ bold:Bool = false) -> [NSAttributedString.Key:Any] {
         [.font:NSFont.monospacedSystemFont(ofSize:size,weight:bold ? .bold : .regular),.foregroundColor:color(0xf7eddb)]
     }
-    private func text(_ string: String, _ x:CGFloat,_ y:CGFloat,_ size:CGFloat = 16,_ bold:Bool = false) {
+    func text(_ string: String, _ x:CGFloat,_ y:CGFloat,_ size:CGFloat = 16,_ bold:Bool = false) {
         (string as NSString).draw(at:NSPoint(x:x,y:y),withAttributes:textAttributes(size,bold))
     }
     private func panel(_ x:CGFloat,_ y:CGFloat,_ w:CGFloat,_ h:CGFloat) {
@@ -79,58 +81,8 @@ final class RaceHUD: NSView {
         }
         text("Fastest 3-lap totals",x+18,238,12)
         panel(x,286,270,212)
-        text("COURSE",x+18,300,12,true)
-        let map = NSRect(x:x+18,y:330,width:234,height:150)
-        func point(_ px:Double,_ pz:Double) -> NSPoint {
-            NSPoint(x:map.maxX-CGFloat((px+21)/42)*map.width,y:map.maxY-CGFloat((pz+20)/42)*map.height)
-        }
-        let coursePoints = (0...160).map { i -> NSPoint in
-            let p = DirtCourse.point(Double(i)*2 * .pi/160)
-            return point(p.x,p.z)
-        }
-        let path = NSBezierPath()
-        for (i, at) in coursePoints.enumerated() {
-            if i == 0 { path.move(to:at) } else { path.line(to:at) }
-        }
-        // Show race progress on the exact polyline drawn above, independent
-        // of lateral position on the wide course or beyond its edges.
-        func marker(_ px: Double, _ pz: Double) -> NSPoint {
-            let progress = DirtCourse.phase(x:px,z:pz)/(2 * .pi)*160
-            let index = min(159,max(0,Int(progress)))
-            let fraction = CGFloat(progress-Double(index))
-            let a = coursePoints[index], b = coursePoints[index+1]
-            return NSPoint(x:a.x+(b.x-a.x)*fraction,y:a.y+(b.y-a.y)*fraction)
-        }
-        color(0xa7865e).setStroke(); path.lineWidth = 10.5; path.lineJoinStyle = .round; path.stroke()
-        // Phase zero is the same crossing used by the race timer and track.
-        let start = DirtCourse.point(0), ahead = DirtCourse.point(0.001)
-        let finishAt = point(start.x,start.z), finishAhead = point(ahead.x,ahead.z)
-        NSGraphicsContext.saveGraphicsState()
-        let transform = AffineTransform(translationByX:finishAt.x,byY:finishAt.y)
-        var oriented = transform
-        oriented.rotate(byRadians:atan2(finishAhead.y-finishAt.y,finishAhead.x-finishAt.x))
-        (oriented as NSAffineTransform).concat()
-        for row in 0..<4 {
-            for column in 0..<2 {
-                color((row+column).isMultiple(of:2) ? 0xf7eddb : 0x18221d).setFill()
-                NSRect(x:CGFloat(column)*4-4,y:CGFloat(row)*4-8,width:4,height:4).fill()
-            }
-        }
-        color(0x18221d).setStroke()
-        let border = NSBezierPath(rect:NSRect(x:-4,y:-8,width:8,height:16))
-        border.lineWidth = 1; border.stroke()
-        NSGraphicsContext.restoreGraphicsState()
-        text("START / FINISH",finishAt.x-38,finishAt.y+12,9,true)
-        for (i, opponent) in opponents.enumerated() {
-            let rivalAt = marker(opponent.simulation.x,opponent.simulation.z)
-            color(racerColors[i]).setFill()
-            NSBezierPath(ovalIn:NSRect(x:rivalAt.x-4,y:rivalAt.y-4,width:8,height:8)).fill()
-        }
-        let at = marker(self.x,z)
-        color(playerColor).setFill(); NSBezierPath(ovalIn:NSRect(x:at.x-4,y:at.y-4,width:8,height:8)).fill()
-        let direction = NSBezierPath(); direction.move(to:at)
-        direction.line(to:NSPoint(x:at.x-sin(heading)*10,y:at.y-cos(heading)*10))
-        color(playerColor).setStroke(); direction.lineWidth = 2; direction.stroke()
+        text(mapRegion.rawValue,x+18,300,12,true)
+        drawNavigationMap(in:NSRect(x:x+18,y:330,width:234,height:150))
         if helpVisible {
             let lines = ["DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", "CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R"]
             let font = NSFont.monospacedSystemFont(ofSize:12,weight:.regular)
@@ -198,5 +150,60 @@ final class RaceHUD: NSView {
         }
         label(saveError ?? (complete ? "Autopilot · Enjoy the cooldown lap" : "Autopilot · Waiting for the remaining finishers"),in:NSRect(x:x+24,y:y+282,width:w-48,height:22),size:12,tint:0xb8c2b6)
         label("⌘R  Race again    ·    Main Menu to leave",in:NSRect(x:x+24,y:y+309,width:w-48,height:22),size:12,weight:.medium,tint:0xffd78d)
+    }
+}
+
+extension RaceHUD {
+    func drawCourseMap(in map:NSRect) {
+        func point(_ px:Double,_ pz:Double) -> NSPoint {
+            NSPoint(x:map.maxX-CGFloat((px+21)/42)*map.width,y:map.maxY-CGFloat((pz+20)/42)*map.height)
+        }
+        let coursePoints = (0...160).map { i -> NSPoint in
+            let p = DirtCourse.point(Double(i)*2 * .pi/160)
+            return point(p.x,p.z)
+        }
+        let path = NSBezierPath()
+        for (i, at) in coursePoints.enumerated() {
+            if i == 0 { path.move(to:at) } else { path.line(to:at) }
+        }
+        // Show race progress on the exact polyline drawn above, independent
+        // of lateral position on the wide course or beyond its edges.
+        func marker(_ px: Double, _ pz: Double) -> NSPoint {
+            let progress = DirtCourse.phase(x:px,z:pz)/(2 * .pi)*160
+            let index = min(159,max(0,Int(progress)))
+            let fraction = CGFloat(progress-Double(index))
+            let a = coursePoints[index], b = coursePoints[index+1]
+            return NSPoint(x:a.x+(b.x-a.x)*fraction,y:a.y+(b.y-a.y)*fraction)
+        }
+        color(0xa7865e).setStroke(); path.lineWidth = 10.5; path.lineJoinStyle = .round; path.stroke()
+        // Phase zero is the same crossing used by the race timer and track.
+        let start = DirtCourse.point(0), ahead = DirtCourse.point(0.001)
+        let finishAt = point(start.x,start.z), finishAhead = point(ahead.x,ahead.z)
+        NSGraphicsContext.saveGraphicsState()
+        let transform = AffineTransform(translationByX:finishAt.x,byY:finishAt.y)
+        var oriented = transform
+        oriented.rotate(byRadians:atan2(finishAhead.y-finishAt.y,finishAhead.x-finishAt.x))
+        (oriented as NSAffineTransform).concat()
+        for row in 0..<4 {
+            for column in 0..<2 {
+                color((row+column).isMultiple(of:2) ? 0xf7eddb : 0x18221d).setFill()
+                NSRect(x:CGFloat(column)*4-4,y:CGFloat(row)*4-8,width:4,height:4).fill()
+            }
+        }
+        color(0x18221d).setStroke()
+        let border = NSBezierPath(rect:NSRect(x:-4,y:-8,width:8,height:16))
+        border.lineWidth = 1; border.stroke()
+        NSGraphicsContext.restoreGraphicsState()
+        text("START / FINISH",finishAt.x-38,finishAt.y+12,9,true)
+        for (i, opponent) in opponents.enumerated() {
+            let rivalAt = marker(opponent.simulation.x,opponent.simulation.z)
+            color(racerColors[i]).setFill()
+            NSBezierPath(ovalIn:NSRect(x:rivalAt.x-4,y:rivalAt.y-4,width:8,height:8)).fill()
+        }
+        let at = marker(self.x,z)
+        color(playerColor).setFill(); NSBezierPath(ovalIn:NSRect(x:at.x-4,y:at.y-4,width:8,height:8)).fill()
+        let direction = NSBezierPath(); direction.move(to:at)
+        direction.line(to:NSPoint(x:at.x-sin(heading)*10,y:at.y-cos(heading)*10))
+        color(playerColor).setStroke(); direction.lineWidth = 2; direction.stroke()
     }
 }

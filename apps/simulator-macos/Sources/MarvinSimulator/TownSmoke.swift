@@ -214,6 +214,7 @@ extension AppController {
         if CommandLine.arguments.contains("--outer-town-survey") {
             let fraction=0.10+0.85*min(1,elapsed/45)
             detailPlayer=dirtWorld.town.explorationSurveyPoint(fraction)
+            dirtWorld.sky.updateShadowCenter(SIMD3(detailPlayer.x,0,detailPlayer.y))
             let ahead=dirtWorld.town.explorationSurveyPoint(min(1,fraction+0.025))
             world.camera.position=SCNVector3(detailPlayer.x,1.5,detailPlayer.y)
             world.camera.look(at:SCNVector3(ahead.x,1.5,ahead.y),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))

@@ -33,13 +33,23 @@ final class TownWorld {
     private var cells: [String: TownCell] = [:]
     private var explorationCells: [String: TownCell] = [:]
     private var explorationNodes: [SCNNode] = []
+    private var architectureNodes:[SCNNode]=[]
     private(set) var explorationTriangles = 0
     var explorationDetailEnabled = true // native benchmark comparison only
     var activeExplorationCells:Int { explorationNodes.filter { !$0.isHidden }.count }
     func updateExplorationDetail(camera:SCNVector3,player:SIMD2<Double>) {
         // A street-level view outside the circuit gets a moving detail window.
         // Neither the racing cameras nor the locked finish overview needs it.
-        let exploring=explorationDetailEnabled && max(abs(player.x),abs(player.y))>24 && camera.y<12
+        // Shadow casters follow the player into town. Keeping only the original
+        // race-side cells enabled left every outer courtyard unshadowed.
+        let focus = camera.y>=12 ? SIMD2(Double(camera.x),Double(camera.z)+33):player
+        let outside=max(abs(focus.x),abs(focus.y))>28
+        for node in architectureNodes {
+            let p=node.position
+            let enabled=outside ? hypot(Double(p.x)-focus.x,Double(p.z)-focus.y)<75:(abs(p.x)<48 && abs(p.z)<48)
+            if node.castsShadow != enabled { node.castsShadow=enabled }
+        }
+        let exploring=explorationDetailEnabled && max(abs(focus.x),abs(focus.y))>28 && camera.y<60
         for node in explorationNodes {
             let distance=hypot(Double(camera.x-node.position.x),Double(camera.z-node.position.z))
             let amount=exploring ? max(0,min(1,(58-distance)/16)):0
@@ -54,6 +64,7 @@ final class TownWorld {
     private(set) var triangleCount = 0
     private(set) var coarseTriangles = 0
     private(set) var lots: [TownLot] = []
+    private(set) var mapBuildings:[[SIMD2<Double>]]=[]
     private var cameraBounds: [(SIMD3<Double>,SIMD3<Double>)] = []
     private var clock = 0.0
     private let sand: UInt32 = 0xc5a174, cream: UInt32 = 0xe6c89c
@@ -78,6 +89,7 @@ final class TownWorld {
         buildGrandstand()
         progress?(0.12,"Building landmarks")
         buildLandmarks()
+        buildDistrictPlaces()
         progress?(0.14,"Building town districts")
         buildSettlement()
         progress?(0.38,"Preparing the repair yard")
@@ -90,6 +102,11 @@ final class TownWorld {
         buildReferenceDetails()
         progress?(0.64,"Placing signs")
         buildWayfinding()
+        buildNeighborhoodUtilities()
+        buildDoorstepLife()
+        buildDomesticCourts()
+        refreshPedestrianAccess()
+        root.addChildNode(TownGround.build(access:pedestrianAccess+venueAccess))
         placeStreetActivities()
         progress?(0.66,"Connecting residents to their homes")
         residents=TownResidents(doors:doorways,city:clearCollisions,crowd:crowd,root:root,count:10)
@@ -108,10 +125,9 @@ final class TownWorld {
             near.levelsOfDetail = [SCNLevelOfDetail(geometry: far, worldSpaceDistance: 82)]
             let node = SCNNode(geometry: near)
             node.simdPosition = cell.origin; node.name = "Town cell \(key)"
-            // Keep expensive shadow submissions bounded. Architecture gets
-            // vertex-toned recesses; the sun still gives near walls contact.
+            // Initial racing footprint; exploration moves the bounded caster set.
             node.castsShadow = abs(cell.origin.x) < 48 && abs(cell.origin.z) < 48
-            root.addChildNode(node)
+            architectureNodes.append(node);root.addChildNode(node)
             triangleCount += cell.near.indices.count / 3
             coarseTriangles += cell.far.indices.count / 3
         }
@@ -185,6 +201,7 @@ final class TownWorld {
     }
     // Destination-led arteries: market approach, dock access and northern trade
     // route. None forms a closed perimeter around the race.
+    var mapStreets:[[SIMD2<Double>]] { streets.map{$0.path} }
     private let streets:[Street] = [
         // Broad shared sandy streets; the gaps between compounds form local
         // passages. Do not clear residential loops or individual driveways.
@@ -193,7 +210,16 @@ final class TownWorld {
         Street(points:[SIMD2(35,14),SIMD2(36,30),SIMD2(18,36),SIMD2(-8,32),SIMD2(-30,39),SIMD2(-64,58),SIMD2(-145,80)],width:3.6),
         Street(points:[SIMD2(-145,-5),SIMD2(-62,-8),SIMD2(-39,-15),SIMD2(-35,-29)],width:2.4,kind:1),
         Street(points:[SIMD2(36,30),SIMD2(60,48),SIMD2(105,42),SIMD2(150,52)],width:4.0),
-        Street(points:[SIMD2(-64,58),SIMD2(-48,92),SIMD2(-65,150)],width:2.0,kind:1)
+        Street(points:[SIMD2(-64,58),SIMD2(-48,92),SIMD2(-65,150)],width:2.0,kind:1),
+        // Secondary streets connect districts, not individual driveways. Keep
+        // the established circuit-side fabric and all six original arteries.
+        Street(points:[SIMD2(-64,-39),SIMD2(-84,-20),SIMD2(-92,10),SIMD2(-80,37),SIMD2(-64,58)],width:2.3,kind:1),
+        Street(points:[SIMD2(-64,-39),SIMD2(-67,-57),SIMD2(-42,-64),SIMD2(-12,-78),SIMD2(20,-72),SIMD2(55,-67),SIMD2(81,-42),SIMD2(78,-14),SIMD2(65,17),SIMD2(60,48)],width:2.8,kind:1),
+        Street(points:[SIMD2(-48,92),SIMD2(-20,86),SIMD2(11,69),SIMD2(40,80),SIMD2(69,69),SIMD2(60,48)],width:2.5,kind:1),
+        Street(points:[SIMD2(-84,-20),SIMD2(-111,-40),SIMD2(-102,-68),SIMD2(-72,-87),SIMD2(-42,-64)],width:2.0,kind:1),
+        Street(points:[SIMD2(20,-72),SIMD2(18,-102),SIMD2(51,-112),SIMD2(79,-93),SIMD2(81,-42)],width:2.1,kind:1),
+        Street(points:[SIMD2(105,42),SIMD2(113,17),SIMD2(104,-10),SIMD2(78,-14)],width:2.2,kind:1),
+        Street(points:[SIMD2(-80,37),SIMD2(-111,55),SIMD2(-100,78),SIMD2(-48,92)],width:1.8,kind:1)
     ]
 
 
@@ -203,10 +229,11 @@ final class TownWorld {
         let i=min(path.count-2,Int(t)),blend=t-Double(i)
         return path[i]*(1-blend)+path[i+1]*blend
     }
+    private var preservingTrackside=false
     private func streetDistance(_ x:Double,_ z:Double)->Double {
         let p=SIMD2(x,z)
         var distance=Double.greatestFiniteMagnitude
-        for street in streets { for i in 1..<street.path.count {
+        for street in (preservingTrackside ? Array(streets.prefix(6)):streets) { for i in 1..<street.path.count {
             let a=street.path[i-1],d=street.path[i]-a
             let t=max(0,min(1,simd_dot(p-a,d)/simd_length_squared(d)))
             distance=min(distance,simd_length(p-a-d*t)-street.width/2)
@@ -363,10 +390,18 @@ final class TownWorld {
         let center:SIMD2<Double>,yaw:Double,width:Double,height:Double,variant:Int,walkable:Bool
     }
     private(set) var entrances:[Entrance]=[]
+    private(set) var windowSupports:[SIMD3<Double>]=[]
+    struct PedestrianAccess {
+        let building:SIMD2<Double>,door:SIMD2<Double>,route:[SIMD2<Double>]
+    }
+    private(set) var pedestrianAccess:[PedestrianAccess]=[]
+    private(set) var inaccessibleBuildings:[SIMD2<Double>]=[]
+    private(set) var venueAccess:[PedestrianAccess]=[]
+    private var plannedDoors:[Int:DoorPlan]=[:]
     private var accessMap:TownAccessMap?
     private struct Facade { let x:Double,z:Double,turn:Double,span:Double,height:Double }
     private struct DoorPlan { let facade:Facade,offset:Double,width:Double,height:Double,variant:Int }
-    private func entrancePlan(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double,style:Int)->DoorPlan? {
+    private func compoundFacades(w:Double,d:Double,h:Double,style:Int)->[Facade] {
         var faces=[Facade]()
         func block(_ cx:Double,_ cz:Double,_ width:Double,_ depth:Double,_ height:Double, sides:[Int]) {
             for side in sides {
@@ -385,6 +420,10 @@ final class TownWorld {
             block(-w*0.23,-d*0.05,w*0.54,d*0.90,h,sides:[0,2,3])
             block(w*0.26,0,w*0.47,d,h*0.58,sides:[0,1,2])
         } else { block(0,0,w,d,style==5 ? max(1.6,h*0.44):h*0.60,sides:[0,1,2,3]) }
+        return faces
+    }
+    private func entrancePlan(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double,style:Int)->DoorPlan? {
+        let faces=compoundFacades(w:w,d:d,h:h,style:style)
         var best:(Double,DoorPlan)?
         let seed=UInt32(truncatingIfNeeded:index &* 747796405 &+ 2891336453)
         let hash=Int((seed ^ (seed>>16)) & 0x7fffffff)
@@ -398,8 +437,8 @@ final class TownWorld {
                 let lx=face.x+cos(face.turn)*offset,lz=face.z-sin(face.turn)*offset
                 let center=SIMD2(x+cos(yaw)*lx+sin(yaw)*lz,z-sin(yaw)*lx+cos(yaw)*lz)
                 let out=SIMD2(sin(yaw+face.turn),cos(yaw+face.turn))
-                guard let distance=accessMap?.streetDistance(center+out*0.75),
-                      accessMap?.streetDistance(center+out*1.20) != nil else { continue }
+                guard let distance=accessMap?.streetDistance(center+out*0.55),
+                      accessMap?.streetDistance(center+out*0.65) != nil else { continue }
                 // Prefer a short public approach, but stagger neighbouring entries.
                 let score=distance+Double((slot+hash)%5)*0.32
                 if best==nil || score<best!.0 { best=(score,DoorPlan(facade:face,offset:offset,width:width,height:height,variant:variant)) }
@@ -412,9 +451,10 @@ final class TownWorld {
         citySeed = citySeed &* 6364136223846793005 &+ 1442695040888963407
         return Double(citySeed >> 32)/Double(UInt32.max)
     }
-    private func reserved(_ x:Double,_ z:Double,_ w:Double,_ d:Double)->Bool {
+    private func reserved(_ x:Double,_ z:Double,_ w:Double,_ d:Double,checkStreet:Bool=true)->Bool {
+        if venueSites.contains(where:{abs(x-$0.center.x)<$0.halfWidth+w/2+1.1 && abs(z-$0.center.y)<$0.halfDepth+d/2+1.1}) { return true }
         if infield(x,z) || !clearLot(x,z,w,d) || CityExit.reserved(SIMD2(x,z),radius:hypot(w,d)/2) { return true }
-        if streetDistance(x,z)<hypot(w,d)*0.44 { return true }
+        if checkStreet && streetDistance(x,z)<hypot(w,d)*0.44 { return true }
         if abs(x)<11+w/2 && abs(z-(finishZ-6))<3.8+d/2 { return true }
         if abs(x-26)<5.2+w/2 && abs(z-17)<7.0+d/2 { return true }
         if abs(x-3)<4.4+w/2 && abs(z-22)<1.6+d/2 { return true }
@@ -429,11 +469,12 @@ final class TownWorld {
         var compounds:[(Double,Double,Double,Double,Double,Int,Double)]=[]
         func reserve(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ h:Double,_ i:Int,_ yaw:Double) {
             compounds.append((x,z,w,d,h,i,yaw))
-            lots.append(TownLot(x:x,z:z,width:w*cos(yaw)+d*abs(sin(yaw))+0.2,depth:d*cos(yaw)+w*abs(sin(yaw))+0.2))
+            lots.append(TownLot(x:x,z:z,width:w*abs(cos(yaw))+d*abs(sin(yaw))+0.2,depth:d*abs(cos(yaw))+w*abs(sin(yaw))+0.2))
         }
+        preservingTrackside=true
         var z = -145.0
-        // Dense irregular compounds, extending well past every overview edge.
-        // Outer silhouettes stay cheap; separate facade batches wake near explorers.
+        // Reproduce the established core exactly, including its random stream
+        // and infill clearance, before replacing only the outer districts.
         while z<145 {
             let stepZ=6.4+random()*2.4
             var x = -150.0+random()*6
@@ -442,7 +483,7 @@ final class TownWorld {
                 let bx=x+stepX/2,bz=z+stepZ/2+sin(Double(row)*1.9+Double(index)*0.67)*0.55
                 let w=stepX-0.38,d=stepZ-0.42
                 let yaw=(random()-0.5)*0.16
-                let boundW=w*cos(yaw)+d*abs(sin(yaw)),boundD=d*cos(yaw)+w*abs(sin(yaw))
+                let boundW=w*abs(cos(yaw))+d*abs(sin(yaw)),boundD=d*abs(cos(yaw))+w*abs(sin(yaw))
                 let h=2.0+random()*3.8
                 if !reserved(bx,bz,boundW+0.2,boundD+0.2) {
                     reserve(bx,bz,w,d,h,index,yaw)
@@ -459,36 +500,190 @@ final class TownWorld {
             if lots.contains(where:{abs(x-$0.x)<($0.width+w)/2+0.15 && abs(z-$0.z)<($0.depth+d)/2+0.15}) { continue }
             reserve(x,z,w,d,1.8+random()*1.5,1400+i+j*16,0)
         }}
-        let landmarks=collisionBuilder.bodies.filter{$0.position.y<1.1 && $0.profile.mass != 70}.map { body in
-            let c=abs(cos(body.heading)),s=abs(sin(body.heading)),p=body.profile
-            return TownLot(x:body.position.x,z:body.position.z,width:2*(p.halfWidth*c+p.halfDepth*s),depth:2*(p.halfDepth*c+p.halfWidth*s))
+        compounds=compounds.filter{max(abs($0.0),abs($0.1))<56}.map { x,z,w,d,h,i,yaw in
+            // Keep trackside positions and silhouettes, but open pedestrian
+            // lanes within the formerly impenetrable residential blocks.
+            let setback=w>4.5 && d>4.5 ? 1.5:0.0
+            return (x,z,w-setback,d-setback,max(h,2.35),i,yaw)
         }
-        accessMap=TownAccessMap(lots:lots+landmarks,streets:streets.map{$0.path})
-        for (x,z,w,d,h,i,yaw) in compounds { cityCompound(x,z,w:w,d:d,h:h,index:i,yaw:yaw) }
+        func updateLots() {
+            lots=compounds.map { x,z,w,d,_,_,yaw in
+                TownLot(x:x,z:z,width:w*abs(cos(yaw))+d*abs(sin(yaw))+0.2,depth:d*abs(cos(yaw))+w*abs(sin(yaw))+0.2)
+            }
+        }
+        updateLots()
+        preservingTrackside=false
+        // Outside the protected trackside core, grow street-facing blocks by
+        // deterministic dart throwing. Variable setbacks and usable passages
+        // replace nearly touching rectangular rows. Wider civic courts break
+        // dense neighborhoods, and density tapers at the irregular urban edge.
+        let courts:[(SIMD2<Double>,Double)]=[(SIMD2(-84,-20),6),(SIMD2(-42,-64),5),
+            (SIMD2(55,-67),7),(SIMD2(60,48),7),(SIMD2(-20,86),5),(SIMD2(-80,37),6)]
+        func frontage(_ p:SIMD2<Double>)->(distance:Double,yaw:Double) {
+            var best=Double.infinity,yaw=0.0
+            for street in streets { for i in stride(from:1,to:street.path.count,by:3) {
+                let a=street.path[max(0,i-3)],d=street.path[i]-a
+                let t=max(0,min(1,simd_dot(p-a,d)/max(0.0001,simd_length_squared(d))))
+                let distance=simd_length(p-a-d*t)-street.width/2
+                if distance<best { best=distance;yaw = -atan2(d.y,d.x) }
+            }}
+            return (best,yaw)
+        }
+        func place(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ h:Double,_ yaw:Double,_ i:Int,gap:Double=1.25) {
+            let p=SIMD2(x,z),c=abs(cos(yaw)),s=abs(sin(yaw)),bw=w*c+d*s,bd=d*c+w*s
+            if max(abs(x),abs(z))<56 || TownFootprint.edgeDistance(p) > -hypot(w,d)/2-1 { return }
+            if courts.contains(where:{simd_distance(p,$0.0)<$0.1+hypot(w,d)/2}) { return }
+            if reserved(x,z,bw+0.4,bd+0.4,checkStreet:false) { return }
+            let u=SIMD2(cos(yaw),-sin(yaw)),v=SIMD2(sin(yaw),cos(yaw))
+            // Test the real rotated footprint, not an inflated circumscribed
+            // rectangle that pushes every street facade several metres away.
+            for (a,b) in [(-1.0,-1.0),(1,-1),(-1,1),(1,1),(0,-1),(0,1),(-1,0),(1,0)] {
+                let q=p+u*(a*w/2)+v*(b*d/2)
+                if streetDistance(q.x,q.y)<0.45 { return }
+            }
+            for (xx,zz,ww,dd,_,_,angle) in compounds {
+                let delta=p-SIMD2(xx,zz),ou=SIMD2(cos(angle),-sin(angle)),ov=SIMD2(sin(angle),cos(angle))
+                if abs(delta.x)>(bw+ww*abs(ou.x)+dd*abs(ov.x))/2+gap || abs(delta.y)>(bd+ww*abs(ou.y)+dd*abs(ov.y))/2+gap { continue }
+                let separated=[u,v,ou,ov].contains { axis in
+                    abs(simd_dot(delta,axis)) > (w*abs(simd_dot(u,axis))+d*abs(simd_dot(v,axis))+ww*abs(simd_dot(ou,axis))+dd*abs(simd_dot(ov,axis)))/2+gap
+                }
+                if !separated { return }
+            }
+            reserve(x,z,w,d,h,i,yaw)
+        }
+        // Establish continuous but varied street frontage first. Small gaps
+        // lead into courtyards and rear alleys, rather than isolated cottages.
+        var frontageID=2000
+        for street in streets {
+            var distance=0.0,next=3.0
+            for j in 1..<street.path.count {
+                distance += simd_distance(street.path[j],street.path[j-1])
+                if distance<next { continue }
+                let tangent=simd_normalize(street.path[j]-street.path[j-1]),normal=SIMD2(-tangent.y,tangent.x)
+                let w=4.8+random()*2.4,d=5.0+random()*2.5
+                for side in [-1.0,1.0] {
+                    let p=street.path[j]+normal*side*(street.width/2+d/2+0.8+random()*0.4)
+                    place(p.x,p.y,w,d,2.35+random()*3.25,-atan2(tangent.y,tangent.x),frontageID);frontageID += 1
+                }
+                next=distance+w+0.8+random()*0.8
+            }
+        }
+        for i in 0..<18000 {
+            let x=(random()-0.5)*306,z=(random()-0.5)*306,p=SIMD2(x,z)
+            if max(abs(x),abs(z))<56 || TownFootprint.edgeDistance(p) > -4 { continue }
+            let w=3.4+random()*4.3,d=3.8+random()*4.0,h=2.35+random()*3.15,front=frontage(p)
+            if front.distance>28 { continue }
+            let yaw=front.yaw+(random()-0.5)*0.20
+            place(x,z,w,d,h,yaw,5000+i)
+        }
+        // Smaller workshops occupy residual frontage pockets. This adds a
+        // second scale of buildings without moving the established compounds
+        // or sacrificing the pedestrian clearance between them.
+        let beforeInfill=compounds.count
+        for i in 0..<9000 {
+            if compounds.count-beforeInfill>=64 { break }
+            let x=(random()-0.5)*280,z=(random()-0.5)*280,p=SIMD2(x,z)
+            if max(abs(x),abs(z))<58 || TownFootprint.edgeDistance(p) > -9 { continue }
+            let front=frontage(p)
+            if front.distance>16 { continue }
+            let w=2.6+random()*1.2,d=3.0+random()*1.5
+            place(x,z,w,d,2.7+random()*1.2,front.yaw+(random()-0.5)*0.08,24000+i,gap:0.95)
+        }
+        let landmarks=collisionBuilder.bodies.filter{$0.position.y<1.4 && $0.profile.mass != 70 && $0.profile.height>0.18}.map { body in
+            TownAccessMap.Footprint(center:SIMD2(body.position.x,body.position.z),width:body.profile.halfWidth*2,depth:body.profile.halfDepth*2,yaw:body.heading)
+        }
+        func footprints()->[TownAccessMap.Footprint] {
+            compounds.flatMap { x,z,w,d,_,i,yaw -> [TownAccessMap.Footprint] in
+                let style=(i*13+i/7)%9
+                var shapes:[(Double,Double,Double,Double)]
+                if style<3 { shapes=[(-w*0.17,0,w*0.66,d),(w*0.25,d*0.1,w*0.50,d*0.79)] }
+                else if style==6 { shapes=[(-w*0.34,0,w*0.32,d),(w*0.1,-d*0.31,w*0.78,d*0.38),(w*0.4,d*0.07,w*0.2,d*0.69)] }
+                else if style==8 { shapes=[(-w*0.23,-d*0.05,w*0.54,d*0.90),(w*0.26,0,w*0.47,d)] }
+                else { shapes=[(0,0,w,d)] }
+                return shapes.map { xx,zz,ww,dd in
+                    TownAccessMap.Footprint(center:SIMD2(x+xx*cos(yaw)+zz*sin(yaw),z-xx*sin(yaw)+zz*cos(yaw)),width:ww,depth:dd,yaw:yaw)
+                }
+            }
+        }
+        // Audit every compound before building it. If a block has trapped a
+        // doorway, create more alley clearance at that footprint and replan.
+        for iteration in 0..<6 {
+            accessMap=TownAccessMap(footprints:footprints()+landmarks,streets:streets.map{$0.path})
+            plannedDoors.removeAll();var missing=[Int]()
+            for (j,compound) in compounds.enumerated() {
+                let (x,z,w,d,h,i,yaw)=compound
+                if let plan=entrancePlan(x,z,w:w,d:d,h:h,index:i,yaw:yaw,style:(i*13+i/7)%9) { plannedDoors[i]=plan }
+                else { missing.append(j) }
+            }
+            if missing.isEmpty || iteration==5 { break }
+            for j in missing {
+                let (x,z,w,d,h,i,yaw)=compounds[j]
+                compounds[j]=(x,z,max(2.3,w-0.45),max(2.3,d-0.45),max(2.6,h),i,yaw)
+                if iteration>=2 {
+                    for k in compounds.indices where k != j {
+                        let (xx,zz,ww,dd,hh,ii,yy)=compounds[k]
+                        if hypot(xx-x,zz-z)<(hypot(w,d)+hypot(ww,dd))/2+1.5 && ww>3 && dd>3 {
+                            compounds[k]=(xx,zz,ww-0.35,dd-0.35,hh,ii,yy)
+                        }
+                    }
+                }
+            }
+        }
+        updateLots()
+        mapBuildings=compounds.map { x,z,w,d,_,_,yaw in
+            [SIMD2(-w/2,-d/2),SIMD2(w/2,-d/2),SIMD2(w/2,d/2),SIMD2(-w/2,d/2)].map { p in
+                SIMD2(x+p.x*cos(yaw)+p.y*sin(yaw),z-p.x*sin(yaw)+p.y*cos(yaw))
+            }
+        }
+        mapBuildings += venueSites.map { site in
+            [SIMD2(-site.halfWidth,-site.halfDepth),SIMD2(site.halfWidth,-site.halfDepth),SIMD2(site.halfWidth,site.halfDepth),SIMD2(-site.halfWidth,site.halfDepth)].map { p in
+                site.center+SIMD2(p.x*cos(site.yaw)+p.y*sin(site.yaw),-p.x*sin(site.yaw)+p.y*cos(site.yaw))
+            }
+        }
+        for (x,z,w,d,h,i,yaw) in compounds {
+            if let plan=plannedDoors[i] {
+                let f=plan.facade,lx=f.x+cos(f.turn)*plan.offset,lz=f.z-sin(f.turn)*plan.offset
+                let center=SIMD2(x+lx*cos(yaw)+lz*sin(yaw),z-lx*sin(yaw)+lz*cos(yaw))
+                let out=SIMD2(sin(yaw+f.turn),cos(yaw+f.turn))
+                if let route=accessMap?.routeToStreet(from:center+out*0.65) {
+                    pedestrianAccess.append(PedestrianAccess(building:SIMD2(x,z),door:center,route:[center+out*0.42,center+out*0.6]+route))
+                } else { inaccessibleBuildings.append(SIMD2(x,z)) }
+            } else { inaccessibleBuildings.append(SIMD2(x,z)) }
+            cityCompound(x,z,w:w,d:d,h:h,index:i,yaw:yaw)
+        }
+        print("Pedestrian access: \(pedestrianAccess.count)/\(compounds.count), inaccessible \(inaccessibleBuildings)")
         accessMap=nil // Planning data never participates in the render loop.
     }
 
     private func cityCompound(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double) {
         let near=max(abs(x),abs(z))<52
         var p=paint(x,z,yaw:yaw)
-        let boundW=w*cos(yaw)+d*abs(sin(yaw)),boundD=d*cos(yaw)+w*abs(sin(yaw))
+        let boundW=w*abs(cos(yaw))+d*abs(sin(yaw)),boundD=d*abs(cos(yaw))+w*abs(sin(yaw))
         buildings += 1
         cameraBounds.append((SIMD3(x-boundW/2,0,z-boundD/2),SIMD3(x+boundW/2,h+min(w,d)*0.5,z+boundD/2)))
         let colors:[UInt32]=[0xb5a084,0xbdaa8c,0xc4ad8c,0xa58c70,0xc9b89b,0x9e8872,0xb7a890,0xc0a786]
-        let ink=colors[(index*7+index/11)%colors.count]
+        let chalk:[UInt32]=[0xc9bca5,0xd9ceba,0xb9aa95,0xd2c4a9,0xc5bcb0,0xae987e,0xded3bb,0xb8a58f]
+        let palette=near ? colors:chalk
+        let ink=palette[(index*7+index/11)%palette.count]
         let roof:UInt32=0x9e8970
         let style=(index*13+index/7)%9
-        let plan=entrancePlan(x,z,w:w,d:d,h:h,index:index,yaw:yaw,style:style)
+        let plan=plannedDoors[index]
         let entrance=plan != nil && near && max(abs(x),abs(z))<43 && (style==3 || style==4 || style==7) && h*0.6>1.50 && doorways.count<18
-        // Ground contact is baked into opaque strips, including far districts.
-        p.box(0,-0.008,0,w+0.14,0.02,d+0.14,0x756c5f)
+        // Sun/contact shading seats the actual walls in sand; no rectangular
+        // dark slab is stamped beneath an irregular compound.
         if style<3 {
             // Joined adobe dwelling + offset domed chamber; no individual plinth.
-            p.adobe(-w*0.17,h*0.43,0,w*0.66,h*0.86,d,ink,simple:!near)
-            p.adobe(w*0.25,h*0.32,d*0.10,w*0.50,h*0.64,d*0.79,ink,simple:!near)
+            p.adobe(-w*0.17,h*0.43,0,w*0.66,h*0.86,d,ink,simple:false)
+            p.adobe(w*0.25,h*0.32,d*0.10,w*0.50,h*0.64,d*0.79,ink,simple:false)
             let r=min(w*0.30,d*0.43)
-            p.dome(-w*0.17,h*0.86,0,r,r*0.57,r,ink,sides:near ? 20:12)
-            if style==1 { p.dome(w*0.25,h*0.64,d*0.1,w*0.22,w*0.15,w*0.22,ink,sides:near ? 16:10) }
+            if style==2 {
+                // Roof terrace with an asymmetric shade sail, not another dome.
+                p.box(-w*0.17,h*0.86+0.13,-d*0.46,w*0.66,0.26,0.12,ink)
+                p.box(-w*0.47,h*0.86+0.13,0,0.12,0.26,d*0.88,ink)
+                p.awning(-w*0.17,-d*0.08,w*0.48,d*0.53,h*0.86+1.25,0x706f58)
+                for xx in [-w*0.39,w*0.05] { p.box(xx,h*0.86+0.62,-d*0.33,0.07,1.24,0.07,0x695b48) }
+            } else { p.dome(-w*0.17,h*0.86,0,r,r*0.57,r,ink,sides:near ? 20:16) }
+            if style==1 { p.dome(w*0.25,h*0.64,d*0.1,w*0.22,w*0.15,w*0.22,ink,sides:16) }
         } else if style<5 {
             // Connected stepped roofscape with recessed terraces and parapets.
             if entrance,let plan {
@@ -496,25 +691,33 @@ final class TownWorld {
                 let q=paint(x,z,yaw:yaw+turn)
                 q.residentHouse(abs(sin(turn))>0.5 ? d:w,h*0.60,abs(sin(turn))>0.5 ? w:d,ink,doorX:plan.offset)
             }
-            else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near) }
-            p.adobe(-w*0.18,h*0.78,-d*0.16,w*0.61,h*0.36,d*0.67,ink,simple:!near)
+            else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:false) }
+            p.adobe(-w*0.18,h*0.78,-d*0.16,w*0.61,h*0.36,d*0.67,ink,simple:false)
             p.box(w*0.23,h*0.606,d*0.16,w*0.47,0.025,d*0.58,roof)
             p.box(w*0.47,h*0.65,0,w*0.05,0.26,d,ink)
             p.box(0,h*0.65,d*0.47,w,0.26,d*0.05,ink)
-            if style==4 { p.dome(-w*0.18,h*0.96,-d*0.16,w*0.24,w*0.15,w*0.24,ink,sides:near ? 16:10) }
+            if style==4 {
+                // Ventilated windcatcher rises above a stepped flat roof.
+                p.adobe(-w*0.18,h*0.96+0.8,-d*0.16,w*0.26,1.6,d*0.26,ink,simple:false)
+                p.box(-w*0.18,h*0.96+1.63,-d*0.16,w*0.34,0.12,d*0.34,roof)
+                for side in [-1.0,1] { p.box(-w*0.18,h*0.96+1.18,-d*0.16+side*d*0.131,w*0.15,0.5,0.025,0x4a493e) }
+            }
         } else if style==5 {
             // Buttressed rotunda integrated into a long low workshop.
-            p.adobe(0,h*0.22,0,w,h*0.44,d,ink,simple:!near)
+            p.adobe(0,h*0.22,0,w,h*0.44,d,ink,simple:false)
             let r=min(w,d)*0.40
-            p.cylinder(-w*0.08,h*0.54,-d*0.04,r,r*0.91,h*1.08,ink,sides:near ? 20:12)
-            p.dome(-w*0.08,h*1.08,-d*0.04,r*0.91,r*0.5,r*0.91,ink,sides:near ? 20:12)
-            p.cylinder(-w*0.08,h*0.8,-d*0.04,r*0.955,r*0.955,0.16,roof,sides:near ? 20:12)
+            p.cylinder(-w*0.08,h*0.54,-d*0.04,r,r*0.91,h*1.08,ink,sides:near ? 20:16)
+            p.dome(-w*0.08,h*1.08,-d*0.04,r*0.91,r*0.5,r*0.91,ink,sides:near ? 20:16)
+            p.cylinder(-w*0.08,h*0.8,-d*0.04,r*0.955,r*0.955,0.16,roof,sides:near ? 20:16)
         } else if style==6 {
             // Open courtyard enclosed on three sides, shaded workshop frontage.
-            p.adobe(-w*0.34,h*0.42,0,w*0.32,h*0.84,d,ink,simple:!near)
-            p.adobe(w*0.10,h*0.35,-d*0.31,w*0.78,h*0.70,d*0.38,ink,simple:!near)
-            p.adobe(w*0.40,h*0.25,d*0.07,w*0.20,h*0.50,d*0.69,ink,simple:!near)
-            p.canopy(w*0.05,d*0.21,w*0.57,d*0.41,h*0.59,0.25,0x87725c)
+            p.adobe(-w*0.34,h*0.42,0,w*0.32,h*0.84,d,ink,simple:false)
+            p.adobe(w*0.10,h*0.35,-d*0.31,w*0.78,h*0.70,d*0.38,ink,simple:false)
+            p.adobe(w*0.40,h*0.25,d*0.07,w*0.20,h*0.50,d*0.69,ink,simple:false)
+            p.awning(-w*0.08,-d*0.04,w*0.34,d*0.36,h*0.65,0x87725c)
+            // An open-to-sky domestic patio, with a low bench along its wall.
+            p.box(-w*0.10,0.22,-d*0.065,w*0.32,0.44,0.28,0x9d8467)
+            p.vessel(w*0.23,0.02,-d*0.065,0.55,0xa27b54)
         } else if style==7 {
             // Industrial block: vaulted hall, sunken rooftop machinery enclosure.
             if entrance,let plan {
@@ -522,15 +725,26 @@ final class TownWorld {
                 let q=paint(x,z,yaw:yaw+turn)
                 q.residentHouse(abs(sin(turn))>0.5 ? d:w,h*0.60,abs(sin(turn))>0.5 ? w:d,ink,doorX:plan.offset)
             }
-            else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near) }
-            p.dome(-w*0.2,h*0.60,0,w*0.28,w*0.27,d*0.45,ink,sides:near ? 16:10)
+            else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:false) }
+            p.dome(-w*0.2,h*0.60,0,w*0.28,w*0.27,d*0.45,ink,sides:16)
             p.box(w*0.25,h*0.605,0,w*0.40,0.025,d*0.7,0x665c50)
             for k in 0..<3 { p.box(w*0.25,h*0.71,-d*0.23+Double(k)*d*0.23,w*0.29,0.35,0.17,roof,detail:near) }
         } else {
             // Two unequal flat-roof dwellings linked by a utility room.
-            p.adobe(-w*0.23,h*0.5,-d*0.05,w*0.54,h,d*0.9,ink,simple:!near)
-            p.adobe(w*0.26,h*0.29,0,w*0.47,h*0.58,d,ink,simple:!near)
+            p.adobe(-w*0.23,h*0.5,-d*0.05,w*0.54,h,d*0.9,ink,simple:false)
+            p.adobe(w*0.26,h*0.29,0,w*0.47,h*0.58,d,ink,simple:false)
             p.box(-w*0.23,h+0.07,-d*0.05,w*0.48,0.15,d*0.83,roof)
+        }
+        if !near && index%4==0 {
+            let roofY=style==8 ? h*0.58:(style==6 ? h*0.70:h*0.60)
+            if [3,4,8].contains(style) {
+                let steps=max(7,Int(ceil(h*(style==8 ? 0.42:0.36)/0.19)))
+                let run=w*0.40,tread=run/Double(steps),edge=style==8 ? w*0.04:w*0.125
+                for k in 0..<steps {
+                    let rise=h*(style==8 ? 0.42:0.36)*Double(k+1)/Double(steps)
+                    p.box(edge+run-tread*(Double(k)+0.5),roofY+rise/2,d*0.19,tread+0.005,rise,0.56,ink)
+                }
+            }
         }
         if !near { p=explorationPainter(x,z,yaw:yaw) }
         // Equipment on usable flat roofs, with cables/pipes at the near tier.
@@ -546,10 +760,18 @@ final class TownWorld {
             let f=plan.facade,lx=f.x+cos(f.turn)*plan.offset,lz=f.z-sin(f.turn)*plan.offset
             let center=SIMD2(x+lx*cos(yaw)+lz*sin(yaw),z-lx*sin(yaw)+lz*cos(yaw))
             let direction=yaw+f.turn
-            let q=near ? paint(center.x,center.y,yaw:direction):explorationPainter(center.x,center.y,yaw:direction)
+            // Entrances define the building even from an elevated town camera.
+            let q=paint(center.x,center.y,yaw:direction)
             let dw=entrance ? 0.92:plan.width,dh=entrance ? 1.30:plan.height
             if style==5 && h*0.44<dh+0.18 { q.adobe(0,(dh+0.18)/2,-0.18,dw+0.44,dh+0.18,0.40,ink) }
             q.cityDoor(dw,dh,ink,variant:plan.variant,open:entrance)
+            if !near && index%4==0 && f.span>3 {
+                let utility=explorationPainter(center.x,center.y,yaw:direction),side=plan.offset>0 ? -1.0:1.0
+                let xx=side*min(f.span*0.30,dw/2+0.52)
+                utility.box(xx,1.35,0.16,0.36,0.58,0.25,0x7d8276)
+                utility.beam(SIMD3(xx,0.20,0.18),SIMD3(xx,dh+0.15,0.18),0.045,0x91826b)
+                utility.cable(SIMD3(xx,dh+0.15,0.16),SIMD3(0,dh+0.18,0.16),0.10,0x554b3e)
+            }
             if entrance { doorways.append(TownDoorway(center:center,yaw:direction,root:root,variant:plan.variant)) }
             entrances.append(Entrance(center:center,yaw:direction,width:dw,height:dh,variant:plan.variant,walkable:entrance))
             if index%3==0 { q.awning(0,0.40,min(f.span-0.12,dw+0.55),0.85,dh+0.28,index%2==0 ? 0x7e6a50:0x8f5140) }
@@ -562,19 +784,22 @@ final class TownWorld {
                 storefrontSigns += 1
             }
         }
-        // Windows remain separate from entrance selection and keep clear of it.
-        for side in [-1.0,1.0] {
-            let face=(style==8 && side>0 ? d*0.4:side*d/2)+side*0.018
-            for k in 0..<2 {
-                let xx = -w*0.32+Double(k)*w*0.55
-                if let plan {
-                    let f=plan.facade,dx=f.x+cos(f.turn)*plan.offset,dz=f.z-sin(f.turn)*plan.offset
-                    if hypot(xx-dx,face-dz)<plan.width/2+0.45 { continue }
-                }
-                let wy = !near && style==5 ? min(h*0.28,h*0.44-0.32):h*0.41
-                p.box(xx,wy,face,0.24,0.57,0.035,0x39332c,detail:true)
-                p.box(xx,wy-0.27,face+side*0.045,0.30,0.075,0.12,roof,detail:true)
+        // Openings use the same real facade catalog as door planning. A
+        // bounding-box face can be empty space in a joined or U-shaped house.
+        for (faceIndex,f) in compoundFacades(w:w,d:d,h:h,style:style).enumerated() where (faceIndex+index)%2==0 && f.span>1.0 {
+            let offset=f.span*(index%2==0 ? 0.21:-0.21)
+            let lx=f.x+cos(f.turn)*offset,lz=f.z-sin(f.turn)*offset
+            if let plan {
+                let pf=plan.facade,dx=pf.x+cos(pf.turn)*plan.offset,dz=pf.z-sin(pf.turn)*plan.offset
+                if hypot(lx-dx,lz-dz)<plan.width/2+0.42 { continue }
             }
+            let center=SIMD2(x+lx*cos(yaw)+lz*sin(yaw),z-lx*sin(yaw)+lz*cos(yaw))
+            let direction=yaw+f.turn,wallHeight=style==5 ? h*0.44:f.height
+            let wy=min(1.75,min(wallHeight*0.64,wallHeight-0.30))
+            let q=near ? paint(center.x,center.y,yaw:direction):explorationPainter(center.x,center.y,yaw:direction)
+            q.box(0,wy,-0.035,0.23,0.46,0.12,0x39332c,detail:true)
+            q.box(0,wy-0.245,0.0,0.32,0.075,0.18,roof,detail:true)
+            for yy in [wy-0.22,wy+0.22] { windowSupports.append(SIMD3(center.x-sin(direction)*0.20,yy,center.y-cos(direction)*0.20)) }
         }
         if near && (style<5 || style==8) {
             for side in [-1.0,1] {
@@ -769,13 +994,303 @@ final class TownWorld {
             signs.plate("LANDING BAY",eyebrow:"SPACEPORT AUTHORITY",footer:"KEEP APRON CLEAR",badge:"0\(i+8)",
                         at:SCNVector3(pt.0,1.15,pt.1-4.94),width:2.9,height:0.59,yaw:.pi,accent:teal,into:root)
         }
-        // Small roof-mounted utilities sit within the city instead of a mesa ring.
-        for (x,z) in [(-53.0,48.0),(49.0,53.0),(-70.0,-41.0),(22.0,71.0)] {
-            let q=paint(x,z)
-            q.cylinder(0,5.8,0,1.3,0.85,11.6,0x9c886c,sides:10)
-            for y in [4.0,7.0,10.0] { q.cylinder(0,y,0,1.6,1.45,0.30,0xb29d7e,sides:10) }
-            q.dome(0,11.6,0,0.87,0.5,0.87,0xbba88b,sides:12)
+        // Distinct civic silhouettes, within the established reserved footprints.
+        // Utility towers should read as different functions, not four copies.
+        for (index,position) in [(-53.0,48.0),(49.0,53.0),(-70.0,-41.0),(22.0,71.0)].enumerated() {
+            let (x,z)=position,q=paint(x,z)
+            switch index {
+            case 0: // Narrow stepped communications mast with a receiver crown.
+                for k in 0..<4 {
+                    let width=2.55-Double(k)*0.37,base=Double(k)*2.35
+                    q.adobe(0,base+1.175,0,width,2.35,width*0.88,0xaa9271)
+                    q.box(0,base+2.26,0,width+0.16,0.12,width*0.88+0.16,0x89785f)
+                }
+                q.cylinder(0,9.85,0,0.19,0.13,0.9,0x616459,sides:16)
+                q.cylinder(0,10.45,0,0.30,1.45,0.45,0xaba486,sides:24)
+                q.cylinder(0,10.70,0,1.48,1.48,0.10,0x716e5b,sides:24)
+                q.beam(SIMD3(0,10.7,0),SIMD3(0,12.1,0),0.045,0x6f7164)
+            case 1: // Ventilated observation drum with a broad domed cap.
+                q.cylinder(0,4.6,0,1.32,0.97,9.2,0xa18e74,sides:24)
+                q.cylinder(0,9.3,0,1.45,1.45,0.28,0x7d7562,sides:24)
+                q.cylinder(0,9.87,0,1.17,1.17,0.9,0x414b43,sides:24)
+                for k in 0..<12 {
+                    let a=Double(k)*Double.pi/6
+                    q.box(cos(a)*1.18,9.88,sin(a)*1.18,0.10,0.94,0.10,0x9b8d72)
+                }
+                q.cylinder(0,10.39,0,1.49,1.49,0.15,0xb5a181,sides:24)
+                q.dome(0,10.46,0,1.49,0.85,1.49,0xb5a181,sides:24)
+            case 2: // Thick-walled windcatcher: open dark louvres under a flat cap.
+                q.adobe(0,4.0,0,2.65,8,2.35,0xb6a084)
+                q.box(0,8.9,0,2.25,1.8,1.97,0x4e5248)
+                for side in [-1.0,1] {
+                    for zz in [-1.08,1.08] { q.adobe(side*1.21,8.9,zz,0.23,1.8,0.23,0xb6a084) }
+                    for k in 0..<5 { q.box(0,8.25+Double(k)*0.28,side*1.11,2.40,0.09,0.14,0x8a8068) }
+                }
+                q.adobe(0,9.94,0,2.95,0.28,2.66,0xc1af8f)
+                q.adobe(-0.7,10.39,0.46,0.58,0.62,0.6,0xb6a084)
+            default: // Condenser column, exposed pipework and unequal fin bands.
+                q.cylinder(0,5.8,0,1.30,0.85,11.6,0x9c886c,sides:24)
+                for y in [3.2,3.65,7.6,10.0] { q.cylinder(0,y,0,1.55,1.40,0.20,0xb29d7e,sides:24) }
+                q.dome(0,11.6,0,0.87,0.5,0.87,0xbba88b,sides:24)
+                for a in [0.4,2.5,4.6] {
+                    q.beam(SIMD3(cos(a)*1.25,0.2,sin(a)*1.25),SIMD3(cos(a)*1.03,8.4,sin(a)*1.03),0.045,0x717869)
+                }
+            }
         }
+    }
+
+    struct VenueSite {
+        let name:String,center:SIMD2<Double>,halfWidth:Double,halfDepth:Double,yaw:Double
+    }
+    let venueSites=[VenueSite(name:"DROID EXCHANGE",center:SIMD2(64,64),halfWidth:9,halfDepth:10,yaw:.pi),
+        VenueSite(name:"THE TWIN SUNS",center:SIMD2(-44,-53),halfWidth:9,halfDepth:9,yaw:.pi),
+        VenueSite(name:"MOS ASTER MARKET",center:SIMD2(-108,11),halfWidth:9,halfDepth:10,yaw:.pi/2)]
+    private func buildDistrictPlaces() {
+        for (i,site) in venueSites.enumerated() {
+            let q=paint(site.center.x,site.center.y,yaw:site.yaw)
+            func point(_ x:Double,_ z:Double)->SIMD2<Double> {
+                site.center+SIMD2(x*cos(site.yaw)+z*sin(site.yaw),-x*sin(site.yaw)+z*cos(site.yaw))
+            }
+            if i==0 {
+                // A U-shaped industrial compound with an open repair/salvage
+                // yard. The crane, racks and stacked running gear identify it.
+                q.adobe(0,2.1,-6.8,16,4.2,4.0,0x9c8668)
+                q.adobe(-7,1.55,-0.8,3,3.1,8.0,0xb29a78)
+                q.adobe(7,1.7,-2.5,3,3.4,6.0,0xa38c6c)
+                for k in 0..<4 {
+                    let x = -5.7+Double(k)*3.8
+                    q.box(x,4.23,-6.8,3.5,0.16,4.3,0x697574)
+                    q.box(x,4.55,-7.8,2.5,0.64,0.12,0x5e6764)
+                }
+                for x in [-4.4,4.4] { q.box(x,2.65,-0.5,0.22,5.3,0.25,0x76523c) }
+                q.box(0,5.28,-0.5,9.3,0.30,0.10,0x806249)
+                for y in [5.10,5.46] { q.box(0,y,-0.5,9.5,0.08,0.42,0x76523c) }
+                for x in [-4.4,4.4] {
+                    q.box(x,0.10,-0.5,0.75,0.20,0.85,0x6a5140)
+                    q.beam(SIMD3(x,4.3,-0.5),SIMD3(x+(x<0 ? 0.8:-0.8),5.1,-0.5),0.05,0x856447)
+                }
+                q.beam(SIMD3(-2.4,5.1,-0.5),SIMD3(-2.4,1.6,-0.5),0.025,0x454944,sides:6)
+                q.engineAssembly(-2.4,1.0,-0.5,scale:1.0,variant:0)
+                for z in [-0.78,-0.22] { q.cylinder(-2.4,1.69,z,0.22,0.19,0.18,0x8b7055,sides:12) }
+                for x in [-6.4,-4.6] { for z in [2.85,3.55] { q.box(x,0.34,z,0.12,0.68,0.12,0x555e56) } }
+                q.box(-5.5,0.76,3.2,2.4,0.16,1.0,0x69706a)
+                q.box(-5.9,1.02,3.2,0.7,0.36,0.52,0x80624b)
+                for j in 0..<3 { q.beam(SIMD3(-5.3+Double(j)*0.17,0.87,3),SIMD3(-5.3+Double(j)*0.17,0.87,3.45),0.025,0x4c5752,sides:6) }
+                for k in 0..<5 {
+                    let z = -3.2+Double(k)*1.65
+                    if k%2==0 {
+                        q.engineAssembly(4.6,0,z,scale:0.85+Double(k)*0.07,variant:k)
+                    } else {
+                        q.box(4.6,0.23,z,0.85,0.46,1.1,0x4b524c)
+                        for j in 0..<6 { q.box(4.6,0.48,z-0.45+Double(j)*0.18,0.93,0.08,0.08,0x927758) }
+                    }
+                    if k<3 {
+                        q.droidSalvage(-4.7,0,z,variant:k)
+                    }
+                }
+                q.box(0,1.3,-4.78,3.3,2.6,0.06,0x343e3b)
+                for k in 0..<9 { q.box(0,0.18+Double(k)*0.27,-4.72,3.2,0.025,0.05,0x68716a) }
+                q.cable(SIMD3(-4.4,4.8,-0.48),SIMD3(4.4,4.8,-0.48),0.35,0x45483e)
+                for k in 0..<3 { q.crate(3.4+Double(k%2)*0.7,0.02+Double(k/2)*0.62,-3.3,0.62,0x80735a) }
+                let sign=point(0,-4.68)
+                signs.plate("DROID EXCHANGE",eyebrow:"REPAIRS  /  REBUILT MOTORS",footer:"PARTS · TRACKS · POWER CELLS",badge:"08",at:SCNVector3(sign.x,3.22,sign.y),width:6.8,height:0.95,yaw:CGFloat(site.yaw),accent:teal,into:root)
+                conversation(at:point(-2.8,3.7),axis:SIMD2(cos(site.yaw),-sin(site.yaw)),index:22000,count:2)
+            } else if i==1 {
+                // Low rotunda + unequal annex; the shaded seating terrace is
+                // visibly a cantina, with a clear central approach to its door.
+                q.cylinder(-3.2,1.7,-3.5,3.8,3.6,3.4,0xb79b78,sides:24)
+                q.dome(-3.2,3.4,-3.5,3.6,1.2,3.6,0xc0a480,sides:24)
+                q.adobe(3.4,1.45,-4.2,6.5,2.9,6,0xa89070)
+                q.box(3.4,3.02,-4.2,6.7,0.24,6.2,0x948369)
+                q.box(1.4,1.06,-1.18,1.5,2.12,0.06,0x363c32)
+                q.awning(0.7,3.1,12.0,5.5,3.15,0x955d42)
+                for x in [-5.1,6.5] { for z in [0.5,5.6] { q.box(x,1.55,z,0.10,3.1,0.10,0x71644e) } }
+                for (k,p) in [SIMD2(-3.7,1.6),SIMD2(-3.7,4.4),SIMD2(4.7,1.6),SIMD2(4.7,4.4)].enumerated() {
+                    q.cylinder(p.x,0.58,p.y,0.62,0.62,0.06,0x6d5944,sides:20)
+                    q.cylinder(p.x,0.28,p.y,0.06,0.06,0.56,0x494c42,sides:12)
+                    for a in 0..<3 {
+                        let angle=Double(a)*2 * .pi/3
+                        q.beam(SIMD3(p.x,0.16,p.y),SIMD3(p.x+cos(angle)*0.38,0.04,p.y+sin(angle)*0.38),0.028,0x555246)
+                        q.vessel(p.x+cos(angle)*0.24,0.62,p.y+sin(angle)*0.24,0.14,0xc5b399)
+                    }
+                    for side in [-1.0,1] { q.cylinder(p.x+side*0.95,0.24,p.y,0.3,0.3,0.48,0x8c7154,sides:12) }
+                    let group=point(p.x,p.y+0.95)
+                    conversation(at:group,axis:SIMD2(cos(site.yaw),-sin(site.yaw)),index:23000+k*3,count:2)
+                }
+                q.box(0.7,3.08,5.8,12,0.18,0.18,0x71644e)
+                let sign=point(0.7,5.95)
+                signs.plate("THE TWIN SUNS",eyebrow:"MOS ASTER CANTINA",footer:"DRINKS · MUSIC · SHADE",badge:"09",at:SCNVector3(sign.x,3.15,sign.y),width:5.4,height:0.70,yaw:CGFloat(site.yaw),accent:0xa66e44,into:root)
+            } else {
+                // Market arcade and independent fabric stalls frame a shared
+                // pedestrian court. Unequal awnings create a broken roofline.
+                q.adobe(0,1.9,-7.0,17,3.8,3.8,0xbfa780)
+                for (j,x) in [-6.0,0,6].enumerated() { q.dome(x,3.8,-7,1.6+Double(j)*0.24,0.6+Double(j%2)*0.3,1.7,0xc9b48f,sides:16) }
+                for x in [-5.0,0,5] {
+                    q.box(x,0.74,-5.08,1.14,1.48,0.08,0x414a3d)
+                    q.arcade(x,0,-4.90,1.14,1.58,0.32,0.22,0xc2ae8d)
+                    q.box(x,1.85,-5.02,1.85,0.12,0.28,0xa68d69)
+                    for side in [-1.0,1] { q.adobe(x+side*0.84,0.96,-5.02,0.22,1.92,0.28,0xc2ae8d) }
+                }
+                // Deep, traversable masonry reveals layer the shopfront behind
+                // the stalls. The piers stay outside the central pedestrian aisle.
+                for (j,x) in [-5.0,0,5].enumerated() {
+                    q.arcade(x,0,-4.45,3.45,3.10,1.25,0.34,0xbba582,wallTop:3.48)
+                    q.adobe(x,3.64,-4.45,4.34,0.44+Double(j%2)*0.12,1.25,0xbba582)
+                    for side in [-1.0,1] {
+                        q.adobe(x+side*2.02,1.43,-4.45,0.55,2.86,1.25,0xbba582)
+                    }
+                }
+                for side in [-1.0,1] { for k in 0..<3 {
+                    let x=side*(5.3+Double(k%2)*0.65),z = -3.4+Double(k)*3.6+(side>0 ? 0.55:0)
+                    q.canopy(x,z,3.6,2.9,2.55+Double(k%2)*0.23,0.30,[0x846849,0x5d7d76,0x9a6747][k])
+                    q.box(x,0.58,z,2.8,0.10,0.8,0x74624a)
+                    for dx in [-1.15,1.15] { for dz in [-0.28,0.28] { q.box(x+dx,0.265,z+dz,0.07,0.53,0.07,0x64583f) } }
+                    for j in 0..<5 {
+                        let px=x-1.0+Double(j)*0.49
+                        if k==0 { q.vessel(px,0.64,z,0.22+Double(j%3)*0.08,j%2==0 ? 0xa8865f:0x8e7354) }
+                        else if k==1 {
+                            q.produceTray(px,0.64,z,variant:j+(side>0 ? 5:0))
+                        } else {
+                            q.cylinder(px,0.84,z,0.13,0.13,0.40,side<0 ? 0x608681:0xad7954,sides:12)
+                            q.cylinder(px,1.07,z,0.16,0.16,0.06,0xb59b73,sides:12)
+                        }
+                    }
+                    q.valance(x,z+1.45,3.6,2.40+Double(k%2)*0.23,0.18,[0x846849,0x5d7d76,0x9a6747][k],rise:0.0)
+                    q.crate(x+side*1.1,0.02,z-0.9,0.48,0x837052)
+                    q.cable(SIMD3(x-1.65,2.27,z-1.2),SIMD3(x+1.65,2.27,z-1.2),0.12,0x51483c)
+                    for item in 0..<4 {
+                        let xx=x-1.15+Double(item)*0.69,yy=1.7+Double((item+k)%3)*0.08
+                        q.beam(SIMD3(xx,2.15,z-1.2),SIMD3(xx,yy+0.17,z-1.2),0.009,0x675b48,sides:6)
+                        if k==0 { q.vessel(xx,yy,z-1.2,0.22,0xae8f65) }
+                        else {
+                            q.cylinder(xx,yy,z-1.2,0.07,0.075,0.24,0x72857c,sides:16)
+                            for band in [-0.10,0.06] { q.cylinder(xx,yy+band,z-1.2,0.082,0.082,0.025,0xb29871,sides:16) }
+                            q.cylinder(xx,yy+0.15,z-1.2,0.045,0.025,0.06,0x726951,sides:12)
+                        }
+                    }
+                    let seller=point(x,z-0.9),customer=point(x-side*2.0,z+0.3)
+                    pendingActivities.append([StreetActivity(position:seller,target:customer,role:"market vendor",group:24000+k+(side>0 ? 10:0),index:24000+k+(side>0 ? 10:0)),StreetActivity(position:customer,target:seller,role:"market customer",group:24000+k+(side>0 ? 10:0),index:24100+k+(side>0 ? 10:0))])
+                }}
+                let sign=point(0,-3.79)
+                signs.plate("MOS ASTER MARKET",eyebrow:"FOOD  /  WATER  /  OFFWORLD GOODS",footer:"TRADERS COURT",badge:"10",at:SCNVector3(sign.x,3.65,sign.y),width:4.1,height:0.55,yaw:CGFloat(site.yaw),accent:teal,into:root)
+            }
+            buildings += 1
+            cameraBounds.append((SIMD3(site.center.x-site.halfWidth,0,site.center.y-site.halfDepth),SIMD3(site.center.x+site.halfWidth,6,site.center.y+site.halfDepth)))
+        }
+    }
+    private func buildNeighborhoodUtilities() {
+        let courts=[SIMD2(-84.0,-20.0),SIMD2(55,-67),SIMD2(-20,86),SIMD2(-80,37)]
+        for (index,center) in courts.enumerated() {
+            let city=CityCollisionWorld(collisionBuilder.bodies)
+            guard let p=(0..<24).map({ k -> SIMD2<Double> in
+                let angle=Double(k)*2 * .pi/24
+                return center+SIMD2(cos(angle),sin(angle))*3.8
+            }).first(where:{ p in
+                guard streetDistance(p.x,p.y)>1.5,!blocksEntrance(p) else { return false }
+                let body=RobotCollisions.Body(position:SIMD3(p.x,0,p.y),profile:.init(mass:1,halfWidth:1.5,halfDepth:1.5,height:3.8,round:true))
+                return city.nearby(body).allSatisfy{RobotCollisions.contact(body,$0)==nil}
+            }) else { continue }
+            let q=paint(p.x,p.y,yaw:Double(index)*0.8)
+            if index%2==0 {
+                // Communal water condenser: tank, fin stack, pipe, stone seat.
+                q.cylinder(0,0.45,0,0.68,0.57,0.9,0xafa68c,sides:16)
+                q.cylinder(0,1.7,0,0.14,0.12,2.5,0x8b9183,sides:12)
+                for k in 0..<6 { q.cylinder(0,1.20+Double(k)*0.28,0,0.38-Double(k)*0.025,0.38-Double(k)*0.025,0.08,0xaca990,sides:12) }
+                q.beam(SIMD3(0.25,0.68,0),SIMD3(0.9,0.68,0),0.065,0x696b5b)
+                q.adobe(0.9,0.23,0.75,0.42,0.46,1.2,0xb8a68a)
+            } else {
+                // Freight handcart and accumulated deliveries at a shared court.
+                q.box(0,0.38,0,1.55,0.16,0.95,0x717a6c)
+                for x in [-0.65,0.65] { for z in [-0.38,0.38] { q.beam(SIMD3(x-0.07,0.17,z),SIMD3(x+0.07,0.17,z),0.17,0x484d44,sides:12) } }
+                q.crate(-0.3,0.47,0,0.62,0x947c5a);q.crate(0.37,0.47,0.09,0.47,0xa38c65)
+                q.beam(SIMD3(0.72,0.45,-0.4),SIMD3(1.3,0.95,-0.4),0.04,0x6a7161)
+                q.beam(SIMD3(0.72,0.45,0.4),SIMD3(1.3,0.95,0.4),0.04,0x6a7161)
+            }
+            conversation(at:p+SIMD2(2,0),axis:SIMD2(0,1),index:25000+index*10,count:2)
+        }
+    }
+
+    private func buildDoorstepLife() {
+        let city=CityCollisionWorld(collisionBuilder.bodies)
+        for (i,e) in entrances.enumerated() where i%3==1 && max(abs(e.center.x),abs(e.center.y))>40 {
+            let out=SIMD2(sin(e.yaw),cos(e.yaw)),side=SIMD2(out.y,-out.x)
+            let sign=i%2==0 ? 1.0:-1.0
+            let p=e.center+side*sign*(e.width/2+0.85)+out*0.46
+            let body=RobotCollisions.Body(position:SIMD3(p.x,0,p.y),heading:e.yaw,profile:.init(mass:1,halfWidth:0.48,halfDepth:0.35,height:1.1))
+            guard !blocksEntrance(p),streetDistance(p.x,p.y)>0.8,
+                  city.nearby(body).allSatisfy({RobotCollisions.contact(body,$0)==nil}),
+                  pedestrianAccess.allSatisfy({$0.route.allSatisfy{simd_distance($0,p)>0.82}}) else { continue }
+            let q=paint(p.x,p.y,yaw:e.yaw)
+            switch (i/3)%5 {
+            case 0:
+                q.vessel(-0.19,0,0,0.48,0xa98a65);q.vessel(0.23,0.0,0.08,0.29,0xb9a17e)
+            case 1:
+                q.crate(-0.17,0,0,0.47,0x897356);q.crate(0.15,0.47,-0.03,0.28,0x9f8b69)
+            case 2:
+                q.box(0,0.30,0,0.86,0.10,0.42,0x8b765b)
+                for x in [-0.33,0.33] { q.adobe(x,0.13,0,0.15,0.26,0.34,0xbca98c) }
+                q.vessel(0.23,0.36,0,0.16,0xc2b199)
+            case 3:
+                q.cylinder(0,0.42,0,0.28,0.25,0.84,0x92978a,sides:16)
+                for y in [0.1,0.68] { q.cylinder(0,y,0,0.295,0.295,0.05,0x585e50,sides:16) }
+                q.beam(SIMD3(0,0.88,0),SIMD3(0.27,0.88,0),0.025,0x646a5c)
+            default:
+                q.box(0,0.14,0,0.72,0.28,0.47,0x655a4b)
+                for k in 0..<3 { q.cylinder(-0.23+Double(k)*0.23,0.37,0,0.09,0.07,0.20,0x8c9484,sides:10) }
+            }
+        }
+    }
+
+    private func buildDomesticCourts() {
+        var made=0
+        for (i,e) in entrances.enumerated() where i%3==0 && max(abs(e.center.x),abs(e.center.y))>58 {
+            if made>=24 { break }
+            let out=SIMD2(sin(e.yaw),cos(e.yaw)),side=SIMD2(out.y,-out.x)
+            let origin=e.center+out*0.18
+            let pieces:[(Double,Double,Double,Double)]=[(-1.35,1.25,0.18,2.5),(1.35,1.25,0.18,2.5),(-1.04,2.43,0.8,0.18),(1.04,2.43,0.8,0.18)]
+            let city=CityCollisionWorld(collisionBuilder.bodies)
+            let bodies=pieces.map { x,z,w,d -> RobotCollisions.Body in
+                let p=origin+side*x+out*z
+                return RobotCollisions.Body(position:SIMD3(p.x,0,p.y),heading:e.yaw,profile:.init(mass:1,halfWidth:w/2+0.05,halfDepth:d/2+0.05,height:0.80))
+            }
+            guard bodies.allSatisfy({body in
+                streetDistance(body.position.x,body.position.z)>0.7 && city.nearby(body).allSatisfy{RobotCollisions.contact(body,$0)==nil}
+            }) else { continue }
+            let nearbyRoutes=pedestrianAccess.filter{simd_distance($0.door,origin)<9}.flatMap{$0.route}
+            guard nearbyRoutes.allSatisfy({p in
+                let person=RobotCollisions.Body(position:SIMD3(p.x,0,p.y),profile:.init(mass:70,halfWidth:0.26,halfDepth:0.26,height:1.4,round:true))
+                return bodies.allSatisfy{RobotCollisions.contact(person,$0)==nil}
+            }) else { continue }
+            let q=paint(origin.x,origin.y,yaw:e.yaw),ink:UInt32=i%2==0 ? 0xb8a58a:0xc5b697
+            for (x,z,w,d) in pieces { q.adobe(x,0.40,z,w,0.80,d,ink) }
+            // The open central gate is wider than the audited pedestrian body.
+            for x in [-0.59,0.59] { q.adobe(x,0.53,2.43,0.16,1.06,0.23,ink) }
+            made += 1
+        }
+        print("Domestic outdoor courts: \(made)")
+    }
+
+    private func refreshPedestrianAccess() {
+        // Replan using all final architecture, stalls, steps and street props,
+        // so the audit cannot pass a path blocked by later set dressing.
+        let obstacles=collisionBuilder.bodies.filter{$0.profile.mass != 70 && $0.position.y<1.45 && $0.position.y+$0.profile.height>0.10}.map { body in
+            TownAccessMap.Footprint(center:SIMD2(body.position.x,body.position.z),width:body.profile.halfWidth*2,depth:body.profile.halfDepth*2,yaw:body.heading)
+        }
+        let access=TownAccessMap(footprints:obstacles,streets:streets.map{$0.path})
+        pedestrianAccess=pedestrianAccess.compactMap { old in
+            guard let e=entrances.first(where:{simd_distance($0.center,old.door)<0.01}) else { return nil }
+            let out=SIMD2(sin(e.yaw),cos(e.yaw))
+            guard let route=access.routeToStreet(from:e.center+out*0.65) else {
+                inaccessibleBuildings.append(old.building);return nil
+            }
+            return PedestrianAccess(building:old.building,door:e.center,route:[e.center+out*0.42,e.center+out*0.6]+route)
+        }
+        for (i,site) in venueSites.enumerated() {
+            let local:SIMD2<Double> = i==0 ? SIMD2(0,-4.1):(i==1 ? SIMD2(1.4,-0.5):SIMD2(0,-4.3))
+            let door=site.center+SIMD2(local.x*cos(site.yaw)+local.y*sin(site.yaw),-local.x*sin(site.yaw)+local.y*cos(site.yaw))
+            if let route=access.routeToStreet(from:door) { venueAccess.append(PedestrianAccess(building:site.center,door:door,route:route)) }
+        }
+        print("Final pedestrian access: \(pedestrianAccess.count), inaccessible \(inaccessibleBuildings)")
     }
 
     private func buildStreetLife() {
@@ -1069,7 +1584,7 @@ final class TownWorld {
         return SCNVector3(result.x,result.y,result.z)
     }
     var statistics: [String:Int] {
-        ["explorationCells":explorationNodes.count,"explorationTriangles":explorationTriangles,"streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
+        ["accessibleCompounds":pedestrianAccess.count,"inaccessibleCompounds":inaccessibleBuildings.count,"explorationCells":explorationNodes.count,"explorationTriangles":explorationTriangles,"streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
          "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":(residents?.walkers.count ?? 0)+(streetResidents?.walkers.count ?? 0),"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
     }
     var cityCoveragePassed:Bool {
@@ -1078,7 +1593,7 @@ final class TownWorld {
                 let radius=hypot(lot.x,lot.z)
                 let angle=atan2(lot.z,lot.x)+Double.pi
                 return radius>55 && radius<120 && min(7,Int(angle/(2 * Double.pi)*8))==sector
-            }.count>30
+            }.count>16
         }
     }
     var streetNetworkPassed:Bool {
@@ -1095,7 +1610,8 @@ final class TownWorld {
         return reached.count==streets.count
     }
     func validate() -> Bool {
-        buildings>800 && population>120 && (residents?.walkers.count ?? 0)<=18 && (residents?.connections ?? 0)>=4 && triangleCount<360_000 && coarseTriangles<290_000 && cells.count<150
+        buildings>350 && population>120 && (residents?.walkers.count ?? 0)<=18 && (residents?.connections ?? 0)>=4 && triangleCount<440_000 && coarseTriangles<320_000 && cells.count<150
+            && inaccessibleBuildings.isEmpty && pedestrianAccess.count==lots.count && venueAccess.count==venueSites.count
             && signs.valid && signs.count>=20 && crowd.valid && cityCoveragePassed && streetNetworkPassed
             && repairLots.count == 2
             && lots.allSatisfy { !infield($0.x,$0.z) && clearLot($0.x,$0.z,$0.width,$0.depth) }
@@ -1108,7 +1624,7 @@ final class TownWorld {
 /// primitive nodes survive for each window, brick or spectator body part.
 final class TownMesh {
     var materialSlot=0
-    private var groups:[[Int32]]=[[],[],[]]
+    private var groups:[[Int32]]=[[],[],[],[]]
     var wearUV:[CGPoint]=[]
     var wearProjector:((SIMD3<Float>)->CGPoint)?
     var positions:[SCNVector3]=[], normals:[SCNVector3]=[], uv:[CGPoint]=[], colors:[Float]=[], indices:[Int32]=[]
@@ -1135,7 +1651,7 @@ final class TownMesh {
         let source=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:positions.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
         let local=positions.map { SCNVector3(Float($0.x)-origin.x,Float($0.y)-origin.y,Float($0.z)-origin.z) }
         let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),SCNGeometrySource(textureCoordinates:wearUV),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
-        let materials=[material,CityMaterials.cloth,CityMaterials.metal]
+        let materials=[material,CityMaterials.cloth,CityMaterials.metal,CityMaterials.adobe]
         g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]};return g
     }
 }
@@ -1205,6 +1721,12 @@ private struct TownPainter {
     }
 
     func adobe(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,simple:Bool=false) {
+        let oldNear=near.materialSlot,oldFar=far.materialSlot
+        // Two scanned plaster traditions, selected per compound, not a repeating stain.
+        if max(abs(origin.x),abs(origin.z))>30 && abs(Int(origin.x*17+origin.z*31))%5 != 0 {
+            near.materialSlot=3;far.materialSlot=3
+        }
+        defer { near.materialSlot=oldNear;far.materialSlot=oldFar }
         if simple { box(x,y,z,w,h,d,ink);return }
         solid(x,y,z,w,h,d)
         let bevel=min(0.18,min(w,d)*0.12)
@@ -1252,7 +1774,7 @@ private struct TownPainter {
             // Broad wear belongs to walls; roofs, pavement and equipment retain their own surfaces.
             near.wearProjector=mapper;far.wearProjector=mapper
             defer { near.wearProjector=nil;far.wearProjector=nil }
-            let worn=w>1.5 && h>1.5 && max(abs(origin.x),abs(origin.z))<46 && history==3 && wearSeed%3 != 0
+            let worn=w>1.5 && h>1.5 && history==3 && wearSeed%3 != 0
             if worn && i == (wearSeed%3==0 ? 11:5) {
                 damagedWall(v0,v1,v2,v3,ink,wearSeed)
             } else {
@@ -1382,16 +1904,16 @@ private struct TownPainter {
     private func cloth(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ y:Double,_ rise:Double,_ ink:UInt32,ridge:Bool) {
         near.materialSlot=1;far.materialSlot=1
         defer { near.materialSlot=0;far.materialSlot=0 }
-        let nx=8,nz=4
+        let nx=w>5 ? 24:12,nz=d>3 ? 10:6
         func v(_ i:Int,_ j:Int)->SIMD3<Float> {
             let u=Double(i)/Double(nx),t=Double(j)/Double(nz)
             let roof=ridge ? rise*(1-abs(u*2-1)) : -t*0.15
-            let sag=0.10*sin(u * .pi)*sin(t * .pi)+0.018*sin(u*12 * .pi)*sin(t * .pi)
+            let sag=min(0.38,d*0.065)*sin(t * .pi)*(0.65+0.35*sin(u * .pi))+0.045*sin(u*8 * .pi)*sin(t * .pi)
             return point(x+(u-0.5)*w,y+roof-sag,z+(t-0.5)*d)
         }
         for i in 0..<nx { for j in 0..<nz {
             let a=v(i,j),b=v(i+1,j),c=v(i+1,j+1),e=v(i,j+1)
-            let panelInk:UInt32 = i%3==0 ? Self.tone(ink,0.92):ink
+            let panelInk:UInt32 = (i+Int(abs(origin.x+origin.z)))%5==0 ? Self.tone(ink,0.88):ink
             quad(a,e,c,b,panelInk,true)
         }}
         // Distant cloth keeps the silhouette without folds.
@@ -1481,6 +2003,36 @@ private struct TownPainter {
         for a in corners { beam(SIMD3(a.x,0,a.z),a,0.035,0x625b50) }
         for i in 0..<3 { cable(corners[i],corners[(i+1)%3],0.025,0x625b50) }
     }
+    func engineAssembly(_ x:Double,_ y:Double,_ z:Double,scale:Double,variant:Int) {
+        let oldNear=near.materialSlot,oldFar=far.materialSlot
+        near.materialSlot=2;far.materialSlot=2
+        defer { near.materialSlot=oldNear;far.materialSlot=oldFar }
+        let ink:UInt32=variant%2==0 ? 0x7e725e:0x7b5540
+        box(x,y+0.17*scale,z,0.88*scale,0.34*scale,0.64*scale,ink)
+        for side in [-1.0,1] {
+            cylinder(x+side*0.28*scale,y+0.45*scale,z,0.18*scale,0.16*scale,0.34*scale,ink,sides:20)
+            for fin in 0..<5 { cylinder(x+side*0.28*scale,y+(0.31+Double(fin)*0.065)*scale,z,0.205*scale,0.205*scale,0.025*scale,0x9b9682,sides:16) }
+            for dz in [-0.20,0.20] { box(x+side*0.42*scale,y+0.355*scale,z+dz*scale,0.045*scale,0.035*scale,0.045*scale,0x403d32,detail:true) }
+        }
+        box(x,y+0.21*scale,z+0.335*scale,0.44*scale,0.20*scale,0.055*scale,0x393f39)
+        for k in 0..<7 { box(x+Double(k-3)*0.05*scale,y+0.21*scale,z+0.37*scale,0.014*scale,0.15*scale,0.015*scale,0x96957f,detail:true) }
+    }
+    func droidSalvage(_ x:Double,_ y:Double,_ z:Double,variant:Int) {
+        let oldNear=near.materialSlot,oldFar=far.materialSlot
+        near.materialSlot=2;far.materialSlot=2
+        defer { near.materialSlot=oldNear;far.materialSlot=oldFar }
+        let ink:UInt32=variant%2==0 ? 0xaaa58e:0x8f7763
+        cylinder(x,y+0.29,z,0.26,0.25,0.58,ink,sides:24)
+        for k in 0..<3 { box(x,y+0.13+Double(k)*0.16,z+0.247,0.25,0.10,0.04,0x485e5b) }
+        dome(x,y+0.59,z,0.29,0.24,0.29,0xa8ada1,sides:24)
+        cylinder(x,y+0.585,z,0.295,0.295,0.035,0x4f5f59,sides:24)
+        box(x-0.08,y+0.72,z+0.25,0.12,0.10,0.065,0x283a37)
+        for side in [-1.0,1] {
+            box(x+side*0.31,y+0.21,z,0.10,0.42,0.13,ink)
+            box(x+side*0.31,y+0.055,z+0.065,0.17,0.11,0.28,0x8b8b76)
+        }
+    }
+
     func salvage(_ w:Double,_ d:Double,_ h:Double,_ kind:Int,_ seed:Int) {
         near.materialSlot=2;far.materialSlot=2
         defer { near.materialSlot=0;far.materialSlot=0 }
@@ -1512,14 +2064,15 @@ private struct TownPainter {
         beam(SIMD3(x,y+rise,z-d/2),SIMD3(x,y+rise,z+d/2),0.04,0x625b50)
     }
     /// Open voussoir arch. Intrados, jambs and wall thickness are actual geometry.
-    func arcade(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ depth:Double,_ thickness:Double,_ ink:UInt32) {
+    func arcade(_ x:Double,_ y:Double,_ z:Double,_ w:Double,_ h:Double,_ depth:Double,_ thickness:Double,_ ink:UInt32,wallTop:Double?=nil) {
         let r=w/2,spring=y+h-r
         for side in [-1.0,1] {
             adobe(x+side*(r+thickness/2),(y+spring)/2,z,thickness,spring-y,depth,ink)
             box(x+side*(r+thickness/2),y+0.055,z,thickness+0.06,0.11,depth+0.08,Self.tone(ink,0.85),detail:true)
         }
         for i in 0..<14 {
-            let a=Double(i)*Double.pi/14+0.005,b=Double(i+1)*Double.pi/14-0.005
+            let joint=wallTop==nil ? 0.005:0.0
+            let a=Double(i)*Double.pi/14+joint,b=Double(i+1)*Double.pi/14-joint
             let color=Self.tone(ink,[0.97,1.015,0.94,1.0][i%4])
             func v(_ angle:Double,_ radius:Double,_ zz:Double)->SIMD3<Float> {
                 point(x+cos(angle)*radius,spring+sin(angle)*radius,zz)
@@ -1531,6 +2084,14 @@ private struct TownPainter {
             quad(a0,b0,d0,c0,Self.tone(color,0.72),false)
             quad(b1,a1,c1,d1,color,false)
             quad(c0,c1,a1,a0,color,true);quad(b0,b1,d1,d0,color,true)
+            if let top=wallTop {
+                // Fill the spandrel to the horizontal roof course. Sharing the
+                // exact outer arc avoids slivers of daylight through masonry.
+                let af=point(x+cos(a)*(r+thickness),top,f),bf=point(x+cos(b)*(r+thickness),top,f)
+                let ab=point(x+cos(a)*(r+thickness),top,back),bb=point(x+cos(b)*(r+thickness),top,back)
+                quad(a1,af,bf,b1,ink,false);quad(d1,bb,ab,c1,ink,false)
+                quad(af,ab,bb,bf,ink,false)
+            }
         }
     }
     /// Thin, irregular patches follow wall surfaces; no extra decal pass or transparency.
@@ -1570,6 +2131,22 @@ private struct TownPainter {
         }
         for side in [-1.0,1] { box(x+side*size*0.38,y+size/2,z+size*0.39,0.045,size,0.025,Self.tone(ink,0.84),detail:true) }
     }
+    /// Open slatted tray with individual produce, not a solid coloured cuboid.
+    func produceTray(_ x:Double,_ y:Double,_ z:Double,variant:Int) {
+        box(x,y+0.015,z,0.44,0.03,0.48,0x776044,detail:true)
+        for side in [-1.0,1] {
+            box(x+side*0.22,y+0.09,z,0.025,0.15,0.50,0x96734d,detail:true)
+            for level in [0.035,0.115] { box(x,y+level,z+side*0.24,0.44,0.04,0.025,0x96734d,detail:true) }
+        }
+        let colors:[UInt32]=[0x987342,0x8a5637,0x7b8152,0xada069,0x6a7450]
+        for k in 0..<9 {
+            let xx=x+Double(k%3-1)*0.135+sin(Double(k*7+variant))*0.012
+            let zz=z+Double(k/3-1)*0.145+cos(Double(k*11+variant))*0.013
+            let r=0.059+Double((k+variant)%3)*0.006
+            dome(xx,y+0.07,zz,r,r*(variant%2==0 ? 1.4:0.9),r,colors[(k/3+variant)%colors.count],sides:12,detail:true)
+        }
+    }
+
     func vessel(_ x:Double,_ y:Double,_ z:Double,_ size:Double,_ ink:UInt32) {
         // Lathed clay profile includes the lip and hollow interior, with smooth normals.
         let profile:[SIMD2<Double>]=[SIMD2(0.24,0),SIMD2(0.43,0.24),SIMD2(0.40,0.43),SIMD2(0.22,0.56),SIMD2(0.25,0.66),SIMD2(0.17,0.66),SIMD2(0.17,0.53),SIMD2(0.26,0.13),SIMD2(0,0.12)]

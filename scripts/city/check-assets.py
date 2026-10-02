@@ -4,7 +4,7 @@ import hashlib,json,sys,subprocess
 root=Path(__file__).resolve().parents[2]
 folder=root/'apps/simulator-macos/Resources/City'
 manifest=folder/'manifest.json'
-names=[f'{kind}-{channel}.jpg' for kind in ['plaster','cloth','metal'] for channel in ['base','normal','rough']]+['crowd.json','sky.hdr']
+names=[f'{kind}-{channel}.jpg' for kind in ['plaster','cloth','metal','ground','adobe'] for channel in ['base','normal','rough']]+['crowd.json','sky.hdr']
 hashes={}
 for name in names:
  path=folder/name
