@@ -45,10 +45,9 @@ final class LevelLoadingView:NSView {
 
 extension AppController {
     func loadDirtTrack() {
-        guard !isLoadingDirt,let content=window.contentView else { return }
+        guard !isLoadingDirt else { return }
         isLoadingDirt=true;loadingHeartbeats=0;view.clearInput()
-        loadingView.frame=content.bounds;loadingView.autoresizingMask=[.width,.height]
-        content.addSubview(loadingView);loadingView.begin();window.makeFirstResponder(loadingView)
+        installContentOverlay(loadingView);loadingView.begin();window.makeFirstResponder(loadingView)
         window.toolbar?.isVisible=false;mainMenu.portrait.rendersContinuously=false
         if cachedDirtWorld != nil {
             DispatchQueue.main.async { [weak self] in self?.startDirtTrack() };return

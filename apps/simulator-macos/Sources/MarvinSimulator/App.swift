@@ -79,7 +79,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -101,7 +101,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         }
         world.scene.rootNode.addChildNode(robot.root)
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 820),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "Marvin · Playground"
         window.minSize = NSSize(width: 900, height: 640)
         window.backgroundColor = .windowBackgroundColor
@@ -112,11 +112,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         view.scene = world.scene; view.pointOfView = world.camera
         view.antialiasingMode = .multisampling4X
         view.preferredFramesPerSecond = 60; view.rendersContinuously = true
+        // Keep the renderer independent of toolbar visibility; only overlays use the safe content area.
         view.autoresizingMask = [.width, .height]
         window.contentView = view
-        hud.frame = view.bounds; hud.autoresizingMask = [.width, .height]; view.addSubview(hud)
-        raceHUD.frame = view.bounds; raceHUD.autoresizingMask = [.width, .height]
-        raceHUD.isHidden = true; view.addSubview(raceHUD)
+        installContentOverlay(hud)
+        raceHUD.isHidden = true; installContentOverlay(raceHUD)
         view.onCommand = { [weak self] code in
             guard let self else { return }
             switch code {
@@ -144,8 +144,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             guard let self, self.inSandbox, self.dirtIntro == nil, !self.raceCameraLocked else { return }
             self.cameraDistance = max(1.6, min(9, self.cameraDistance+Double(delta)*0.035))
         }
-        mainMenu.frame = view.bounds; mainMenu.autoresizingMask = [.width, .height]
-        view.addSubview(mainMenu)
+        installContentOverlay(mainMenu)
         mainMenu.onSandbox = { [weak self] in self?.startSandbox() }
         mainMenu.onDirtTrack = { [weak self] in self?.loadDirtTrack() }
         makeMenu()
@@ -231,6 +230,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--people-smoke-test") {
                     timer?.invalidate();let passed=checkTownPeople(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--viewport-smoke-test") {
+                    timer?.invalidate();let passed=checkDepartureViewport(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--postrace-smoke-test") {
                     timer?.invalidate();let passed=checkPostRaceEscape(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
@@ -558,7 +560,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil; dirtOutro = nil
         raceHUD.escaping=false;raceHUD.escapeComplete=false
-        if isDirtTrack { raceHUD.isHidden=false;window.toolbar?.isVisible=true }
+        if isDirtTrack { setRaceControlsHidden(false) }
         simulation.reset(); updatePlayerModel()
         if isDirtTrack {
             var random = SystemRandomNumberGenerator()
@@ -588,9 +590,27 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     func updateDepartureHUD() {
         guard isDirtTrack else { return }
-        raceHUD.isHidden=racePhysics.escape.active
+        setRaceControlsHidden(racePhysics.escape.active)
+    }
+    func setRaceControlsHidden(_ hidden:Bool) {
+        raceHUD.isHidden=hidden
         hud.isHidden=true
-        window.toolbar?.isVisible = !racePhysics.escape.active
+        if window.toolbar?.isVisible == hidden {
+            // AppKit can grow a smaller window when restoring its toolbar. Keep chrome
+            // transitions from changing either the window or the renderer's dimensions.
+            let frame=window.frame
+            window.toolbar?.isVisible = !hidden
+            if window.frame != frame { window.setFrame(frame,display:false) }
+        }
+    }
+    /// Overlay layout can follow native chrome; the SceneKit viewport must not.
+    func installContentOverlay(_ overlay:NSView) {
+        guard let guide=window.contentLayoutGuide else { return }
+        overlay.translatesAutoresizingMaskIntoConstraints=false
+        view.addSubview(overlay)
+        NSLayoutConstraint.activate([NSLayoutConstraint.Attribute.leading,.trailing,.top,.bottom].map { edge in
+            NSLayoutConstraint(item:overlay,attribute:edge,relatedBy:.equal,toItem:guide,attribute:edge,multiplier:1,constant:0)
+        })
     }
     @objc func toggleHelp(_ sender: Any?) { if isDirtTrack { raceHUD.helpVisible.toggle() } else { hud.helpVisible.toggle() } }
     func applicationWillResignActive(_ notification: Notification) {
