@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import SceneKit
 import SimulationCore
 import simd
@@ -12,6 +13,18 @@ extension AppController {
             dirtWorld.sky.apply(BinaryDaylight(fraction:0.5,phase:1.2))
             simulation=Simulation(dirtTrack:true,dirtStartPhase:CityExit.phase)
             race=DirtRace(startPhase:CityExit.phase);race.countDown(dt:3)
+            let recordAudio=ProcessInfo.processInfo.environment["MARVIN_AUDIO_CAPTURE"]=="1"
+            let navigationAudio=recordAudio ? try RaceAudio(resources:Bundle.main.resourceURL!,offline:true):nil
+            let audioFormat=AVAudioFormat(standardFormatWithSampleRate:48000,channels:2)!
+            let audioBuffer=AVAudioPCMBuffer(pcmFormat:audioFormat,frameCapacity:800)!
+            let audioFile=recordAudio ? try AVAudioFile(forWriting:directory.appendingPathComponent("navigation-audio.wav"),settings:audioFormat.settings):nil
+            var audioTimeline:[[String:Any]]=[]
+            defer {
+                navigationAudio?.stop()
+                if recordAudio,let data=try? JSONSerialization.data(withJSONObject:audioTimeline,options:[.prettyPrinted,.sortedKeys]) {
+                    try? data.write(to:directory.appendingPathComponent("audio-timeline.json"))
+                }
+            }
             cameraMode=0;updateCamera(snap:true)
             func key(_ character:String,_ code:UInt16) {
                 let e=NSEvent.keyEvent(with:.keyDown,location:.zero,modifierFlags:[],timestamp:0,windowNumber:window.windowNumber,context:nil,characters:character,charactersIgnoringModifiers:character,isARepeat:false,keyCode:code)!
@@ -93,6 +106,19 @@ extension AppController {
                 let old=world.camera.simdPosition,region=raceHUD.mapRegion
                 advanceRacePhysics(input,dt:1.0/60,raceDT:1.0/60)
                 updateOpponents();updateRaceWorld(dt:1.0/60);updateCamera(snap:false)
+                if let audio=navigationAudio {
+                    let front=world.camera.simdWorldFront
+                    audio.update(states:[simulation]+opponents.map{$0.simulation},lineup:lineup,zones:dirtWorld.town.spectatorSoundZones,
+                                 heading:atan2(Double(front.x),Double(front.z)),storm:racePhysics.storm.enabled,racing:true,dt:1.0/60,
+                                 finished:race.finished,escaping:racePhysics.escape.active,progress:([race]+opponents.map{$0.race}).map{$0.progress},town:dirtWorld.town.soundZones)
+                    guard try audio.engine.renderOffline(800,to:audioBuffer) == .success else { throw CocoaError(.fileWriteUnknown) }
+                    try audioFile?.write(from:audioBuffer)
+                    if frames%60==0 {
+                        audioTimeline.append(["second":frames/60,"x":simulation.x,"z":simulation.z,"speed":simulation.groundSpeed,
+                                              "region":raceHUD.mapRegion.rawValue,"motorGain":audio.lastMix[0].gain,"marketGain":audio.lastMix[25].gain,
+                                              "workshopGain":audio.lastMix[26].gain,"cantinaGain":audio.lastMix[27].gain])
+                    }
+                }
                 frames += 1
                 if frames>180 && !checkingCameraSwitch { maxCameraStep=max(maxCameraStep,Double(simd_distance(old,world.camera.simdPosition))) }
                 if raceHUD.mapRegion != region {

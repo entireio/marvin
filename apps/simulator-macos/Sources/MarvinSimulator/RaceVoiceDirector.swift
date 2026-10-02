@@ -47,17 +47,17 @@ struct RaceVoiceDirector {
                 // Hysteresis rejects repeated side changes while running side by side.
                 let delta=a-b,newSide=delta>0.035 ? 1:delta < -0.035 ? -1:side[i]
                 if side[i] != 0,newSide != side[i],near,elapsed>=passReady[i],s.speed>1,observations[0].speed>1 {
-                    mood=newSide>0 ? "overtake":"passed";priority=3;passReady[i]=elapsed+6
+                    mood=newSide>0 ? "overtake":"passed";priority=3;passReady[i]=elapsed+18
                 }
                 side[i]=newSide
             }
-            if s.contact && !previousContact[i] && mood==nil { mood="startle";priority=2 }
+            if s.contact && !previousContact[i] && s.speed>3 && mood==nil { mood="startle";priority=2 }
             if s.speed<2 { accelerationArmed[i]=true }
             if s.speed>5 && accelerationArmed[i] {
                 accelerationArmed[i]=false
-                if mood==nil { mood="effort";priority=1 }
+                // Acceleration is expressed by the drivetrain, not a recurring squeak.
             }
-            if !greeted[i],s.speed>0.5 { greeted[i]=true;if mood==nil { mood="acknowledge" } }
+            if i==0,!greeted[i],s.speed>0.5 { greeted[i]=true;if mood==nil { mood="acknowledge" } }
             previousContact[i]=s.contact
             if let mood=mood,near,(priority==3 || elapsed>=ready[i]) {
                 if !pending.contains(where:{$0.robot==i && $0.priority>priority}) {
@@ -70,7 +70,7 @@ struct RaceVoiceDirector {
         pending.sort { $0.priority==$1.priority ? $0.expires<$1.expires:$0.priority>$1.priority }
         guard let index=pending.firstIndex(where:{simd_distance(observations[$0.robot].position,listener)<12 && ($0.priority==3 || elapsed>=ready[$0.robot])}) else { return nil }
         let event=pending.remove(at:index)
-        ready[event.robot]=elapsed+7+Double(next(5));globalReady=elapsed+2.6
+        ready[event.robot]=elapsed+22+Double(next(9));globalReady=elapsed+8
         return Event(robot:event.robot,mood:event.mood,variant:variant(robot:event.robot,mood:event.mood))
     }
 }

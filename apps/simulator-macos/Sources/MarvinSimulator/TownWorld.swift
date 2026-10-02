@@ -62,6 +62,22 @@ final class TownWorld {
     private(set) var householdYards:[SIMD2<Double>]=[]
     private var spectatorZones:[String:SpectatorSoundZone]=[:]
     var spectatorSoundZones:[SpectatorSoundZone] { spectatorZones.keys.sorted().map{spectatorZones[$0]!} }
+    /// Acoustic emitters come from the same authored venues and visible activities.
+    lazy var soundZones:[TownSoundZone] = {
+        var zones=venueSites.enumerated().map { i,site in
+            TownSoundZone(position:site.center,kind:i==0 ? .workshop:i==1 ? .cantina:.market)
+        }
+        zones += InfieldLayout.tentOrigins.map { TownSoundZone(position:$0,kind:.workshop,activity:0.65) }
+        let groups=Dictionary(grouping:streetActivities,by:{$0.group})
+        for key in groups.keys.sorted() {
+            let group=groups[key]!
+            guard let first=group.first,group.count>1 else { continue }
+            if first.role.contains("market") || first.role.contains("conversation") {
+                zones.append(TownSoundZone(position:first.position,kind:.market,activity:0.22))
+            }
+        }
+        return zones
+    }()
     private(set) var triangleCount = 0
     private(set) var coarseTriangles = 0
     private(set) var lots: [TownLot] = []

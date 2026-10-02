@@ -14,6 +14,7 @@ public struct DriveInput: Sendable {
     // Set only by the Dirt Track assist; preserves steering while braking.
     var assistedBraking = false
     var assistedBrakePressure = 0.0
+    public var isBraking:Bool { brake || assistedBrakePressure>0 }
     public init() {}
 }
 
@@ -62,7 +63,11 @@ public struct Simulation: Sendable {
     public private(set) var yaw = 0.0, pitch = 0.0, distance = 0.0, elapsed = 0.0
     public private(set) var checkpoint = 0
     public private(set) var contacting = false
+    public private(set) var impactSerial=0,impactSpeed=0.0
+    private var impactTime = -1.0
     public var paused = false
+    /// The actual post-assist/autopilot command, shared with motion-driven audio.
+    public private(set) var appliedDriveInput = DriveInput()
     /// Rubber/loose dirt contact tolerance for visual ground effects. The center
     /// height can flutter a few millimeters above terrain over shallow ripples;
     /// do not tear the trail each time the rigid-body airborne flag toggles.
@@ -91,7 +96,7 @@ public struct Simulation: Sendable {
         checkpoints = CourseLayout.generate(seed: seed)
     }
 
-    public mutating func stop() { leftSpeed = 0; rightSpeed = 0; velocity = .zero; angularVelocity = 0 }
+    public mutating func stop() { appliedDriveInput=DriveInput(); leftSpeed = 0; rightSpeed = 0; velocity = .zero; angularVelocity = 0 }
     public mutating func reset() { self = Simulation(dirtTrack: dirtTrack, dirtStartOffset: dirtStartOffset, dirtStartPhase: dirtStartPhase, character: character) }
     public mutating func centerHead() { yaw = 0; pitch = 0 }
 
@@ -105,6 +110,11 @@ public struct Simulation: Sendable {
         RobotCollisions.Body(position:SIMD3(x,groundY,z),velocity:velocity,heading:heading,angularVelocity:angularVelocity,profile:profile)
     }
     mutating func applyCollisionBody(_ body: RobotCollisions.Body) {
+        let change=simd_length(velocity-body.velocity)
+        if body.contacted && change>0.65 {
+            impactSpeed=elapsed-impactTime<0.1 ? max(impactSpeed,change):change
+            impactTime=elapsed;impactSerial &+= 1
+        }
         x = body.position.x; z = body.position.z; groundY = body.position.y
         heading = atan2(sin(body.heading),cos(body.heading))
         velocity = body.velocity; angularVelocity = body.angularVelocity; verticalSpeed = velocity.y
@@ -145,6 +155,7 @@ public struct Simulation: Sendable {
 
     public mutating func advance(_ input: DriveInput, dt: Double) {
         guard !paused, dt.isFinite, dt > 0 else { return }
+        appliedDriveInput = input
         // Clamp delayed frames and subdivide to prevent tunneling through walls.
         let duration = min(dt, 0.1)
         let steps = Int(ceil(duration / (1.0/120)))

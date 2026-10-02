@@ -12,5 +12,13 @@
     "author": "bart",
     "license": "CC0-1.0",
     "sha256": "79d7801041b5fbc8e181d9aaaa8dafb94b68bb51f325017e82fb37448e2fb1d3"
+  },
+  {
+    "file": "market.mp3",
+    "url": "https://cdn.freesound.org/previews/424/424790_2927958-hq.mp3",
+    "sourcePage": "https://freesound.org/people/bolkmar/sounds/424790/",
+    "author": "bolkmar",
+    "license": "CC0-1.0",
+    "sha256": "66ce4985f7d06223ea33626a7b45292b51f7ce94c91638e963d12263c5677308"
   }
 ]

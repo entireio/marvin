@@ -1,128 +1,193 @@
-# Race audio
+# Race and Mos Aster audio
 
-## Research and audition status
+## Acceptance and evidence
 
-The first oscillator-only pass was rejected by the player. Correct playback,
-headroom and frame timing did not establish convincing character sound. This
-revision uses recorded vocal performances and mechanical foley. It remains a
-listening candidate: automated tests do not measure resemblance to movie voices,
-and the agent did not hear the rendered audio.
+The October 2 redesign responds to the player's rejection of inaudible driving,
+missing boost, excessive squeaks and silent exploration. The previous implementation's
+passing smoke test explicitly required departure silence and never measured speed
+loudness or boost. Those were inadequate acceptance criteria.
 
-The concrete design references are:
+This revision is an audition candidate until actual listening establishes perceived
+quality. Native AVAudioEngine renders and independent Codex Astra Ultra review can
+establish behavior, levels, headroom and code correctness. Neither constitutes
+hearing the result or establishes AAA/film parity.
 
-- [Ben Burtt on R2-D2](https://www.starwars.com/news/5-iconic-star-wars-sound-effects-and-how-they-were-made-starwars-com): vocal inflections blended with electronic sound. Here, recorded efforts shape pitch/envelopes, with alternating whistles, chirps, trills and vocal rasp.
-- [Matthew Wood and David Acord on BB-8](https://bigshinyrobot.com/star-wars/interview-star-wars-force-awakens-sound-editing-team/): electronic material performed through a talkbox. Here, a 22-band analysis/synthesis vocoder transfers a recorded mouth's changing spectrum onto a rich electronic carrier. This approximates that process; it is not a recording of a physical talkbox.
-- [Ben Burtt's WALL-E masterclass](https://editorial.rottentomatoes.com/article/exclusive-ben-burtts-walle-sound-masterclass/): human expression combined with machinery and recorded physical sources. WALL-E now blends processed vocal effort with a lower electronic carrier and mechanical recordings.
-- Marvin uses the same performed-sound approach with a warmer, restrained register and smoother filtering. The rejected repeating three-note signature is removed.
+Evidence is collected under `../marvin-town-planning/audio-redesign/`. `baseline/`
+contains the former native fixture. `pass1/` preserves the first redesign render,
+including failed speed-dynamics checks. The final validation paths and measured
+results are recorded below when verification completes.
 
-No film audio or actor imitation recording is bundled. Vocal material is Tinsin's
-[Generic Hero Effort Noises](https://opengameart.org/content/generic-hero-effort-noises),
-CC BY 3.0. Driving material is bart's recorded
-[68 Workshop Sounds](https://opengameart.org/content/68-workshop-sounds), CC0.
-Derived clips, modifications and license links are documented in
+## Research and resulting design
+
+- [BeamNG's engine audio tuning](https://documentation.beamng.com/modding/vehicle/sections/sounds/engine_audio/)
+  separates RPM, load and smoothing. This design uses drivetrain speed for mechanical
+  pitch, actual post-assist throttle/braking for load, and chassis speed for contact.
+- [Wwise blend containers](https://www.audiokinetic.com/en/public-library/2024.1.7_8863/?id=blend_container_property_editor&source=Help)
+  provide a layered-speed design reference. Low and high mechanisms crossfade,
+  rather than relying on one weak pitched loop at every speed.
+- [Ben Burtt's first-person WALL-E interview](https://designingsound.org/2009/09/ben-burtt-special-wall-e-the-definitive-interview/)
+  describes performed machinery, including a generator for motion. The new bodies
+  combine recorded workshop mechanisms with different filters, rates and contact
+  textures. No film recordings or claim of using Burtt's original devices is made.
+- Earlier voice research remains relevant: [R2-D2's vocal/electronic construction](https://www.starwars.com/news/5-iconic-star-wars-sound-effects-and-how-they-were-made-starwars-com),
+  [BB-8's performed talkbox approach](https://bigshinyrobot.com/star-wars/interview-star-wars-force-awakens-sound-editing-team/).
+  Existing licensed vocal performances are now short, filtered accents; resemblance
+  has not been established through listening by the agent.
+
+## Mechanical feedback
+
+Every droid has low transmission, high-load mechanism, hard-ground contact, sand
+contact and sustained boost layers. Marvin uses a warm servo body, R2 a lighter
+mechanism, BB-8 a lower rolling mass, and WALL-E a heavier fluttering tracked layer.
+These are design intentions, not a subjective quality verdict.
+
+`Simulation.appliedDriveInput` records the command after player assistance or AI
+selection. Effective braking includes assisted brake pressure. Boost responds to
+that command immediately, including at matched speed, with distinct onset,
+sustained thrust and release. It does not infer boost from a speed threshold.
+A bounded critical one-shot pool keeps boost separate from speech and collisions.
+Counters record successfully scheduled events and can be inspected per robot.
+
+Mechanical pitch and gain develop over the full 0–12 m/s range. Airborne contact
+layers fade away while powered mechanisms remain. Surface contact crossfades from
+course material to sand outside the track. Motors remain active in town, dunes,
+and after the finish; only their distance to the listener can silence them.
+
+## Voices and race events
+
+Only the player's initial movement gets a greeting. Ordinary acceleration uses
+mechanical feedback and never adds a voice line. Significant fresh contacts can
+trigger a restrained startle; near player/rival overtakes retain directional
+reactions and continuous-progress hysteresis. Six-variant shuffled bags avoid
+immediate phrase repetition.
+
+The global speech interval is eight seconds; a character normally waits 22–30
+seconds, and overtake pairs wait eighteen seconds. Only one expression plays at
+once. Lines are shortened to 0.85–1.15 seconds and mastered below active drivetrain
+feedback. This removes the old multi-second squeak dominance without deleting all
+character expression. Tests include stop/go/contact/rank-crossing activity, not
+just constant-speed silence.
+
+Countdown, go, finish and collision cues are separate from voices. Crowd zones
+stay audible through the finish and the last racer's extra laps. After all racers
+leave earshot, the stadium stays quiet, while the rest of the soundscape continues.
+
+## City, weather and listening perspective
+
+Town sources are derived from actual authored venues, repair tents and populated
+conversation/market groups. The market has licensed field-recorded walla; workshops
+have machinery and sparse tools; the cantina has muffled walla and original foley
+percussion. These are proximity sources, not a globally playing city soundtrack.
+Distant sources soften spectrally and fade out. Desert wind continues beyond town.
+
+A sandstorm adds separate low turbulent pressure and dry airborne-grit layers.
+Gain, timbre and stereo direction follow the actual wind vector, accumulation and
+building shelter used by the simulation. Outdoor market/workshop activity reduces
+during storms; cantina activity remains sheltered. A fixed postrace view samples
+wind at the course, independent of the departing player's shelter. Tests compare
+clear, onset, full gust, shelter, driving, boost and clear-again renders.
+
+During driving, the listener follows the player with camera-oriented stereo.
+After the finish it stays at the course center, matching the fixed overview.
+These are stereo distance/filter cues, not HRTF binaural sound or a room-acoustics
+simulation. Solid-building acoustic occlusion is not modeled.
+
+## Runtime and lifecycle
+
+Thirty looping voices and twenty bounded one-shot slots feed AVAudioEngine through
+an Apple peak limiter. Sixteen one-shot slots are reserved for short boost edges;
+four serve speech and other events. The output stage retains headroom. All WAVs
+are decoded during level preparation (approximately 182 MB stereo float PCM).
+There is no decoding, download or sample synthesis during gameplay updates.
+
+Mix smoothing is 75 ms for moving sources and 650 ms for environmental changes.
+Pause, lost focus, mute and menus stop playback; restart clears conversation and
+weather/crowd lifecycle state. Countdown can play audio while motors remain quiet.
+Device startup failure is logged and retried without blocking gameplay.
+
+## Reproduction and licensing
+
+Full attribution and modifications are in
 `apps/simulator-macos/Resources/Audio/CREDITS.md` and the app's About credits.
+Workshop recordings are bart's CC0 collection. Voices derive from Tinsin's CC BY
+3.0 Generic Hero Effort Noises. Stadium recordings retain Gregor Quendel's CC BY
+4.0 and AuraVoice's CC0 credits. Market walla uses bolkmar's CC0 field recording;
+its source is the publicly available HQ preview, documented in `sources.json`.
+Original DSP supplies wind, storm pressure, grit, boost pressure and race cues.
 
-## Speech behavior
-
-Each character has 30 clips: acknowledgement, effort, startle, overtaking the
-player and being passed by the player, each with six different phrases. Variants
-change source syllables, number of syllables, pauses and inflections—not just
-pitch. A per-character/per-reaction shuffled bag exhausts all six before reuse
-and prevents a repeat across bag boundaries. Its seed changes between races.
-
-Steady driving produces no periodic chatter. Only an initial moving greeting,
-a fresh acceleration from low speed, a new contact, or a nearby rank crossing
-can schedule a line. Continuous lap progress detects overtakes without a false
-crossing at the start/finish seam; a ±0.035-radian margin rejects side-by-side
-jitter. The rival addresses the player in both pass directions. No speech is
-triggered for exchanges solely between AI opponents.
-
-Overtakes take priority over effort/greetings, with a six-second pair cooldown.
-Other speech waits 7–11 seconds per robot. New phrases are spaced 2.6 seconds
-apart globally, expire from the queue after two seconds, and require the source
-to remain within 12 metres. At most two expressions play. Pause/mute suspend
-conversation state; a new race or return to the menu clears it.
-
-## Driving and crowd
-
-Burtt describes recording a hand-cranked generator to follow WALL-E's driving,
-with an inertia starter for faster movement in this
-[first-person interview](https://designingsound.org/2009/09/ben-burtt-special-wall-e-the-definitive-interview/).
-The implementation follows the recorded-mechanism and motion-driven layering
-approach; it does not claim to contain those same historical devices.
-
-Each robot has separate preloaded motor and ground-contact layers, edited from
-recorded drills/machinery and ratchets/scraping. Pitch follows speed; level
-follows motion and turning. Stationary robots do not play a constant engine hum.
-Ground-contact sound fades out when airborne, independently of motor sound.
-
-During racing, the listener follows the player, with camera-oriented stereo.
-Sources fade to zero at 24 metres (robots) and 28 metres (crowd). Motor/ground
-mix changes smooth over 120 ms; voice gain/pan smooth over 60 ms. These are
-stereo distance cues, not binaural audio or wall-occlusion simulation.
-
-Seated crowd zones determine population and position. The nearest four zones
-play ordinary cheers during racing. Player finish switches them to Gregor
-Quendel's “03 - Strong cheering - I”; storm races retain sparse individual
-cheers. The overhead outro keeps the crowd audible near any remaining racer,
-then fades to silence when all four leave earshot. Once departure is complete,
-roaming back near the stadium does not restart the crowd. This is an audio
-lifecycle change, not a new animation of spectators leaving their seats.
-
-Intro, countdown, pause, lost focus, menus and mute still silence the engine.
-The Simulation menu's “Mute race sound” preference persists. Device startup
-failures are reported/retried rather than blocking gameplay.
-
-## Runtime and reproduction
-
-Twelve loop players (four motors, four contact layers, four crowd zones) plus
-two one-shot players feed AVAudioEngine. Audio renders on Apple's audio thread.
-All assets are decoded during loading: approximately 91.7 MB of stereo float PCM.
-There is no per-frame synthesis, decoding, download or growing voice list.
-
-`scripts/audio/sources.json` records the two source downloads and SHA-256 hashes.
-Download those files to a source folder and extract `workshop.7z` there, retaining
-its `workshop/` subdirectory. Then run:
+Download and verify `scripts/audio/sources.json` into a source folder. Extract
+`workshop.7z` there, keeping `workshop/`. With numpy, scipy and ffmpeg available:
 
 ```sh
-python scripts/audio/characters.py SOURCE_FOLDER PREVIEW_FOLDER
+python scripts/audio/characters.py SOURCE_FOLDER SOURCE_PREVIEW_FOLDER
+python scripts/audio/soundscape.py SOURCE_FOLDER
+python scripts/audio/verify-assets.py ASSET_REPORT.json
 ```
 
-The offline renderer requires numpy, scipy and ffmpeg. It writes 120 expressive
-clips and eight movement layers, plus separate voice and driving previews for
-each character. The driving previews contain rest, acceleration, cruising,
-braking and rest, at the runtime mix level. They are not loudness-boosted.
+Always run both generators in that order: soundscape mastering intentionally
+replaces the older character output. `SOURCE_PREVIEW_FOLDER` is intermediate;
+final playable evidence must come from the native engine, not those old-gain
+source previews. No manual normalization is applied to native audition renders.
 
-`scripts/audio/prepare.py CROWD_SOURCE_FOLDER` separately masters the normal,
-sparse and finish crowd recordings. Crowd source and attribution:
-[Gregor Quendel, CC BY 4.0](https://opengameart.org/content/free-crowd-cheering-sounds),
-[Nocturnal_Vanguard / AuraVoice, CC0](https://opengameart.org/content/cheers-0).
+Build with `apps/simulator-macos/build-app.sh`, then:
 
-## Validation
+```sh
+"apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator" \
+  --audio-smoke-test OUTPUT_DIRECTORY
+MARVIN_AUDIO_CAPTURE=1 \
+  "apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator" \
+  --navigation-smoke-test NAVIGATION_OUTPUT_DIRECTORY
+```
 
-`--audio-smoke-test DIR` renders a native AVAudioEngine fixture and checks
-non-clipping output, stereo orientation, range, stationary driving silence,
-mute/pause/resume, race finish cheering, remaining-racer audibility, departure
-silence, restart and menu teardown. A deterministic director fixture simulates
-ten minutes of steady motion to reject repeating chatter, fourteen alternating
-rank positions to exercise both pass directions, shuffled phrase exhaustion,
-side-by-side jitter, distance eligibility, effort and startle.
+The first command renders each character, matched-speed boost, real physics racing,
+city categories and storm states. It checks speed dynamics, boost transitions,
+voice density, airborne contact, output peak, stadium departure and lifecycle.
+The second adds native audio and a timed position/mix log to the existing actual
+G/C-input, gate passage, town/dunes/reentry validation. Its initial course fixture
+is positioned at the gate; the subsequent trip uses driving and collision physics.
+Neither test is a real-time output-device recording or a perceptual listening test.
 
-These tests establish behavior and signal integrity only. The separate audio
-previews are the basis for user listening feedback before calling the character
-sound design successful.
+## Verified October 2 results
 
-The 45-second Apple M2 1920×1080 live racing benchmark played nine expressions:
-59.975 render callbacks/s, p95 interval 17.441 ms, CPU update p95 1.377 ms,
-two intervals over 25 ms and none over 50 ms. These are SceneKit callback
-intervals, not GPU/display presentation timestamps. Activity Monitor was paused
-and restored; no build, encoding or other simulation ran during measurement.
-The final two changes affect only departure silence and outro panning, not the
-active-racing benchmark path. Artifacts are in
-`../marvin-town-planning/robot-audio-v2/`.
+The final native suite passed **58 checks**. Committed machine-readable evidence
+is in [audio-validation/2026-10-02](audio-validation/2026-10-02/).
 
-Final native regression passed, including manual escape silence. The 40-second
-render's peak was 0.1938; the separately rendered finish cheer peaked at 0.0695.
-All 120 expression assets are distinct, silent at their boundaries and free of
-clipped samples. The eight driving loop seams remain within normal adjacent
-sample changes. These measurements do not establish perceived sound quality.
+| Droid | Slow→cruise rise | Cruise→full rise | Matched-speed boost rise |
+| --- | ---: | ---: | ---: |
+| Marvin | 7.72 dB | 7.35 dB | 5.55 dB |
+| R2-D2 | 7.19 dB | 7.72 dB | 5.15 dB |
+| BB-8 | 7.73 dB | 7.62 dB | 5.92 dB |
+| WALL-E | 10.99 dB | 7.39 dB | 6.17 dB |
+
+The one-minute changing-physics render played three expressions. Scheduled boost
+onsets were verified separately for each rival. Native fixtures also pass rapid
+100 ms taps, actual assisted braking, native-camera stereo orientation, head-on
+collision feedback (9.025 m/s collision velocity loss), fixed-overview storm
+perspective, pause/mute/restart and continued world sound after stadium departure.
+
+All 161 bundled WAVs pass PCM/level/boundary checks. The real-race render peaks at
+0.6732, collision fixture at 0.7075 and storm sequence at 0.5695; stress output
+remains below 0.95. The limiter is not a substitute for a balanced audible mix.
+
+The final navigation test drove COURSE→TOWN→DUNES→TOWN→COURSE over **166.85 simulated
+seconds** and passed. Town/dune motors persist, local activity fades away in dunes
+and returns on reentry. This trip does not visit the cantina; its evidence is the
+separate city fixture. Final PCM files are in `audio-redesign/final/` and
+`audio-redesign/navigation-final/` under the external artifact directory above.
+`audio-redesign/audition/index.html` provides unnormalized MP3 previews and labeled
+jump points. These are offline native-engine renders; separate live runs verify
+output-engine operation.
+
+Two sequential **45-second live runs on Apple M2, 1920×1080, midday chase camera**
+ran with audio active, without concurrent building, encoding or other simulator
+instances. Clear weather: 59.93 callbacks/s, p95 17.39 ms, p99 19.66 ms, three
+intervals >25 ms, none >50 ms; CPU update p95 5.05 ms. Storm: 60.00 callbacks/s,
+p95 17.28 ms, p99 18.33 ms, no intervals >25 or >50 ms; CPU update p95 2.14 ms.
+These measure SceneKit callback intervals, not GPU execution or display presentation.
+No same-session baseline live benchmark was captured, so no performance improvement
+claim is made. Core SimulationChecks also passed after collision telemetry changes.
+
+Independent Astra Ultra review identified and closed reversed camera stereo,
+post-collision speed hiding head-on impacts, assisted braking retaining boost,
+rapid-tap release loss and misleading cumulative event checks. Perceptual listening
+and AAA parity remain unverified; neither agent had an audio-perception tool.

@@ -17,7 +17,7 @@ func checkRaceVoiceDirector()->[String:Bool] {
     var director=RaceVoiceDirector(seed:2),events=[RaceVoiceDirector.Event]()
     for pass in 0..<14 {
         let delta=pass%2==0 ? -0.1:0.1
-        for _ in 0..<900 {
+        for _ in 0..<1500 {
             if let e=director.advance(observations:observations(delta),dt:1.0/60) { events.append(e) }
         }
     }
@@ -35,12 +35,18 @@ func checkRaceVoiceDirector()->[String:Bool] {
         if let e=far.advance(observations:observations(frame<600 ? -0.1:0.1,far:true),dt:1.0/60),e.robot != 0 { farSpeech+=1 }
     }
     checks["distantRobotsSilent"]=farSpeech==0
-    for mood in ["effort","startle"] {
+    for mood in ["acknowledge","startle"] {
         var director=RaceVoiceDirector(seed:5),events=[RaceVoiceDirector.Event]()
         for frame in 0..<180 {
             if let e=director.advance(observations:observations(-0.1,speed:frame<24 ? 0:7,contact:mood=="startle" && frame>=24,far:true),dt:1.0/60) { events.append(e) }
         }
         checks[mood]=events.count==1 && events[0].mood==mood
     }
+    var busy=RaceVoiceDirector(seed:9),busyCount=0
+    for frame in 0..<36000 {
+        let speed=frame%240<60 ? 1.0:7.0
+        if busy.advance(observations:observations(frame%600<300 ? -0.1:0.1,speed:speed,contact:frame%30==0),dt:1.0/60) != nil { busyCount+=1 }
+    }
+    checks["busyRaceSpeechBudget"]=busyCount<=76
     return checks
 }

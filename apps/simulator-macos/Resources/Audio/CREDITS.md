@@ -30,3 +30,19 @@ Changes: filtering, spaced excerpts, mono conversion, normalization.
 finish-crowd.wav: adapted from “03 - Strong cheering - I” in Gregor Quendel's
 “Free Crowd Cheering Sounds”, CC BY 4.0 (links above).
 Changes: excerpt, filtering, mono conversion, normalization, loop crossfade.
+
+2026-10 soundscape revision:
+Market and cantina walla: “Crowded street at medieval market” by bolkmar (2018),
+CC0, https://freesound.org/people/bolkmar/sounds/424790/
+Source: publicly available HQ MP3 preview. Changes: overlapping perspectives,
+filtering, level matching, loop crossfades and cantina percussion arrangement.
+
+New low/high motors, contact, boost, impact, workshop and cantina percussion
+also use bart's CC0 Workshop Sounds above (drill long, machine, ratchet1,
+quiet scrape, low hammering, tool rummaging, clink, dull hammering,
+wood on wood thuds, dull ping). Changes: layered/resampled recordings,
+filtering, dynamic shaping, loop editing and original event arrangements.
+Wind, sand wash, boost pressure and short race cues are original procedural DSP.
+The original percussion arrangement is not the Star Wars cantina composition.
+Existing vocal performances are shortened and remastered for restrained accents.
+Generator: scripts/audio/soundscape.py, following characters.py.

@@ -1,0 +1,38 @@
+{
+  "cameraCyclesOutsidePassed" : true,
+  "captures" : [
+    "01-course",
+    "00-whole-town",
+    "transition-2-TOWN",
+    "02-town-near-course",
+    "street-out-60",
+    "03-town",
+    "street-out-105",
+    "transition-3-DUNES",
+    "street-out-150",
+    "04-dunes",
+    "04b-dunes-camera-cycle",
+    "transition-4-TOWN",
+    "street-return",
+    "05-town-return",
+    "transition-5-COURSE",
+    "06-course-return"
+  ],
+  "finalCourseAim" : [
+    3.8989827526408363e-09,
+    1.5776069547575293e-10,
+    -1.8365856919974286e-09
+  ],
+  "mapPanelWidth" : 270,
+  "maximumCameraStepMetres" : 1.0646047592163086,
+  "maximumFollowErrorMetres" : 1.0535610451902682,
+  "passed" : true,
+  "regions" : [
+    "COURSE",
+    "TOWN",
+    "DUNES",
+    "TOWN",
+    "COURSE"
+  ],
+  "simulatedSeconds" : 166.84999999999999
+}
