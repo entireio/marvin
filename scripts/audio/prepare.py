@@ -1,4 +1,4 @@
-"""Offline original motor synthesis and licensed crowd mastering. No runtime downloads.
+"""Offline licensed crowd mastering. No runtime downloads.
 Usage: python3 scripts/audio/prepare.py /path/to/downloaded-source-directory
 Source directory contains cheers.ogg and the extracted Gregor Quendel crowd archive.
 """
@@ -18,8 +18,7 @@ def write(name, samples, crossfade=.10):
         w.setparams((1,2,rate,0,'NONE','not compressed'))
         w.writeframes(array.array('h',(round(x*32767) for x in samples)).tobytes())
 
-# The character recipe owns motors and expressive phrases.
-subprocess.run([sys.executable,str(pathlib.Path(__file__).with_name('characters.py'))],check=True)
+ # Character rendering has its own source directory; run characters.py separately.
 
 source=pathlib.Path(sys.argv[1])
 def decode(path):
@@ -32,3 +31,6 @@ sparse=[0.0]*(rate*23)
 for start,level in [(3,.5),(14,.35)]:
     for i,x in enumerate(cheer[:rate*4]):sparse[start*rate+i]+=x*level
 write('sparse-crowd',sparse,.1)
+
+# Remove the recording's long fade-in/out: a finish must get an immediate crowd response.
+write('finish-crowd',decode(next(source.rglob('*03 - Strong cheering - I.mp3')))[5*rate:16*rate],.7)

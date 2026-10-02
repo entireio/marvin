@@ -397,7 +397,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         if smokeDirectory != nil { smokeTest() }
     }
     @objc func showMainMenu(_ sender: Any?) {
-        raceAudio?.stop()
+        raceAudio?.resetConversation()
         window.title = "Marvin · Playground"
         mainMenu.portrait.rendersContinuously = true
         inSandbox = false; dirtIntro = nil; view.clearInput()
@@ -552,7 +552,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         window.makeFirstResponder(view)
     }
     @objc func reset(_ sender: Any?) {
-        raceAudio?.stop()
+        raceAudio?.resetConversation()
         if isLoadingDirt && sender != nil { return }
         guard inSandbox else { return }
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5

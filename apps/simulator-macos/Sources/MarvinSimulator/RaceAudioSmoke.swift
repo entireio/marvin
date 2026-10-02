@@ -17,28 +17,12 @@ extension AppController {
             let far=RaceAudio.spatial(source:SIMD2(25,0),listener:.zero,heading:0,range:24)
             let rotated=RaceAudio.spatial(source:SIMD2(4,0),listener:.zero,heading:Double.pi,range:24)
             var passed=right.pan>0 && left.pan<0 && rotated.pan<0 && far.gain==0 && right.gain>far.gain
-            var director=RaceVoiceDirector(),eventTimes=[Double](),variants=Set<Int>()
-            let observations=(0..<4).map{RaceVoiceDirector.Observation(position:SIMD2(Double($0)*30,0),speed:3,contact:false)}
-            for frame in 0..<3600 {
-                if let event=director.advance(observations:observations,dt:1.0/60) {
-                    passed = passed && event.robot==0
-                    eventTimes.append(Double(frame)/60);variants.insert(event.variant)
-                }
-            }
-            passed = passed && eventTimes.count>=4 && eventTimes.count<=7 && variants.count==3
-                && zip(eventTimes,eventTimes.dropFirst()).allSatisfy{$0.1-$0.0>=9}
-            for mood in ["effort","startle"] {
-                var reaction=RaceVoiceDirector(),event:RaceVoiceDirector.Event?
-                for frame in 0..<31 {
-                    let input=(0..<4).map { RaceVoiceDirector.Observation(position:SIMD2(Double($0)*30,0),speed:frame<24 ? 0:7,contact:mood=="startle" && frame>=24) }
-                    event=event ?? reaction.advance(observations:input,dt:1.0/60)
-                }
-                passed = passed && event?.mood==mood
-            }
+            let directorChecks=checkRaceVoiceDirector()
+            passed = passed && directorChecks.values.allSatisfy{$0}
             var peak:Float=0,squares=0.0,samples=0,blockPeaks=[Float]()
             for character in RacePerformance.Character.allCases {
                 var states=(0..<4).map { Simulation(dirtTrack:true,dirtStartPhase:Double($0)*Double.pi/2,character:character) }
-                audio.stop()
+                audio.resetConversation()
                 for frame in 0..<300 {
                     for i in 0..<4 { var input=DriveInput();input.throttle=Double(frame)/300;states[i].advance(input,dt:1.0/60) }
                     audio.update(states:states,lineup:[character,.r2d2,.bb8,.wallE],zones:[],heading:states[0].heading,storm:false,racing:true,dt:1.0/60)
@@ -55,7 +39,7 @@ extension AppController {
             let states=(0..<4).map { Simulation(dirtTrack:true,dirtStartPhase:Double($0)*Double.pi/2) }
             let zone=SpectatorSoundZone(position:SIMD2(states[0].x+3,states[0].z),people:40,stormPeople:1)
             for storm in [false,true] {
-                audio.stop()
+                audio.resetConversation()
                 for _ in 0..<600 {
                     audio.update(states:states,lineup:[.marvin,.r2d2,.bb8,.wallE],zones:[zone],heading:0,storm:storm,racing:true,dt:1.0/60)
                     guard try audio.engine.renderOffline(800,to:buffer) == .success else { throw CocoaError(.fileWriteUnknown) }
@@ -65,7 +49,7 @@ extension AppController {
                     }}
                     try file.write(from:buffer)
                 }
-                passed = passed && audio.lastMix[4].gain>0
+                passed = passed && audio.lastMix[8].gain>0 && audio.lastMix[0..<8].allSatisfy{$0.gain<0.0001}
             }
             audio.update(states:states,lineup:[.marvin,.r2d2,.bb8,.wallE],zones:[zone],heading:0,storm:false,racing:false,dt:1.0/60)
             passed = passed && !audio.active && audio.lastMix.allSatisfy{$0.gain==0} && peak>0.005 && peak<0.95 && audio.expressionCount>=4 && audio.speakingCount==0
@@ -85,11 +69,42 @@ extension AppController {
                 let p=DirtCourse.point(Double(i)*Double.pi/100)
                 race.advance(x:p.x,z:p.z,dt:0.1)
             }
-            updateRaceAudio(dt:1.0/60,advancing:true);passed = passed && race.finished && !audio.active
+            updateRaceAudio(dt:1.0/60,advancing:true);passed = passed && race.finished && audio.active
+            passed = passed && audio.lastMix[8..<12].contains{$0.gain>0}
+            // Finish crowd persists, then fades out of earshot and cannot restart during town roaming.
+            let finishStates=[simulation]+opponents.map{$0.simulation}
+            let closeZone=SpectatorSoundZone(position:SIMD2(simulation.x+2,simulation.z),people:40,stormPeople:1)
+            let finishFile=try AVAudioFile(forWriting:directory.appendingPathComponent("finish-crowd-preview.wav"),settings:format.settings)
+            var finishPeak:Float=0
+            for _ in 0..<90 {
+                audio.update(states:finishStates,lineup:lineup,zones:[closeZone],heading:0,storm:false,racing:true,dt:1.0/60,finished:true)
+                guard try audio.engine.renderOffline(800,to:buffer) == .success else { throw CocoaError(.fileWriteUnknown) }
+                try finishFile.write(from:buffer)
+                for ch in 0..<2 { for i in 0..<Int(buffer.frameLength) { finishPeak=max(finishPeak,abs(buffer.floatChannelData![ch][i])) } }
+            }
+            let finishCheering=audio.active && audio.lastMix[8].gain>0.1 && finishPeak>0.005 && finishPeak<0.95
+            var departureStates=finishStates
+            departureStates[0]=Simulation(dirtTrack:true,dirtStartOffset:200)
+            let rival=departureStates[1]
+            let rivalZone=SpectatorSoundZone(position:SIMD2(rival.x+2,rival.z),people:40,stormPeople:1)
+            for _ in 0..<90 {
+                audio.update(states:departureStates,lineup:lineup,zones:[rivalZone],heading:0,storm:false,racing:true,dt:1.0/60,finished:true,escaping:true)
+            }
+            let remainingRacerCheered=audio.active && audio.lastMix[8].gain>0.1
+                && RaceAudio.spatial(source:rivalZone.position,listener:SIMD2(departureStates[0].x,departureStates[0].z),heading:0,range:28).gain==0
+            let distantZone=SpectatorSoundZone(position:SIMD2(simulation.x+200,simulation.z),people:40,stormPeople:1)
+            for _ in 0..<180 {
+                audio.update(states:finishStates,lineup:lineup,zones:[distantZone],heading:0,storm:false,racing:true,dt:1.0/60,finished:true,escaping:true)
+            }
+            let departureSilent = !audio.active
+            audio.update(states:finishStates,lineup:lineup,zones:[closeZone],heading:0,storm:false,racing:true,dt:1.0/60,finished:true,escaping:true)
+            passed = passed && remainingRacerCheered && finishCheering && departureSilent && !audio.active
+            audio.update(states:finishStates,lineup:lineup,zones:[closeZone],heading:0,storm:false,racing:true,dt:1.0/60,finished:false,escaping:true)
+            passed = passed && !audio.active // Manual gate escape must not restart the engine every frame.
             reset(nil);updateRaceAudio(dt:1.0/60,advancing:true);passed = passed && !audio.active
             showMainMenu(nil);passed = passed && !audio.active
             raceAudio=nil
-            let report:[String:Any]=["passed":passed,"peak":peak,"rms":sqrt(squares/Double(max(1,samples))),"renderedSeconds":40,"voiceLimit":10,"expressionsPlayed":audio.expressionCount,"spatialAndLifecycleChecks":passed,"robotBlockPeaks":blockPeaks]
+            let report:[String:Any]=["passed":passed,"peak":peak,"rms":sqrt(squares/Double(max(1,samples))),"renderedSeconds":40,"voiceLimit":14,"expressionsPlayed":audio.expressionCount,"spatialAndLifecycleChecks":passed,"directorChecks":directorChecks,"finishCheering":finishCheering,"finishPeak":finishPeak,"departureSilent":departureSilent,"remainingRacerCheered":remainingRacerCheered,"robotBlockPeaks":blockPeaks]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("audio.json"))
             return passed
         } catch { print("Audio check: \(error)");return false }

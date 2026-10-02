@@ -1,0 +1,16 @@
+[
+  {
+    "file": "effort.wav",
+    "url": "https://opengameart.org/sites/default/files/Valiant%20Genericus%20%28Effort%20Noises%29.wav",
+    "author": "Tinsin",
+    "license": "CC-BY-3.0",
+    "sha256": "d4d2ccd76df9697a9dd1c0709e00443894cf2cba8811f94ebc9c55d975593bcf"
+  },
+  {
+    "file": "workshop.7z",
+    "url": "https://opengameart.org/sites/default/files/workshop.7z",
+    "author": "bart",
+    "license": "CC0-1.0",
+    "sha256": "79d7801041b5fbc8e181d9aaaa8dafb94b68bb51f325017e82fb37448e2fb1d3"
+  }
+]
