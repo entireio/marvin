@@ -120,8 +120,16 @@ extension AppController {
     }
     func saveTownFrame(_ name:String,at directory:URL) throws {
         guard let tiff=view.snapshot().tiffRepresentation,
-              let png=NSBitmapImageRep(data:tiff)?.representation(using:.png,properties:[:]) else { throw CocoaError(.fileWriteUnknown) }
+              let bitmap=NSBitmapImageRep(data:tiff),
+              let png=bitmap.representation(using:.png,properties:[:]) else { throw CocoaError(.fileWriteUnknown) }
         try png.write(to:directory.appendingPathComponent(name+".png"))
+        var magenta=0
+        for y in stride(from:0,to:bitmap.pixelsHigh,by:8) {
+            for x in stride(from:0,to:bitmap.pixelsWide,by:8) {
+                if let c=bitmap.colorAt(x:x,y:y)?.usingColorSpace(.deviceRGB),c.redComponent>0.9,c.blueComponent>0.9,c.greenComponent<0.15 { magenta += 1 }
+            }
+        }
+        guard magenta<20 else { throw NSError(domain:"RenderAudit",code:1,userInfo:[NSLocalizedDescriptionKey:"Shader failure colour in \(name): \(magenta) sampled pixels"]) }
     }
     @objc func benchmarkDisplayTick(_ sender:AnyObject) { tick() }
     func startTownBenchmark(at directory:URL) {

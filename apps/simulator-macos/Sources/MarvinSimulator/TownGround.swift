@@ -5,7 +5,38 @@ import SimulationCore
 /// Baked, soft-edged wear attached to actual entrances and walking routes.
 /// This is a single static mesh; it adds no per-frame pathfinding or decals.
 enum TownGround {
-    static func build(access:[TownWorld.PedestrianAccess])->SCNNode {
+    // World-space pigment survives texture mip reduction in the aerial view.
+    // The same field covers the central plane and outer terrain tiles.
+    static let pigmentFunctions = """
+    float townNoise(float2 p) {
+        float2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+        float4 h=fract(sin(float4(dot(i,float2(127.1,311.7)),dot(i+float2(1,0),float2(127.1,311.7)),dot(i+float2(0,1),float2(127.1,311.7)),dot(i+1.0,float2(127.1,311.7))))*43758.5453);
+        return mix(mix(h.x,h.y,f.x),mix(h.z,h.w,f.x),f.y);
+    }
+    float3 townPigment(float2 p) {
+        float2 warp=float2(townNoise(p/31.0),townNoise(p/37.0+19.0))*9.0;
+        float broad=townNoise((p+warp)/22.0),fine=townNoise((p+warp)/5.5);
+        float pale=smoothstep(0.28,0.72,broad*0.50+fine*0.50);
+        float3 soil=mix(float3(0.255,0.208,0.145),float3(0.46,0.36,0.235),pale);
+        return soil*(0.89+0.22*townNoise(p/2.1+7.0));
+    }
+    """
+    static let terrainSurface = pigmentFunctions + "\n" + """
+    #pragma body
+    float2 p=(scn_frame.inverseViewTransform*float4(_surface.position,1.0)).xz;
+    float angle=atan2(p.y,p.x);
+    float radius=123.0+13.0*sin(3.0*angle+0.4)+9.0*cos(5.0*angle-0.7)+6.0*sin(2.0*angle);
+    float desert=smoothstep(radius-12.0,radius+32.0,length(p));
+    float grain=dot(_surface.diffuse.rgb,float3(0.299,0.587,0.114));
+    float bands=townNoise(p/43.0);
+    float3 dune=float3(0.64,0.43,0.23)*(0.83+0.30*grain)+bands*float3(0.075,0.058,0.029);
+    float3 soil=mix(_surface.diffuse.rgb,townPigment(p)*(1.30+grain),smoothstep(28.0,42.0,length(p)));
+    _surface.diffuse.rgb=mix(soil,dune,desert);
+    float ripple=sin(p.x*17.0+p.y*5.8+1.8*sin(p.y*0.41)+sin(p.x*0.22));
+    _surface.normal=normalize(_surface.normal+float3(0.022*ripple,0.0,0.008*ripple)*desert);
+    """
+
+    static func build(access:[TownWorld.PedestrianAccess],yards:[SIMD2<Double>])->SCNNode {
         let mesh=TownMesh()
         func patch(_ center:SIMD2<Double>,_ axis:SIMD2<Double>,_ width:Double,_ depth:Double,_ seed:Int,_ ink:UInt32,_ opacity:Float) {
             let across=SIMD2(axis.y,-axis.x),segments=18
@@ -40,6 +71,9 @@ enum TownGround {
                 patch(p,direction,1.2,2.1,index+73,0xc2ac87,0.17)
             }
         }
+        for (i,p) in yards.enumerated() {
+            patch(p,SIMD2(cos(Double(i)),sin(Double(i))),1.4,1.0,i+791,i%3==0 ? 0x786753:0xbba07b,i%3==0 ? 0.38:0.25)
+        }
         let material=SCNMaterial();material.lightingModel = .physicallyBased
         material.roughness.contents=1.0;material.diffuse.contents=NSColor.white
         material.writesToDepthBuffer=false;material.transparencyMode = .aOne
@@ -61,10 +95,10 @@ enum TownGround {
     }
     private static func trampledGround()->SCNNode {
         let mesh=TownMesh(),step=4
-        for z in stride(from:-152,to:152,by:step) { for x in stride(from:-152,to:152,by:step) {
+        for z in stride(from:-176,to:176,by:step) { for x in stride(from:-176,to:176,by:step) {
             let points=[SIMD3(Float(x),Float(-0.023),Float(z)),SIMD3(Float(x),Float(-0.023),Float(z+step)),SIMD3(Float(x+step),Float(-0.023),Float(z+step)),SIMD3(Float(x+step),Float(-0.023),Float(z))]
             let alpha=points.map { p -> Float in
-                let inner=max(abs(p.x),abs(p.z))
+                let inner=hypot(p.x,p.z)
                 let outer=Float(TownFootprint.edgeDistance(SIMD2(Double(p.x),Double(p.z))))
                 return min(1,max(0,(inner-28)/8))*min(1,max(0,(-outer+5)/12))
             }
@@ -90,15 +124,19 @@ enum TownGround {
         half groundBlend;
         #pragma body
         out.groundBlend=half(_geometry.color.a);
-        """,.surface:"""
+        """,.surface:pigmentFunctions + "\n" + """
         #pragma body
         float grain=dot(_surface.diffuse.rgb,float3(0.2126,0.7152,0.0722));
-        _surface.diffuse.rgb=float3(0.337,0.262,0.172)*(0.52+2.5*grain);
+        _surface.diffuse.rgb=townPigment((scn_frame.inverseViewTransform*float4(_surface.position,1.0)).xz)*(0.52+2.5*grain);
         """,.fragment:"""
         #pragma transparent
         #pragma body
-        _output.color.rgb *= float(in.groundBlend);
-        _output.color.a=float(in.groundBlend);
+        float2 p=(scn_frame.inverseViewTransform*float4(_surface.position,1.0)).xz;
+        float angle=atan2(p.y,p.x);
+        float radius=130.0+13.0*sin(3.0*angle+0.4)+9.0*cos(5.0*angle-0.7)+6.0*sin(2.0*angle);
+        float blend=smoothstep(28.0,36.0,length(p))*(1.0-smoothstep(-7.0,5.0,length(p)-radius));
+        _output.color.rgb *= blend;
+        _output.color.a=blend;
         """]
         let node=SCNNode(geometry:mesh.geometry(material:m));node.castsShadow=false
         node.name="Trampled sand in town, blended out before the circuit and dunes"

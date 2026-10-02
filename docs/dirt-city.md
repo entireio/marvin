@@ -1529,3 +1529,46 @@ not a claim of photographic equivalence to film imagery: the procedural resident
 merchandise and regular building silhouettes remain visibly simpler than the sets.
 The improved composition, material relief, enclosure, and destination detail are
 separately assessed rather than using a successful collision test as visual approval.
+
+### Ground boundary and everyday outdoor areas (October 2)
+
+The square visible around Mos Aster came from the terrain material's
+`max(abs(x), abs(z))` colour mask, independent of the irregular building layout.
+The central ground plane and surrounding terrain now share a world-space surface
+shader. Its desert blend follows an irregular radial boundary. Fragment world
+coordinates also work on the displaced dune patches without depending on a
+material geometry modifier that a geometry-level modifier can replace. Existing
+terrain heights, robot contact and racecourse geometry are unchanged.
+
+Town pigment combines warped broad and smaller-scale noise with the scanned
+surface. Doorway wear is retained, and furnished household areas receive local
+worn-earth or lighter deposited-sand patches. The first high-contrast attempt
+produced an excessive dark fringe in the straight-down image; it was rejected
+and the palette/transition were softened. Dune ripple shading is retained.
+
+130 distributed household areas add shaded workbenches with tools, water storage
+and plumbing, pallet deliveries, seats and rolled mats, repair supplies, and clay
+storage vessels. Placement tests the whole furnishing envelope against scenery
+and pedestrian routes before constructing collision geometry. Selection is
+spatially distributed rather than stopping at the first houses generated. Fixtures
+are baked into existing spatial meshes, without per-frame prop updates.
+
+The entrance survey now includes an orthographic, straight-down `town-plan.png`
+and six household detail views, alongside nine district views and venue/doorway
+captures. Every `saveTownFrame` capture rejects substantial shader-error magenta;
+a successful scene build alone cannot pass that failure. This is a targeted
+render guard, not a substitute for visual review.
+
+Outskirts roads now lose coverage starting inside the final building fringe.
+The road opacity breaks into anisotropic windblown tongues and fades completely
+22 metres beyond the irregular town footprint. External path endpoints also
+feather over their final 14 metres, eliminating square-cut ribbon ends. The
+underlying terrain shows through the buried sections; navigation corridors and
+collision surfaces remain continuous. `road-into-sand.png` adds a straight-down
+close view of the eastern departure road to the visual survey.
+
+Pending broader-town regression: the v20 extended postrace audit reports all four
+robots roaming for 720 seconds after departure, but fails `peopleMoving`: resident
+index 3 accumulated 533.2 blocked seconds. The new household fixtures must be
+checked against the exact resident routes before treating that broader town pass
+as complete. This failure is not cleared by the static entrance-access audit.

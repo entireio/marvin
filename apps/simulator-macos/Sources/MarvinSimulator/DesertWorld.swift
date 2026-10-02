@@ -9,18 +9,10 @@ extension DirtWorld {
         let sand=earth.copy() as! SCNMaterial
         sand.diffuse.contentsTransform=SCNMatrix4Identity
         sand.roughness.contents=0.94
-        sand.shaderModifiers=[.surface:"""
-        #pragma body
-        float2 p=_surface.diffuseTexcoord*4.0;
-        float edge=max(abs(p.x),abs(p.y));
-        float desert=smoothstep(156.0,192.0,edge);
-        float bands=0.5+0.5*sin(p.x*0.071+p.y*0.043+2.0*sin(p.y*0.019));
-        float grain=dot(_surface.diffuse.rgb,float3(0.299,0.587,0.114));
-        float3 dune=float3(0.64,0.43,0.23)*(0.83+0.30*grain)+bands*float3(0.075,0.058,0.029);
-        _surface.diffuse.rgb=mix(_surface.diffuse.rgb,dune,desert);
-        float ripple=sin(p.x*17.0+p.y*5.8+1.8*sin(p.y*0.41)+sin(p.x*0.22));
-        _surface.normal=normalize(_surface.normal+float3(0.022*ripple,0.0,0.008*ripple)*desert);
-        """]
+        sand.shaderModifiers=[.surface:TownGround.terrainSurface]
+        // Sharing world coordinates removes the visible 256 m square where
+        // the original ground plane meets the surrounding terrain tiles.
+        earth.shaderModifiers=sand.shaderModifiers
         duneSand.configure(material:sand,root:scene.rootNode)
         let tile=64.0
         func geometry(_ x:Double,_ z:Double,_ stride:Int)->SCNGeometry {

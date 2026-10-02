@@ -50,6 +50,24 @@ extension AppController {
             let accessReport:[String:Any]=["compounds":town.lots.count,"connected":town.pedestrianAccess.count,"missing":town.inaccessibleBuildings.map{[$0.x,$0.y]},"blockedRoutes":blockedRoutes,"samples":routeSamples,"connectedVenues":town.venueAccess.count]
             try JSONSerialization.data(withJSONObject:accessReport,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("pedestrian-access.json"))
             print("All-compound access audit: \(accessReport)")
+            if let camera=world.camera.camera {
+                let orthographic=camera.usesOrthographicProjection,scale=camera.orthographicScale,far=camera.zFar
+                let fogStart=dirtWorld.scene.fogStartDistance,fogEnd=dirtWorld.scene.fogEndDistance
+                camera.usesOrthographicProjection=true;camera.orthographicScale=178;camera.zFar=900
+                dirtWorld.scene.fogStartDistance=600;dirtWorld.scene.fogEndDistance=800
+                world.camera.position=SCNVector3(0,400,0)
+                world.camera.look(at:SCNVector3Zero,up:SCNVector3(0,0,-1),localFront:SCNVector3(0,0,-1))
+                town.update(dt:0,camera:world.camera.position,player:SIMD2(0,0))
+                try saveTownFrame("town-plan",at:directory)
+                camera.orthographicScale=34
+                world.camera.position=SCNVector3(130,110,49)
+                world.camera.look(at:SCNVector3(130,0,49),up:SCNVector3(0,0,-1),localFront:SCNVector3(0,0,-1))
+                dirtWorld.sky.updateShadowCenter(SIMD3(130,0,49))
+                town.update(dt:0,camera:world.camera.position,player:SIMD2(130,49))
+                try saveTownFrame("road-into-sand",at:directory)
+                camera.usesOrthographicProjection=orthographic;camera.orthographicScale=scale;camera.zFar=far
+                dirtWorld.scene.fogStartDistance=fogStart;dirtWorld.scene.fogEndDistance=fogEnd
+            }
             let districtPoints=[("south-grandstands",SIMD2(0.0,-41.0)),("east",SIMD2(77,15)),("northeast",SIMD2(72,78)),("north",SIMD2(0,82)),("northwest",SIMD2(-75,73)),("west",SIMD2(-86,1)),("southwest",SIMD2(-69,-68)),("south",SIMD2(4,-89)),("southeast",SIMD2(77,-78))]
             for (name,p) in districtPoints {
                 world.camera.position=SCNVector3(p.x,26,p.y-23)
@@ -65,6 +83,15 @@ extension AppController {
             dirtWorld.sky.updateShadowCenter(SIMD3(0,0,-25))
             town.update(dt:0,camera:world.camera.position,player:SIMD2(0,-25))
             try saveTownFrame("city-oblique",at:directory)
+            for (i,p) in town.householdYards.prefix(6).enumerated() {
+                guard let entry=town.entrances.min(by:{simd_distance($0.center,p)<simd_distance($1.center,p)}) else { continue }
+                let out=SIMD2(sin(entry.yaw),cos(entry.yaw)),eye=p+out*4.5
+                world.camera.position=SCNVector3(eye.x,3.2,eye.y)
+                world.camera.look(at:SCNVector3(p.x,0.8,p.y),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+                dirtWorld.sky.updateShadowCenter(SIMD3(p.x,0,p.y))
+                town.update(dt:0,camera:world.camera.position,player:p)
+                try saveTownFrame("household-\(i)",at:directory)
+            }
             for (i,site) in town.venueSites.enumerated() {
                 let out=SIMD2(sin(site.yaw),cos(site.yaw)),side=SIMD2(cos(site.yaw),-sin(site.yaw)),p=site.center+out*16+side*10
                 world.camera.position=SCNVector3(p.x,9,p.y)

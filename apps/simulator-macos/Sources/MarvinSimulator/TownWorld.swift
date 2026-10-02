@@ -59,6 +59,7 @@ final class TownWorld {
     }
     private(set) var buildings = 0
     private(set) var population = 0
+    private(set) var householdYards:[SIMD2<Double>]=[]
     private var spectatorZones:[String:SpectatorSoundZone]=[:]
     var spectatorSoundZones:[SpectatorSoundZone] { spectatorZones.keys.sorted().map{spectatorZones[$0]!} }
     private(set) var triangleCount = 0
@@ -105,8 +106,9 @@ final class TownWorld {
         buildNeighborhoodUtilities()
         buildDoorstepLife()
         buildDomesticCourts()
+        buildHouseholdYards()
         refreshPedestrianAccess()
-        root.addChildNode(TownGround.build(access:pedestrianAccess+venueAccess))
+        root.addChildNode(TownGround.build(access:pedestrianAccess+venueAccess,yards:householdYards))
         placeStreetActivities()
         progress?(0.66,"Connecting residents to their homes")
         residents=TownResidents(doors:doorways,city:clearCollisions,crowd:crowd,root:root,count:10)
@@ -267,7 +269,13 @@ final class TownWorld {
                     let left:Float=band==0 ? 0:opacity
                     let right:Float=band==widths.count-2 ? 0:opacity
                     for (j,alpha) in [left,right,left,left,right,right].enumerated() {
-                        mesh.colors[(first+j)*4+3]=alpha
+                        let v=[a,c,b,a,d,c][j],p=SIMD2(Double(v.x),Double(v.z))
+                        var fade=1.0
+                        for end in [street.path.first!,street.path.last!] where TownFootprint.edgeDistance(end)>0 {
+                            let t=min(1,simd_distance(p,end)/14)
+                            fade *= t*t*(3-2*t)
+                        }
+                        mesh.colors[(first+j)*4+3]=alpha*Float(fade)
                     }
                 }
             }
@@ -282,11 +290,23 @@ final class TownWorld {
         half4 streetTint;
         #pragma body
         out.streetTint=half4(half3(pow(max(_geometry.color.rgb,float3(0)),float3(2.2))),half(_geometry.color.a));
-        """,.surface:"_surface.diffuse.rgb=float3(in.streetTint.rgb);",.fragment:"""
+        """,.surface:"_surface.diffuse.rgb=float3(in.streetTint.rgb);",.fragment:TownGround.pigmentFunctions + "\n" + """
         #pragma transparent
         #pragma body
-        _output.color.rgb *= float(in.streetTint.a);
-        _output.color.a=float(in.streetTint.a);
+        float2 p=(scn_frame.inverseViewTransform*float4(_surface.position,1.0)).xz;
+        float angle=atan2(p.y,p.x);
+        float radius=130.0+13.0*sin(3.0*angle+0.4)+9.0*cos(5.0*angle-0.7)+6.0*sin(2.0*angle);
+        float edge=length(p)-radius;
+        float exposure=smoothstep(-18.0,22.0,edge);
+        // Oblique wind-driven tongues eat through the road at different widths;
+        // exposed remnants become smaller until the underlying sand covers all.
+        float2 wind=float2(p.x*0.86+p.y*0.51,-p.x*0.51+p.y*0.86);
+        float tongues=townNoise(wind/float2(2.8,0.75));
+        float broken=smoothstep(0.28,0.72,tongues*0.65+exposure*0.70);
+        float remaining=(1.0-smoothstep(-4.0,22.0,edge))*(1.0-exposure*broken);
+        float alpha=float(in.streetTint.a)*remaining;
+        _output.color.rgb *= alpha;
+        _output.color.a=alpha;
         """]
         let road=SCNNode(geometry:mesh.geometry(material:material))
         road.name=name;road.castsShadow=false;root.addChildNode(road)
@@ -1241,6 +1261,71 @@ final class TownWorld {
         }
     }
 
+    private func buildHouseholdYards() {
+        // Activity belongs against a facade, with the door-to-street route clear.
+        // Check the entire furnished footprint, not only each prop's centre.
+        for (i,e) in entrances.enumerated().sorted(by: { ($0.offset*73)%503 < ($1.offset*73)%503 }) where max(abs(e.center.x),abs(e.center.y))>36 {
+            if householdYards.count>=130 { break }
+            let out=SIMD2(sin(e.yaw),cos(e.yaw)),side=SIMD2(out.y,-out.x)
+            let city=CityCollisionWorld(collisionBuilder.bodies)
+            let nearby=pedestrianAccess.filter{simd_distance($0.door,e.center)<8}.flatMap{$0.route}
+            var chosen:SIMD2<Double>?
+            for sign in [i%2==0 ? 1.0:-1.0,i%2==0 ? -1.0:1.0] {
+                for along in [1.8,2.7] {
+                    let p=e.center+side*sign*along+out*0.88
+                    let footprint=RobotCollisions.Body(position:SIMD3(p.x,0,p.y),heading:e.yaw,profile:.init(mass:1,halfWidth:0.98,halfDepth:0.70,height:2.3))
+                    guard streetDistance(p.x,p.y)>1.2,
+                          city.nearby(footprint).allSatisfy({RobotCollisions.contact(footprint,$0)==nil}),
+                          nearby.allSatisfy({point in
+                              let walker=RobotCollisions.Body(position:SIMD3(point.x,0,point.y),profile:.init(mass:70,halfWidth:0.26,halfDepth:0.26,height:1.45,round:true))
+                              return RobotCollisions.contact(footprint,walker)==nil
+                          }) else { continue }
+                    chosen=p;break
+                }
+                if chosen != nil { break }
+            }
+            guard let p=chosen else { continue }
+            let q=paint(p.x,p.y,yaw:e.yaw),kind=i%6
+            householdYards.append(p)
+            switch kind {
+            case 0: // Shaded household workbench, drawers and loose tools.
+                q.canopy(0,0,1.8,1.25,1.9,0.12,[UInt32(0x8e7756),0x677c70,0x936b50][(i/6)%3])
+                q.box(0,0.60,-0.15,1.4,0.10,0.65,0x7e6c52)
+                for x in [-0.57,0.57] { q.box(x,0.28,-0.15,0.09,0.56,0.56,0x6f6550) }
+                q.crate(-0.35,0.04,-0.1,0.38,0x8d775a)
+                for j in 0..<3 {
+                    let x = -0.35+Double(j)*0.22,z = -0.34+Double((i/6+j)%3)*0.045
+                    q.beam(SIMD3(x,0.68,z),SIMD3(x+0.07,0.68,0.05),0.016,0x737b71,sides:6)
+                    q.ring(x,0.68,z,0.038,0.021,0.025,0x919785,sides:6)
+                }
+            case 1: // Water storage and plumbing rather than a decorative barrel.
+                q.cylinder(-0.25,0.55,-0.1,0.34,0.30,1.1,0x9a9b87,sides:16)
+                for y in [0.14,0.92] { q.cylinder(-0.25,y,-0.1,0.355,0.355,0.05,0x666d5c,sides:16) }
+                q.beam(SIMD3(-0.25,0.28,0.25),SIMD3(0.24,0.28,0.25),0.035,0x777461)
+                q.vessel(0.48,0,0.24,0.5,0xab8257)
+            case 2: // Uneven stacks of deliveries on a low pallet.
+                for k in 0..<5 { q.box(0,0.07,-0.43+Double(k)*0.20,1.48,0.14,0.14,0x83704f) }
+                q.crate(-0.35,0.14,0,0.55,0x9c825d);q.crate(0.29,0.14,-0.15,0.43,0x7b785f)
+                q.crate(-0.30,0.69,-0.04,0.36,0x8b7556)
+            case 3: // Seat, storage niche and a rolled shade mat.
+                q.adobe(0,0.20,-0.17,1.6,0.40,0.54,0xb2a084)
+                q.box(0,0.43,-0.17,1.42,0.06,0.48,0x806854)
+                q.vessel(0.49,0.47,-0.18,0.20,0xbfa583)
+                q.beam(SIMD3(-0.65,0.15,0.35),SIMD3(0.35,0.15,0.35),0.14,0x9c7a54,sides:12)
+            case 4: // Repair work: open toolbox, gearing and a spare wheel.
+                q.box(-0.30,0.16,0,0.65,0.32,0.48,0x76634f)
+                for j in 0..<4 { q.box(-0.53+Double(j)*0.15,0.34,0,0.075,0.05,0.36,0x91947f) }
+                q.ring(0.43,0.15,-0.11,0.30,0.16,0.30,0x695747,sides:16)
+                q.cylinder(0.45,0.35,-0.12,0.12,0.12,0.1,0x94826a,sides:12)
+            default: // Clay storage vessels with different profiles and sizes.
+                q.vessel(-0.4,0,-0.12,0.72,0x9c7954)
+                q.vessel(0.13,0,0.14,0.46,0xbba17a)
+                q.crate(0.49,0,-0.22,0.34,0x8f7c5c)
+            }
+        }
+        print("Household outdoor work/storage areas: \(householdYards.count)")
+    }
+
     private func buildDomesticCourts() {
         var made=0
         for (i,e) in entrances.enumerated() where i%3==0 && max(abs(e.center.x),abs(e.center.y))>58 {
@@ -1584,7 +1669,7 @@ final class TownWorld {
         return SCNVector3(result.x,result.y,result.z)
     }
     var statistics: [String:Int] {
-        ["accessibleCompounds":pedestrianAccess.count,"inaccessibleCompounds":inaccessibleBuildings.count,"explorationCells":explorationNodes.count,"explorationTriangles":explorationTriangles,"streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
+        ["householdYards":householdYards.count,"accessibleCompounds":pedestrianAccess.count,"inaccessibleCompounds":inaccessibleBuildings.count,"explorationCells":explorationNodes.count,"explorationTriangles":explorationTriangles,"streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
          "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":(residents?.walkers.count ?? 0)+(streetResidents?.walkers.count ?? 0),"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
     }
     var cityCoveragePassed:Bool {
