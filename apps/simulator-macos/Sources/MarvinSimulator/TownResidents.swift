@@ -13,12 +13,19 @@ final class TownDoorway {
         let p=center+SIMD2(outward.y,-outward.x)*slide-outward*0.06
         return .init(position:SIMD3(p.x,0.01,p.y),heading:yaw,profile:.init(mass:100,halfWidth:0.44,halfDepth:0.035,height:1.28))
     }
-    init(center:SIMD2<Double>,yaw:Double,root:SCNNode) {
+    init(center:SIMD2<Double>,yaw:Double,root:SCNNode,variant:Int=0) {
         self.center=center;self.yaw=yaw;outward=SIMD2(sin(yaw),cos(yaw))
         let geometry=SCNBox(width:0.88,height:1.28,length:0.07,chamferRadius:0.015)
         let material=SCNMaterial();material.lightingModel = .physicallyBased
-        material.diffuse.contents=NSColor(calibratedRed:0.25,green:0.22,blue:0.18,alpha:1);material.roughness.contents=0.8
+        let colors:[UInt32]=[0x72634f,0x65716b,0x846654,0x574b40,0x74716a],color=colors[variant%5]
+        material.diffuse.contents=NSColor(calibratedRed:Double((color>>16)&255)/255,green:Double((color>>8)&255)/255,blue:Double(color&255)/255,alpha:1);material.roughness.contents=0.8
         geometry.materials=[material];leaf=SCNNode(geometry:geometry)
+        let seam=SCNMaterial();seam.diffuse.contents=NSColor(calibratedWhite:0.18,alpha:1);seam.roughness.contents=0.8
+        for k in 0..<(variant%3+1) {
+            let rib=SCNBox(width:0.018,height:1.14,length:0.012,chamferRadius:0)
+            rib.materials=[seam];let n=SCNNode(geometry:rib)
+            n.position=SCNVector3(-0.27+Double(k)*0.23,0,0.041);leaf.addChildNode(n)
+        }
         leaf.name="Sliding resident doorway";root.addChildNode(leaf);place()
     }
     func place() { let p=body.position;leaf.position=SCNVector3(p.x,p.y+0.64,p.z);leaf.eulerAngles.y=CGFloat(yaw) }
@@ -111,7 +118,7 @@ final class TownResidents {
         }
         for door in doors { door.opening=0;door.hold=0;door.place() }
     }
-    func update(dt:Double,robots:[RobotCollisions.Body],visible:((SCNNode)->Bool)?=nil) {
+    func update(dt:Double,robots:[RobotCollisions.Body],pedestrians:[RobotCollisions.Body]=[],visible:((SCNNode)->Bool)?=nil) {
         guard dt>0 else { return }
         let dt=min(dt,0.05);clock += dt
         for (i,door) in doors.enumerated() {
@@ -129,7 +136,7 @@ final class TownResidents {
             // Grace prevents rate oscillation at a camera edge. Collision-critical
             // residents stay responsive even outside the camera frustum.
             let detailed=clock-w.lastSeen<0.35
-            let interactive=robots.contains{simd_distance(SIMD2($0.position.x,$0.position.z),w.position)<4}
+            let interactive=(robots+pedestrians).contains{simd_distance(SIMD2($0.position.x,$0.position.z),w.position)<4}
                 || (!w.node.isHidden && doors.contains{simd_distance($0.center,w.position)<1.6})
                 || (!w.node.isHidden && walkers.contains{$0 !== w && !$0.node.isHidden && simd_distance($0.position,w.position)<1.2})
             guard detailed || interactive || w.pending>=0.1-1e-8 else { continue }
@@ -189,7 +196,7 @@ final class TownResidents {
             if !approaching.isEmpty { w.yieldUntil=clock+1.2 }
             if w.yieldPoint==nil,let robot=approaching.min(by:{simd_distance(SIMD2($0.position.x,$0.position.z),w.position)<simd_distance(SIMD2($1.position.x,$1.position.z),w.position)}) {
                 let side=SIMD2(cos(robot.heading),-sin(robot.heading))
-                let obstacles=staticWorld.nearby(.init(position:SIMD3(w.position.x,0,w.position.y),profile:.init(mass:70,halfWidth:1.5,halfDepth:1.5,height:1.05)))+doors.map{$0.body}+robots
+                let obstacles=staticWorld.nearby(.init(position:SIMD3(w.position.x,0,w.position.y),profile:.init(mass:70,halfWidth:1.5,halfDepth:1.5,height:1.05)))+doors.map{$0.body}+robots+pedestrians
                 outer: for width in [0.7,1.0] { for sign in [-1.0,1.0] {
                     let candidate=w.position+side*(width*sign)
                     let lane=abs(simd_dot(candidate-SIMD2(robot.position.x,robot.position.z),side))
@@ -220,7 +227,7 @@ final class TownResidents {
             let step=w.speed*dt*max(0,cos(angle))*(robotNear && w.yieldPoint==nil ? 0:1)
             let next=w.position+forward*min(step,simd_length(delta))
             let probe=body(next)
-            let solids=staticWorld.nearby(probe)+doors.map{$0.body}+robots
+            let solids=staticWorld.nearby(probe)+doors.map{$0.body}+robots+pedestrians
             // Coarse updates still sweep the whole step; thin scenery cannot
             // disappear between the old and new positions.
             let subdivisions=max(1,Int(ceil(simd_distance(next,w.position)/0.015)))

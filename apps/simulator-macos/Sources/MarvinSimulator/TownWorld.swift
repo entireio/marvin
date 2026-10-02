@@ -70,12 +70,12 @@ final class TownWorld {
         buildRoads()
         progress?(0.08,"Building spectator stands")
         buildGrandstand()
+        progress?(0.12,"Building landmarks")
+        buildLandmarks()
         progress?(0.14,"Building town districts")
         buildSettlement()
         progress?(0.38,"Preparing the repair yard")
         buildRepairPit()
-        progress?(0.43,"Building landmarks")
-        buildLandmarks()
         progress?(0.48,"Adding spectators")
         buildStreetLife()
         progress?(0.54,"Adding town details")
@@ -352,6 +352,54 @@ final class TownWorld {
         }
     }
 
+    struct Entrance {
+        let center:SIMD2<Double>,yaw:Double,width:Double,height:Double,variant:Int,walkable:Bool
+    }
+    private(set) var entrances:[Entrance]=[]
+    private var accessMap:TownAccessMap?
+    private struct Facade { let x:Double,z:Double,turn:Double,span:Double,height:Double }
+    private struct DoorPlan { let facade:Facade,offset:Double,width:Double,height:Double,variant:Int }
+    private func entrancePlan(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double,style:Int)->DoorPlan? {
+        var faces=[Facade]()
+        func block(_ cx:Double,_ cz:Double,_ width:Double,_ depth:Double,_ height:Double, sides:[Int]) {
+            for side in sides {
+                let turn=Double(side)*Double.pi/2
+                let half=side%2==0 ? depth/2:width/2
+                faces.append(Facade(x:cx+sin(turn)*half,z:cz+cos(turn)*half,turn:turn,span:side%2==0 ? width:depth,height:height))
+            }
+        }
+        if style<3 {
+            block(-w*0.17,0,w*0.66,d,h*0.86,sides:[0,2,3])
+            block(w*0.25,d*0.10,w*0.50,d*0.79,h*0.64,sides:[0,1])
+        } else if style==6 {
+            block(-w*0.34,0,w*0.32,d,h*0.84,sides:[0,2,3])
+            block(w*0.40,d*0.07,w*0.20,d*0.69,h*0.50,sides:[1])
+        } else if style==8 {
+            block(-w*0.23,-d*0.05,w*0.54,d*0.90,h,sides:[0,2,3])
+            block(w*0.26,0,w*0.47,d,h*0.58,sides:[0,1,2])
+        } else { block(0,0,w,d,style==5 ? max(1.6,h*0.44):h*0.60,sides:[0,1,2,3]) }
+        var best:(Double,DoorPlan)?
+        let seed=UInt32(truncatingIfNeeded:index &* 747796405 &+ 2891336453)
+        let hash=Int((seed ^ (seed>>16)) & 0x7fffffff)
+        for (f,face) in faces.enumerated() {
+            let variant=(hash/31+f)%5
+            let width=min(face.span-0.44,[0.78,1.03,0.88,1.32,0.96][variant])
+            let height=min(face.height-0.18,[1.45,1.38,1.62,1.48,1.36][variant])
+            guard width>=0.65,height>=1.12 else { continue }
+            for slot in 0..<5 {
+                let offset=(Double(slot)-2)/2*max(0,(face.span-width)/2-0.55)
+                let lx=face.x+cos(face.turn)*offset,lz=face.z-sin(face.turn)*offset
+                let center=SIMD2(x+cos(yaw)*lx+sin(yaw)*lz,z-sin(yaw)*lx+cos(yaw)*lz)
+                let out=SIMD2(sin(yaw+face.turn),cos(yaw+face.turn))
+                guard let distance=accessMap?.streetDistance(center+out*0.75),
+                      accessMap?.streetDistance(center+out*1.20) != nil else { continue }
+                // Prefer a short public approach, but stagger neighbouring entries.
+                let score=distance+Double((slot+hash)%5)*0.32
+                if best==nil || score<best!.0 { best=(score,DoorPlan(facade:face,offset:offset,width:width,height:height,variant:variant)) }
+            }
+        }
+        return best?.1
+    }
     private var citySeed:UInt64 = 0xA57E2026
     private func random()->Double {
         citySeed = citySeed &* 6364136223846793005 &+ 1442695040888963407
@@ -371,6 +419,11 @@ final class TownWorld {
     }
     private func buildSettlement() {
         var index=0, row=0
+        var compounds:[(Double,Double,Double,Double,Double,Int,Double)]=[]
+        func reserve(_ x:Double,_ z:Double,_ w:Double,_ d:Double,_ h:Double,_ i:Int,_ yaw:Double) {
+            compounds.append((x,z,w,d,h,i,yaw))
+            lots.append(TownLot(x:x,z:z,width:w*cos(yaw)+d*abs(sin(yaw))+0.2,depth:d*cos(yaw)+w*abs(sin(yaw))+0.2))
+        }
         var z = -145.0
         // Dense irregular compounds, extending well past every overview edge.
         // Outer silhouettes stay cheap; separate facade batches wake near explorers.
@@ -385,7 +438,7 @@ final class TownWorld {
                 let boundW=w*cos(yaw)+d*abs(sin(yaw)),boundD=d*cos(yaw)+w*abs(sin(yaw))
                 let h=2.0+random()*3.8
                 if !reserved(bx,bz,boundW+0.2,boundD+0.2) {
-                    cityCompound(bx,bz,w:w,d:d,h:h,index:index,yaw:yaw)
+                    reserve(bx,bz,w,d,h,index,yaw)
                 }
                 x += stepX;index += 1
             }
@@ -397,22 +450,29 @@ final class TownWorld {
             let w=2.9,d=2.8
             if reserved(x,z,w+0.4,d+0.4) { continue }
             if lots.contains(where:{abs(x-$0.x)<($0.width+w)/2+0.15 && abs(z-$0.z)<($0.depth+d)/2+0.15}) { continue }
-            cityCompound(x,z,w:w,d:d,h:1.8+random()*1.5,index:1400+i+j*16,yaw:0)
+            reserve(x,z,w,d,1.8+random()*1.5,1400+i+j*16,0)
         }}
+        let landmarks=collisionBuilder.bodies.filter{$0.position.y<1.1 && $0.profile.mass != 70}.map { body in
+            let c=abs(cos(body.heading)),s=abs(sin(body.heading)),p=body.profile
+            return TownLot(x:body.position.x,z:body.position.z,width:2*(p.halfWidth*c+p.halfDepth*s),depth:2*(p.halfDepth*c+p.halfWidth*s))
+        }
+        accessMap=TownAccessMap(lots:lots+landmarks,streets:streets.map{$0.path})
+        for (x,z,w,d,h,i,yaw) in compounds { cityCompound(x,z,w:w,d:d,h:h,index:i,yaw:yaw) }
+        accessMap=nil // Planning data never participates in the render loop.
     }
 
     private func cityCompound(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double) {
         let near=max(abs(x),abs(z))<52
         var p=paint(x,z,yaw:yaw)
         let boundW=w*cos(yaw)+d*abs(sin(yaw)),boundD=d*cos(yaw)+w*abs(sin(yaw))
-        lots.append(TownLot(x:x,z:z,width:boundW+0.2,depth:boundD+0.2))
         buildings += 1
         cameraBounds.append((SIMD3(x-boundW/2,0,z-boundD/2),SIMD3(x+boundW/2,h+min(w,d)*0.5,z+boundD/2)))
         let colors:[UInt32]=[0xb5a084,0xbdaa8c,0xc4ad8c,0xa58c70,0xc9b89b,0x9e8872,0xb7a890,0xc0a786]
         let ink=colors[(index*7+index/11)%colors.count]
         let roof:UInt32=0x9e8970
         let style=(index*13+index/7)%9
-        let entrance=near && max(abs(x),abs(z))<43 && (style==3 || style==4 || style==7) && h*0.6>1.50 && doorways.count<18
+        let plan=entrancePlan(x,z,w:w,d:d,h:h,index:index,yaw:yaw,style:style)
+        let entrance=plan != nil && near && max(abs(x),abs(z))<43 && (style==3 || style==4 || style==7) && h*0.6>1.50 && doorways.count<18
         // Ground contact is baked into opaque strips, including far districts.
         p.box(0,-0.008,0,w+0.14,0.02,d+0.14,0x756c5f)
         if style<3 {
@@ -424,7 +484,11 @@ final class TownWorld {
             if style==1 { p.dome(w*0.25,h*0.64,d*0.1,w*0.22,w*0.15,w*0.22,ink,sides:near ? 16:10) }
         } else if style<5 {
             // Connected stepped roofscape with recessed terraces and parapets.
-            if entrance { p.residentHouse(w,h*0.60,d,ink) }
+            if entrance,let plan {
+                let turn=plan.facade.turn
+                let q=paint(x,z,yaw:yaw+turn)
+                q.residentHouse(abs(sin(turn))>0.5 ? d:w,h*0.60,abs(sin(turn))>0.5 ? w:d,ink,doorX:plan.offset)
+            }
             else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near) }
             p.adobe(-w*0.18,h*0.78,-d*0.16,w*0.61,h*0.36,d*0.67,ink,simple:!near)
             p.box(w*0.23,h*0.606,d*0.16,w*0.47,0.025,d*0.58,roof)
@@ -446,7 +510,11 @@ final class TownWorld {
             p.canopy(w*0.05,d*0.21,w*0.57,d*0.41,h*0.59,0.25,0x87725c)
         } else if style==7 {
             // Industrial block: vaulted hall, sunken rooftop machinery enclosure.
-            if entrance { p.residentHouse(w,h*0.60,d,ink) }
+            if entrance,let plan {
+                let turn=plan.facade.turn
+                let q=paint(x,z,yaw:yaw+turn)
+                q.residentHouse(abs(sin(turn))>0.5 ? d:w,h*0.60,abs(sin(turn))>0.5 ? w:d,ink,doorX:plan.offset)
+            }
             else { p.adobe(0,h*0.30,0,w,h*0.60,d,ink,simple:!near) }
             p.dome(-w*0.2,h*0.60,0,w*0.28,w*0.27,d*0.45,ink,sides:near ? 16:10)
             p.box(w*0.25,h*0.605,0,w*0.40,0.025,d*0.7,0x665c50)
@@ -466,35 +534,39 @@ final class TownWorld {
             p.beam(SIMD3(w*0.15,roofY+0.12,-d*0.18),SIMD3(w*0.41,roofY+0.12,-d*0.18),0.095,0x918773,sides:8)
             p.beam(SIMD3(w*0.41,roofY+0.12,-d*0.18),SIMD3(w*0.41,roofY+0.12,d*0.29),0.095,0x918773,sides:8)
         }
-        // Front and rear facades are dressed so driving around a block works.
-        for side in [-1.0,1] {
-            let face=(style==8 && side>0 ? d*0.4 : side*d/2)+side*0.018
-            let doorX = style==6 ? -w*0.34 : -w*0.16
-            if entrance && side>0 {
-                let center=SIMD2(x+doorX*cos(yaw)+face*sin(yaw),z-doorX*sin(yaw)+face*cos(yaw))
-                doorways.append(TownDoorway(center:center,yaw:yaw,root:root))
-                for side in [-1.0,1.0] { p.box(doorX+side*0.5,0.68,face,0.12,1.36,0.16,ink) }
-                p.box(doorX,1.36,face,1.12,0.14,0.16,ink)
-            } else { p.door(doorX,face,0.70,min(1.4,h*0.57),0x3d352e,ink,side:side) }
-            if side>0 && max(abs(x),abs(z))<36 && index%7==0 && storefrontSigns<8 {
+        // Dress only a usable entrance; there is no mirrored rear-door stamp.
+        if let plan {
+            let f=plan.facade,lx=f.x+cos(f.turn)*plan.offset,lz=f.z-sin(f.turn)*plan.offset
+            let center=SIMD2(x+lx*cos(yaw)+lz*sin(yaw),z-lx*sin(yaw)+lz*cos(yaw))
+            let direction=yaw+f.turn
+            let q=near ? paint(center.x,center.y,yaw:direction):explorationPainter(center.x,center.y,yaw:direction)
+            let dw=entrance ? 0.92:plan.width,dh=entrance ? 1.30:plan.height
+            if style==5 && h*0.44<dh+0.18 { q.adobe(0,(dh+0.18)/2,-0.18,dw+0.44,dh+0.18,0.40,ink) }
+            q.cityDoor(dw,dh,ink,variant:plan.variant,open:entrance)
+            if entrance { doorways.append(TownDoorway(center:center,yaw:direction,root:root,variant:plan.variant)) }
+            entrances.append(Entrance(center:center,yaw:direction,width:dw,height:dh,variant:plan.variant,walkable:entrance))
+            if index%3==0 { q.awning(0,0.40,min(f.span-0.12,dw+0.55),0.85,dh+0.28,index%2==0 ? 0x7e6a50:0x8f5140) }
+            if near && max(abs(x),abs(z))<36 && index%7==0 && storefrontSigns<8 && f.height>dh+0.55 {
                 let title=["MACHINE WORKS","CANTINA","OFFWORLD GOODS","REACTOR SUPPLY"][storefrontSigns%4]
-                let sy=min(h-0.22,min(1.4,h*0.57)+0.43)
-                for sx in [-0.55,0.55] { p.box(doorX+sx,sy,face-0.09,0.045,0.05,0.28,dark,detail:true) }
-                let wx=x+doorX*cos(yaw)+(face+0.06)*sin(yaw)
-                let wz=z-doorX*sin(yaw)+(face+0.06)*cos(yaw)
+                let sy=min(f.height-0.12,dh+0.45)
                 signs.plate(title,eyebrow:"MOS ASTER",footer:"MARKET DISTRICT",badge:String(format:"%02d",storefrontSigns+11),
-                            at:SCNVector3(wx,sy,wz),width:min(2.0,CGFloat(w)*0.62),height:0.42,yaw:CGFloat(yaw),
+                            at:SCNVector3(center.x+sin(direction)*0.12,sy,center.y+cos(direction)*0.12),width:min(2.0,CGFloat(f.span)*0.62),height:0.34,yaw:CGFloat(direction),
                             accent:storefrontSigns%2==0 ? rust:teal,into:root)
                 storefrontSigns += 1
             }
-            for k in 0..<(style==6 && !near ? 1:2) where !(entrance && side>0) {
+        }
+        // Windows remain separate from entrance selection and keep clear of it.
+        for side in [-1.0,1.0] {
+            let face=(style==8 && side>0 ? d*0.4:side*d/2)+side*0.018
+            for k in 0..<2 {
                 let xx = -w*0.32+Double(k)*w*0.55
+                if let plan {
+                    let f=plan.facade,dx=f.x+cos(f.turn)*plan.offset,dz=f.z-sin(f.turn)*plan.offset
+                    if hypot(xx-dx,face-dz)<plan.width/2+0.45 { continue }
+                }
                 let wy = !near && style==5 ? min(h*0.28,h*0.44-0.32):h*0.41
                 p.box(xx,wy,face,0.24,0.57,0.035,0x39332c,detail:true)
                 p.box(xx,wy-0.27,face+side*0.045,0.30,0.075,0.12,roof,detail:true)
-            }
-            if index%3==0 {
-                p.awning(doorX,face+side*0.38,w*0.37,0.90,min(1.9,h*0.70),index%2==0 ? 0x7e6a50:0x8f5140)
             }
         }
         if near && (style<5 || style==8) {
@@ -803,6 +875,11 @@ final class TownWorld {
     }
 
     private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,walking:Bool=false) {
+        if !seated && entrances.contains(where:{ e in
+            let delta=SIMD2(x,z)-e.center,out=SIMD2(sin(e.yaw),cos(e.yaw))
+            let forward=simd_dot(delta,out),side=simd_dot(delta,SIMD2(out.y,-out.x))
+            return simd_length(delta)<0.65 || (forward > -0.3 && forward<1.7 && abs(side)<0.58)
+        }) { return }
         population += 1
         if seated {
             let ix=Int(floor(x/8)),iz=Int(floor(z/8)),key="\(ix),\(iz)"
@@ -912,7 +989,7 @@ final class TownWorld {
         updateExplorationDetail(camera:camera,player:player)
         guard dt>0 else { return }
         clock += dt
-        crowd.update(time:clock);residents?.update(dt:dt,robots:robots+(streetResidents?.bodies ?? []),visible:visible)
+        crowd.update(time:clock);residents?.update(dt:dt,robots:robots,pedestrians:streetResidents?.bodies ?? [],visible:visible)
         streetResidents?.update(dt:dt,obstacles:robots+(residents?.bodies ?? []),visible:visible)
     }
     func reset() {
@@ -1164,14 +1241,80 @@ private struct TownPainter {
         }
     }
     /// Three solid wall pieces leave an actual walkable vestibule in the facade.
-    func residentHouse(_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32) {
-        let x = -w*0.16,opening=0.92,depth=min(1.2,d*0.45)
+    func residentHouse(_ w:Double,_ h:Double,_ d:Double,_ ink:UInt32,doorX:Double) {
+        let x=doorX,opening=0.92,depth=min(1.2,d*0.45)
         let left=x-opening/2+w/2,right=w/2-x-opening/2
         adobe(-w/2+left/2,h/2,0,left,h,d,ink)
         adobe(w/2-right/2,h/2,0,right,h,d,ink)
         adobe(x,(h+1.3)/2,d/2-depth/2,opening,h-1.3,depth,ink)
         adobe(x,h/2,-depth/2,opening,h,d-depth,ink)
         box(x,0.005,d/2-depth/2,opening,0.01,depth,0x71634e)
+    }
+    /// Five related building traditions: rounded adobe arch, clipped lintel,
+    /// pointed arch, broad workshop arch, and a plain metal service entrance.
+    func cityDoor(_ w:Double,_ h:Double,_ ink:UInt32,variant:Int,open:Bool) {
+        let thickness=[0.11,0.16,0.09,0.14,0.085][variant]
+        let frameInk=Self.tone(ink,[1.04,0.90,0.98,1.08,0.83][variant])
+        if open {
+            for side in [-1.0,1] { box(side*(w/2+thickness/2),h/2,0.045,thickness,h,0.18,frameInk) }
+            box(0,h+thickness/2,0.045,w+2*thickness,thickness,0.18,frameInk)
+            if variant==0 || variant==2 { box(0,h+0.16,0.025,w+0.34,0.07,0.24,ink) }
+        } else {
+            func outline(_ width:Double,_ height:Double)->[SIMD2<Double>] {
+                let r=width/2
+                var result=[SIMD2(-r,0),SIMD2(r,0)]
+                if variant==1 {
+                    result += [SIMD2(r,height-0.23),SIMD2(r-0.17,height),SIMD2(-r+0.17,height),SIMD2(-r,height-0.23)]
+                } else if variant==2 {
+                    result += [SIMD2(r,height*0.66),SIMD2(r*0.65,height*0.86),SIMD2(0,height),SIMD2(-r*0.65,height*0.86),SIMD2(-r,height*0.66)]
+                } else if variant==4 { result += [SIMD2(r,height),SIMD2(-r,height)] }
+                else {
+                    let rise=variant==3 ? width*0.22:r
+                    for i in 0...12 { let a=Double(i)*Double.pi/12;result.append(SIMD2(cos(a)*r,height-rise+sin(a)*rise)) }
+                }
+                return result
+            }
+            let inside=outline(w,h),outside=outline(w+2*thickness,h+thickness)
+            let center=point(0,h*0.4,0.038)
+            for i in inside.indices {
+                let j=(i+1)%inside.count,a=inside[i],b=inside[j],c=outside[i],d=outside[j]
+                tri(center,point(a.x,a.y,0.038),point(b.x,b.y,0.038),0x302b26,false)
+                if i==0 { continue } // Sand meets the threshold without a step.
+                quad(point(a.x,a.y,0.07),point(c.x,c.y,0.15),point(d.x,d.y,0.15),point(b.x,b.y,0.07),frameInk,false)
+                quad(point(c.x,c.y,-0.035),point(d.x,d.y,-0.035),point(d.x,d.y,0.15),point(c.x,c.y,0.15),ink,false)
+            }
+            let colors:[UInt32]=[0x72634f,0x65716b,0x846654,0x574b40,0x74716a]
+            near.materialSlot=2;far.materialSlot=2
+            let leaf=outline(w*0.91,h-0.045),middle=point(0,h*0.4,0.052)
+            for i in leaf.indices {
+                let a=leaf[i],b=leaf[(i+1)%leaf.count]
+                tri(middle,point(a.x,a.y,0.052),point(b.x,b.y,0.052),colors[variant],false)
+            }
+            func top(_ x:Double)->Double {
+                var result=0.0
+                for (a,b) in zip(leaf,leaf.dropFirst()+[leaf[0]]) where abs(b.x-a.x)>0.001 {
+                    let t=(x-a.x)/(b.x-a.x)
+                    if t>=0 && t<=1 { result=max(result,a.y+(b.y-a.y)*t) }
+                }
+                return result
+            }
+            let divisions=variant==3 ? 5:(variant==4 ? 3:2)
+            for k in 1..<divisions {
+                let x = -w*0.44+w*0.88*Double(k)/Double(divisions)
+                let height=max(0.1,top(x)-0.04)
+                box(x,height/2,0.061,0.016,height,0.012,0x3d3730,detail:true)
+            }
+            if variant==1 || variant==4 {
+                for y in [0.20,0.47] { box(0,h*y,0.064,w*0.81,0.027,0.018,0x99917c,detail:true) }
+            }
+            box(w*0.27,h*0.42,0.077,0.04,0.13,0.038,0xb3a18a,detail:true)
+            near.materialSlot=0;far.materialSlot=0
+        }
+        // Wall-mounted access control varies sides and height with the family.
+        if variant==1 || variant==4 {
+            box(w/2+thickness+0.10,h*0.64,0.045,0.12,0.20,0.07,0x545b57,detail:true)
+            box(w/2+thickness+0.10,h*0.68,0.083,0.055,0.035,0.01,0x9fa990,detail:true)
+        }
     }
     func door(_ x:Double,_ z:Double,_ w:Double,_ h:Double,_ ink:UInt32,_ trim:UInt32,side:Double) {
         box(x,h*0.43,z,w,h*0.86,0.05,ink)

@@ -46,3 +46,47 @@ measured 59.977 SceneKit render callbacks/second at 1920×1080 on Apple M2:
 CPU update. These are callback intervals, not GPU/display presentation timing.
 The matching race/chase/overhead run measured 59.973 callbacks/second, 17.42 ms
 p95 interval, one interval over 25 ms, none over 50 ms, and 2.11 ms p95 CPU update.
+
+## Street-facing entrances
+
+Entrance placement now runs after all compound footprints are known. A temporary
+pedestrian-clearance grid is flooded from the authored streets, excluding the
+course and infield. Candidate positions on the actual exposed walls are scored
+by public walking distance, with deterministic offsets to avoid repeated door
+positions. Walls facing disconnected or obstructed gaps do not get a decorative
+entrance. Building positions and road geometry are unchanged. The grid is released
+before gameplay.
+
+The five related doorway families use rounded arches, clipped lintels, pointed
+arches, broad workshop arches, and rectangular service frames. Width, height,
+panel divisions, trim, access controls, and shade vary. Panels fill the opening
+profile. Working resident doors retain a clear 0.92 m by 1.30 m opening; their
+vestibules, moving leaves, and navigation endpoints use the selected wall and
+offset. Store signs and awnings follow the entrance, and windows avoid it.
+
+Visual references inspected:
+- [The Phantom Menace street stills and Mos Espa set photographs](https://mitchdarbyarchitect.com/blog/most-remote-mos-espa)
+- [A New Hope: Ajim Street / Mos Eisley checkpoint still](https://moviemaps.org/images/g5b)
+
+The references show a shared plaster-and-metal vocabulary with varied entrance
+silhouettes and setbacks, rather than the former identical arch duplicated on
+both faces of every compound. The game uses original procedural variants.
+
+`--entrance-smoke-test OUTPUT` captures all five designs and audits permanent
+approach clearance separately from pedestrians temporarily crossing a threshold.
+The updated house-visit regression also caught a door-holding bug: street walkers
+had been passed as robots, triggering robot yielding and doorway requests.
+Pedestrians now remain collision obstacles without those robot behaviours. In
+the updated 600-second visible test all ten house visitors completed visits,
+with 50 entries and zero measured penetration; all 24 street walkers continued
+moving. Artifact directories use the `entrances-` prefix in `marvin-town-planning`.
+
+Final entrance validation covers all 363 generated entries, with no permanent
+approach obstruction, all four wall directions, and family counts 68/69/85/59/82.
+Landmarks are built before entrance planning, so the map includes actual towers,
+dock walls, and other ground-level obstacles. Both visible and off-screen
+600-second resident regressions pass with 50 house entries and zero measured
+penetration. The 45-second 1920×1080 outer-town benchmark on Apple M2 measures
+60.002 SceneKit render callbacks/second, 17.30 ms p95 interval, no intervals over
+25 ms, and 3.50 ms p95 CPU update. These are renderer callback measurements, not
+GPU/display presentation timestamps.
