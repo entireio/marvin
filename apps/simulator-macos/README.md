@@ -1,5 +1,7 @@
 # Marvin Simulator for macOS
 
+Agent contributors: read the [simulator implementation and validation rules](../../docs/simulator-agent-rules.md) before changing the simulator.
+
 A native AppKit + SceneKit/Metal playground using Marvin's actual CAD assembly.
 No browser, web server, npm dependencies, network connection, or physical robot
 is needed. Requires macOS 13 or later. The build uses Python 3 and Apple's Swift
