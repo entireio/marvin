@@ -154,7 +154,7 @@ final class TownCrowd {
         var vertices:[SCNVector3]=[],normals:[SCNVector3]=[],uv:[CGPoint]=[],colors:[Float]=[]
         var groups:[[Int32]]=[[],[],[]]
         var motion=[[CGPoint]](repeating:[],count:7)
-        func add(_ model:Model,at position:SIMD3<Float>,yaw:Float,index:Int,seated:Bool) {
+        func add(_ model:Model,at position:SIMD3<Float>,yaw:Float,index:Int,seated:Bool,activity:Activity = .ordinary) {
             let c=cos(yaw),s=sin(yaw),base=Int32(vertices.count)
             let outfits:[UInt32]=[0x746354,0x566866,0xa99b81,0x6d6a53,0x5b6266,0x907451,0x82756b,0xb8ab91]
             let skins:[UInt32]=[0xb68b70,0x835c48,0xc2a084,0x9c755c,0xa37c61,0xc4a591]
@@ -163,7 +163,7 @@ final class TownCrowd {
             let mix=Int((seed ^ (seed >> 16)) & 0x7fffffff)
             let palette:[UInt32]=[skins[(mix/7)%6],outfits[mix%8],outfits[(mix/13)%8],0x433c34,outfits[(mix/23)%8],0xc1b8a7,0x342b25,0x8a8170]
             let scale=SIMD3<Float>(0.90+Float(mix%19)*0.012,0.95+Float((mix/19)%11)*0.01,0.94+Float((mix/209)%13)*0.012)
-            let turn=Float((mix/2717)%17-8)*0.055
+            let turn=Float((mix/2717)%17-8)*(activity == .ordinary ? 0.055:0.012)
             let neck:Float=seated ? 0.51:0.875
             let lean=Float((mix/31)%9-4)*0.013
             func posed(_ p:SIMD3<Float>,_ normal:SIMD3<Float>)->(SIMD3<Float>,SIMD3<Float>) {
@@ -183,7 +183,7 @@ final class TownCrowd {
                 motion[2].append(CGPoint(x:Double(mix%1000)*0.071,y:Double(neck*scale.y)))
                 motion[3].append(CGPoint(x:Double(arm),y:p.x<0 ? -1:1))
                 motion[4].append(CGPoint(x:Double(0.53*scale.y),y:Double(0.28*scale.y)))
-                motion[5].append(CGPoint(x:seated ? 1:0,y:semantic))
+                motion[5].append(CGPoint(x:seated ? 1:activity.rawValue,y:Double(semantic)))
                 motion[6].append(CGPoint(x:Double(0.12*scale.x),y:Double(armTop*scale.y)))
             }
             for (vertexIndex,v) in model.vertices.enumerated() {
@@ -235,6 +235,7 @@ final class TownCrowd {
             return g
         }
     }
+    enum Activity:Double { case ordinary=0, conversation = -1, waiting = -2, trading = -3 }
     private enum CityMaterialsArray { static let shared=CitizenMotion.materials() }
     private struct Cell { let origin:SIMD3<Float>;let lod:[Batch];let stays:Bool }
     private var weatherNodes:[(SCNNode,Bool)]=[]
@@ -252,15 +253,15 @@ final class TownCrowd {
         catch { assertionFailure("Missing or invalid bundled crowd: \(error)") }
         modelCount=models.count
     }
-    func add(x:Double,y:Double,z:Double,yaw:Double,index:Int,seated:Bool,animated:Bool)->SCNNode? {
+    func add(x:Double,y:Double,z:Double,yaw:Double,index:Int,seated:Bool,animated:Bool,shelter:Bool=false,activity:Activity = .ordinary)->SCNNode? {
         let key="\(index%2==0 ? "male":"female")-\(seated ? "sit":"stand")-\((index/2)%3)"
         guard let model=models[key] else { return nil }
-        let stays=Self.staysOutside(x:x,z:z,index:index)
+        let stays = !shelter && Self.staysOutside(x:x,z:z,index:index)
         if stays && !animated { stormPopulation += 1 }
         let position=SIMD3(Float(x),Float(!seated && y<0.1 ? -0.03:y),Float(z))
         if animated {
             let lod=(0..<3).map{_ in Batch()}
-            for i in 0..<3 { lod[i].add(model[i],at:.zero,yaw:0,index:index,seated:seated) }
+            for i in 0..<3 { lod[i].add(model[i],at:.zero,yaw:0,index:index,seated:seated,activity:activity) }
             let materials=CitizenMotion.materials()
             let near=lod[0].geometry(materials:materials)
             near.levelsOfDetail=[SCNLevelOfDetail(geometry:lod[1].geometry(materials:materials),worldSpaceDistance:8),SCNLevelOfDetail(geometry:lod[2].geometry(materials:materials),worldSpaceDistance:24)]
@@ -272,7 +273,7 @@ final class TownCrowd {
         let ix=Int(floor(x/8)),iz=Int(floor(z/8)),cellKey="\(ix),\(iz),\(stays)"
         if cells[cellKey]==nil { cells[cellKey]=Cell(origin:SIMD3(Float(ix*8+4),0,Float(iz*8+4)),lod:(0..<3).map{_ in Batch()},stays:stays) }
         let cell=cells[cellKey]!
-        for i in 0..<3 { cell.lod[i].add(model[i],at:position-cell.origin,yaw:Float(yaw),index:index,seated:seated) }
+        for i in 0..<3 { cell.lod[i].add(model[i],at:position-cell.origin,yaw:Float(yaw),index:index,seated:seated,activity:activity) }
         return nil
     }
     func finish(into root:SCNNode) {

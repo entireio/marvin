@@ -189,7 +189,13 @@ final class TownResidents {
             }
             // Step out of an approaching robot's lane, but only through swept,
             // unoccupied ground. Keep that space until the robot has passed.
-            let approaching=robots.filter { robot in
+            // Street walkers can be boxed against a route endpoint. After a
+            // short pedestrian stand-off, use the same swept sidestep as for
+            // robots, without treating pedestrians as door-opening requests.
+            let yieldingTo=robots+(w.blocked>0.5 ? pedestrians.filter {
+                simd_distance(SIMD2($0.position.x,$0.position.z),w.position)<1.0
+            }:[])
+            let approaching=yieldingTo.filter { robot in
                 let d=w.position-SIMD2(robot.position.x,robot.position.z)
                 return simd_length(d)<2.4 && simd_dot(d,SIMD2(sin(robot.heading),cos(robot.heading))) > -0.2
             }

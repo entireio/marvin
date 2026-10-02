@@ -90,3 +90,40 @@ penetration. The 45-second 1920×1080 outer-town benchmark on Apple M2 measures
 60.002 SceneKit render callbacks/second, 17.30 ms p95 interval, no intervals over
 25 ms, and 3.50 ms p95 CPU update. These are renderer callback measurements, not
 GPU/display presentation timestamps.
+
+## Purposeful standing residents
+
+Street idlers are now authored as complete conversation pairs/trios, vendor/customer
+pairs across a real counter, or solitary residents facing a real doorway from beside
+its approach. Walking errands, repair mechanics and race-facing spectators retain
+their existing roles. No stationary companion is placed beside a departing walker.
+
+Candidates are admitted after scenery construction and before navigation construction.
+Each entire group must clear scenery, the circuit and door approaches; accepted groups
+also maintain separation from earlier groups. All activity members shelter during a
+storm, and their collision bodies disappear with them. Outfit variation stays independent
+of this weather policy. A per-vertex activity value keeps the existing GPU batches:
+conversation/trading gestures are smaller, while door waiters do not wave and keep their
+head movement directed toward the door.
+
+The entrance smoke test now checks group completeness, permanent scenery clearance,
+storm collision removal, role coverage and all door approaches, and saves street-level
+activity screenshots. The ten-minute people test also caught a short retreat-target
+oscillation when a street walker encountered a house visitor; blocked walkers now
+choose a retreat point roughly one metre behind their actual path position.
+A second deadlock occurred when that retreat reached a route endpoint before leaving
+room for the house visitor. House visitors now use their existing swept sidestep after
+a brief pedestrian stand-off as well; pedestrians still do not request doors or trigger
+robot stopping behavior. Street collision bodies carry actual heading for this yielding.
+
+Validation on the final build: 46 complete conversation groups (96 people), four
+vendor/customer pairs, seven door waiters, zero scenery conflicts and zero blocked
+approaches across 363 entrances. Both visible and offscreen 600-second runs passed:
+all 24 street walkers remained active, all ten house visitors entered houses (48 entries
+in each run), zero detected penetration; longest street stops were 9.50/9.38 seconds.
+Offscreen pose updates were zero. The 45-second 1920×1080 Apple M2 outer-town benchmark
+averaged 59.98 render callbacks/s, p95 17.32 ms, one interval over 25 ms and none over
+50 ms; CPU update p95 3.42 ms. These are SceneKit callback intervals, not GPU/display
+presentation timings. Evidence is in `marvin-town-planning/purposeful-residents-final`,
+`purposeful-people-complete`, `purposeful-offscreen-final`, and `purposeful-performance`
+beside this repository.

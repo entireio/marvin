@@ -87,6 +87,11 @@ extension AppController {
                     fflush(stdout)
                 }
             }
+            for (i,w) in street.walkers.enumerated() where streetStopped[i]>15 {
+                print("Stuck street walker \(i): position \(w.position), target \(w.target) \(w.path[w.target]), heading \(w.heading), direction \(w.direction), blocked \(w.blocked), wait \(w.wait), endpoints \(w.path.first!) \(w.path.last!)")
+                let probe=RobotCollisions.Body(position:SIMD3(w.position.x,0,w.position.y),profile:.init(mass:70,halfWidth:1,halfDepth:1,height:1.05))
+                print("Nearby: \(dirtWorld.town.collisionWorld.nearby(probe))")
+            }
             let streetReport:[String:Any]=["count":street.walkers.count,"distance":street.walkers.map{$0.distance},"longestStop":longestStreetStop,"positions":streetPositions,"maximumPenetration":street.maximumPenetration,"poseUpdates":street.poseUpdates,"navigationUpdates":street.navigationUpdates]
             try JSONSerialization.data(withJSONObject:streetReport,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("street-people.json"))
             let streetRatePassed = !offscreen || (street.poseUpdates==0 && street.navigationUpdates<36000*street.walkers.count/2)

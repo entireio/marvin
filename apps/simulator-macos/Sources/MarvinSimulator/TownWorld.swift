@@ -15,6 +15,12 @@ final class TownWorld {
     var collisionWorld:CityCollisionWorld { (stormActive ? stormCollisions:clearCollisions).withDynamicBodies((residents?.bodies ?? [])+(streetResidents?.bodies ?? [])) }
     private(set) var doorways:[TownDoorway]=[]
     private(set) var residents:TownResidents?
+    struct StreetActivity {
+        let position:SIMD2<Double>, target:SIMD2<Double>, role:String, group:Int, index:Int
+        var yaw:Double { atan2(target.x-position.x,target.y-position.y) }
+    }
+    private var pendingActivities:[[StreetActivity]]=[]
+    private(set) var streetActivities:[StreetActivity]=[]
     private var walkingCount=0
     private var walkingStreets:[[SIMD2<Double>]]=[]
     private(set) var streetResidents:TownStreetResidents?
@@ -84,6 +90,7 @@ final class TownWorld {
         buildReferenceDetails()
         progress?(0.64,"Placing signs")
         buildWayfinding()
+        placeStreetActivities()
         progress?(0.66,"Connecting residents to their homes")
         residents=TownResidents(doors:doorways,city:clearCollisions,crowd:crowd,root:root,count:10)
         population -= walkingCount-(residents?.walkers.count ?? 0)
@@ -772,19 +779,20 @@ final class TownWorld {
     }
 
     private func buildStreetLife() {
-        // Residents by selected entrances; each is clear of the full circuit.
-        for (i,lot) in lots.enumerated() where i%3 == 0 && max(abs(lot.x),abs(lot.z))<47 {
-            let z=lot.z+lot.depth/2+0.25
-            if DirtCourse.projection(x:lot.x,z:z).distance > 3.5 {
-                citizen(lot.x,z,y:0.03,yaw:i%4==0 ? atan2(0.50,0.18):Double(i),index:i+200,seated:false)
-                if i%4 == 0 { citizen(lot.x+0.50,z+0.18,y:0.03,yaw:atan2(-0.50,-0.18),index:i+210,seated:false) }
+        // Wait beside a real entrance, looking at its door, without occupying
+        // the approach used by visitors. Conversations occupy small forecourts.
+        for (i,e) in entrances.enumerated() where i%5==0 && max(abs(e.center.x),abs(e.center.y))<47 {
+            let out=SIMD2(sin(e.yaw),cos(e.yaw)),side=SIMD2(out.y,-out.x)
+            if i%10==0 {
+                pendingActivities.append([StreetActivity(position:e.center+out*0.75+side*0.95,
+                    target:e.center,role:"waiting at door",group:10000+i,index:10000+i)])
+            } else {
+                conversation(at:e.center+out*1.2+side*1.6,axis:out,index:11000+i,count:2)
             }
         }
-        for i in 0..<36 {
-            let group=i/3,member=i%3,angle=Double(member)*2.1+Double(group)*0.6
-            let x = -8.3+Double(group%6)*3.2+cos(angle)*0.42
-            let z=finishZ-8.0-Double(group/6)*1.25+sin(angle)*0.42
-            citizen(x,z,y:0.04,yaw:-angle-Double.pi/2,index:i+400,seated:false,walking:i%9 == 0)
+        for group in 0..<12 {
+            conversation(at:SIMD2(-8.3+Double(group%6)*3.2,finishZ-8.0-Double(group/6)*1.25),
+                         axis:SIMD2(cos(Double(group)*0.6),sin(Double(group)*0.6)),index:12000+group*3,count:3)
         }
         // Side terrace: civic spectators overlooking the northern sweeping turn.
         let p=paint(3,22)
@@ -811,15 +819,15 @@ final class TownWorld {
             for sx in [-0.75,0.75] { p.beam(SIMD3(sx,1.57,-0.77),SIMD3(sx,1.64,-0.77),0.012,dark,sides:5) }
             signs.plate(["CERAMICS","DROID EXCHANGE","SPICE MERCHANT","POWER CELLS"][i],eyebrow:"ASTER BAZAAR",footer:"TRADE  /  REPAIR  /  SUPPLIES",badge:"0\(i+1)",
                         at:SCNVector3(x,1.37,z-0.77),width:2.15,height:0.40,yaw:.pi,accent:i%2==0 ? rust:teal,into:root)
-            citizen(x,z+0.42,y:0.03,yaw:atan2(1.25,0.40),index:1701+i,seated:false)
-            citizen(x+1.25,z+0.82,y:0.03,yaw:atan2(-1.25,-0.40),index:1801+i,seated:false)
+            pendingActivities.append([
+                StreetActivity(position:SIMD2(x,z+0.65),target:SIMD2(x,z-0.85),role:"market vendor",group:13000+i,index:1701+i),
+                StreetActivity(position:SIMD2(x,z-0.85),target:SIMD2(x,z+0.65),role:"market customer",group:13000+i,index:1801+i)])
             p.box(1.12,0.24,0.45,0.43,0.48,0.44,0x665846,detail:true)
         }
         // Pedestrian groups follow roads and cluster at shops, never the course.
         for (roadIndex,street) in streets.prefix(6).enumerated() {
             for i in 1..<street.points.count {
                 let a=street.points[i-1],delta=street.points[i]-a,length=simd_length(delta)
-                let tangent=delta/length,normal=SIMD2(-tangent.y,tangent.x)
                 let count=Int(length/3.5)
                 for k in 0..<count {
                     let t=(Double(k)+0.5)/Double(max(1,count))
@@ -830,7 +838,6 @@ final class TownWorld {
                     let center=street.path[nearest]+curvedNormal*((k%2==0 ? 1.0:-1.0)*(street.width/2-0.32))
                     guard max(abs(center.x),abs(center.y))<52 else { continue }
                     let index=2000+roadIndex*100+i*13+k
-                    let yaw=atan2(curvedTangent.x,curvedTangent.y)+(k%4<2 ? 0:Double.pi)
                     if k%2==0 {
                         // Keep the actual street placement instead of discarding it
                         // and spawning every pedestrian at the same few houses.
@@ -843,9 +850,9 @@ final class TownWorld {
                         }
                         walkingStreets.append(route)
                     } else {
-                        citizen(center.x,center.y,y:0.02,yaw:yaw+0.25*sin(Double(index)),index:index,seated:false)
+                        // Outside the walking lane, leave a complete pair or nobody.
+                        conversation(at:center-curvedNormal*0.65,axis:curvedTangent,index:14000+index*3,count:2)
                     }
-                    if k%4==0 { citizen(center.x+normal.x*0.40,center.y+normal.y*0.40,y:0.02,yaw:atan2(-curvedNormal.x,-curvedNormal.y),index:index+17,seated:false) }
                 }
             }
         }
@@ -874,12 +881,45 @@ final class TownWorld {
         }
     }
 
-    private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,walking:Bool=false) {
-        if !seated && entrances.contains(where:{ e in
-            let delta=SIMD2(x,z)-e.center,out=SIMD2(sin(e.yaw),cos(e.yaw))
+    private func conversation(at center:SIMD2<Double>,axis:SIMD2<Double>,index:Int,count:Int) {
+        let angle=atan2(axis.y,axis.x)
+        pendingActivities.append((0..<count).map { member in
+            let a=angle+Double(member)*2*Double.pi/Double(count)
+            return StreetActivity(position:center+SIMD2(cos(a),sin(a))*0.48,
+                                  target:center,role:"conversation",group:index,index:index+member)
+        })
+    }
+
+    private func blocksEntrance(_ point:SIMD2<Double>)->Bool {
+        entrances.contains { e in
+            let delta=point-e.center,out=SIMD2(sin(e.yaw),cos(e.yaw))
             let forward=simd_dot(delta,out),side=simd_dot(delta,SIMD2(out.y,-out.x))
             return simd_length(delta)<0.65 || (forward > -0.3 && forward<1.7 && abs(side)<0.58)
-        }) { return }
+        }
+    }
+
+    private func placeStreetActivities() {
+        // Validate against finished scenery, before building navigation and the
+        // permanent collision cache. Admit groups atomically; no orphan talkers.
+        let scenery=CityCollisionWorld(collisionBuilder.bodies)
+        for group in pendingActivities {
+            guard group.allSatisfy({ person in
+                let p=person.position,course=DirtCourse.projection(x:p.x,z:p.y)
+                guard !blocksEntrance(p), course.offset>0, course.distance>DirtCourse.fenceOffset+0.3 else { return false }
+                let body=RobotCollisions.Body(position:SIMD3(p.x,0.02,p.y),profile:.init(mass:70,halfWidth:0.24,halfDepth:0.24,height:1.45,round:true))
+                return !scenery.nearby(body).contains { RobotCollisions.contact(body,$0) != nil }
+                    && !streetActivities.contains { simd_distance($0.position,p)<0.65 }
+            }) else { continue }
+            for person in group {
+                citizen(person.position.x,person.position.y,y:0.02,yaw:person.yaw,index:person.index,seated:false,shelter:true,activity:person.role=="conversation" ? .conversation:(person.role=="waiting at door" ? .waiting:.trading))
+                streetActivities.append(person)
+            }
+        }
+        pendingActivities.removeAll()
+    }
+
+    private func citizen(_ x:Double,_ z:Double,y:Double,yaw:Double,index:Int,seated:Bool,walking:Bool=false,shelter:Bool=false,activity:TownCrowd.Activity = .ordinary) {
+        if !seated && blocksEntrance(SIMD2(x,z)) { return }
         population += 1
         if seated {
             let ix=Int(floor(x/8)),iz=Int(floor(z/8)),key="\(ix),\(iz)"
@@ -892,10 +932,10 @@ final class TownWorld {
         if walking && walkingCount<18 { walkingCount += 1;return }
         let projection=DirtCourse.projection(x:x,z:z)
         if projection.offset>0 && projection.distance>DirtCourse.fenceOffset {
-            if !TownCrowd.staysOutside(x:x,z:z,index:index) { absentPeople.insert(collisionBuilder.bodies.count) }
+            if shelter || !TownCrowd.staysOutside(x:x,z:z,index:index) { absentPeople.insert(collisionBuilder.bodies.count) }
             collisionBuilder.bodies.append(.init(position:SIMD3(x,y,z),heading:yaw,profile:.init(mass:70,halfWidth:0.20,halfDepth:0.20,height:seated ? 0.8:1.45,round:true)))
         }
-        _ = crowd.add(x:x,y:y,z:z,yaw:yaw,index:index,seated:seated,animated:false)
+        _ = crowd.add(x:x,y:y,z:z,yaw:yaw,index:index,seated:seated,animated:false,shelter:shelter,activity:activity)
     }
     /// Authored reference block: construction, repairs and usable objects have
     /// specific placements rather than scattering decoration over the whole city.

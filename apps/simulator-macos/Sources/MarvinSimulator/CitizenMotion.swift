@@ -32,13 +32,16 @@ enum CitizenMotion {
     n.xz=float2(bc*n.x+bs*n.z,-bs*n.x+bc*n.z);
     float headAngle=(0.44*sin(crowdTime*0.47*tempo+phase)+0.12*sin(crowdTime*0.19+phase*2.0));
     float headWeight=smoothstep(neck-0.012,neck+0.045,p.y);
+    // Purposeful residents keep attention on their partner, door or counter.
+    headAngle *= kind.x<0.0 ? 0.28:1.0;
     float ha=headAngle*headWeight, hc=cos(ha), hs=sin(ha);
     p.xz=float2(hc*p.x+hs*p.z,-hs*p.x+hc*p.z);
     n.xz=float2(hc*n.x+hs*n.z,-hs*n.x+hc*n.z);
     float cycle=walkCycle+phase;
     float waveWindow=pow(max(0.0,sin(crowdTime*0.31+phase)),6.0);
     // Seated spectators and a few standing onlookers react independently.
-    float wave=(1.0-walkBlend)*waveWindow*(kind.x>0.5 ? 1.0:0.75);
+    float gesture=kind.x==-2.0 ? 0.0:(kind.x<0.0 ? 0.32:(kind.x>0.5 ? 1.0:0.75));
+    float wave=(1.0-walkBlend)*waveWindow*gesture;
     // Alternate arms; a bent elbow reads as a wave rather than a T-pose.
     wave *= (fmod(floor(phase),2.0)<1.0 ? (arm.y>0.0 ? 1.0:0.0):(arm.y<0.0 ? 1.0:0.0));
     float2 bind=_geometry.texcoords[7];

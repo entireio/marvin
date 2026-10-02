@@ -27,7 +27,9 @@ final class TownStreetResidents {
     private static func body(_ p:SIMD2<Double>)->RobotCollisions.Body {
         .init(position:SIMD3(p.x,0,p.y),profile:.init(mass:70,halfWidth:0.17,halfDepth:0.17,height:1.05,round:true))
     }
-    var bodies:[RobotCollisions.Body] { storm ? []:walkers.map{Self.body($0.position)} }
+    var bodies:[RobotCollisions.Body] { storm ? []:walkers.map {
+        var body=Self.body($0.position);body.heading=$0.heading;return body
+    } }
     var visible:Int { storm ? 0:walkers.count }
     init(paths:[[SIMD2<Double>]],city:CityCollisionWorld,crowd:TownCrowd,root:SCNNode) {
         self.city=city
@@ -95,8 +97,10 @@ final class TownStreetResidents {
             let turn=atan2(sin(angle-w.heading),cos(angle-w.heading))
             w.heading += max(-step*2.4,min(step*2.4,turn))
             w.wait=max(0,w.wait-step)
-            let length=w.wait>0 ? 0:min(simd_length(delta),w.speed*step*max(0,cos(turn)))
-            let next=w.position+SIMD2(sin(w.heading),cos(w.heading))*length
+            // Turn before stepping after a reversal. Sweeping a turning arc
+            // can leave the validated corridor and pin a walker to a wall.
+            let length=w.wait>0 || abs(turn)>0.25 ? 0:min(simd_length(delta),w.speed*step)
+            let next=w.position+delta/max(0.001,simd_length(delta))*length
             let solids=city.nearby(Self.body(next))+obstacles
             let samples=max(1,Int(ceil(length/0.015)))
             let free=(1...samples).allSatisfy { j in
@@ -109,7 +113,12 @@ final class TownStreetResidents {
             w.distance += moved;w.blend += ((moved>0.0001 ? 1.0:0)-w.blend)*min(1,step*10)
             w.blocked = !free ? w.blocked+step:0
             if w.blocked>2.5+Double(i%3)*0.4 {
-                w.direction *= -1;w.target=max(0,min(w.path.count-1,w.target+w.direction));w.blocked=0
+                // A one-sample reversal can still aim ahead of the body and
+                // oscillate forever against an oncoming visitor. Retreat toward
+                // a point a metre behind our actual position on the path.
+                let nearest=w.path.indices.min { simd_distance(w.path[$0],w.position)<simd_distance(w.path[$1],w.position) }!
+                w.direction *= -1
+                w.target=max(0,min(w.path.count-1,nearest+w.direction*8));w.blocked=0
             }
             if detailed { poseUpdates += 1 }
             pose(w,detailed:detailed)
