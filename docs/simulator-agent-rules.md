@@ -356,6 +356,8 @@ Historical claims of “final” in these documents are not user acceptance.
 - Benchmark the visually improved result. Do not use early benchmarking as an
   excuse to stop art iteration or claim reference parity. Measure throughout
   where useful to catch regressions, without substituting timing for visual QA.
+- For sustained town-performance validation, run at least ten minutes and record
+  the live FPS readout; short runs missed the slowdown that developed later.
 - State hardware, resolution, scene/weather, duration, and measurement method.
   Inspect frame-time distributions and long frames, not just average FPS.
   SceneKit callback timing is not GPU execution or display-presentation timing.

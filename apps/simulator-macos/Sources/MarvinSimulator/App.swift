@@ -76,6 +76,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var townBenchmarkDirectory: URL?
     var townBenchmarkCPU: [Double] = []
     var townBenchmarkTimeline:[[Double]]=[]
+    var townBenchmarkHUDSamples:[[String:Any]]=[]
     var frameDisplayLink:AnyObject?
     var townBenchmarkRoute:[SIMD2<Double>]=[]
     var townBenchmarkWaypoint=0

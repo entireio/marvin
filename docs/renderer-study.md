@@ -228,3 +228,28 @@ visibility changes. It passes pointer input through and follows the existing
 HUD hiding during automated postrace departures. This is render callback rate,
 not GPU time or display-presentation timing. Native lifecycle validation also
 checks that the FPS value is live and that the overlay does not intercept input.
+
+### Ten-minute drive with the visible counter
+
+A 603-second automated town drive (three-second warm-up plus ten measured
+minutes) on the M2 MacBook Air, 24 GB, at 1920×1080 used the timer default,
+clear midday lighting, normal shadows/detail, audio and the visible FPS overlay.
+The benchmark now forwards renderer callbacks to the actual overlay and records
+the value/text published by it, rather than reconstructing an approximation.
+It collected 1,176 counter updates while travelling 1,339.7 m.
+
+The readout did **not** stay at 60: its range was **40.7–60.3 FPS**. Overall
+render callback rate was **57.23 FPS**. Minutes 1–4 averaged about 60; minutes
+6–10 averaged 56.42, 55.83, 54.23, 52.73 and 53.60 FPS respectively. There were
+1,662 render intervals above 25 ms, one above 50 ms, and a worst interval of
+52.26 ms. The final captured readout was 57.9 FPS.
+
+CPU update P95 remained 2.63 ms overall, and the final thermal state was fair
+(raw value 1). Neither observation alone identifies the cause. The increasing
+slowdown is materially worse than the short trials suggested; it must not be
+dismissed as only isolated frame misses. This is an M2 result, not an M4 test.
+
+[Recorded counter values and summary](performance-validation/2026-10-03/ten-minute-drive/summary.json)
+are retained alongside the benchmark report. Full frame/update timelines and the
+viewed native scene plus live-overlay capture are in
+`/Users/thomi/Projects/marvin-town-planning/fps-ten-minutes/`.

@@ -5,6 +5,7 @@ import SimulationCore
 /// Render callback cadence is recorded separately from simulation callbacks.
 /// This is not a GPU timestamp or a substitute for Instruments presentation data.
 final class TownFrameMeter: NSObject, SCNSceneRendererDelegate {
+    weak var fpsHUD:FrameRateHUD?
     private let lock = NSLock()
     private var previous: Double?
     private var intervals: [Double] = []
@@ -26,6 +27,7 @@ final class TownFrameMeter: NSObject, SCNSceneRendererDelegate {
         lock.lock();frameStart=ProcessInfo.processInfo.systemUptime;lock.unlock()
     }
     func renderer(_ renderer: SCNSceneRenderer, didRenderScene scene: SCNScene, atTime time: TimeInterval) {
+        fpsHUD?.renderer(renderer,didRenderScene:scene,atTime:time)
         let now=ProcessInfo.processInfo.systemUptime
         lock.lock(); defer { lock.unlock() }
         if let previous { intervals.append(now-previous);frames.append([now,(now-previous)*1000,(now-frameStart)*1000,(now-cycleStart)*1000,(animationsEnd-cycleStart)*1000,(physicsEnd-animationsEnd)*1000,(constraintsEnd-physicsEnd)*1000,(frameStart-constraintsEnd)*1000]) }
@@ -182,6 +184,16 @@ extension AppController {
         }
         view.delegate=townMeter
         townBenchmarkStart=ProcessInfo.processInfo.systemUptime
+        frameRateHUD.resetSamples();frameRateHUD.isHidden=false
+        townMeter.fpsHUD=frameRateHUD;townBenchmarkHUDSamples=[]
+        frameRateHUD.onSample={ [weak self] now,fps in
+            guard let self,let start=self.townBenchmarkStart,now-start>=3.5 else { return }
+            self.townBenchmarkHUDSamples.append(["elapsedSeconds":now-start,"fps":fps.map { $0 as Any } ?? NSNull(),"text":self.frameRateHUD.displayedText])
+            if self.townBenchmarkHUDSamples.count % 120 == 0 {
+                let status=String(format:"Town drive %.0f s · %@\n",now-start,self.frameRateHUD.displayedText)
+                FileHandle.standardOutput.write(Data(status.utf8))
+            }
+        }
         townMeter.reset();townBenchmarkCPU=[]
         townBenchmarkDirectory=directory
         dirtWorld.town.root.isHidden=CommandLine.arguments.contains("--without-town")
@@ -262,6 +274,16 @@ extension AppController {
                 let timeline:[String:Any]=["renderColumns":["uptime","intervalMS","renderCallbackSpanMS","rendererCycleMS","sceneAnimationMS","scenePhysicsMS","sceneConstraintsMS","preRenderMS"],"renderFrames":townMeter.timeline(),"updateColumns":["uptime","elapsed","tickMS","physicsMS","modelsMS","effectsMS","cameraMS","townMS","totalMS","x","z","aerial"],"updates":townBenchmarkTimeline]
                 try JSONSerialization.data(withJSONObject:timeline).write(to:directory.appendingPathComponent("timeline.json"))
                 try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("benchmark.json"))
+                try JSONSerialization.data(withJSONObject:townBenchmarkHUDSamples,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("displayed-fps.json"))
+                // SCNView snapshots omit AppKit overlays; draw the actual live
+                // counter over the native scene at its unchanged view position.
+                let image=NSImage(size:view.bounds.size);image.lockFocus()
+                view.snapshot().draw(in:view.bounds)
+                let transform=NSAffineTransform();transform.translateX(by:frameRateHUD.frame.minX,yBy:frameRateHUD.frame.minY)
+                transform.concat();frameRateHUD.draw(frameRateHUD.bounds);image.unlockFocus()
+                if let tiff=image.tiffRepresentation,let bitmap=NSBitmapImageRep(data:tiff),let png=bitmap.representation(using:.png,properties:[:]) {
+                    try png.write(to:directory.appendingPathComponent("final-fps.png"))
+                }
                 print("Town benchmark complete · \(directory)")
                 exit(0)
             } catch { print(error);exit(1) }

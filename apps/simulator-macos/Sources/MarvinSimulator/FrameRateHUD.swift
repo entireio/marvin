@@ -7,6 +7,8 @@ final class FrameRateHUD: NSView, SCNSceneRendererDelegate {
     private var sampleStart:Double?
     private var frames=0
     private(set) var framesPerSecond:Double?
+    var onSample:((Double,Double?)->Void)?
+    var displayedText:String { framesPerSecond.map { String(format:"%.1f FPS",$0) } ?? "— FPS" }
     override func hitTest(_ point:NSPoint)->NSView? { nil }
 
     func resetSamples() {
@@ -25,11 +27,12 @@ final class FrameRateHUD: NSView, SCNSceneRendererDelegate {
         sampleStart=now;frames=0;sampleLock.unlock()
         DispatchQueue.main.async { [weak self] in
             self?.framesPerSecond=fps;self?.needsDisplay=true
+            self?.onSample?(now,fps)
         }
     }
 
     override func draw(_ dirtyRect:NSRect) {
-        let label=framesPerSecond.map { String(format:"%.1f FPS",$0) } ?? "— FPS"
+        let label=displayedText
         let attributes:[NSAttributedString.Key:Any]=[
             .font:NSFont.monospacedDigitSystemFont(ofSize:13,weight:.semibold),
             .foregroundColor:NSColor(calibratedWhite:0.97,alpha:1)]

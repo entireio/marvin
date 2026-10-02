@@ -1,0 +1,115 @@
+{
+  "conditions": {
+    "durationSeconds": 603.015351541806,
+    "gpuDevice": "Apple M2",
+    "drawableWidth": 1920,
+    "drawableHeight": 1080,
+    "audioActive": true,
+    "sandstorm": false,
+    "daylightFraction": 0.5,
+    "updateDriver": "timer",
+    "thermalState": 1,
+    "metric": "SceneKit didRenderScene wall-clock intervals; not GPU or display presentation timing"
+  },
+  "displayedSamples": 1176,
+  "minShownFPS": 40.7,
+  "maxShownFPS": 60.3,
+  "medianShownFPS": 60.0,
+  "meanRenderFPS": 57.228648593156976,
+  "framesOver25MS": 1662,
+  "framesOver50MS": 1,
+  "worstFrameMS": 52.26233322173357,
+  "travelMeters": 1339.7352366411396,
+  "minutes": [
+    {
+      "minute": 1,
+      "averageRenderFPS": 59.98150035711279,
+      "minimumShownFPS": 58.1,
+      "medianShownFPS": 60.0,
+      "maximumFrameMS": 33.40362501330674,
+      "framesOver25MS": 1,
+      "cpuUpdateP95MS": 2.896291669458151
+    },
+    {
+      "minute": 2,
+      "averageRenderFPS": 60.00197689834643,
+      "minimumShownFPS": 59.8,
+      "medianShownFPS": 60.0,
+      "maximumFrameMS": 21.458166651427746,
+      "framesOver25MS": 0,
+      "cpuUpdateP95MS": 2.609833376482129
+    },
+    {
+      "minute": 3,
+      "averageRenderFPS": 59.99895576831341,
+      "minimumShownFPS": 59.7,
+      "medianShownFPS": 60.0,
+      "maximumFrameMS": 17.91933341883123,
+      "framesOver25MS": 0,
+      "cpuUpdateP95MS": 2.520499983802438
+    },
+    {
+      "minute": 4,
+      "averageRenderFPS": 60.00168863081157,
+      "minimumShownFPS": 59.8,
+      "medianShownFPS": 60.0,
+      "maximumFrameMS": 20.5765834543854,
+      "framesOver25MS": 0,
+      "cpuUpdateP95MS": 2.474958309903741
+    },
+    {
+      "minute": 5,
+      "averageRenderFPS": 59.481950336527575,
+      "minimumShownFPS": 44.0,
+      "medianShownFPS": 60.0,
+      "maximumFrameMS": 34.96987489052117,
+      "framesOver25MS": 31,
+      "cpuUpdateP95MS": 2.472375053912401
+    },
+    {
+      "minute": 6,
+      "averageRenderFPS": 56.41847715135465,
+      "minimumShownFPS": 48.0,
+      "medianShownFPS": 57.8,
+      "maximumFrameMS": 34.77641684003174,
+      "framesOver25MS": 215,
+      "cpuUpdateP95MS": 2.5730000343173742
+    },
+    {
+      "minute": 7,
+      "averageRenderFPS": 55.83229717896974,
+      "minimumShownFPS": 46.0,
+      "medianShownFPS": 57.0,
+      "maximumFrameMS": 35.22820840589702,
+      "framesOver25MS": 250,
+      "cpuUpdateP95MS": 2.6324999053031206
+    },
+    {
+      "minute": 8,
+      "averageRenderFPS": 54.2342671042581,
+      "minimumShownFPS": 45.9,
+      "medianShownFPS": 54.3,
+      "maximumFrameMS": 35.80762492492795,
+      "framesOver25MS": 346,
+      "cpuUpdateP95MS": 2.689333399757743
+    },
+    {
+      "minute": 9,
+      "averageRenderFPS": 52.732044913714056,
+      "minimumShownFPS": 40.7,
+      "medianShownFPS": 52.0,
+      "maximumFrameMS": 37.079500034451485,
+      "framesOver25MS": 436,
+      "cpuUpdateP95MS": 2.7729168068617582
+    },
+    {
+      "minute": 10,
+      "averageRenderFPS": 53.602614839704,
+      "minimumShownFPS": 45.1,
+      "medianShownFPS": 54.2,
+      "maximumFrameMS": 52.26233322173357,
+      "framesOver25MS": 383,
+      "cpuUpdateP95MS": 2.741625066846609
+    }
+  ]
+}
