@@ -12,12 +12,14 @@ final class TownWorld {
     private var absentPeople=Set<Int>()
     private lazy var clearCollisions=CityCollisionWorld(collisionBuilder.bodies)
     private lazy var stormCollisions=CityCollisionWorld(collisionBuilder.bodies.enumerated().filter{!absentPeople.contains($0.offset)}.map{$0.element})
-    var collisionWorld:CityCollisionWorld { (stormActive ? stormCollisions:clearCollisions).withDynamicBodies(residents?.bodies ?? []) }
+    var collisionWorld:CityCollisionWorld { (stormActive ? stormCollisions:clearCollisions).withDynamicBodies((residents?.bodies ?? [])+(streetResidents?.bodies ?? [])) }
     private(set) var doorways:[TownDoorway]=[]
     private(set) var residents:TownResidents?
     private var walkingCount=0
-    var visiblePopulation:Int { (stormActive ? crowd.stormPopulation:population-walkingCount)+(residents?.visible ?? 0) }
-    func setStorm(_ active:Bool) { stormActive=active;crowd.setStorm(active);residents?.setStorm(active) }
+    private var walkingStreets:[[SIMD2<Double>]]=[]
+    private(set) var streetResidents:TownStreetResidents?
+    var visiblePopulation:Int { (stormActive ? crowd.stormPopulation:population-walkingCount)+(residents?.visible ?? 0)+(streetResidents?.visible ?? 0) }
+    func setStorm(_ active:Bool) { stormActive=active;crowd.setStorm(active);residents?.setStorm(active);streetResidents?.setStorm(active) }
     private let surface = CityMaterials.plaster
     private let crowd = TownCrowd()
     private let signs = TownSigns()
@@ -83,9 +85,12 @@ final class TownWorld {
         progress?(0.64,"Placing signs")
         buildWayfinding()
         progress?(0.66,"Connecting residents to their homes")
-        residents=TownResidents(doors:doorways,city:clearCollisions,crowd:crowd,root:root,count:walkingCount)
+        residents=TownResidents(doors:doorways,city:clearCollisions,crowd:crowd,root:root,count:10)
         population -= walkingCount-(residents?.walkers.count ?? 0)
         walkingCount=residents?.walkers.count ?? 0
+        streetResidents=TownStreetResidents(paths:walkingStreets,city:clearCollisions,crowd:crowd,root:root)
+        population += streetResidents?.walkers.count ?? 0
+        walkingCount += streetResidents?.walkers.count ?? 0
         crowd.finish(into:root)
         let keys=cells.keys.sorted()
         for (index,key) in keys.enumerated() {
@@ -699,8 +704,8 @@ final class TownWorld {
         for (i,lot) in lots.enumerated() where i%3 == 0 && max(abs(lot.x),abs(lot.z))<47 {
             let z=lot.z+lot.depth/2+0.25
             if DirtCourse.projection(x:lot.x,z:z).distance > 3.5 {
-                citizen(lot.x,z,y:0.03,yaw:Double(i),index:i+200,seated:false)
-                if i%4 == 0 { citizen(lot.x+0.50,z+0.18,y:0.03,yaw:Double(i)+1,index:i+210,seated:false) }
+                citizen(lot.x,z,y:0.03,yaw:i%4==0 ? atan2(0.50,0.18):Double(i),index:i+200,seated:false)
+                if i%4 == 0 { citizen(lot.x+0.50,z+0.18,y:0.03,yaw:atan2(-0.50,-0.18),index:i+210,seated:false) }
             }
         }
         for i in 0..<36 {
@@ -734,8 +739,8 @@ final class TownWorld {
             for sx in [-0.75,0.75] { p.beam(SIMD3(sx,1.57,-0.77),SIMD3(sx,1.64,-0.77),0.012,dark,sides:5) }
             signs.plate(["CERAMICS","DROID EXCHANGE","SPICE MERCHANT","POWER CELLS"][i],eyebrow:"ASTER BAZAAR",footer:"TRADE  /  REPAIR  /  SUPPLIES",badge:"0\(i+1)",
                         at:SCNVector3(x,1.37,z-0.77),width:2.15,height:0.40,yaw:.pi,accent:i%2==0 ? rust:teal,into:root)
-            citizen(x,z+0.42,y:0.03,yaw:.pi,index:1701+i,seated:false)
-            citizen(x+1.25,z+0.82,y:0.03,yaw:-0.4,index:1801+i,seated:false)
+            citizen(x,z+0.42,y:0.03,yaw:atan2(1.25,0.40),index:1701+i,seated:false)
+            citizen(x+1.25,z+0.82,y:0.03,yaw:atan2(-1.25,-0.40),index:1801+i,seated:false)
             p.box(1.12,0.24,0.45,0.43,0.48,0.44,0x665846,detail:true)
         }
         // Pedestrian groups follow roads and cluster at shops, never the course.
@@ -753,8 +758,22 @@ final class TownWorld {
                     let center=street.path[nearest]+curvedNormal*((k%2==0 ? 1.0:-1.0)*(street.width/2-0.32))
                     guard max(abs(center.x),abs(center.y))<52 else { continue }
                     let index=2000+roadIndex*100+i*13+k
-                    citizen(center.x,center.y,y:0.02,yaw:atan2(tangent.x,tangent.y),index:index,seated:false,walking:k%2==0)
-                    if k%4==0 { citizen(center.x+normal.x*0.40,center.y+normal.y*0.40,y:0.02,yaw:1.3,index:index+17,seated:false) }
+                    let yaw=atan2(curvedTangent.x,curvedTangent.y)+(k%4<2 ? 0:Double.pi)
+                    if k%2==0 {
+                        // Keep the actual street placement instead of discarding it
+                        // and spawning every pedestrian at the same few houses.
+                        let side=k%4==0 ? 1.0:-1.0
+                        var route=[SIMD2<Double>]()
+                        for j in max(0,nearest-24)...min(street.path.count-1,nearest+24) {
+                            let d=street.path[min(j+1,street.path.count-1)]-street.path[max(0,j-1)]
+                            let n=SIMD2(-d.y,d.x)/max(0.001,simd_length(d))
+                            route.append(street.path[j]+n*(side*(street.width/2-0.55)))
+                        }
+                        walkingStreets.append(route)
+                    } else {
+                        citizen(center.x,center.y,y:0.02,yaw:yaw+0.25*sin(Double(index)),index:index,seated:false)
+                    }
+                    if k%4==0 { citizen(center.x+normal.x*0.40,center.y+normal.y*0.40,y:0.02,yaw:atan2(-curvedNormal.x,-curvedNormal.y),index:index+17,seated:false) }
                 }
             }
         }
@@ -893,10 +912,11 @@ final class TownWorld {
         updateExplorationDetail(camera:camera,player:player)
         guard dt>0 else { return }
         clock += dt
-        crowd.update(time:clock);residents?.update(dt:dt,robots:robots,visible:visible)
+        crowd.update(time:clock);residents?.update(dt:dt,robots:robots+(streetResidents?.bodies ?? []),visible:visible)
+        streetResidents?.update(dt:dt,obstacles:robots+(residents?.bodies ?? []),visible:visible)
     }
     func reset() {
-        clock=0;crowd.update(time:0);residents?.reset()
+        clock=0;crowd.update(time:0);residents?.reset();streetResidents?.reset()
         for node in explorationNodes { node.isHidden=true }
     }
     /// Clip the chase/orbit boom against simple scenery bounds, with a small
@@ -933,7 +953,7 @@ final class TownWorld {
     }
     var statistics: [String:Int] {
         ["explorationCells":explorationNodes.count,"explorationTriangles":explorationTriangles,"streetRoutes":streets.count,"doorConnections":residents?.connections ?? 0,"buildings":buildings,"repairTents":repairLots.count,"infieldHouses":lots.filter{infield($0.x,$0.z)}.count,"people":population,"animatedPeople":population,
-         "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":residents?.walkers.count ?? 0,"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
+         "signs":signs.count,"signTextFits":signs.valid ? 1:0,"walkingPeople":(residents?.walkers.count ?? 0)+(streetResidents?.walkers.count ?? 0),"crowdCells":crowd.cellCount,"crowdNearTriangles":crowd.triangles,"crowdFarTriangles":crowd.farTriangles,"cells":cells.count,"nearTriangles":triangleCount,"farTriangles":coarseTriangles]
     }
     var cityCoveragePassed:Bool {
         (0..<8).allSatisfy { sector in
