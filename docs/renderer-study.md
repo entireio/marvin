@@ -174,3 +174,47 @@ unverified and require a full Xcode setup/attached capture workflow. The HUD
 results above come from completed independent runs and remain available. The
 capture diagnostic report is in
 `../marvin-town-planning/renderer-capture-realitykit-device/study.json`.
+
+## October 3: intermittent town frame pacing
+
+On the current M2 MacBook Air (24 GB), two 120-second town drives at
+1920×1080 with audio enabled reproduced occasional 33 ms render intervals.
+The timer-driven runs missed two frames at midday and three at a lower sun
+angle; matching display-link trials missed one each. CPU update P95 remained
+about 2.8 ms. These small counts suggest a pacing improvement, not proof that
+the timer caused every hitch or that 60 FPS is guaranteed.
+
+The view’s display link at 60 Hz is available on macOS 14 and later through
+`--display-link-updates` (or the existing `--benchmark-display-link`). The timer
+remains the default and the driver for deterministic smoke fixtures.
+`--benchmark-timer` explicitly forces it for comparisons. No shadow, geometry,
+population or material quality was reduced. The benchmark reports its driver.
+
+An additional 45-second diagnostic run used Apple’s Metal HUD logging. After
+excluding startup, its log included a 33.33 ms presentation interval paired
+with 13.49 ms GPU time; GPU time elsewhere reached 16.43 ms. This establishes
+a displayed hitch and tight GPU headroom, but not a unique cause. HUD logs
+contain duplicate batches/samples and must not be blindly counted as frames.
+A short shadows-disabled run had no missed frame; that is only an isolation
+lead, not permission to remove shadows. System stack sampling did not return
+a report and was stopped; the installed Command Line Tools lack Instruments.
+
+[Machine-readable comparisons](performance-validation/2026-10-03/investigation.json)
+retain the limited diagnostic conclusions. Full callback timelines and Metal
+logs remain under `/Users/thomi/Projects/marvin-town-planning/fps-debug/` and
+`/tmp/marvin-metal-native.log`. These M2 measurements do not establish M4
+performance, especially at a different drawable resolution.
+
+The subsequent new-default validation ran for 120 seconds and again missed
+two frames: 59.98285 FPS, P99 17.491 ms, worst 33.816 ms. This did **not**
+reproduce a reliable reduction in missed frames. The clock change aligns updates
+with display cadence; it must not be described as a verified stutter cure.
+
+The independent Astra Ultra judge recommended retaining the timer default until
+there is a repeatable benefit. That recommendation was applied. Visibility
+changes now reset the elapsed-time anchor and stop hidden audio; termination
+invalidates either driver. The normal-clock native lifecycle check
+(`--display-link-lifecycle-check OUTPUT_DIRECTORY`) passes all 13 checks across
+menu, asynchronous loading, pause/resume and actual minimize/restore. The
+restored frame was inspected. This closes a display-link suspension hazard;
+the reported intermittent town stutter remains unresolved.

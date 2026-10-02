@@ -1,0 +1,24 @@
+{
+  "columns": [
+    "presentationIntervalMS",
+    "gpuTimeMS"
+  ],
+  "note": "Duplicate log batches removed; individual repeated samples retained. Do not count these as unique frames. Diagnostic HUD run, not benchmark comparison. Startup excluded conservatively at four seconds.",
+  "maximumGPUTimeMS": 16.43,
+  "slowBatches": [
+    {
+      "elapsedAtLogSeconds": 35.89449381828308,
+      "slowPairs": [
+        [
+          33.33,
+          13.49
+        ],
+        [
+          33.33,
+          13.49
+        ]
+      ]
+    }
+  ],
+  "rawLog": "/Users/thomi/Projects/marvin-town-planning/fps-debug/metal-hud/native-metal.log"
+}

@@ -1,0 +1,67 @@
+{
+  "hardware": "MacBook Air M2, 24 GB",
+  "resolution": "1920x1080",
+  "commit": "fe86489",
+  "measurement": "SceneKit render callback intervals, not GPU duration or display presentation",
+  "runs": {
+    "timer-midday": {
+      "durationSeconds": 120.00036854157224,
+      "meanFPS": 59.982999951915055,
+      "p99MS": 17.5482917111367,
+      "over25MS": 2,
+      "over50MS": 0,
+      "cpuUpdateP95MS": 2.7984166517853737,
+      "worstMS": 33.716749865561724,
+      "artifactDirectory": "/Users/thomi/Projects/marvin-town-planning/fps-2026-10-02-fresh/clear"
+    },
+    "timer-lower-sun": {
+      "durationSeconds": 120.01028212509118,
+      "meanFPS": 59.97433584327923,
+      "p99MS": 17.61470828205347,
+      "over25MS": 3,
+      "over50MS": 0,
+      "cpuUpdateP95MS": 2.7186251245439053,
+      "worstMS": 33.843583427369595,
+      "artifactDirectory": "/Users/thomi/Projects/marvin-town-planning/fps-2026-10-02-fresh/lower-sun"
+    },
+    "display-link-midday": {
+      "durationSeconds": 120.00004175002687,
+      "meanFPS": 59.991552286760935,
+      "p99MS": 17.456999979913235,
+      "over25MS": 1,
+      "over50MS": 0,
+      "cpuUpdateP95MS": 2.7987081557512283,
+      "worstMS": 33.81495829671621,
+      "artifactDirectory": "/Users/thomi/Projects/marvin-town-planning/fps-debug/display-link"
+    },
+    "display-link-lower-sun": {
+      "durationSeconds": 120.00019595818594,
+      "meanFPS": 59.99143801505782,
+      "p99MS": 17.497375141829252,
+      "over25MS": 1,
+      "over50MS": 0,
+      "cpuUpdateP95MS": 2.804000163450837,
+      "worstMS": 33.99324999190867,
+      "artifactDirectory": "/Users/thomi/Projects/marvin-town-planning/fps-debug/display-link-lower-sun"
+    },
+    "shadows-disabled-diagnostic": {
+      "durationSeconds": 30.014703541761264,
+      "meanFPS": 59.99910723556374,
+      "p99MS": 18.456583376973867,
+      "over25MS": 0,
+      "over50MS": 0,
+      "cpuUpdateP95MS": 3.5633749794214964,
+      "worstMS": 19.306875066831708,
+      "artifactDirectory": "/Users/thomi/Projects/marvin-town-planning/fps-debug/no-shadows"
+    }
+  },
+  "findings": [
+    "No measured long CPU update explains the baseline missed frames.",
+    "Display-synchronised update trials each missed one frame; timer baseline trials missed two and three. This comparison is limited and does not prove causation.",
+    "A 30-second shadows-disabled trial had zero missed frames, suggesting shadow workload as a lead but insufficient to prove a shadow defect.",
+    "The recurring 15-second hitch did not recur in the lower-sun display-link trial; a fixed bad town location is not established.",
+    "System stack sampling failed to return a report and was stopped after native process completion. Instruments xctrace is unavailable in the installed Command Line Tools.",
+    "New default validation:59.98285FPS,P99 17.491ms,2framesover25ms,worst33.8157ms. This contradicts treating the earlier1-frame trials as a reliable reduction."
+  ],
+  "status": "No consistent stutter reduction established. Timer default retained after independent review; display-link option, lifecycle safeguards and diagnostics retained. Town hitch root cause remains unresolved."
+}

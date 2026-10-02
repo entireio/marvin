@@ -131,7 +131,6 @@ extension AppController {
         }
         guard magenta<20 else { throw NSError(domain:"RenderAudit",code:1,userInfo:[NSLocalizedDescriptionKey:"Shader failure colour in \(name): \(magenta) sampled pixels"]) }
     }
-    @objc func benchmarkDisplayTick(_ sender:AnyObject) { tick() }
     func startTownBenchmark(at directory:URL) {
         weatherOverride=ProcessInfo.processInfo.environment["MARVIN_SANDSTORM"]=="1"
         try? FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
@@ -180,12 +179,6 @@ extension AppController {
         if CommandLine.arguments.contains("--benchmark-msaa2") { view.antialiasingMode = .multisampling2X }
         if CommandLine.arguments.contains("--benchmark-no-shadows") {
             dirtWorld.scene.rootNode.enumerateChildNodes { node,_ in node.light?.castsShadow=false }
-        }
-        if #available(macOS 14.0,*), CommandLine.arguments.contains("--benchmark-display-link") {
-            timer?.invalidate()
-            let link=view.displayLink(target:self,selector:#selector(benchmarkDisplayTick(_:)))
-            link.preferredFrameRateRange=CAFrameRateRange(minimum:60,maximum:60,preferred:60)
-            link.add(to:.main,forMode:.common);benchmarkDisplayLink=link
         }
         view.delegate=townMeter
         townBenchmarkStart=ProcessInfo.processInfo.systemUptime
@@ -240,7 +233,7 @@ extension AppController {
         let duration=Double(ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_SECONDS"] ?? "45") ?? 45
         if elapsed>=max(10,duration) {
             timer?.invalidate();view.delegate=nil
-            if #available(macOS 14.0,*) { (benchmarkDisplayLink as? CADisplayLink)?.invalidate() }
+            if #available(macOS 14.0,*) { (frameDisplayLink as? CADisplayLink)?.invalidate() }
             var report=townMeter.report()
             let cpu=townBenchmarkCPU.sorted()
             report["cpuUpdateP95MS"]=cpu.isEmpty ? 0:cpu[Int(Double(cpu.count-1)*0.95)]*1000
@@ -252,6 +245,7 @@ extension AppController {
             report["visiblePeople"]=dirtWorld.town.visiblePopulation
             report["residentUpdates"]=dirtWorld.town.residents?.updateStatistics ?? [:]
             report["audioActive"]=raceAudio?.active ?? false
+            report["updateDriver"]=frameDisplayLink == nil ? "timer":"display-link"
             report["expressionsPlayed"]=raceAudio?.expressionCount ?? 0
             report["metalRenderer"]=view.renderingAPI == .metal
             report["gpuDevice"]=view.device?.name ?? "Unavailable"

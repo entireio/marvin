@@ -75,7 +75,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var townBenchmarkDirectory: URL?
     var townBenchmarkCPU: [Double] = []
     var townBenchmarkTimeline:[[Double]]=[]
-    var benchmarkDisplayLink:AnyObject?
+    var frameDisplayLink:AnyObject?
     var townBenchmarkRoute:[SIMD2<Double>]=[]
     var townBenchmarkWaypoint=0
     var raceAudio:RaceAudio?
@@ -156,8 +156,22 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         window.center(); window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true)
         robot.update(simulation); showMainMenu(nil)
-        timer = Timer(timeInterval: 1.0/60, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
-        RunLoop.main.add(timer!, forMode: .common)
+        // Retain display-synchronised updates as an explicit diagnostic option:
+        // native comparisons have not established a repeatable stutter reduction.
+        let timerDrivenSmoke = smokeDirectory != nil && !CommandLine.arguments.contains("--town-benchmark")
+        let displayLinked = ["--display-link-updates","--benchmark-display-link","--display-link-lifecycle-check"].contains { CommandLine.arguments.contains($0) }
+        if #available(macOS 14.0, *), !timerDrivenSmoke, displayLinked,
+           !CommandLine.arguments.contains("--benchmark-timer") {
+            let link=view.displayLink(target:self,selector:#selector(displayTick(_:)))
+            link.preferredFrameRateRange=CAFrameRateRange(minimum:60,maximum:60,preferred:60)
+            link.add(to:.main,forMode:.common);frameDisplayLink=link
+        } else {
+            timer = Timer(timeInterval: 1.0/60, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
+            RunLoop.main.add(timer!, forMode: .common)
+        }
+        if let i=CommandLine.arguments.firstIndex(of:"--display-link-lifecycle-check"),i+1<CommandLine.arguments.count {
+            checkDisplayLinkLifecycle(at:URL(fileURLWithPath:CommandLine.arguments[i+1]))
+        }
     }
 
     func updateApplicationIcon(for appearance: NSAppearance) {
@@ -193,6 +207,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             }
         }
     }
+
+    @objc func displayTick(_ sender:AnyObject) { tick() }
 
     @objc func tick() {
         let now = ProcessInfo.processInfo.systemUptime
@@ -391,7 +407,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         // on another app taking focus. Interactive play still pauses on blur.
         let step = smokeDirectory == nil ? dt : 1.0/60
         let raceDelta = smokeDirectory == nil ? wallDelta : step
-        let advancing = (active || smokeDirectory != nil) && !simulation.paused
+        let advancing = ((active && window.occlusionState.contains(.visible)) || smokeDirectory != nil) && !simulation.paused
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
         if isDirtTrack {
             updateRaceWorld(dt: advancing ? step : 0)
@@ -680,8 +696,24 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         active = true; lastTime = ProcessInfo.processInfo.systemUptime
     }
     func windowDidResignKey(_ notification: Notification) { view.clearInput() }
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        // NSView display links suspend while hidden. Never count that suspended
+        // interval as race time when the window becomes visible again.
+        lastTime=ProcessInfo.processInfo.systemUptime
+        if !window.occlusionState.contains(.visible) { view.clearInput();raceAudio?.stop() }
+    }
+    func windowDidMiniaturize(_ notification: Notification) {
+        lastTime=ProcessInfo.processInfo.systemUptime;view.clearInput();raceAudio?.stop()
+    }
+    func windowDidDeminiaturize(_ notification: Notification) {
+        lastTime=ProcessInfo.processInfo.systemUptime
+    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
-    func applicationWillTerminate(_ notification: Notification) { timer?.invalidate();raceAudio?.stop() }
+    func applicationWillTerminate(_ notification: Notification) {
+        timer?.invalidate()
+        if #available(macOS 14.0,*) { (frameDisplayLink as? CADisplayLink)?.invalidate() }
+        raceAudio?.stop()
+    }
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
     }

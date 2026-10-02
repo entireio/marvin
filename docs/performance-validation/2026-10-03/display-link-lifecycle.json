@@ -1,0 +1,18 @@
+{
+  "checks" : {
+    "displayLinkSelected" : true,
+    "hiddenFreezesClock" : true,
+    "hiddenStopsAudio" : true,
+    "loaded" : true,
+    "menuVisible" : true,
+    "normalClock" : true,
+    "pauseFreezesClock" : true,
+    "pauseStopsAudio" : true,
+    "raceAdvances" : true,
+    "restoredAudio" : true,
+    "restoreWithoutCatchup" : true,
+    "resumeAdvances" : true,
+    "windowMiniaturized" : true
+  },
+  "passed" : true
+}
