@@ -18,15 +18,8 @@ def write(name, samples, crossfade=.10):
         w.setparams((1,2,rate,0,'NONE','not compressed'))
         w.writeframes(array.array('h',(round(x*32767) for x in samples)).tobytes())
 
-for robot,base,pulse,noise in [('marvin',92,22,.15),('r2d2',165,34,.06),('bb8',58,7,.21),('wallE',64,16,.24)]:
-    rng=random.Random(400+base);low=0;samples=[]
-    for i in range(rate*4):
-        t=i/rate;low+=.14*(rng.uniform(-1,1)-low)
-        carrier=math.sin(2*math.pi*base*t)+.25*math.sin(2*math.pi*base*2*t)+.08*math.sin(2*math.pi*base*5*t)
-        rumble=low*noise+max(0,math.sin(2*math.pi*pulse*t))**12*low*.7
-        if robot=='bb8':carrier+=.24*math.sin(2*math.pi*310*t+.6*math.sin(2*math.pi*2*t))
-        samples.append(carrier*.16*(.8+.2*math.sin(2*math.pi*pulse*t))+rumble)
-    write(robot,samples)
+# The character recipe owns motors and expressive phrases.
+subprocess.run([sys.executable,str(pathlib.Path(__file__).with_name('characters.py'))],check=True)
 
 source=pathlib.Path(sys.argv[1])
 def decode(path):

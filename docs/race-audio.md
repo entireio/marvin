@@ -2,13 +2,31 @@
 
 ## Sound palette
 
-The four chassis share restrained mechanical sound design without borrowed film
-voices. Marvin has a warm 92 Hz motor and light tread modulation; R2-D2 has a
-higher, smoother 165 Hz wheel motor; BB-8 combines a 58 Hz rolling texture with
-a soft gyro tone; WALL-E uses a lower 64 Hz motor and heavier tread pulses.
-Playback pitch and level rise with speed and turning; airborne machines have
-less ground/mechanical presence. The selected player character determines the
-player's voice, rather than assuming Marvin is always selected.
+Each robot has a mechanical movement loop and short expressive reactions. These
+are original synthesized recreations informed by the films, not official film
+recordings or verified exact voice matches:
+
+- R2-D2: fluid whistles, quick electronic syllables and rising/falling questions.
+- BB-8: rounded, bubbling vowel shapes over a low rolling/gyro texture.
+- WALL-E: rougher, lower vowel phrases over tread chatter and servos.
+- Marvin: warm, measured three-note phrases with a glassy transient, combining
+  expressive pitch, rounded vowels and mechanical texture into an original voice.
+
+The sound-design references emphasize expression, not just oscillator pitch:
+[Ben Burtt on R2-D2](https://www.starwars.com/news/5-iconic-star-wars-sound-effects-and-how-they-were-made-starwars-com),
+[Disney on BB-8's performed vocal starting point](https://d23.com/star-wars-sounds/),
+and [Burtt's WALL-E sound masterclass](https://editorial.rottentomatoes.com/article/exclusive-ben-burtts-walle-sound-masterclass/).
+Our formant synthesis approximates vocal shapes; it does not include an actor's
+performance. Listening comparison remains necessary to judge character fidelity.
+
+Acknowledgement, acceleration/effort and new-contact/startle each have three
+variants. A robot speaks at most every 9–14 seconds, with two seconds between
+new phrases globally. Only robots within 16 metres can initiate a phrase;
+playback continues to use distance attenuation as they move. Contacts held over
+multiple frames do not repeatedly trigger reactions. Mechanical playback pitch
+and level rise with speed and turning, independently of the voice phrase.
+Airborne machines have less ground/mechanical presence. The selected character
+determines the player's sound, rather than assuming Marvin is always selected.
 
 Seated spectator positions define small sound zones. The nearest four zones
 play recorded sports crowd chatter/cheering, swelling when racers pass. Storm
@@ -22,8 +40,7 @@ The listener is at the player's position, with stereo orientation from the
 camera. This preserves nearby sound in an overhead view. Robot sources fade to
 zero at 24 metres and spectator zones at 28 metres; distance gain and stereo pan
 are smoothed over 120 ms. This is distance-based stereo, not binaural HRTF or
-wall-occlusion simulation. Gain budgets reserve headroom even with eight nearby
-sources. No music, dialogue, horns or impact effects are added in this pass.
+wall-occlusion simulation. Gain budgets reserve headroom with the eight loop sources and two expressive players. No music is added.
 
 Sounds run only after the countdown while the player's race is active. Intro,
 countdown, pause, loss of app focus, restart, menus and player finish stop the
@@ -33,12 +50,12 @@ reported and retried at most once every two seconds; they do not stop gameplay.
 
 ## Performance and assets
 
-Eight fixed AVAudioPlayerNode/AVAudioUnitVarispeed chains feed AVAudioEngine's
-stereo mixer. Audio renders on Apple's audio thread; gameplay only updates
-small gain/pan/rate parameters. All six loops are decoded when the dirt level
-loads. No per-frame synthesis, downloads, decoding or growing sound-node list.
+Eight fixed AVAudioPlayerNode/AVAudioUnitVarispeed loop chains plus two fixed
+one-shot players feed AVAudioEngine's stereo mixer. Audio renders on Apple's audio thread; gameplay only updates
+small gain/pan/rate parameters. All six loops and 36 expression clips are decoded when the dirt level loads. No per-frame synthesis, downloads, decoding or growing sound-node list.
 The original motor synthesis and crowd processing recipe lives in
-`scripts/audio/prepare.py`. This offline script requires the source downloads
+`scripts/audio/prepare.py`; the original character generator is
+`scripts/audio/characters.py`. This offline script requires the source downloads
 and ffmpeg; it is not part of normal builds. Bundled WAVs work offline.
 
 Apple reference: https://developer.apple.com/documentation/avfaudio/avaudioplayernode
@@ -59,17 +76,18 @@ left/right and rotated-listener pan, out-of-range silence, initial countdown,
 race start, suspension, restart and menu teardown. Live racing benchmarks
 include the audio update and actual audio engine playback.
 
-Final native run (`../marvin-town-planning/race-audio-final`) passes, including
-mute/unmute and completion of three laps through the race lifecycle gate.
-Rendered peak is 0.0503 and RMS 0.00501 across the scripted 40-second fixture;
-no non-finite samples or clipping. The fixture demonstrates moderate throttle
-ramps, not the worst-case eight-source loudness. The mix's conservative maximum
-gain budget also leaves headroom at full motion. Preview MP3 preserves the
-rendered level; it has not been loudness-normalized to exaggerate the result.
+The native regression also checks expression cooldowns, distance eligibility,
+variant rotation, effort/startle selection, the two-expression voice cap and
+teardown. The isolated comparison preview plays R2-D2, BB-8, WALL-E, then Marvin;
+each has acknowledgement, effort and startled phrases. Automated checks verify
+playback and numerical signal integrity, not subjective resemblance to the films.
 
-The live 45-second 1920×1080 M2 Metal benchmark (`race-audio-performance`)
-confirms `audioActive: true`: 59.975 render callbacks/s, p95 interval 17.415 ms,
-CPU update p95 1.371 ms, two intervals above 25 ms, none above 50 ms. Activity
-Monitor was paused/restored and no builds, audio exports or other simulations
-ran concurrently. These callback measurements are not GPU/display timestamps.
-The app builds and packages all sound files and About credits successfully.
+Validation for this revision: the 40-second native render passed with ten
+expressions, peak 0.2026 and RMS 0.0321; all 36 clips have silent boundaries and
+no clipped samples. The 45-second 1920×1080 Apple M2 live race played 16
+expressions with audio active: 59.975 render callbacks/s, p95 interval 17.434 ms,
+CPU update p95 1.352 ms, one interval over 25 ms and none over 50 ms. Activity
+Monitor was paused/restored; no build or media encoding ran concurrently.
+These are SceneKit callback measurements, not GPU/display presentation timing.
+Artifacts: `../marvin-town-planning/character-audio` and
+`../marvin-town-planning/character-audio-performance`.

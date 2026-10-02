@@ -243,6 +243,7 @@ extension AppController {
             report["visiblePeople"]=dirtWorld.town.visiblePopulation
             report["residentUpdates"]=dirtWorld.town.residents?.updateStatistics ?? [:]
             report["audioActive"]=raceAudio?.active ?? false
+            report["expressionsPlayed"]=raceAudio?.expressionCount ?? 0
             report["metalRenderer"]=view.renderingAPI == .metal
             report["gpuDevice"]=view.device?.name ?? "Unavailable"
             report["daylightFraction"]=dirtWorld.sky.daylight.fraction

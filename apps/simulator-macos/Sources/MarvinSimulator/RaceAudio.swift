@@ -8,7 +8,7 @@ struct SpectatorSoundZone {
     var stormPeople:Int
 }
 
-/// Eight preloaded stereo voices; AVAudioEngine renders on its audio thread.
+/// Eight loop voices and two bounded expressive voices; AVAudioEngine renders on its audio thread.
 /// The listener follows the player and camera orientation, never the high camera's altitude.
 final class RaceAudio {
     struct Mix {
@@ -29,13 +29,27 @@ final class RaceAudio {
     private let format=AVAudioFormat(standardFormatWithSampleRate:48000,channels:2)!
     private let voices=(0..<8).map{_ in Voice()}
     private var buffers:[AVAudioPCMBuffer]=[]
+    private var expressions:[String:AVAudioPCMBuffer]=[:]
+    private final class Utterance {
+        let player=AVAudioPlayerNode()
+        var robot = -1
+        var remaining=0.0
+    }
+    private let utterances=(0..<2).map{_ in Utterance()}
+    private var director=RaceVoiceDirector()
+    private(set) var expressionCount=0
+    var speakingCount:Int { utterances.filter{$0.remaining>0}.count }
     private var currentLineup:[RacePerformance.Character]=[]
     private var currentStorm=false,playing=false
     private var retryAt=0.0
     private(set) var lastMix=[Mix](repeating:Mix(),count:8)
     var active:Bool { playing && engine.isRunning }
     init(resources:URL,offline:Bool=false) throws {
-        for name in ["marvin","r2d2","bb8","wallE","crowd","sparse-crowd"] {
+        let loops=["marvin","r2d2","bb8","wallE","crowd","sparse-crowd"]
+        let names=loops+loops.prefix(4).flatMap { name in
+            ["acknowledge","effort","startle"].flatMap { mood in (0..<3).map { "\(name)-\(mood)-\($0)" } }
+        }
+        for name in names {
             let file=try AVAudioFile(forReading:resources.appendingPathComponent("Audio/\(name).wav"))
             let mono=AVAudioPCMBuffer(pcmFormat:file.processingFormat,frameCapacity:AVAudioFrameCount(file.length))!
             try file.read(into:mono)
@@ -45,7 +59,7 @@ final class RaceAudio {
             for channel in 0..<2 {
                 stereo.floatChannelData![channel].update(from:mono.floatChannelData![0],count:Int(mono.frameLength))
             }
-            buffers.append(stereo)
+            if loops.contains(name) { buffers.append(stereo) } else { expressions[name]=stereo }
         }
         for voice in voices {
             engine.attach(voice.player);engine.attach(voice.pitch)
@@ -53,13 +67,19 @@ final class RaceAudio {
             engine.connect(voice.pitch,to:engine.mainMixerNode,format:format)
             voice.player.volume=0
         }
-        engine.mainMixerNode.outputVolume=0.75
+        for voice in utterances {
+            engine.attach(voice.player);engine.connect(voice.player,to:engine.mainMixerNode,format:format)
+            voice.player.volume=0
+        }
+        engine.mainMixerNode.outputVolume=0.65
         if offline { try engine.enableManualRenderingMode(.offline,format:format,maximumFrameCount:1024) }
         engine.prepare()
     }
     func stop() {
         guard playing else { return }
         for voice in voices { voice.player.volume=0;voice.player.stop();voice.mix=Mix() }
+        for voice in utterances { voice.player.stop();voice.remaining=0;voice.robot = -1 }
+        director=RaceVoiceDirector()
         engine.pause();playing=false;lastMix=[Mix](repeating:Mix(),count:8)
     }
     func update(states:[Simulation],lineup:[RacePerformance.Character],zones:[SpectatorSoundZone],heading:Double,
@@ -81,11 +101,12 @@ final class RaceAudio {
             catch { retryAt=now+2;NSLog("Race audio output unavailable: %@",String(describing:error));return }
         }
         let listener=SIMD2(states[0].x,states[0].z)
+        updateExpressions(states:states,lineup:lineup,listener:listener,heading:heading,dt:dt)
         var target=[Mix](repeating:Mix(),count:8)
         for i in 0..<4 {
             let s=states[i],motion=min(1,s.groundSpeed/10),turn=min(1,abs(s.angularVelocity)/4)
             target[i]=Self.spatial(source:SIMD2(s.x,s.z),listener:listener,heading:heading,range:24)
-            target[i].gain *= Float((i==0 ? 0.22:0.17)*(0.10+0.78*motion+0.12*turn))
+            target[i].gain *= Float((i==0 ? 0.18:0.14)*(0.10+0.78*motion+0.12*turn))
             target[i].rate=Float(0.72+motion*0.68+turn*0.08)
             if s.airborne { target[i].gain *= 0.6 }
         }
@@ -109,6 +130,28 @@ final class RaceAudio {
             voice.player.volume=voice.mix.gain;voice.player.pan=voice.mix.pan;voice.pitch.rate=voice.mix.rate
             lastMix[i]=voice.mix
         }
+    }
+    private func updateExpressions(states:[Simulation],lineup:[RacePerformance.Character],listener:SIMD2<Double>,heading:Double,dt:Double) {
+        for voice in utterances where voice.remaining>0 {
+            voice.remaining=max(0,voice.remaining-dt)
+            if voice.remaining==0 { voice.player.stop();voice.robot = -1 }
+        }
+        if let event=director.advance(states:states,dt:dt),let slot=utterances.first(where:{$0.remaining==0}) {
+            playExpression(character:lineup[event.robot],mood:event.mood,variant:event.variant,robot:event.robot,slot:slot)
+        }
+        for voice in utterances where voice.remaining>0 {
+            let s=states[voice.robot]
+            let mix=Self.spatial(source:SIMD2(s.x,s.z),listener:listener,heading:heading,range:24)
+            voice.player.volume=mix.gain*(voice.robot==0 ? 0.42:0.30)
+            voice.player.pan=mix.pan
+        }
+    }
+    private func playExpression(character:RacePerformance.Character,mood:String,variant:Int,robot:Int,slot:Utterance) {
+        let name=["marvin","r2d2","bb8","wallE"][character.rawValue]
+        guard let buffer=expressions["\(name)-\(mood)-\(variant)"] else { return }
+        slot.player.stop();slot.robot=robot
+        slot.remaining=Double(buffer.frameLength)/buffer.format.sampleRate
+        slot.player.scheduleBuffer(buffer,at:nil);slot.player.play();expressionCount+=1
     }
 }
 
