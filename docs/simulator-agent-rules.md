@@ -187,6 +187,9 @@ Historical claims of “final” in these documents are not user acceptance.
 - Both exits need a gradual track shoulder and continuous track-to-ramp material
   and shading. Review track, ramp, and surrounding ground together at matching
   aerial scale and driving height; fixing one join must not introduce another.
+- Do not accept a remaining light band as a polish caveat. Maintain continuous
+  texture scale across the lane, berm, shoulder, and both ramps; restarting a
+  full texture on a narrow shoulder creates an artificial stripe.
 - Compare both exits in actual aerial captures and have the independent judge
   assess the full transitions, including physical support and visible seams.
 

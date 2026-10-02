@@ -96,15 +96,22 @@ The author and independent Astra Ultra judge viewed both final aerials at
 matching 18 m camera height, gate flanks, and service track/infield/shifted views.
 The judge accepts the targeted terrain and camera repairs: supported continuous
 shoulders, no visible holes, service teeth, detached patch, or black mouth line.
-A lighter shoulder band remains visible at the joins; this is not a claim of
-invisible materials or AAA art parity.
+The subsequent material correction removes the artificial smooth pale strip at
+both mouths. Each narrow shoulder previously restarted V=0…1, compressing the
+texture into 15 cm instead of the lane’s 3.9 m. Lane, berms, shoulders and both
+ramps now share continuous offset-based texture coordinates at the lane scale.
+The native release build and ramp/camera preflight pass after this UV-only change;
+geometry and collision support are unchanged. Aerial and low-angle views were
+recaptured and inspected. The independent Astra Ultra judge accepted both joins
+after reviewing nine native captures, with no new visible seam, hole or detached
+surface. This is a targeted seam fix, not a claim of AAA art parity.
 
 ![City exit aerial](city-exit-aerial.png)
 ![Service exit aerial](service-exit-aerial.png)
 
 Full native captures and retained failures are under
 `/Users/thomi/Projects/marvin-town-planning/round2/`; final ramp captures are in
-`ramps-final`, camera routes in `verified-v4`, and gate driving in `escape-final`.
+`ramps-continuous-uv` (previous comparison in `ramps-final`), camera routes in `verified-v4`, and gate driving in `escape-final`.
 
 ## Town frame-rate measurement
 
@@ -133,3 +140,11 @@ an equivalent controlled before/after comparison.
 Individual reports and `performance-summary.json` are included here. Raw frame
 and update timelines remain beside each local benchmark report in `round2`.
 Audio perception is not independently approved.
+
+### UV correction performance check
+
+A further 45-second clear-town drive after the UV correction used the same M2,
+Metal 1920×1080, daylight 0.5 and active audio. The first 3 seconds were excluded.
+It measured 59.953 FPS, P99 18.00 ms, two intervals above 25 ms and none above
+50 ms (`performance-continuous-uv.json`). These remain SceneKit callback timings,
+not display presentation measurements or evidence of constant 60 FPS on an M4.

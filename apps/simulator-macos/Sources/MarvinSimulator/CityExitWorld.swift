@@ -52,7 +52,7 @@ extension DirtWorld {
             let p=SIMD2(point.x,point.y),local=CityExit.local(p),along=local.x,out=local.y
             let height=heightAt(p)
             v.append(SCNVector3(p.x,height,p.y));uv.append(CGPoint(x:p.x/4,y:-p.y/4))
-            clayUV.append(CGPoint(x:Double(start+i)/Double(DirtCourse.sampleCount),y:1+Double(j)*0.08/(DirtCourse.fenceOffset-DirtCourse.width-DirtCourse.bermWidth)))
+            clayUV.append(CGPoint(x:Double(start+i)/Double(DirtCourse.sampleCount),y:(DirtCourse.fenceOffset+Double(j)*0.08+DirtCourse.width)/(2*DirtCourse.width)))
             let epsilon=0.025
             let normal=simd_normalize(SIMD3(heightAt(p-SIMD2(epsilon,0))-heightAt(p+SIMD2(epsilon,0)),epsilon*2,heightAt(p-SIMD2(0,epsilon))-heightAt(p+SIMD2(0,epsilon))))
             n.append(SCNVector3(normal.x,normal.y,normal.z))

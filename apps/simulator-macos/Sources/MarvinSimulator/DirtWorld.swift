@@ -104,6 +104,9 @@ final class DirtWorld {
         _surface.diffuse.rgb = float3(0.34,0.205,0.145)
                             + clayDetail * float3(0.58,0.44,0.33);
         """]
+        // Lane, berms, shoulders and exit ramps share one 3.9 m cross-course
+        // texture scale. Restarting V on each strip made the 15 cm shoulders
+        // look like a pale band and carried that compressed detail into ramps.
         let ring = courseSurface(inner: -DirtCourse.width, outer: DirtCourse.width, y: 0)
         ring.materials = [clay]
         let lane = SCNNode(geometry:ring); lane.name = "Compacted race surface"
@@ -297,7 +300,7 @@ final class DirtWorld {
             n /= simd_length(n);normals.append(SCNVector3(n.x,n.y,n.z))
             uv.append(CGPoint(x:x/4,y:-z/4))
             let projection=DirtCourse.projection(x:x,z:z)
-            clayUV.append(CGPoint(x:projection.phase/(2 * .pi),y:(projection.offset+DirtCourse.fenceOffset)/(DirtCourse.fenceOffset-DirtCourse.width-DirtCourse.bermWidth)))
+            clayUV.append(CGPoint(x:projection.phase/(2 * .pi),y:(projection.offset+DirtCourse.width)/(2*DirtCourse.width)))
             let run=max(0,min(1,(projection.distance-DirtCourse.fenceOffset)/3.6))
             let side=max(0,min(1,(abs(x-DirtCourse.serviceEntryX)-1.0)/2.0))
             let noise=CityMaterials.surfaceNoise(x/12,z/12,cells:7,seed:197)
@@ -317,7 +320,7 @@ final class DirtWorld {
                 p=SIMD2(edge.x,edge.z+Double(max(0,j-2))*0.08)
             }
             add(p.x,p.y)
-            clayUV[clayUV.count-1]=CGPoint(x:Double(start+i)/Double(DirtCourse.sampleCount),y:-(p.y-boundaryPoint(start+i).y)/(DirtCourse.fenceOffset-DirtCourse.width-DirtCourse.bermWidth))
+            clayUV[clayUV.count-1]=CGPoint(x:Double(start+i)/Double(DirtCourse.sampleCount),y:(DirtCourse.width-DirtCourse.fenceOffset-(p.y-boundaryPoint(start+i).y))/(2*DirtCourse.width))
         }}
         for j in 0..<nz { for i in 0..<nx {
             let a=Int32(j*(nx+1)+i),b=a+1,c=a+Int32(nx+1),d=c+1
@@ -440,7 +443,7 @@ final class DirtWorld {
                 let p = outlines[j][i]
                 let rut = y < 0 ? 0 : y == 0 ? 0.0015*sin(across*180 + sin(phase*9)*0.8)*sin(across * .pi) : sin(across * .pi)*y
                 let height = DirtCourse.height(x:p.x,z:p.y) + (y == 0 ? rut : 0)
-                points.append(SCNVector3(p.x, height, p.y)); uv.append(CGPoint(x: Double(i)/Double(segments),y:across))
+                points.append(SCNVector3(p.x, height, p.y)); uv.append(CGPoint(x: Double(i)/Double(segments),y:(inner+(outer-inner)*across+DirtCourse.width)/(2*DirtCourse.width)))
                 if i < segments && j < strips {
                     let a = Int32(i*(strips+1)+j), b = a+Int32(strips+1)
                     let midpoint=(outlines[j][i]+outlines[j][i+1])*0.5
