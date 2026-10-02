@@ -13,6 +13,31 @@ extension AppController {
             do {
                 try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
                 try saveTownFrame("restored-window",at:directory)
+                checks["fpsReadoutLive"]=(frameRateHUD.framesPerSecond ?? 0)>0 && !frameRateHUD.isHidden
+                checks["fpsPassesMouseInput"]=frameRateHUD.hitTest(.zero)==nil
+                // Composite the native view layers, since SCNView.snapshot omits
+                // AppKit overlays. Preserve their actual layout and rendered text.
+                let image=NSImage(size:view.bounds.size)
+                image.lockFocus();view.snapshot().draw(in:view.bounds)
+                for overlay in [raceHUD as NSView,frameRateHUD as NSView] where !overlay.isHidden {
+                    NSGraphicsContext.saveGraphicsState()
+                    let transform=NSAffineTransform()
+                    transform.translateX(by:overlay.frame.minX,yBy:overlay.frame.minY)
+                    if overlay.isFlipped {
+                        transform.translateX(by:0,yBy:overlay.bounds.height)
+                        transform.scaleX(by:1,yBy:-1)
+                    }
+                    transform.concat()
+                    let context=NSGraphicsContext.current!
+                    NSGraphicsContext.current=NSGraphicsContext(cgContext:context.cgContext,flipped:overlay.isFlipped)
+                    overlay.draw(overlay.bounds)
+                    NSGraphicsContext.current=context
+                    NSGraphicsContext.restoreGraphicsState()
+                }
+                image.unlockFocus()
+                if let tiff=image.tiffRepresentation,let bitmap=NSBitmapImageRep(data:tiff),let png=bitmap.representation(using:.png,properties:[:]) {
+                    try png.write(to:directory.appendingPathComponent("fps-overlay.png"))
+                }
                 let report:[String:Any]=["checks":checks,"passed":checks.values.allSatisfy{$0}]
                 try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("lifecycle.json"))
                 print("Display-link lifecycle: \(checks)")
@@ -47,11 +72,14 @@ extension AppController {
                                 checks["hiddenStopsAudio"]=self.raceAudio?.active==false
                                 later(1.0) {
                                     checks["hiddenFreezesClock"]=self.race.elapsed==hidden
+                                    let resumedAt=ProcessInfo.processInfo.systemUptime
                                     self.window.deminiaturize(nil)
                                     self.window.makeKeyAndOrderFront(nil);NSApp.activate(ignoringOtherApps:true)
-                                    later(0.5) {
+                                    later(0.75) {
                                         let advance=self.race.elapsed-hidden
-                                        checks["restoreWithoutCatchup"]=advance>0.15 && advance<0.8
+                                        let restoredWall=ProcessInfo.processInfo.systemUptime-resumedAt
+                                        checks["restoreWithoutCatchup"]=advance>0.15 && advance<restoredWall+0.1
+                                        print("Restore race delta: \(advance), visible wall interval: \(restoredWall)")
                                         checks["restoredAudio"]=self.raceAudio?.active==true
                                         finish()
                                     }

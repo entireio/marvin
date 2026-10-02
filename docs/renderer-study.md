@@ -218,3 +218,13 @@ invalidates either driver. The normal-clock native lifecycle check
 menu, asynchronous loading, pause/resume and actual minimize/restore. The
 restored frame was inspected. This closes a display-link suspension hazard;
 the reported intermittent town stutter remains unresolved.
+
+### Live FPS overlay
+
+Gameplay now shows a small bottom-right FPS readout, including manual town
+exploration. It counts SceneKit render callbacks over half-second windows,
+independent of the simulation timer, and clears old samples across window
+visibility changes. It passes pointer input through and follows the existing
+HUD hiding during automated postrace departures. This is render callback rate,
+not GPU time or display-presentation timing. Native lifecycle validation also
+checks that the FPS value is live and that the overlay does not intercept input.

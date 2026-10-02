@@ -342,6 +342,9 @@ Historical claims of “final” in these documents are not user acceptance.
 
 ## 9. Apple rendering and frame pacing
 
+- Show a live FPS readout during gameplay, including manual town exploration.
+  Measure rendered frames rather than the simulation update rate.
+
 - Investigate Apple's recommended 3D/game frameworks and rendering features and
   use suitable GPU acceleration. Do not assume a framework name proves that all
   workloads are accelerated or that a rewrite will improve the game.

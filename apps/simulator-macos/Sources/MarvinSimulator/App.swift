@@ -22,6 +22,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var loadingHeartbeats=0
     let loadingView=LevelLoadingView()
     let raceHUD = RaceHUD()
+    let frameRateHUD = FrameRateHUD()
     var race = DirtRace()
     var racePhysics = DirtRacePhysics()
     var opponent = DirtOpponent()
@@ -150,6 +151,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             self.cameraDistance = max(1.6, min(9, self.cameraDistance+Double(delta)*0.035))
         }
         installContentOverlay(mainMenu)
+        frameRateHUD.isHidden=true;installContentOverlay(frameRateHUD)
+        view.delegate=frameRateHUD
         mainMenu.onSandbox = { [weak self] in self?.startSandbox() }
         mainMenu.onDirtTrack = { [weak self] in self?.loadDirtTrack() }
         makeMenu()
@@ -431,6 +434,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
         updateRaceAudio(dt:step,advancing:advancing)
         hud.needsDisplay = true
+        frameRateHUD.isHidden = !inSandbox || (isDirtTrack && racePhysics.escape.active)
         if smokeDirectory != nil { smokeTest() }
     }
     @objc func showMainMenu(_ sender: Any?) {
@@ -438,6 +442,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         window.title = "Marvin · Playground"
         mainMenu.portrait.rendersContinuously = true
         inSandbox = false; dirtIntro = nil; view.clearInput()
+        frameRateHUD.isHidden=true
         hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; window.toolbar?.isVisible = false
         mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
         mainMenu.stage.rootNode.addChildNode(robot.root)
@@ -669,6 +674,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         setRaceControlsHidden(racePhysics.escape.active)
     }
     func setRaceControlsHidden(_ hidden:Bool) {
+        frameRateHUD.isHidden=hidden
         raceHUD.isHidden=hidden
         hud.isHidden=true
         if window.toolbar?.isVisible == hidden {
@@ -697,15 +703,18 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     func windowDidResignKey(_ notification: Notification) { view.clearInput() }
     func windowDidChangeOcclusionState(_ notification: Notification) {
+        frameRateHUD.resetSamples()
         // NSView display links suspend while hidden. Never count that suspended
         // interval as race time when the window becomes visible again.
         lastTime=ProcessInfo.processInfo.systemUptime
         if !window.occlusionState.contains(.visible) { view.clearInput();raceAudio?.stop() }
     }
     func windowDidMiniaturize(_ notification: Notification) {
+        frameRateHUD.resetSamples()
         lastTime=ProcessInfo.processInfo.systemUptime;view.clearInput();raceAudio?.stop()
     }
     func windowDidDeminiaturize(_ notification: Notification) {
+        frameRateHUD.resetSamples()
         lastTime=ProcessInfo.processInfo.systemUptime
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
