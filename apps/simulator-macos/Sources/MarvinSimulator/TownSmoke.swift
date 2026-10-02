@@ -217,7 +217,7 @@ extension AppController {
         let aerial = !raceCameraLocked && townBenchmarkRoute.isEmpty && !CommandLine.arguments.contains("--benchmark-chase-only") && elapsed.truncatingRemainder(dividingBy:24)>18
         if aerial {
             world.camera.position=SCNVector3(0,42,-44);world.camera.look(at:SCNVector3(0,0,0),up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
-        } else { updateCamera(snap:true) }
+        } else { updateCamera(snap:false,dt:dt) }
         var detailPlayer=SIMD2(simulation.x,simulation.z)
         if CommandLine.arguments.contains("--outer-town-survey") {
             let fraction=0.10+0.85*min(1,elapsed/45)

@@ -30,37 +30,57 @@ def save(name,x):
 def fit(x,n,rate=1):
     return np.interp((np.arange(n)*rate)%len(x),np.arange(len(x)),x)
 def workshop(name):return read(SOURCE/'workshop'/('workshop - '+name+'.wav'))
-drill=workshop('drill long')[int(.5*RATE):int(3.8*RATE)]
 machine=workshop('machine')[3*RATE:10*RATE]
-ratchet=workshop('ratchet1'); scrape=workshop('quiet scrape')
-# Low gear has weight; high gear brings a separate mechanism, not a whistle.
+scrape=workshop('quiet scrape')
+motor=read(SOURCE/'electric-motor.mp3')
+scooter=read(SOURCE/'electric-scooter.mp3')
+# Sustained electromechanical recordings replace the rejected drill and ratchet.
+# Smooth gain before looping: source throttle changes must not fight game input.
+def level(x,rms=.22):
+    x=steady(x);return x*min(rms/(np.sqrt(np.mean(x*x))+1e-9),.72/(abs(x).max()+1e-9))
+def steady(x):
+    envelope=np.sqrt(ndimage.gaussian_filter1d(x*x,RATE*.08)+1e-9)
+    return x/np.maximum(envelope,1e-6)
+motor=steady(motor[int(.6*RATE):int(10.8*RATE)])
+scooter=steady(scooter[int(.55*RATE):int(1.75*RATE)])
+def clean(x,lo,hi,rms):
+    # Linear mastering preserves machinery detail without saturation harmonics.
+    x=band(x,lo,hi);x-=x.mean()
+    return x*min(rms/(np.sqrt(np.mean(x*x))+1e-9),.72/(abs(x).max()+1e-9))
 for i,name in enumerate(names):
-    n=RATE*6;t=np.arange(n)/RATE
-    base=fit(drill if i<2 else machine,n,[.57,.88,.73,.46][i])
-    secondary=fit(machine if i<2 else drill,n,[.71,.91,.42,.38][i])
-    low=band(base,55,[1600,2100,800,1300][i])
-    low+=.24*band(secondary,45,650)
-    if i==3:low*=.86+.14*np.cos(2*np.pi*19*t) # tracked transmission flutter
-    if i==2:low=band(low,45,720) # spherical drive: low rolling mass
-    save(name,norm(loop(low)))
-    high=band(fit(drill,n,[.82,1.2,.64,.67][i]),130,[2500,2900,1250,1900][i])
-    high+=.42*band(fit(machine,n,.9+i*.12),80,1100)
-    save(name+'-high',norm(loop(high),.22))
-    contact=fit(ratchet if i in (0,3) else scrape,n,[1.25,.9,.66,.74][i])
-    save(name+'-ground',norm(loop(band(contact,100,[2100,1700,1100,2400][i])),.18))
-    sand=band(rng.normal(size=n),160,2200)*(0.7+0.3*ndimage.gaussian_filter1d(abs(fit(scrape,n,.8)),480))
-    save(name+'-sand',norm(loop(sand),.16))
-    # Electric overdrive: broadband thrust, textured by recorded rotating machinery.
-    pressure=band(rng.normal(size=n),65,1900)
-    turbine=band(fit(drill,n,[.91,1.13,.7,.63][i]),120,2600)
-    boost=norm(turbine,.18)*.65+norm(pressure,.16)*.55
-    save(name+'-boost',norm(loop(boost),.23))
-    for action,duration in [('boost-on',.32),('boost-off',.48)]:
+    n=RATE*9;t=np.arange(n)/RATE
+    core=fit(motor,n,[.67,1.08,.43,.53][i])
+    wheel=fit(scooter,n,[.55,.83,.39,.42][i])
+    low=clean(core,45,[800,1150,500,700][i],.17)+clean(wheel,55,420,.06)
+    high=clean(core,85,[1250,1700,800,1050][i],.17)+clean(wheel,100,[950,1400,600,800][i],.07)
+    # WALL-E carries low irregular tread weight; BB-8 remains a smooth roller.
+    if i==3:
+        flutter=.94+.035*np.sin(2*np.pi*13*t)+.025*np.sin(2*np.pi*21.3*t)
+        low*=flutter;high*=flutter
+    save(name,loop(level(clean(low,40,[390,480,300,360][i],.22))))
+    save(name+'-high',loop(level(clean(high,[440,540,340,405][i],2200,.22))))
+    # Ground is subdued rolling granularity, with no scraping/ratchet recording.
+    grit=band(rng.normal(size=n),80,[900,1000,650,850][i])
+    envelope=ndimage.gaussian_filter1d(rng.uniform(size=n),RATE*.004)
+    contact=grit*(.5+envelope)
+    if i==3: contact*=.72+.28*np.sin(2*np.pi*17*t)**2
+    save(name+'-ground',loop(clean(contact,65,1200,.075)))
+    sand=band(rng.normal(size=n),130,1700)
+    save(name+'-sand',loop(clean(sand,110,1800,.12)))
+    # Boost is a broad pressure rush with a low mechanical body. No drill,
+    # narrow squeal, periodic tremolo or hard onset; hold/release share timbre.
+    air=clean(rng.normal(size=n),55,[1350,1750,1100,1250][i],.20)
+    body=clean(fit(motor,n,[.49,.68,.35,.41][i]),40,420,.07)
+    boost=air+body
+    save(name+'-boost',loop(clean(boost,40,2100,.23)))
+    for action,duration in [('boost-on',.38),('boost-off',.62)]:
         m=int(duration*RATE);u=np.linspace(0,1,m)
-        shape=(1-np.exp(-u*40))*np.exp(-u*(5 if action=='boost-on' else 7))
-        y=fit(boost,m,1.25 if action=='boost-on' else .72)
-        y+=.3*band(fit(machine,m,.5),60,550)
-        save(name+'-'+action,fade(norm(y,.24)*shape,180))
+        shape=np.sin(np.pi*u)**2*np.exp(-u*(1.4 if action=='boost-on' else 2.2))
+        y=clean(rng.normal(size=m),65,1500 if action=='boost-on' else 850,.22)
+        y+=clean(fit(motor,m,.4),40,350,.035)
+        save(name+'-'+action,fade(y*shape,960))
+if '--mechanical-only' in sys.argv:
+    print('Rendered replacement drivetrains, restrained rolling contact and pressure boost.');sys.exit(0)
 # Long unsynchronized ambience loops; no short white-noise repetition.
 n=RATE*29;t=np.arange(n)/RATE
 wind=band(rng.normal(size=n),45,1300)

@@ -1,0 +1,43 @@
+[0/1] Planning build
+Building for production...
+[0/2] Write swift-version--1AB21518FC5DEDBE.txt
+[2/3] Compiling SimulationChecks BB8StallChecks.swift
+[2/4] Write Objects.LinkFileList
+[3/4] Linking SimulationChecks
+Build of product 'SimulationChecks' complete! (4.92s)
+PASS: full drivetrain speed on town/dune sand; neutral curve gaze off-track and during gate departure
+PASS: terrain landings do not add kinetic energy; storm AI previews accumulating drifts; clear-weather boost remains available
+Weather draws: 1006/10000 storms; independent draws permit consecutive storms
+Maximum drift interpolation error: 0.004014786291041126
+Storm checks: rendered/collision depth error 0.004014786291041126m; identical 30/60/120 Hz physics
+Cooldown: PASS (full extra lap, reverse rejection, frozen results)
+Dunes: PASS, peak 9.1109090562451m, maximum sampled slope 32.88894152354478 degrees
+Sand cache: 64 tiles, 324 allocations
+Dune deformation: PASS, cut -0.034855835139751434m, bank 0.019387684762477875m; contact, GPU snapshots, seams, cache eviction and reset
+Navigation: COURSE/TOWN/DUNES both directions, boundary hysteresis, smooth 30/60/120 Hz overview: PASS
+City exit center SIMD2<Double>(18.980869107951502, -8.996173829632232), sill 0.4363585437487053
+PASS: powered rolling at sandbox barriers, fences, and during jumps; brake/reset preserved
+PASS: brake help preserves stopping strength and steering in both directions
+PASS: assist input gates, independent switches, line bounds, brake deceleration
+Corner 0.000: manual 0.333, assisted 0.253; no fence contacts
+Corner 0.524: manual 0.071, assisted 0.098; no fence contacts
+Corner 1.047: manual 0.237, assisted 0.241; no fence contacts
+Corner 1.571: manual 0.215, assisted 0.307; no fence contacts
+Corner 2.094: manual 0.071, assisted 0.055; no fence contacts
+Corner 2.618: manual 0.114, assisted 0.253; no fence contacts
+Corner 3.142: manual 0.367, assisted 0.061; no fence contacts
+Corner 3.665: manual 0.171, assisted 0.557; no fence contacts
+Corner 4.189: manual 0.323, assisted 0.450; no fence contacts
+Corner 4.712: manual 0.200, assisted 0.163; no fence contacts
+Corner 5.236: manual 0.141, assisted 0.147; no fence contacts
+Corner 5.760: manual 0.401, assisted 0.602; no fence contacts
+Missed braking: contacts 170 -> 98, summed peak error 24.116281684829204 -> 22.596635634473802
+PASS: predictive braking reduces missed-braking contacts; steering-only hands-off behavior is unchanged
+PASS: exact spatial projection agrees with exhaustive scan at 24,499 queries plus overflow fallback
+Coupled race at 30.0 fps: 91.53706416933882, laps 3, contacts 800
+Coupled race at 60.0 fps: 101.49054635106856, laps 3, contacts 3066
+Coupled race at 120.0 fps: 90.33404716161714, laps 3, contacts 2292
+PASS: service opening admits all four chassis in both directions; adjacent and outer fences remain solid
+PASS: triangular tent aisle, overhead clearance, and boosted salvage collisions for all four chassis; 16 seeded parts
+R2-D2 three-lap totals at 30/60/120 fps: [78.26190110394832, 78.26190110394832, 78.26190110394832]
+PASS: simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)

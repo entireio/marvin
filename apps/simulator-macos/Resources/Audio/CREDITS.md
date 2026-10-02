@@ -46,3 +46,16 @@ Wind, sand wash, boost pressure and short race cues are original procedural DSP.
 The original percussion arrangement is not the Star Wars cantina composition.
 Existing vocal performances are shortened and remastered for restrained accents.
 Generator: scripts/audio/soundscape.py, following characters.py.
+
+Second October 2 revision (supersedes drivetrain source descriptions above):
+All four low/high motors now use "motor noise.wav" by scivirus (2018), CC0,
+https://freesound.org/people/scivirus/sounds/435730/
+and "step48v3.wav" by escortmarius (2012), CC0,
+https://freesound.org/people/escortmarius/sounds/140439/
+Public HQ previews, trimmed, gain-stabilized, resampled, filtered, layered and
+crossfaded. Source bytes and hashes: scripts/audio/sources.json.
+Boost uses filtered original pressure noise and a low layer of scivirus's motor.
+Rolling ground and sand textures are original DSP. No drill or ratchet recording
+remains in any drivetrain, boost or ground-contact asset. Workshop ambience and
+cantina percussion retain bart's workshop recordings. Voice assets are unchanged.
+Rebuild this replacement set with soundscape.py SOURCE_DIRECTORY --mechanical-only.

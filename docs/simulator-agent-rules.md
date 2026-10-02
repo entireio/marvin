@@ -180,6 +180,15 @@ Historical claims of “final” in these documents are not user acceptance.
 - Raise/shape track height along the gate to eliminate the triangular gap beneath
   it, and adjust the outside ramp to match. Avoid low or malformed adjacent walls.
 - Test leaving, entering, and roaming town, including all four robot bodies.
+- Apply the same supported, continuous exit terrain and matching mesh treatment
+  to the service-area entrance; inspect both sides and preserve all-chassis access.
+- Service-ramp sand must blend into the infield with soft, irregular shoulders
+  and continuous material mapping, never a visibly separated slab or apron patch.
+- Both exits need a gradual track shoulder and continuous track-to-ramp material
+  and shading. Review track, ramp, and surrounding ground together at matching
+  aerial scale and driving height; fixing one join must not introduce another.
+- Compare both exits in actual aerial captures and have the independent judge
+  assess the full transitions, including physical support and visible seams.
 
 ## 5. Driving, robots, sand, dust, and lighting
 

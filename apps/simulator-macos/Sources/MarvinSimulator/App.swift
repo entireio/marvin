@@ -61,6 +61,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var timer: Timer?, lastTime = ProcessInfo.processInfo.systemUptime
     var raceCameraLocked:Bool { isDirtTrack && race.finished }
     var overviewMotion=OverviewMotion()
+    var freeCameraEye:SCNVector3?
+    var cameraBoomFraction=1.0
     var cameraAim=SCNVector3Zero
     var cameraMode = 1, orbitYaw = 0.65, orbitPitch = 0.5, cameraDistance = 3.5
     var active = true
@@ -82,7 +84,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--navigation-smoke-test", "--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--passage-smoke-test", "--navigation-smoke-test", "--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -268,6 +270,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     timer?.invalidate()
                     let passed=captureTownDeparture(at:URL(fileURLWithPath:directory))
                     exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--passage-smoke-test") {
+                    timer?.invalidate()
+                    let passed=checkPassages(at:URL(fileURLWithPath:directory))
+                    print("Passages: \(passed ? "PASS":"FAIL")");exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--city-escape-smoke-test") {
                     timer?.invalidate()
@@ -559,17 +566,39 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             let p=overviewMotion.eye,q=overviewMotion.aim
             world.camera.position=SCNVector3(p.x,p.y,p.z);cameraAim=SCNVector3(q.x,q.y,q.z)
         } else {
-            let current=world.camera.position,mix:CGFloat=snap ? 1:0.12
-            world.camera.position=SCNVector3(current.x+(desired.x-current.x)*mix,current.y+(desired.y-current.y)*mix,current.z+(desired.z-current.z)*mix)
+            let current=freeCameraEye ?? desired,mix:CGFloat=snap ? 1:CGFloat(1-exp(-7.67*max(0,dt)))
+            let eye=SCNVector3(current.x+(desired.x-current.x)*mix,current.y+(desired.y-current.y)*mix,current.z+(desired.z-current.z)*mix)
+            freeCameraEye=eye
+            world.camera.position=eye
             cameraAim=target
         }
         if isDirtTrack {
             if cameraMode != 2 || world.camera.position.y<cameraAim.y+12 {
-                world.camera.position=dirtWorld.town.clearCamera(from:cameraAim,to:world.camera.position)
+                // Collision starts at the robot, never the look-ahead point which
+                // can already be through a wall during a narrow turn.
+                let pivot=dirtWorld.town.cameraPivot(position:SIMD3(simulation.x,simulation.groundY,simulation.z),chassisHeight:RobotCollisions.profiles[lineup[0].rawValue].height)
+                let eye=dirtWorld.town.terrainCamera(from:pivot,to:world.camera.position),clear=dirtWorld.town.clearCamera(from:pivot,to:eye)
+                func distance(_ p:SCNVector3)->Double { sqrt(pow(Double(p.x-pivot.x),2)+pow(Double(p.y-pivot.y),2)+pow(Double(p.z-pivot.z),2)) }
+                let allowed=min(1,min(distance(clear),dirtWorld.town.cameraRoom(at:pivot,range:distance(eye)))/max(0.001,distance(eye)))
+                if snap || allowed<cameraBoomFraction { cameraBoomFraction=allowed }
+                else { cameraBoomFraction += (allowed-cameraBoomFraction)*(1-exp(-3.5*max(0,dt))) }
+                let f=CGFloat(cameraBoomFraction)
+                world.camera.position=SCNVector3(pivot.x+(eye.x-pivot.x)*f,pivot.y+(eye.y-pivot.y)*f,pivot.z+(eye.z-pivot.z)*f)
+                // In a tight alley keep the route visible over the chassis rather
+                // than pointing the compressed camera down into its head.
+                let close=CGFloat(1-min(1,distance(world.camera.position)/1.5))
+                let raised=min(pivot.y-0.12,CGFloat(simulation.groundY+RobotCollisions.profiles[lineup[0].rawValue].height+0.45))
+                if cameraMode == 0 {
+                    cameraAim=SCNVector3(target.x,target.y+(raised-target.y)*close,target.z)
+                } else {
+                    let dx=pivot.x-eye.x,dz=pivot.z-eye.z,length=max(0.001,sqrt(dx*dx+dz*dz))
+                    cameraAim=SCNVector3(target.x+dx/length*close,target.y+(raised-target.y)*close,target.z+dz/length*close)
+                }
             }
-            world.camera.position.y=max(world.camera.position.y,CGFloat(DirtCourse.height(x:Double(world.camera.position.x),z:Double(world.camera.position.z))+0.18))
+            if cameraMode == 2 { world.camera.position.y=max(world.camera.position.y,CGFloat(DirtCourse.height(x:Double(world.camera.position.x),z:Double(world.camera.position.z))+0.18)) }
         }
         world.camera.look(at:cameraAim,up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+        if cameraMode == 2 { freeCameraEye=nil;cameraBoomFraction=1 }
         if cameraMode != 2 {
             let p=world.camera.position,q=cameraAim
             overviewMotion.reset(eye:SIMD3(Double(p.x),Double(p.y),Double(p.z)),aim:SIMD3(Double(q.x),Double(q.y),Double(q.z)))

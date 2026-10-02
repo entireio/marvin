@@ -1,0 +1,733 @@
+{
+  "camera" : [
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 4.6020005643367767,
+      "cameraPenetrations" : 0,
+      "expected" : 74,
+      "hz" : 30,
+      "maxFrameStep" : 0.15340001881122589,
+      "minBoom" : 0.58221954137285914,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 74,
+      "route" : 0,
+      "seconds" : 22.133333333333333
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 2.5932066142559052,
+      "cameraPenetrations" : 0,
+      "expected" : 74,
+      "hz" : 30,
+      "maxFrameStep" : 0.086440220475196838,
+      "minBoom" : 0.62444387186569161,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 74,
+      "route" : 0,
+      "seconds" : 22.133333333333333
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 4.6020229160785675,
+      "cameraPenetrations" : 0,
+      "expected" : 74,
+      "hz" : 60,
+      "maxFrameStep" : 0.076700381934642792,
+      "minBoom" : 0.58268795262168604,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 74,
+      "route" : 0,
+      "seconds" : 23.033333333333335
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 2.5096806138753891,
+      "cameraPenetrations" : 0,
+      "expected" : 74,
+      "hz" : 60,
+      "maxFrameStep" : 0.041828010231256485,
+      "minBoom" : 0.6255054680698261,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 74,
+      "route" : 0,
+      "seconds" : 23.033333333333335
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 4.6017640829086304,
+      "cameraPenetrations" : 0,
+      "expected" : 74,
+      "hz" : 120,
+      "maxFrameStep" : 0.038348034024238586,
+      "minBoom" : 0.58257005769517478,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 74,
+      "route" : 0,
+      "seconds" : 22.850000000000001
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 2.5110675394535065,
+      "cameraPenetrations" : 0,
+      "expected" : 74,
+      "hz" : 120,
+      "maxFrameStep" : 0.020925562828779221,
+      "minBoom" : 0.62533273664931943,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 74,
+      "route" : 0,
+      "seconds" : 22.850000000000001
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 4.0278075635433197,
+      "cameraPenetrations" : 0,
+      "expected" : 64,
+      "hz" : 30,
+      "maxFrameStep" : 0.13426025211811066,
+      "minBoom" : 0.54439937702862606,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 64,
+      "route" : 1,
+      "seconds" : 35.600000000000001
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 2.0047511905431747,
+      "cameraPenetrations" : 0,
+      "expected" : 64,
+      "hz" : 30,
+      "maxFrameStep" : 0.066825039684772491,
+      "minBoom" : 0.58154861089858345,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 64,
+      "route" : 1,
+      "seconds" : 35.600000000000001
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 4.0265335142612457,
+      "cameraPenetrations" : 0,
+      "expected" : 64,
+      "hz" : 60,
+      "maxFrameStep" : 0.067108891904354095,
+      "minBoom" : 0.54065531430485847,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 64,
+      "route" : 1,
+      "seconds" : 36.06666666666667
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 1.8692400678992271,
+      "cameraPenetrations" : 0,
+      "expected" : 64,
+      "hz" : 60,
+      "maxFrameStep" : 0.031154001131653786,
+      "minBoom" : 0.57729638252140014,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 64,
+      "route" : 1,
+      "seconds" : 36.06666666666667
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 4.0263023972511292,
+      "cameraPenetrations" : 0,
+      "expected" : 64,
+      "hz" : 120,
+      "maxFrameStep" : 0.033552519977092743,
+      "minBoom" : 0.53994012497795663,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 64,
+      "route" : 1,
+      "seconds" : 35.93333333333333
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 1.8499401211738586,
+      "cameraPenetrations" : 0,
+      "expected" : 64,
+      "hz" : 120,
+      "maxFrameStep" : 0.015416167676448822,
+      "minBoom" : 0.57649670304166256,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 64,
+      "route" : 1,
+      "seconds" : 35.93333333333333
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 3.3279233425855637,
+      "cameraPenetrations" : 0,
+      "expected" : 88,
+      "hz" : 30,
+      "maxFrameStep" : 0.11093077808618546,
+      "minBoom" : 0.54435744160143507,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 88,
+      "route" : 2,
+      "seconds" : 29.933333333333334
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 2.3132671415805817,
+      "cameraPenetrations" : 0,
+      "expected" : 88,
+      "hz" : 30,
+      "maxFrameStep" : 0.077108904719352722,
+      "minBoom" : 0.58309660946715958,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 88,
+      "route" : 2,
+      "seconds" : 29.933333333333334
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 3.3151354640722275,
+      "cameraPenetrations" : 0,
+      "expected" : 88,
+      "hz" : 60,
+      "maxFrameStep" : 0.055252257734537125,
+      "minBoom" : 0.54058503549677472,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 88,
+      "route" : 2,
+      "seconds" : 30.949999999999999
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 2.2909113764762878,
+      "cameraPenetrations" : 0,
+      "expected" : 88,
+      "hz" : 60,
+      "maxFrameStep" : 0.038181856274604797,
+      "minBoom" : 0.57862908993150919,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 88,
+      "route" : 2,
+      "seconds" : 30.949999999999999
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 3.3107373118400574,
+      "cameraPenetrations" : 0,
+      "expected" : 88,
+      "hz" : 120,
+      "maxFrameStep" : 0.027589477598667145,
+      "minBoom" : 0.54056280304318827,
+      "mode" : 0,
+      "passed" : true,
+      "reached" : 88,
+      "route" : 2,
+      "seconds" : 30.850000000000001
+    },
+    {
+      "cameraInsideRobot" : 0,
+      "cameraPeakMetresPerSecond" : 2.2644741833209991,
+      "cameraPenetrations" : 0,
+      "expected" : 88,
+      "hz" : 120,
+      "maxFrameStep" : 0.01887061819434166,
+      "minBoom" : 0.57863813786463614,
+      "mode" : 1,
+      "passed" : true,
+      "reached" : 88,
+      "route" : 2,
+      "seconds" : 30.850000000000001
+    }
+  ],
+  "duneCrestStepFor1cmMovement" : 0.010001250631607752,
+  "lowVestibuleCameraClearAllChassis" : true,
+  "maximumShoulderJoinStepAt5mm" : 0.0022058319721105502,
+  "passed" : true,
+  "routes" : [
+    [
+      [
+        33.375,
+        4.625
+      ],
+      [
+        33.375,
+        4.375
+      ],
+      [
+        33.125,
+        4.375
+      ],
+      [
+        32.875,
+        4.375
+      ],
+      [
+        32.625,
+        4.375
+      ],
+      [
+        32.375,
+        4.375
+      ],
+      [
+        32.125,
+        4.375
+      ],
+      [
+        31.875,
+        4.375
+      ],
+      [
+        31.625,
+        4.375
+      ],
+      [
+        31.375,
+        4.375
+      ],
+      [
+        31.125,
+        4.375
+      ],
+      [
+        30.875,
+        4.375
+      ],
+      [
+        30.625,
+        4.375
+      ],
+      [
+        30.375,
+        4.375
+      ],
+      [
+        30.125,
+        4.375
+      ],
+      [
+        29.875,
+        4.375
+      ],
+      [
+        29.625,
+        4.375
+      ],
+      [
+        29.375,
+        4.375
+      ],
+      [
+        29.125,
+        4.375
+      ],
+      [
+        28.875,
+        4.375
+      ],
+      [
+        28.625,
+        4.375
+      ],
+      [
+        28.375,
+        4.375
+      ],
+      [
+        28.125,
+        4.375
+      ],
+      [
+        27.875,
+        4.375
+      ],
+      [
+        27.625,
+        4.375
+      ],
+      [
+        27.375,
+        4.375
+      ],
+      [
+        27.125,
+        4.375
+      ],
+      [
+        26.875,
+        4.375
+      ],
+      [
+        26.625,
+        4.375
+      ],
+      [
+        26.375,
+        4.375
+      ],
+      [
+        26.125,
+        4.375
+      ],
+      [
+        25.875,
+        4.375
+      ],
+      [
+        25.625,
+        4.375
+      ],
+      [
+        25.375,
+        4.375
+      ],
+      [
+        25.125,
+        4.375
+      ],
+      [
+        24.875,
+        4.375
+      ],
+      [
+        24.625,
+        4.375
+      ],
+      [
+        24.584999999999997,
+        4.4499999999999984
+      ]
+    ],
+    [
+      [
+        10.875,
+        -28.625
+      ],
+      [
+        10.875,
+        -28.375
+      ],
+      [
+        10.875,
+        -28.125
+      ],
+      [
+        10.875,
+        -27.875
+      ],
+      [
+        10.875,
+        -27.625
+      ],
+      [
+        10.875,
+        -27.375
+      ],
+      [
+        10.875,
+        -27.125
+      ],
+      [
+        10.875,
+        -26.875
+      ],
+      [
+        10.875,
+        -26.625
+      ],
+      [
+        10.875,
+        -26.375
+      ],
+      [
+        10.875,
+        -26.125
+      ],
+      [
+        10.875,
+        -25.875
+      ],
+      [
+        10.875,
+        -25.625
+      ],
+      [
+        10.875,
+        -25.375
+      ],
+      [
+        10.875,
+        -25.125
+      ],
+      [
+        10.875,
+        -24.875
+      ],
+      [
+        10.875,
+        -24.625
+      ],
+      [
+        10.875,
+        -24.375
+      ],
+      [
+        10.875,
+        -24.125
+      ],
+      [
+        10.875,
+        -23.875
+      ],
+      [
+        10.875,
+        -23.625
+      ],
+      [
+        10.875,
+        -23.375
+      ],
+      [
+        10.875,
+        -23.125
+      ],
+      [
+        10.875,
+        -22.875
+      ],
+      [
+        10.875,
+        -22.625
+      ],
+      [
+        10.875,
+        -22.375
+      ],
+      [
+        11.125,
+        -22.375
+      ],
+      [
+        11.375,
+        -22.375
+      ],
+      [
+        11.625,
+        -22.375
+      ],
+      [
+        11.875,
+        -22.375
+      ],
+      [
+        12.125,
+        -22.375
+      ],
+      [
+        12.375,
+        -22.375
+      ],
+      [
+        12.306999999999997,
+        -22.449999999999996
+      ]
+    ],
+    [
+      [
+        -11.625,
+        32.375
+      ],
+      [
+        -11.625,
+        32.125
+      ],
+      [
+        -11.625,
+        31.875
+      ],
+      [
+        -11.625,
+        31.625
+      ],
+      [
+        -11.625,
+        31.375
+      ],
+      [
+        -11.625,
+        31.125
+      ],
+      [
+        -11.625,
+        30.875
+      ],
+      [
+        -11.625,
+        30.625
+      ],
+      [
+        -11.625,
+        30.375
+      ],
+      [
+        -11.625,
+        30.125
+      ],
+      [
+        -11.625,
+        29.875
+      ],
+      [
+        -11.625,
+        29.625
+      ],
+      [
+        -11.625,
+        29.375
+      ],
+      [
+        -11.625,
+        29.125
+      ],
+      [
+        -11.625,
+        28.875
+      ],
+      [
+        -11.625,
+        28.625
+      ],
+      [
+        -11.625,
+        28.375
+      ],
+      [
+        -11.625,
+        28.125
+      ],
+      [
+        -11.625,
+        27.875
+      ],
+      [
+        -11.625,
+        27.625
+      ],
+      [
+        -11.625,
+        27.375
+      ],
+      [
+        -11.625,
+        27.125
+      ],
+      [
+        -11.875,
+        27.125
+      ],
+      [
+        -11.875,
+        26.875
+      ],
+      [
+        -11.875,
+        26.625
+      ],
+      [
+        -11.875,
+        26.375
+      ],
+      [
+        -11.875,
+        26.125
+      ],
+      [
+        -11.875,
+        25.875
+      ],
+      [
+        -11.875,
+        25.625
+      ],
+      [
+        -11.875,
+        25.375
+      ],
+      [
+        -11.875,
+        25.125
+      ],
+      [
+        -11.875,
+        24.875
+      ],
+      [
+        -11.875,
+        24.625
+      ],
+      [
+        -11.875,
+        24.375
+      ],
+      [
+        -11.875,
+        24.125
+      ],
+      [
+        -11.875,
+        23.875
+      ],
+      [
+        -11.875,
+        23.625
+      ],
+      [
+        -11.875,
+        23.375
+      ],
+      [
+        -11.625,
+        23.375
+      ],
+      [
+        -11.375,
+        23.375
+      ],
+      [
+        -11.125,
+        23.375
+      ],
+      [
+        -10.875,
+        23.375
+      ],
+      [
+        -10.625,
+        23.375
+      ],
+      [
+        -10.375,
+        23.375
+      ],
+      [
+        -10.385,
+        23.449999999999996
+      ]
+    ]
+  ],
+  "vestibulePivotStepFor25mmMovement" : 0.045433371284801675
+}

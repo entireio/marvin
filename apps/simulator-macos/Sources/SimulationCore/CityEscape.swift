@@ -52,8 +52,12 @@ public enum CityExit {
         let approach=max(0,min(1,(q.y+2.5)/2.3))
         let projection=DirtCourse.projection(x:p.x,z:p.y)
         let bank=DirtCourse.elevation(projection.phase,offset:max(-DirtCourse.width,min(DirtCourse.width,projection.offset)))
-        if q.y<0 { return (bank+0.025+max(0,floor-bank)*approach*approach*(3-2*approach))*across-0.025 }
-        return (floor+0.025)*(1-t*t*(3-2*t))*across-0.025
+        // Side shoulders join the existing raised bank, not the town floor.
+        // Multiplying the whole bank by `across` cut two deep slots at ±4m.
+        let base=DirtCourse.courseHeight(projection.phase,offset:projection.offset)
+        let centerHeight=q.y<0 ? bank+max(0,floor-bank)*approach*approach*(3-2*approach)
+            : (floor+0.025)*(1-t*t*(3-2*t))-0.025
+        return base+(centerHeight-base)*across
     }
 }
 

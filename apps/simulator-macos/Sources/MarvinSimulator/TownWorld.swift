@@ -335,7 +335,6 @@ final class TownWorld {
 
     private func buildGrandstand() {
         let z = finishZ-4.9, p = paint(0,z)
-        cameraBounds.append((SIMD3(-7.5,0,z-2.6),SIMD3(7.5,4.3,z+1.95)))
         // Shops form the plinth, with seating rising toward the back of town.
         // Structural arcade: real recessed bays, not dark rectangles on a solid box.
         p.box(0,0.68,-2.36,12.8,1.36,0.30,0xb49d7e)
@@ -403,7 +402,6 @@ final class TownWorld {
         // readable from the track as well as the opening overview.
         for x in [-8.5,8.5] {
             buildings += 1
-            cameraBounds.append((SIMD3(x-1.3,0,finishZ-7.4),SIMD3(x+1.3,6.6,finishZ-3.6)))
             let q=paint(x,finishZ-5.5)
             q.adobe(0,1.75,0,2.4,3.5,3.6,sand)
             for side in [-1.0,1] { q.door(0,side*1.81,0.70,1.35,dark,sand,side:side) }
@@ -694,9 +692,7 @@ final class TownWorld {
     private func cityCompound(_ x:Double,_ z:Double,w:Double,d:Double,h:Double,index:Int,yaw:Double) {
         let near=max(abs(x),abs(z))<52
         var p=paint(x,z,yaw:yaw)
-        let boundW=w*abs(cos(yaw))+d*abs(sin(yaw)),boundD=d*abs(cos(yaw))+w*abs(sin(yaw))
         buildings += 1
-        cameraBounds.append((SIMD3(x-boundW/2,0,z-boundD/2),SIMD3(x+boundW/2,h+min(w,d)*0.5,z+boundD/2)))
         let colors:[UInt32]=[0xb5a084,0xbdaa8c,0xc4ad8c,0xa58c70,0xc9b89b,0x9e8872,0xb7a890,0xc0a786]
         let chalk:[UInt32]=[0xc9bca5,0xd9ceba,0xb9aa95,0xd2c4a9,0xc5bcb0,0xae987e,0xded3bb,0xb8a58f]
         let palette=near ? colors:chalk
@@ -955,7 +951,6 @@ final class TownWorld {
         for (index,part) in InfieldLayout.parts.enumerated() {
             let p=paint(part.x,part.z,yaw:part.yaw)
             p.salvage(part.width,part.depth,part.height,part.kind,index)
-            cameraBounds.append((SIMD3(part.x-part.width/2,0,part.z-part.depth/2),SIMD3(part.x+part.width/2,part.height,part.z+part.depth/2)))
         }
 
     }
@@ -963,7 +958,6 @@ final class TownWorld {
     private func buildLandmarks() {
         // Spaceport hangar and landing circle, outside the circuit.
         let p=paint(23,14)
-        cameraBounds.append((SIMD3(21.3,0,18.5),SIMD3(30.7,5.1,23.5)))
         p.box(3,0.035,0,9,0.07,12,0x9f947b)
         p.cylinder(3,0.08,1.0,3.7,3.7,0.06,trim)
         p.cylinder(3,0.115,1.0,3.4,3.4,0.015,0xb7a98d)
@@ -1211,7 +1205,6 @@ final class TownWorld {
                 signs.plate("MOS ASTER MARKET",eyebrow:"FOOD  /  WATER  /  OFFWORLD GOODS",footer:"TRADERS COURT",badge:"10",at:SCNVector3(sign.x,3.65,sign.y),width:4.1,height:0.55,yaw:CGFloat(site.yaw),accent:teal,into:root)
             }
             buildings += 1
-            cameraBounds.append((SIMD3(site.center.x-site.halfWidth,0,site.center.y-site.halfDepth),SIMD3(site.center.x+site.halfWidth,6,site.center.y+site.halfDepth)))
         }
     }
     private func buildNeighborhoodUtilities() {
@@ -1654,30 +1647,76 @@ final class TownWorld {
     }
     /// Clip the chase/orbit boom against simple scenery bounds, with a small
     /// near-plane margin, including buildings beyond the race-side district.
+    func cameraPivot(position:SIMD3<Double>,chassisHeight:Double)->SCNVector3 {
+        let head=SCNVector3(position.x,position.y+chassisHeight+0.18,position.z)
+        // The distance field anticipates walls and lintels before their edge
+        // crosses an upward ray; it also covers low beams intersecting head Y.
+        let rise=min(0.72,cameraRoom(at:head,range:0.9))
+        let raised=SCNVector3(position.x,Double(head.y)+rise,position.z)
+        return clearCamera(from:head,to:raised)
+    }
+    /// Nearby wall clearance anticipates corner occlusion before the boom ray
+    /// suddenly crosses a facade. It varies continuously with player position.
+    func cameraRoom(at point:SCNVector3,range:Double=9)->Double {
+        let a=SIMD3<Double>(Double(point.x),Double(point.y),Double(point.z))
+        let radius=max(0.1,(range+0.2)/sqrt(2))
+        let query=RobotCollisions.Body(position:a,profile:.init(mass:1,halfWidth:radius,halfDepth:radius,height:1))
+        var room=Double.infinity
+        for body in (collisionWorld.nearby(query)+InfieldLayout.obstacles) where body.profile.mass != 70 {
+            let d=a-body.position,c=cos(body.heading),s=sin(body.heading),p=body.profile
+            let q=SIMD3(abs(c*d.x-s*d.z)-p.halfWidth,max(-d.y,d.y-p.height),abs(s*d.x+c*d.z)-p.halfDepth)
+            room=min(room,simd_length(simd_max(q,.zero)))
+        }
+        for (low,high) in cameraBounds { room=min(room,simd_length(simd_max(simd_max(low-a,a-high),.zero))) }
+        return max(0,room-0.16)
+    }
+    /// Lift a long dune boom over ridges continuously, rather than collapsing
+    /// it several metres when a shallow ray first becomes tangent to a crest.
+    func terrainCamera(from pivot:SCNVector3,to desired:SCNVector3)->SCNVector3 {
+        guard max(abs(Double(pivot.x)),abs(Double(pivot.z)))>DesertTerrain.townEdge else { return desired }
+        var result=desired
+        for i in 1...64 {
+            let t=Double(i)/64,x=Double(pivot.x)+(Double(desired.x)-Double(pivot.x))*t,z=Double(pivot.z)+(Double(desired.z)-Double(pivot.z))*t
+            let needed=(DirtCourse.height(x:x,z:z)+0.25-Double(pivot.y)*(1-t))/t
+            result.y=max(result.y,CGFloat(needed))
+        }
+        return result
+    }
     func clearCamera(from target:SCNVector3,to desired:SCNVector3)->SCNVector3 {
         let a=SIMD3<Double>(Double(target.x),Double(target.y),Double(target.z))
         let b=SIMD3<Double>(Double(desired.x),Double(desired.y),Double(desired.z)), delta=b-a
         var limit=1.0
-        for (low,high) in cameraBounds {
-            let lo=low-SIMD3(repeating:0.20),hi=high+SIMD3(repeating:0.20)
-            var enter=0.0,leave=1.0,hit=true
+        func clip(_ origin:SIMD3<Double>,_ direction:SIMD3<Double>,_ low:SIMD3<Double>,_ high:SIMD3<Double>) {
+            let lo=low-SIMD3(repeating:0.14),hi=high+SIMD3(repeating:0.14)
+            var enter=0.0,leave=1.0
             for axis in 0..<3 {
-                if abs(delta[axis])<1e-8 {
-                    if a[axis]<lo[axis] || a[axis]>hi[axis] { hit=false;break }
+                if abs(direction[axis])<1e-8 {
+                    if origin[axis]<lo[axis] || origin[axis]>hi[axis] { return }
                 } else {
-                    let t0=(lo[axis]-a[axis])/delta[axis],t1=(hi[axis]-a[axis])/delta[axis]
+                    let t0=(lo[axis]-origin[axis])/direction[axis],t1=(hi[axis]-origin[axis])/direction[axis]
                     enter=max(enter,min(t0,t1));leave=min(leave,max(t0,t1))
-                    if enter>leave { hit=false;break }
+                    if enter>leave { return }
                 }
             }
-            if hit && enter>0 { limit=min(limit,max(0.08,enter-0.025)) }
+            limit=min(limit,max(0,enter-0.01/max(0.01,simd_length(delta))))
         }
+        // Use the actual individual, rotated walls. Compound envelopes cover
+        // empty courtyards and squeeze a camera even in a clear passage.
+        let middle=(a+b)/2,radius=max(0.1,simd_length(delta)/2+0.2)
+        let query=RobotCollisions.Body(position:middle,profile:.init(mass:1,halfWidth:radius,halfDepth:radius,height:1))
+        for body in (collisionWorld.nearby(query)+InfieldLayout.obstacles) where body.profile.mass != 70 {
+            let c=cos(body.heading),s=sin(body.heading)
+            func local(_ p:SIMD3<Double>)->SIMD3<Double> { SIMD3(c*p.x-s*p.z,p.y,s*p.x+c*p.z) }
+            let p=body.profile
+            clip(local(a-body.position),local(delta),SIMD3(-p.halfWidth,0,-p.halfDepth),SIMD3(p.halfWidth,p.height,p.halfDepth))
+        }
+        for (low,high) in cameraBounds { clip(a,delta,low,high) }
         // A camera boom can intersect a dune even if both endpoints are above
         // ground. Stop at the first obstruction, leaving near-plane clearance.
         let steps=max(1,Int(ceil(simd_length(delta)*limit/0.20)))
         for i in 1...steps {
             let t=limit*Double(i)/Double(steps),p=a+delta*t
-            if max(abs(p.x),abs(p.z))>DesertTerrain.townEdge && p.y<DesertTerrain.height(x:p.x,z:p.z)+0.18 {
+            if p.y<DirtCourse.height(x:p.x,z:p.z)+0.18 {
                 limit=limit*Double(i-1)/Double(steps);break
             }
         }

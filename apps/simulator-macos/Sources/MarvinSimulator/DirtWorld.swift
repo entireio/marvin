@@ -119,8 +119,8 @@ final class DirtWorld {
             let shoulder = courseSurface(inner:innerEdge,outer:outerEdge,y:-1)
             shoulder.materials = [clay]; scene.rootNode.addChildNode(SCNNode(geometry:shoulder))
         }
+        addInfieldDirt(earth:earth)
         addServiceEmbankment(clay:clay,earth:earth)
-        addInfieldDirt()
         progress?(0.86,"Building track walls and gate")
         addTrackWalls()
         addCityExit(clay:clay,earth:earth)
@@ -269,25 +269,56 @@ final class DirtWorld {
     /// A closed heightfield across the entire opening, including its side slopes.
     /// No cropped offset ribbons or exposed underside; physics samples this height.
     private func addServiceEmbankment(clay:SCNMaterial,earth:SCNMaterial) {
-        let nx=68,nz=62,x0=DirtCourse.serviceEntryX-3.4,z0 = -13.2
-        let dx=0.1,dz=0.1
-        var vertices:[SCNVector3]=[],normals:[SCNVector3]=[],uv:[CGPoint]=[],colors:[Float]=[],indices:[Int32]=[]
+        let nz=62,boundary=DirtCourse.surfacePoints(offset:-DirtCourse.fenceOffset)
+        let phase=DirtCourse.projection(x:DirtCourse.serviceEntryX,z:-15).phase
+        let center=Int(phase/(2 * .pi)*Double(DirtCourse.sampleCount))
+        func boundaryPoint(_ i:Int)->SIMD2<Double> { boundary[(i+DirtCourse.sampleCount)%DirtCourse.sampleCount] }
+        func inApron(_ i:Int)->Bool {
+            let p=boundaryPoint(i)
+            return abs(p.x-DirtCourse.serviceEntryX)<3.9 && p.y > -15.4 && p.y < -10
+        }
+        var start=center,end=center
+        while center-start<40 && inApron(start-1) { start-=1 }
+        while end-center<40 && inApron(end+1) { end+=1 }
+        let nx=end-start
+        // Preserve this local edge correspondence. Independently trimming
+        // inward offset curves collapses whole rows at the infield hairpin.
+        // A monotone extrusion toward the service yard cannot fold onto itself.
+        var vertices:[SCNVector3]=[],normals:[SCNVector3]=[],uv:[CGPoint]=[],clayUV:[CGPoint]=[],colors:[Float]=[],indices:[Int32]=[]
+        func renderedHeight(_ x:Double,_ z:Double)->Double {
+            let support=DirtCourse.height(x:x,z:z),t=max(0,min(1,(support+0.025)/0.035))
+            return support-0.0001*(1-t*t*(3-2*t))
+        }
         func add(_ x:Double,_ z:Double,_ y:Double?=nil) {
-            let h=y ?? (DirtCourse.height(x:x,z:z)-0.008)
+            let h=y ?? renderedHeight(x,z)
             vertices.append(SCNVector3(x,h,z))
             let epsilon=0.025
-            var n=SIMD3<Double>(DirtCourse.height(x:x-epsilon,z:z)-DirtCourse.height(x:x+epsilon,z:z),2*epsilon,DirtCourse.height(x:x,z:z-epsilon)-DirtCourse.height(x:x,z:z+epsilon))
+            var n=SIMD3<Double>(renderedHeight(x-epsilon,z)-renderedHeight(x+epsilon,z),2*epsilon,renderedHeight(x,z-epsilon)-renderedHeight(x,z+epsilon))
             n /= simd_length(n);normals.append(SCNVector3(n.x,n.y,n.z))
-            uv.append(CGPoint(x:x/4,y:z/4))
+            uv.append(CGPoint(x:x/4,y:-z/4))
             let projection=DirtCourse.projection(x:x,z:z)
+            clayUV.append(CGPoint(x:projection.phase/(2 * .pi),y:(projection.offset+DirtCourse.fenceOffset)/(DirtCourse.fenceOffset-DirtCourse.width-DirtCourse.bermWidth)))
             let run=max(0,min(1,(projection.distance-DirtCourse.fenceOffset)/3.6))
             let side=max(0,min(1,(abs(x-DirtCourse.serviceEntryX)-1.0)/2.0))
             let noise=CityMaterials.surfaceNoise(x/12,z/12,cells:7,seed:197)
-            let red=max(0,min(1,(1-run)*(1-side)+run*(1-run)*(noise-0.5)*0.85))
+            let shoulder=min(1,run*6),blend=shoulder*shoulder*(3-2*shoulder)
+            let red=max(0,min(1,(1-run)*(1-side*blend)+run*(1-run)*(noise-0.5)*0.85))
             let foot=max(0,min(1,(h+0.025)/0.06))
             colors += [Float(red*foot*foot*(3-2*foot)),0,0,1]
         }
-        for j in 0...nz { for i in 0...nx { add(x0+Double(i)*dx,z0+Double(j)*dz) } }
+        for j in 0...nz { for i in 0...nx {
+            let p:SIMD2<Double>
+            if j==0 { p=boundaryPoint(start+i) }
+            else {
+                // Put the retaining drop inside its masonry, not halfway
+                // across an arbitrary apron triangle.
+                let offset = -DirtCourse.fenceOffset-DirtCourse.boundaryWallThickness+(j==1 ? 0.001:-0.001)
+                let edge=DirtCourse.point(Double(start+i)/Double(DirtCourse.sampleCount)*2 * .pi,offset:offset)
+                p=SIMD2(edge.x,edge.z+Double(max(0,j-2))*0.08)
+            }
+            add(p.x,p.y)
+            clayUV[clayUV.count-1]=CGPoint(x:Double(start+i)/Double(DirtCourse.sampleCount),y:-(p.y-boundaryPoint(start+i).y)/(DirtCourse.fenceOffset-DirtCourse.width-DirtCourse.bermWidth))
+        }}
         for j in 0..<nz { for i in 0..<nx {
             let a=Int32(j*(nx+1)+i),b=a+1,c=a+Int32(nx+1),d=c+1
             indices += [a,c,b,b,c,d]
@@ -312,11 +343,8 @@ final class DirtWorld {
         sandGeometry.materials=[sandMaterial]
         let base=SCNNode(geometry:sandGeometry);base.name="Filled service embankment"
         base.castsShadow=false;scene.rootNode.addChildNode(base)
-        let geometry=SCNGeometry(sources:sources+[colorSource],elements:elements)
+        let geometry=SCNGeometry(sources:[sources[0],sources[1],SCNGeometrySource(textureCoordinates:clayUV),colorSource],elements:[SCNGeometryElement(indices:Array(indices.prefix(nx*nz*6)),primitiveType:.triangles)])
         let material=clay.copy() as! SCNMaterial
-        material.diffuse.contentsTransform=SCNMatrix4Identity
-        material.normal.contentsTransform=SCNMatrix4Identity
-        material.roughness.contentsTransform=SCNMatrix4Identity
         var modifiers=material.shaderModifiers ?? [:]
         modifiers[.geometry]="""
         #pragma varyings
@@ -334,12 +362,12 @@ final class DirtWorld {
         material.transparencyMode = .aOne;material.writesToDepthBuffer=false
         geometry.materials=[material]
         let pigment=SCNNode(geometry:geometry);pigment.name="Track clay mixed into service sand"
-        pigment.position.y=0.002;pigment.castsShadow=false
+        pigment.position.y=0.0002;pigment.castsShadow=false
         scene.rootNode.addChildNode(pigment)
     }
 
-    /// One startup-baked decal: no per-frame projection work or individual dirt nodes.
-    private func addInfieldDirt() {
+    /// Shared world-space pigment follows the ground and both embankments.
+    private func addInfieldDirt(earth:SCNMaterial) {
         let size=768,span=60.0
         let bitmap=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:size,pixelsHigh:size,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:size*4,bitsPerPixel:32)!
         let bytes=bitmap.bitmapData!
@@ -383,15 +411,20 @@ final class DirtWorld {
             bytes[index+3]=UInt8(alpha*255)
         }}
         let image=NSImage(size:NSSize(width:size,height:size));image.addRepresentation(bitmap)
-        let surface=SCNMaterial();surface.lightingModel = .physicallyBased
-        surface.diffuse.contents=image;surface.roughness.contents=0.98
-        surface.transparencyMode = .aOne;surface.writesToDepthBuffer=false
-        surface.diffuse.mipFilter = .linear
-        let vertices=[SCNVector3(-30,-0.012,-30),SCNVector3(-30,-0.012,30),SCNVector3(30,-0.012,30),SCNVector3(30,-0.012,-30)]
-        let mesh=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:Array(repeating:SCNVector3(0,1,0),count:4)),SCNGeometrySource(textureCoordinates:[CGPoint(x:0,y:0),CGPoint(x:0,y:1),CGPoint(x:1,y:1),CGPoint(x:1,y:0)])],elements:[SCNGeometryElement(indices:[Int32(0),1,2,0,2,3],primitiveType:.triangles)])
-        mesh.materials=[surface]
-        let node=SCNNode(geometry:mesh);node.name="Clay spill inside and outside walls and service wheel paths"
-        node.castsShadow=false;node.renderingOrder=1;scene.rootNode.addChildNode(node)
+        let deposit=SCNMaterialProperty(contents:image)
+        deposit.wrapS = .clampToBorder;deposit.wrapT = .clampToBorder
+        deposit.mipFilter = .linear
+        earth.setValue(deposit,forKey:"infieldDeposit")
+        var modifiers=earth.shaderModifiers ?? [:]
+        let base=modifiers[.surface] ?? "#pragma body\n"
+        modifiers[.surface]="#pragma arguments\ntexture2d<float> infieldDeposit;\n#pragma declaration\n"+base+"\n"+"""
+        float2 depositWorld=(scn_frame.inverseViewTransform*float4(_surface.position,1.0)).xz;
+        float2 depositUV=(depositWorld+30.0)/60.0;
+        constexpr sampler depositSampler(coord::normalized, address::clamp_to_zero, filter::linear);
+        float4 deposit=infieldDeposit.sample(depositSampler,depositUV);
+        _surface.diffuse.rgb=_surface.diffuse.rgb*(1.0-deposit.a)+deposit.rgb;
+        """
+        earth.shaderModifiers=modifiers
     }
 
     private func courseSurface(inner: Double, outer: Double, y: Double, serviceOnly:Bool=false) -> SCNGeometry {
@@ -405,7 +438,7 @@ final class DirtWorld {
             for j in 0...strips {
                 let across = Double(j)/Double(strips)
                 let p = outlines[j][i]
-                let rut = y < 0 ? 0 : y == 0 ? 0.0015*sin(across*180 + sin(phase*9)*0.8) : sin(across * .pi)*y
+                let rut = y < 0 ? 0 : y == 0 ? 0.0015*sin(across*180 + sin(phase*9)*0.8)*sin(across * .pi) : sin(across * .pi)*y
                 let height = DirtCourse.height(x:p.x,z:p.y) + (y == 0 ? rut : 0)
                 points.append(SCNVector3(p.x, height, p.y)); uv.append(CGPoint(x: Double(i)/Double(segments),y:across))
                 if i < segments && j < strips {
@@ -427,6 +460,12 @@ final class DirtWorld {
             if n.y < 0 { n = -n }
             let length = sqrt(n.x*n.x+n.y*n.y+n.z*n.z)
             n = length > 1e-12 ? n/length : SIMD3<Double>(0,1,0)
+            let point=points[i*(strips+1)+j],x=Double(point.x),z=Double(point.z)
+            let gate=CityExit.local(SIMD2(x,z))
+            if (abs(x-DirtCourse.serviceEntryX)<4 && z > -16 && z < -9) || (abs(gate.x)<6 && abs(gate.y)<2) {
+                let e=0.025
+                n=simd_normalize(SIMD3(DirtCourse.height(x:x-e,z:z)-DirtCourse.height(x:x+e,z:z),2*e,DirtCourse.height(x:x,z:z-e)-DirtCourse.height(x:x,z:z+e)))
+            }
             normals.append(SCNVector3(n.x,n.y,n.z))
         }}
         let geometry = SCNGeometry(sources:[SCNGeometrySource(vertices:points), SCNGeometrySource(normals: normals),SCNGeometrySource(textureCoordinates:uv)],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])

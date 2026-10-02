@@ -15,6 +15,25 @@ extension SimulationTests {
                 near(DirtCourse.height(x:p.x,z:p.y),CityExit.floor,accuracy:0.003)
             }
         }
+        // Regress the two deep slots where the outside ramp meets the shoulder.
+        for side in [-1.0,1.0] {
+            for out in [-1.2,-1.0] {
+                var previous:Double?=nil
+                for along in stride(from:3.8,through:4.2,by:0.005) {
+                    let p=CityExit.point(side*along,out),height=DirtCourse.height(x:p.x,z:p.y)
+                    if let previous { require(abs(height-previous)<0.025) }
+                    previous=height
+                }
+            }
+        }
+        // The service shoulder crosses a nearest-track Voronoi boundary.
+        // Its local earth field must remain continuous across that boundary.
+        for z in stride(from:-11.05,through:-8.05,by:0.025) {
+            for x in stride(from:-10.6,through:-8.3,by:0.005) {
+                if DirtCourse.projection(x:x,z:z).distance<2.8 { continue }
+                require(abs(DirtCourse.height(x:x+0.005,z:z)-DirtCourse.height(x:x,z:z))<0.01)
+            }
+        }
         var gate=CityGate()
         gate.wantsOpen=true
         var previousSpeed=0.0

@@ -179,7 +179,7 @@ final class RaceAudio {
             let spatial=Self.spatial(source:s.position,listener:listener,heading:heading,range:36)
             let near=spatial.gain>0.01
             if boost != previousBoost[i],near {
-                if play(characters[lineup[i].rawValue]+(boost ? "-boost-on":"-boost-off"),robot:i,gain:i==0 ? 0.7:0.45,critical:true) {
+                if play(characters[lineup[i].rawValue]+(boost ? "-boost-on":"-boost-off"),robot:i,gain:i==0 ? 0.55:0.22,critical:true) {
                     if boost { boostOnCount+=1;boostOnByRobot[i]+=1 } else { boostOffCount+=1;boostOffByRobot[i]+=1 }
                 }
             }
@@ -201,7 +201,7 @@ final class RaceAudio {
             target[i+16].gain *= Float(boost ? (i==0 ? 0.62:0.42)*(s.airborne ? 0.75:1):0)
             target[i+16].rate=Float(0.85+rpm*0.35)
             let contact=s.airborne ? 0:motion
-            target[i+4].gain *= Float((i==0 ? 0.36:0.24)*contact*(1-0.85*s.sand))
+            target[i+4].gain *= Float((i==0 ? 0.22:0.14)*contact*(1-0.85*s.sand))
             target[i+4].rate=Float(0.65+motion*0.85)
             target[i+20].gain *= Float((i==0 ? 0.42:0.28)*contact*s.sand)
             target[i+20].rate=Float(0.75+motion*0.40)

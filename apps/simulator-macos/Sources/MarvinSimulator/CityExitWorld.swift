@@ -37,24 +37,29 @@ extension DirtWorld {
             scene.rootNode.addChildNode(node)
         }
         updateGate(CityGate())
-        // Filled, closed apron; trackward overlap sits below the existing course.
-        let nx=80,nz=80
-        var v:[SCNVector3]=[],n:[SCNVector3]=[],uv:[CGPoint]=[],colors:[Float]=[],indices:[Int32]=[]
+        // Match the track's actual offset-curve vertices at the inner edge.
+        // A rectangular overlap grid cut across the raised lane and exposed
+        // sliver triangles. This apron begins inside the retaining masonry.
+        let nx=96,nz=100,start=Int(Double(DirtCourse.sampleCount)*0.125)-48
+        let outlines=(0...nz).map { j in DirtCourse.surfacePoints(offset:DirtCourse.fenceOffset+Double(j)*0.08) }
+        var v:[SCNVector3]=[],n:[SCNVector3]=[],uv:[CGPoint]=[],clayUV:[CGPoint]=[],colors:[Float]=[],indices:[Int32]=[]
         func heightAt(_ p:SIMD2<Double>)->Double {
-            // Continue the smooth fill underneath the track. Sampling its hard
-            // outer retaining edge here produces narrow, visible soil spikes.
-            min(CityExit.rampHeight(p) ?? -0.025,DirtCourse.height(x:p.x,z:p.y))-0.008
+            let h=DirtCourse.height(x:p.x,z:p.y),t=max(0,min(1,(h+0.025)/0.035))
+            return h-0.008*(1-t*t*(3-2*t))
         }
         for j in 0...nz { for i in 0...nx {
-            let along = -4.0+Double(i)*0.1,out = -2.2+Double(j)*0.1,p=CityExit.point(along,out)
+            let point=outlines[j][(start+i+DirtCourse.sampleCount)%DirtCourse.sampleCount]
+            let p=SIMD2(point.x,point.y),local=CityExit.local(p),along=local.x,out=local.y
             let height=heightAt(p)
-            v.append(SCNVector3(p.x,height,p.y));uv.append(CGPoint(x:p.x/4,y:p.y/4))
+            v.append(SCNVector3(p.x,height,p.y));uv.append(CGPoint(x:p.x/4,y:-p.y/4))
+            clayUV.append(CGPoint(x:Double(start+i)/Double(DirtCourse.sampleCount),y:1+Double(j)*0.08/(DirtCourse.fenceOffset-DirtCourse.width-DirtCourse.bermWidth)))
             let epsilon=0.025
             let normal=simd_normalize(SIMD3(heightAt(p-SIMD2(epsilon,0))-heightAt(p+SIMD2(epsilon,0)),epsilon*2,heightAt(p-SIMD2(0,epsilon))-heightAt(p+SIMD2(0,epsilon))))
             n.append(SCNVector3(normal.x,normal.y,normal.z))
             let fade=max(0,min(1,(height+0.025)/0.06)),run=max(0,min(1,out/CityExit.run))
             let noise=CityMaterials.surfaceNoise(p.x/12,p.y/12,cells:9,seed:327)
-            let red=max(0,min(1,(1-run)*(1-min(1,abs(along)/4))+run*(1-run)*(noise-0.5)*0.7))
+            let distance=Double(j)*0.08,shoulder=min(1,distance/0.6),blend=shoulder*shoulder*(3-2*shoulder)
+            let red=max(0,min(1,(1-run)*(1-min(1,abs(along)/4)*blend)+run*(1-run)*(noise-0.5)*0.7))
             colors += [Float(red*fade*fade*(3-2*fade)),0,0,1]
         }}
         for j in 0..<nz { for i in 0..<nx {
@@ -63,7 +68,7 @@ extension DirtWorld {
         }}
         let border=(0...nx).map{$0}+(1...nz).map{$0*(nx+1)+nx}+(0..<nx).reversed().map{nz*(nx+1)+$0}+(1..<nz).reversed().map{$0*(nx+1)}
         let bottom=Int32(v.count)
-        for i in border { let p=v[i];v.append(SCNVector3(p.x,-0.1,p.z));n.append(SCNVector3(0,-1,0));uv.append(uv[i]);colors += [0,0,0,1] }
+        for i in border { let p=v[i];v.append(SCNVector3(p.x,-0.1,p.z));n.append(SCNVector3(0,-1,0));uv.append(uv[i]);clayUV.append(clayUV[i]);colors += [0,0,0,1] }
         for i in border.indices { let j=(i+1)%border.count;indices += [Int32(border[i]),bottom+Int32(i),Int32(border[j]),Int32(border[j]),bottom+Int32(i),bottom+Int32(j)] }
         for i in 1..<border.count-1 { indices += [bottom,bottom+Int32(i),bottom+Int32(i+1)] }
         let sources=[SCNGeometrySource(vertices:v),SCNGeometrySource(normals:n),SCNGeometrySource(textureCoordinates:uv)]
@@ -72,12 +77,11 @@ extension DirtWorld {
         sand.diffuse.contentsTransform=SCNMatrix4Identity;base.materials=[sand]
         let baseNode=SCNNode(geometry:base);baseNode.name="Filled outside turn one city ramp";baseNode.castsShadow=false;scene.rootNode.addChildNode(baseNode)
         let tint=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:v.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
-        let overlay=SCNGeometry(sources:sources+[tint],elements:elements),pigment=clay.copy() as! SCNMaterial
-        for channel in [pigment.diffuse,pigment.normal,pigment.roughness] { channel.contentsTransform=SCNMatrix4Identity }
+        let overlay=SCNGeometry(sources:[sources[0],sources[1],SCNGeometrySource(textureCoordinates:clayUV),tint],elements:[SCNGeometryElement(indices:Array(indices.prefix(nx*nz*6)),primitiveType:.triangles)]),pigment=clay.copy() as! SCNMaterial
         var modifiers=pigment.shaderModifiers ?? [:]
         modifiers[.geometry]="#pragma varyings\nhalf redSoil;\n#pragma body\nout.redSoil=half(_geometry.color.r);"
         modifiers[.fragment]="#pragma transparent\n#pragma body\n_output.color.rgb *= float(in.redSoil);\n_output.color.a=float(in.redSoil);"
         pigment.shaderModifiers=modifiers;pigment.transparencyMode = .aOne;pigment.writesToDepthBuffer=false;overlay.materials=[pigment]
-        let top=SCNNode(geometry:overlay);top.position.y=0.002;top.castsShadow=false;scene.rootNode.addChildNode(top)
+        let top=SCNNode(geometry:overlay);top.position.y=0.0002;top.castsShadow=false;scene.rootNode.addChildNode(top)
     }
 }

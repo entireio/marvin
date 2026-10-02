@@ -17,6 +17,21 @@ contains the former native fixture. `pass1/` preserves the first redesign render
 including failed speed-dynamics checks. The final validation paths and measured
 results are recorded below when verification completes.
 
+## Second October 2 correction
+
+The user rejected the first replacement's drill-like WALL-E and abrasive boost.
+The drill and ratchet recordings have now been removed from all drivetrain,
+boost and contact assets. Licensed electric-machine and scooter recordings provide
+separate low/high motors; soft rolling contact sits lower in the mix. Boost is
+broadband pressure with a low motor body, with quieter transient cues, especially
+for opponents. Source gain is stabilized, and the motor banks occupy separate
+frequency ranges to limit phase-dependent loudness fluctuations.
+
+[Second-round evidence](audio-validation/2026-10-02-round2/README.md) supersedes
+previous sound-quality assumptions. Sandstorm and localized city layers remain.
+The bundled decoded audio uses about205MB of stereo float buffers. No listening
+comparison with WALL-E has been performed by the agent or judge.
+
 ## Research and resulting design
 
 - [BeamNG's engine audio tuning](https://documentation.beamng.com/modding/vehicle/sections/sounds/engine_audio/)
@@ -27,7 +42,7 @@ results are recorded below when verification completes.
   rather than relying on one weak pitched loop at every speed.
 - [Ben Burtt's first-person WALL-E interview](https://designingsound.org/2009/09/ben-burtt-special-wall-e-the-definitive-interview/)
   describes performed machinery, including a generator for motion. The new bodies
-  combine recorded workshop mechanisms with different filters, rates and contact
+  combine recorded electric mechanisms with different filters, rates and contact
   textures. No film recordings or claim of using Burtt's original devices is made.
 - Earlier voice research remains relevant: [R2-D2's vocal/electronic construction](https://www.starwars.com/news/5-iconic-star-wars-sound-effects-and-how-they-were-made-starwars-com),
   [BB-8's performed talkbox approach](https://bigshinyrobot.com/star-wars/interview-star-wars-force-awakens-sound-editing-team/).

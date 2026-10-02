@@ -181,7 +181,7 @@ public enum DirtCourse {
         }
         return base
     }
-    private static func courseHeight(_ phase:Double,offset:Double)->Double {
+    static func courseHeight(_ phase:Double,offset:Double)->Double {
         let distance=abs(offset)
         let base = elevation(phase,offset:max(-width,min(width,offset)))
         if distance <= width { return base }
@@ -189,19 +189,44 @@ public enum DirtCourse {
             let crest = offset > 0 ? 0.10 : 0.055
             return base + sin((distance-width)/bermWidth * .pi)*crest
         }
-        // The service entrance is a broad earth embankment. Its 3.6 m run and
-        // tapered side shoulders are shared by the rendered heightfield.
         let location=point(phase,offset:offset)
-        if offset<0 && distance>fenceOffset && location.z > -15.4 && location.z < -5.3 {
-            let lateral=abs(location.x-serviceEntryX)
-            if lateral<3.0 {
-                let t=max(0,min(1,(distance-fenceOffset)/3.6))
-                let side=max(0,min(1,(lateral-serviceEntryHalfWidth)/(3.0-serviceEntryHalfWidth)))
-                let along=1-t*t*(3-2*t),across=1-side*side*(3-2*side)
-                return (base+0.025)*along*across-0.025
-            }
-        }
+        if offset<0, let service=serviceHeight(x:location.x,z:location.z) { return service }
         return distance<=fenceOffset+boundaryWallThickness ? base : -0.025
+    }
+    private static let serviceSections = (688...752).map { i in
+        let phase=Double(i)/Double(sampleCount)*2 * .pi
+        let edge=point(phase,offset:-fenceOffset),wall=point(phase,offset:-fenceOffset-boundaryWallThickness)
+        return (phase:phase,x:edge.x,z:edge.z,wallX:wall.x,wallZ:wall.z)
+    }
+    /// The entrance cross-sections form a continuous field across the yard;
+    /// global nearest-course selection would cut a cliff through the shoulder.
+    private static func serviceHeight(x:Double,z:Double)->Double? {
+        guard abs(x-serviceEntryX)<3.6 && z > -15.4 && z < -5.3 else { return nil }
+        // X is monotone along this entrance edge. Extend each cross-section
+        // toward +Z instead of selecting a different nearest curve branch.
+        let first=serviceSections[0]
+        var phase=first.phase,edge=(x:first.x,z:first.z),wall=(x:first.wallX,z:first.wallZ)
+        for i in 0..<serviceSections.count-1 {
+            let a=serviceSections[i],b=serviceSections[i+1]
+            guard x>=a.x else { break }
+            let t=max(0,min(1,(x-a.x)/max(0.0001,b.x-a.x)))
+            phase=a.phase+(b.phase-a.phase)*t
+            edge=(x,a.z+(b.z-a.z)*t)
+            let wt=max(0,min(1,(x-a.wallX)/max(0.0001,b.wallX-a.wallX)))
+            wall=(x,a.wallZ+(b.wallZ-a.wallZ)*wt)
+            if x<=b.x { break }
+        }
+        let distance=z-edge.z
+        guard distance>0 else { return nil }
+        let run=3.6+0.35*(0.5+0.5*sin(x*1.3))
+        let spread=3.0+0.30*sin(z*0.9)+0.20*cos(z*1.7)
+        guard distance<run && abs(x-serviceEntryX)<spread else { return nil }
+        let t=max(0,min(1,distance/run))
+        let side=max(0,min(1,(abs(x-serviceEntryX)-serviceEntryHalfWidth)/(spread-serviceEntryHalfWidth)))
+        let along=1-t*t*(3-2*t),across=1-side*side*(3-2*side)
+        let base=elevation(phase,offset:-width)
+        let ordinary=z<=wall.z ? base : -0.025
+        return ordinary+((base+0.025)*along-0.025-ordinary)*across
     }
     /// Project only against the fence. The robot can slide along it and reverse
     /// away; the compacted lane edge is a traction change, not a collision wall.
@@ -223,6 +248,7 @@ public enum DirtCourse {
     }
     public static func height(x:Double,z:Double) -> Double {
         if max(abs(x),abs(z))>DesertTerrain.townEdge-2 { return DesertTerrain.height(x:x,z:z) }
+        if let service=serviceHeight(x:x,z:z) { return service }
         let p = projection(x:x,z:z)
         return surfaceHeight(p.phase,offset:p.offset)
     }

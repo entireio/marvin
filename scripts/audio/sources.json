@@ -20,5 +20,21 @@
     "author": "bolkmar",
     "license": "CC0-1.0",
     "sha256": "66ce4985f7d06223ea33626a7b45292b51f7ce94c91638e963d12263c5677308"
+  },
+  {
+    "file": "electric-motor.mp3",
+    "url": "https://cdn.freesound.org/previews/435/435730_2328828-hq.mp3",
+    "sourcePage": "https://freesound.org/people/scivirus/sounds/435730/",
+    "author": "scivirus",
+    "license": "CC0-1.0",
+    "sha256": "c5d1de59bb26ea21a648b40d108e2c3d6a669e0522e52293ec23f8d8ed105451"
+  },
+  {
+    "file": "electric-scooter.mp3",
+    "url": "https://cdn.freesound.org/previews/140/140439_2527354-hq.mp3",
+    "sourcePage": "https://freesound.org/people/escortmarius/sounds/140439/",
+    "author": "escortmarius",
+    "license": "CC0-1.0",
+    "sha256": "c1b9c72f8c85c9010460073145190a879e305696e5a17d9fbf13307e4a0acc60"
   }
 ]
