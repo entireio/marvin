@@ -1567,8 +1567,31 @@ underlying terrain shows through the buried sections; navigation corridors and
 collision surfaces remain continuous. `road-into-sand.png` adds a straight-down
 close view of the eastern departure road to the visual survey.
 
-Pending broader-town regression: the v20 extended postrace audit reports all four
-robots roaming for 720 seconds after departure, but fails `peopleMoving`: resident
-index 3 accumulated 533.2 blocked seconds. The new household fixtures must be
-checked against the exact resident routes before treating that broader town pass
-as complete. This failure is not cleared by the static entrance-access audit.
+### Resident sidestep recovery (October 2)
+
+The v20 postrace audit found a resident blocked for 533.2 seconds. A later replay
+reproduced the same failure at a building corner: the resident had safely stepped
+aside for traffic, then aimed diagonally toward a route waypoint through nearby
+scenery. Collision detection stopped that step indefinitely. Static entrance
+checks could not detect this off-route return maneuver.
+
+Residents now remember the sidestep origin, retrace the swept outbound segment,
+and resume their route only after returning. Route waypoints stay fixed during
+the maneuver. Each return step still checks scenery, doors, robots, and people;
+there is no teleport or disabled collision response.
+
+A native regression finds an obstructed shortcut back from a valid sidestep in
+the actual town collision geometry. The old code failed to reach its waypoint in
+40 simulated seconds (39.27 seconds blocked). The corrected code reaches it,
+with a longest stop of 0.52 seconds and zero penetration. Run with
+`MARVIN_YIELD_RECOVERY_TEST=1` and `--people-smoke-test <output-directory>`.
+The extended postrace audit now checks the peak resident blocked duration over
+the entire run, in addition to completed visits and final state.
+
+Validation artifacts under `marvin-town-planning`: `resident-corner-before` and
+`resident-corner-after` record the deterministic failure/fix. Both
+`resident-fixed-roaming-1` and `resident-fixed-roaming-2` pass 720 seconds after
+all four robots depart: all ten residents visit homes (57 and 58 total entries),
+longest stationary intervals 11.68 and 3.12 seconds, no resident left stuck,
+collision assertions pass, and robots keep touring with the HUD hidden and
+camera locked. The macOS release build and asset validation also pass.

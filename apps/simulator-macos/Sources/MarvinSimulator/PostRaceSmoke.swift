@@ -16,6 +16,7 @@ extension AppController {
             guard dirtWorld.escapeRoutes.count==4 else { print("FAIL: town circuit planning");return false }
             var frozen=[Double?](repeating:nil,count:4),early=false,firstOpen:Double?,pauseChecked=false
             var maxPenetration=0.0,cameraLocked=true
+            var peakResidentBlocked=0.0
             var photographed=Set<Int>(),activeStart:Int?,allDepartedStart:Int?
             var roamingSeconds=0.0,secondsAfterAllDeparted=0.0
             var visibleWindows=[Set<Int>](repeating:[],count:12)
@@ -39,6 +40,7 @@ extension AppController {
                     RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
                 }
                 dirtWorld.town.update(dt:1.0/60,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),robots:robotBodies,visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
+                peakResidentBlocked=max(peakResidentBlocked,dirtWorld.town.residents?.walkers.map{$0.blocked}.max() ?? 0)
                 let races=[race]+opponents.map{$0.race}
                 if racePhysics.escape.active && activeStart==nil { activeStart=frame }
                 if racePhysics.escape.complete && allDepartedStart==nil { allDepartedStart=frame }
@@ -143,11 +145,11 @@ extension AppController {
                 && lateDistance.allSatisfy{$0>100} && lateCells.allSatisfy{$0.count>25}
             let people=dirtWorld.town.residents
             let peopleMoving=people?.walkers.allSatisfy{racePhysics.storm.enabled && $0.index%11 != 0 ? $0.node.isHidden:($0.visits>0 && $0.blocked<20)} ?? false
-            let passed=peopleMoving && (people?.maximumPenetration ?? 1)<0.005 && sustained && hudHidden && cameraLocked && racePhysics.escape.complete && !early && timesFrozen && pauseChecked && distinct && maxPenetration<0.005
+            let passed=peopleMoving && peakResidentBlocked<20 && (people?.maximumPenetration ?? 1)<0.005 && sustained && hudHidden && cameraLocked && racePhysics.escape.complete && !early && timesFrozen && pauseChecked && distinct && maxPenetration<0.005
             updateOpponents();updateRaceWorld(dt:1.0/60)
             updateCamera(snap:true)
             try saveTownFrame("postrace-town",at:directory)
-            let report:[String:Any]=["passed":passed,"peopleMoving":peopleMoving,"houseEntries":people?.entries ?? 0,"residentVisits":people?.walkers.map{$0.visits} ?? [],"residentBlocked":people?.walkers.map{$0.blocked} ?? [],"roamingSeconds":roamingSeconds,"secondsAfterAllDeparted":secondsAfterAllDeparted,"lateDistance":lateDistance,"lateUniqueCells":lateCells.map{$0.count},"uniqueCellsPerMinute":minuteCells.map{$0.map{$0.count}},"movieFrames":movieFrames,"reversals":racePhysics.escape.reversals,"yields":racePhysics.escape.yields,"tours":racePhysics.escape.tours,"distanceTravelled":travelled,"maximumStationarySeconds":maxStationary,"visibleRobotsPerMinute":visibleWindows.map{Array($0).sorted()},"hudHidden":hudHidden,"sustained":sustained,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
+            let report:[String:Any]=["passed":passed,"peopleMoving":peopleMoving,"peakResidentBlockedSeconds":peakResidentBlocked,"houseEntries":people?.entries ?? 0,"residentVisits":people?.walkers.map{$0.visits} ?? [],"residentBlocked":people?.walkers.map{$0.blocked} ?? [],"roamingSeconds":roamingSeconds,"secondsAfterAllDeparted":secondsAfterAllDeparted,"lateDistance":lateDistance,"lateUniqueCells":lateCells.map{$0.count},"uniqueCellsPerMinute":minuteCells.map{$0.map{$0.count}},"movieFrames":movieFrames,"reversals":racePhysics.escape.reversals,"yields":racePhysics.escape.yields,"tours":racePhysics.escape.tours,"distanceTravelled":travelled,"maximumStationarySeconds":maxStationary,"visibleRobotsPerMinute":visibleWindows.map{Array($0).sorted()},"hudHidden":hudHidden,"sustained":sustained,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("postrace.json"))
             print(report.filter{$0.key != "routes"})
             reset(nil);return passed && !racePhysics.escape.active && racePhysics.gate.angle==0 && !raceHUD.isHidden && window.toolbar?.isVisible==true

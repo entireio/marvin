@@ -46,7 +46,7 @@ final class TownResidents {
         var visits=0,blocked=0.0,nextAttempt=0.0,firstEntry = -1.0
         var pending=0.0,lastSeen = -1.0,wasDetailed=true
         var settlingInside=false
-        var yieldPoint:SIMD2<Double>?,yieldUntil=0.0
+        var yieldPoint:SIMD2<Double>?,yieldOrigin:SIMD2<Double>?,yieldUntil=0.0
         var reserved=Set<SIMD2<Int>>()
         init(node:SCNNode,index:Int,home:Int,position:SIMD2<Double>) {
             self.node=node;self.index=index;self.home=home;initialHome=home;destination=home;self.position=position
@@ -114,7 +114,7 @@ final class TownResidents {
         for w in walkers {
             w.home=w.initialHome;w.position=doors[w.home].inside;w.indoors=true;w.wait=Double(w.index%9)*1.7
             w.path=[];w.settlingInside=false;w.firstEntry = -1;w.reserved=[];w.nextAttempt=0;w.waypoint=0;w.node.isHidden=true;w.distance=0;w.visits=0;w.blocked=0
-            w.yieldPoint=nil;w.yieldUntil=0;w.pending=0;w.lastSeen = -1;w.wasDetailed=true
+            w.yieldPoint=nil;w.yieldOrigin=nil;w.yieldUntil=0;w.pending=0;w.lastSeen = -1;w.wasDetailed=true
         }
         for door in doors { door.opening=0;door.hold=0;door.place() }
     }
@@ -172,7 +172,7 @@ final class TownResidents {
                       walkers.allSatisfy({$0 === w || $0.node.isHidden || simd_distance($0.position,doors[w.home].center)>1.5}) else { continue }
                 w.waypoint=0;w.indoors=false;w.node.isHidden=false;exits += 1
             }
-            while w.waypoint<w.path.count && simd_distance(w.position,w.path[w.waypoint])<0.06 { w.waypoint += 1 }
+            while w.yieldOrigin==nil && w.waypoint<w.path.count && simd_distance(w.position,w.path[w.waypoint])<0.06 { w.waypoint += 1 }
             if w.waypoint==w.path.count {
                 w.home=w.destination;w.visits += 1;entries += 1;w.indoors=true;w.settlingInside=true
                 if w.firstEntry<0 { w.firstEntry=clock }
@@ -200,7 +200,7 @@ final class TownResidents {
                 return simd_length(d)<2.4 && simd_dot(d,SIMD2(sin(robot.heading),cos(robot.heading))) > -0.2
             }
             if !approaching.isEmpty { w.yieldUntil=clock+1.2 }
-            if w.yieldPoint==nil,let robot=approaching.min(by:{simd_distance(SIMD2($0.position.x,$0.position.z),w.position)<simd_distance(SIMD2($1.position.x,$1.position.z),w.position)}) {
+            if w.yieldPoint==nil,w.yieldOrigin==nil,let robot=approaching.min(by:{simd_distance(SIMD2($0.position.x,$0.position.z),w.position)<simd_distance(SIMD2($1.position.x,$1.position.z),w.position)}) {
                 let side=SIMD2(cos(robot.heading),-sin(robot.heading))
                 let obstacles=staticWorld.nearby(.init(position:SIMD3(w.position.x,0,w.position.y),profile:.init(mass:70,halfWidth:1.5,halfDepth:1.5,height:1.05)))+doors.map{$0.body}+robots+pedestrians
                 outer: for width in [0.7,1.0] { for sign in [-1.0,1.0] {
@@ -212,12 +212,19 @@ final class TownResidents {
                         return obstacles.allSatisfy{RobotCollisions.contact(body(p),$0)==nil}
                             && walkers.allSatisfy{$0 === w || $0.node.isHidden || simd_distance(p,$0.position)>0.38}
                     }
-                    if free { w.yieldPoint=candidate;break outer }
+                    if free { w.yieldOrigin=w.position;w.yieldPoint=candidate;break outer }
                 }}
             }
             if let point=w.yieldPoint {
                 if clock>w.yieldUntil { w.yieldPoint=nil }
                 else { target=point }
+            }
+            // The outbound sidestep was swept for clearance. Retrace it before
+            // resuming the route; aiming straight at the next waypoint can cut
+            // through a wall corner from this off-route position.
+            if w.yieldPoint==nil,let origin=w.yieldOrigin {
+                if simd_distance(w.position,origin)<0.015 { w.yieldOrigin=nil }
+                else { target=origin }
             }
             let delta=target-w.position,direction=delta/max(0.001,simd_length(delta))
             let steering=direction
@@ -244,7 +251,12 @@ final class TownResidents {
                     && walkers.allSatisfy{$0 === w || $0.node.isHidden || simd_distance(p,$0.position)>0.35}
             }
             if free { moved=simd_distance(next,w.position);w.position=next }
+            let previousBlocked=w.blocked
             w.blocked=moved<0.0001 ? w.blocked+dt:0
+            if previousBlocked<10 && w.blocked>=10 {
+                print("Resident blocked: index=\(w.index) home=\(w.home) destination=\(w.destination) position=\(w.position) waypoint=\(w.waypoint)/\(w.path.count) target=\(target) yield=\(String(describing:w.yieldPoint)) angle=\(angle) robotNear=\(robotNear) colliders=\(solids.filter{RobotCollisions.contact(probe,$0) != nil}) otherResidents=\(walkers.filter{$0 !== w && !$0.node.isHidden && simd_distance(next,$0.position)<=0.35}.map{$0.index})")
+                fflush(stdout)
+            }
             w.distance += moved;w.blend += ((moved>0.0001 ? 1.0:0)-w.blend)*min(1,dt*10)
             let cycle=Float(w.distance/0.24 * .pi)
             let nearDoor=doors.first{simd_distance(w.position,$0.center)<1}
@@ -261,5 +273,51 @@ final class TownResidents {
             }
             for obstacle in solids { if let c=RobotCollisions.contact(body(w.position),obstacle) { maximumPenetration=max(maximumPenetration,c.penetration) } }
         }
+    }
+}
+
+// Native regression using the generated town's actual collision geometry.
+extension TownResidents {
+    func checkYieldCornerRecovery()->[String:Any] {
+        func clear(_ a:SIMD2<Double>,_ b:SIMD2<Double>)->Bool {
+            let count=max(1,Int(ceil(simd_distance(a,b)/0.02)))
+            return (0...count).allSatisfy { i in
+                let probe=body(a+(b-a)*Double(i)/Double(count))
+                return (staticWorld.nearby(probe)+doors.map{$0.body}).allSatisfy{RobotCollisions.contact(probe,$0)==nil}
+            }
+        }
+        for home in routes.keys.sorted() { for (destination,path) in routes[home]! {
+            for k in 1..<path.count {
+                let a=path[k-1],b=path[k],segment=b-a
+                guard simd_length(segment)>0.35 else { continue }
+                for fraction in [0.25,0.5,0.75] {
+                    let origin=a+segment*fraction
+                    guard doors.allSatisfy({simd_distance($0.center,origin)>2}) else { continue }
+                    for direction in 0..<16 {
+                        let angle=Double(direction)*Double.pi/8
+                        let candidate=origin+SIMD2(cos(angle),sin(angle))*0.7
+                        let t=max(0,min(1,simd_dot(candidate-a,segment)/simd_length_squared(segment)))
+                        let closest=a+segment*t
+                        let target=simd_distance(closest,b)>0.3 ? closest+simd_normalize(segment)*0.3:b
+                        guard clear(origin,candidate),clear(origin,b),!clear(candidate,target) else { continue }
+                        reset()
+                        for other in walkers { other.wait=1000 }
+                        let w=walkers[0]
+                        w.home=home;w.destination=destination;w.indoors=false;w.node.isHidden=false
+                        w.position=candidate;w.path=[a,b];w.waypoint=1
+                        w.yieldOrigin=origin;w.yieldPoint=candidate;w.yieldUntil=0.5
+                        print("Yield corner regression: origin=\(origin), sidestep=\(candidate), routeTarget=\(b)")
+                        var reached=false,peakBlocked=0.0
+                        for _ in 0..<2400 {
+                            update(dt:1.0/60,robots:[],visible:{_ in true})
+                            peakBlocked=max(peakBlocked,w.blocked)
+                            if simd_distance(w.position,b)<0.08 { reached=true;break }
+                        }
+                        return ["passed":reached && maximumPenetration<0.005,"reached":reached,"maximumBlockedSeconds":peakBlocked,"maximumPenetration":maximumPenetration,"origin":[origin.x,origin.y],"sidestep":[candidate.x,candidate.y],"target":[b.x,b.y],"finalPosition":[w.position.x,w.position.y]]
+                    }
+                }
+            }
+        }}
+        return ["passed":false,"error":"No obstructed corner return found in town geometry"]
     }
 }

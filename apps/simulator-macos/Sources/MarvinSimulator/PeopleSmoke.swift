@@ -10,6 +10,12 @@ extension AppController {
             weatherOverride=false;defer { weatherOverride=nil }
             startDirtTrack();dirtIntro=nil;raceHUD.isHidden=true;window.toolbar?.isVisible=false
             dirtWorld.sky.apply(BinaryDaylight(fraction:0.48,phase:1.2))
+            if ProcessInfo.processInfo.environment["MARVIN_YIELD_RECOVERY_TEST"]=="1",let residents=dirtWorld.town.residents {
+                let result=residents.checkYieldCornerRecovery()
+                try JSONSerialization.data(withJSONObject:result,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("yield-recovery.json"))
+                print("Yield recovery: \(result)")
+                return result["passed"] as? Bool ?? false
+            }
             guard let residents=dirtWorld.town.residents,residents.walkers.count>=6,residents.connections>=4 else { return false }
             guard let street=dirtWorld.town.streetResidents,street.walkers.count>=12 else { return false }
             var streetPositions=[[Double]](),streetStopped=Array(repeating:0.0,count:street.walkers.count)
