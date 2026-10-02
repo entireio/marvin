@@ -10,6 +10,7 @@ public struct DirtRacePhysics: Sendable {
     private var recovery = Array(repeating:CollisionRecovery(),count:4)
     public var gate=CityGate()
     public var storm=Sandstorm()
+    public var sand:SandDeformation?
     private var shelterSteps=0
     private func exposure(_ state:Simulation,city:CityCollisionWorld?)->Double {
         guard storm.enabled,let city else { return 1 }
@@ -48,6 +49,7 @@ public struct DirtRacePhysics: Sendable {
                 for i in opponents.indices { opponents[i].simulation.windShelter=exposure(opponents[i].simulation,city:city) }
             }
             shelterSteps += 1
+            player.sand=sand
             player.enableRobotDynamics()
             let projection=DirtCourse.projection(x:player.x,z:player.z)
             let exitPosition=CityExit.local(SIMD2(player.x,player.z))
@@ -60,6 +62,7 @@ public struct DirtRacePhysics: Sendable {
             let playerInput = escape.input(for:0,states:states) ?? (exploring ? input : race.finished ? DirtOpponent.driveInput(for:player,cruising:true) : assists.apply(input,to:player))
             player.advance(playerInput,dt:h)
             for i in opponents.indices {
+                opponents[i].simulation.sand=sand
                 opponents[i].simulation.storm=storm
                 opponents[i].simulation.aerodynamicProfile=RobotCollisions.profiles[characters[i+1].rawValue]
                 opponents[i].simulation.enableRobotDynamics()
@@ -67,7 +70,7 @@ public struct DirtRacePhysics: Sendable {
                 opponents[i].simulation.advance(drive,dt:h)
             }
             var bodies = ([player]+opponents.map { $0.simulation }).enumerated().map { $0.element.collisionBody(profile:RobotCollisions.profiles[characters[$0.offset].rawValue]) }
-            contactCount += RobotCollisions.resolve(&bodies,terrain:true,betweenRobots:robotCollisionsEnabled,gate:gate,city:city,previousPositions:initialBodies.map{$0.position},storm:storm)
+            contactCount += RobotCollisions.resolve(&bodies,terrain:true,betweenRobots:robotCollisionsEnabled,gate:gate,city:city,previousPositions:initialBodies.map{$0.position},storm:storm,sand:sand)
             for i in bodies.indices {
                 let p=DirtCourse.projection(x:bodies[i].position.x,z:bodies[i].position.z)
                 if !escape.active && (i != 0 || !exploring) && !(p.offset>0 && p.distance>DirtCourse.fenceOffset) { recovery[i].advance(&bodies[i],dt:h) }

@@ -40,6 +40,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     func advanceRacePhysics(_ input: DriveInput, dt: Double, raceDT: Double) {
         var rivals = opponents
+        racePhysics.sand=dirtWorld.duneSand.field
         racePhysics.advance(input,player:&simulation,race:&race,opponents:&rivals,dt:dt,raceDT:raceDT,
             robotCollisionsEnabled:mainMenu.raceRobotCollisions, assists:mainMenu.raceAssists,city:dirtWorld.town.collisionWorld)
         dirtWorld.updateGate(racePhysics.gate)
@@ -79,7 +80,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -227,6 +228,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--storm-race-test") {
                     timer?.invalidate();let passed=checkStormRace(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--dune-contact-test") {
+                    timer?.invalidate();let passed=checkDuneContacts(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--entrance-smoke-test") {
                     timer?.invalidate();let passed=checkTownEntrances(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)

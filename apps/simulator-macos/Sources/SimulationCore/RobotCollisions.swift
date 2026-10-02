@@ -127,7 +127,7 @@ public enum RobotCollisions {
     }
     /// Low restitution for robot shells/rubber, with Coulomb contact friction.
     /// Positional correction is separate from velocity so overlap adds no energy.
-    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false, betweenRobots: Bool = true, gate:CityGate? = nil, city:CityCollisionWorld? = nil, previousPositions:[SIMD3<Double>]? = nil, storm:Sandstorm = Sandstorm()) -> Int {
+    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false, betweenRobots: Bool = true, gate:CityGate? = nil, city:CityCollisionWorld? = nil, previousPositions:[SIMD3<Double>]? = nil, storm:Sandstorm = Sandstorm(),sand:SandDeformation? = nil) -> Int {
         var pairs = Set<Int>()
         for iteration in 0..<24 {
             var worstOverlap = 0.0
@@ -159,7 +159,7 @@ public enum RobotCollisions {
                 bodies[j].position += c.normal*correction*inverseB
             } }
             if terrain { for i in bodies.indices {
-                constrainToCourse(&bodies[i],escape:gate != nil,previous:previousPositions?[i],storm:storm)
+                constrainToCourse(&bodies[i],escape:gate != nil,previous:previousPositions?[i],storm:storm,sand:sand)
                 for obstacle in InfieldLayout.obstacles+(gate.map{[$0.body]+CityExit.posts} ?? [])+(city?.nearby(bodies[i]) ?? []) {
                     let delta=bodies[i].center-obstacle.center
                     let radius=hypot(bodies[i].profile.halfWidth,bodies[i].profile.halfDepth)+hypot(obstacle.profile.halfWidth,obstacle.profile.halfDepth)
@@ -185,7 +185,7 @@ public enum RobotCollisions {
         }
         return pairs.count
     }
-    private static func constrainToCourse(_ body: inout Body,escape:Bool,previous:SIMD3<Double>?,storm:Sandstorm) {
+    private static func constrainToCourse(_ body: inout Body,escape:Bool,previous:SIMD3<Double>?,storm:Sandstorm,sand:SandDeformation?) {
         let projection = DirtCourse.projection(x:body.position.x,z:body.position.z)
         let heading = DirtCourse.heading(projection.phase)
         let outward = SIMD2(cos(heading),-sin(heading))*(projection.offset < 0 ? -1.0 : 1.0)
@@ -202,7 +202,7 @@ public enum RobotCollisions {
             if speed > 0 { body.velocity -= normal*speed }
             body.contacted = true
         }
-        let floor = storm.height(x:body.position.x,z:body.position.z)
+        let floor = storm.height(x:body.position.x,z:body.position.z)+(sand?.supportOffset(x:body.position.x,z:body.position.z,heading:body.heading,profile:body.profile) ?? 0)
         if body.position.y < floor {
             body.position.y = floor
             if body.velocity.y < 0 { body.velocity.y = 0 }

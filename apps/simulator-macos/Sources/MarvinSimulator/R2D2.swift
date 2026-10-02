@@ -122,7 +122,10 @@ final class R2D2 {
     func update(_ state: Simulation) {
         dirtCoating.update(state)
         root.position = SCNVector3(state.x, state.groundY, state.z)
-        root.eulerAngles = SCNVector3(state.bodyPitch, state.heading, state.bodyRoll)
+        if max(abs(state.x),abs(state.z))>DesertTerrain.townEdge {
+            let q=state.duneOrientation.vector
+            root.simdOrientation=simd_quatf(vector:SIMD4(Float(q.x),Float(q.y),Float(q.z),Float(q.w)))
+        } else { root.eulerAngles = SCNVector3(state.bodyPitch,state.heading,state.bodyRoll) }
         for wheel in wheels {
             let travel = wheel.side > 0 ? state.leftTravel : wheel.side < 0 ? state.rightTravel : (state.leftTravel+state.rightTravel)/2
             // Fixed axles keep the broad rollers inside their foot housings.

@@ -80,13 +80,15 @@ final class DirtTrail {
             let t = travel/distance, heading = previous.heading+angle*t
             let x = previous.x+dx*t, z = previous.z+dz*t
             for contact in contacts {
+                let load = max(abs(state.x),abs(state.z))>DesertTerrain.townEdge+8 ? (state.sand?.contactWeight(state,.init(x:contact.x,z:contact.z,width:contact.width,length:0.1)) ?? 1):1
+                guard load>0 else { continue }
                 if vertices.count == 256*4 {
                     flush(); chunkIndex = (chunkIndex+1)%128
                     vertices.removeAll(keepingCapacity:true); normals.removeAll(keepingCapacity:true); strengths.removeAll(keepingCapacity:true); uv.removeAll(keepingCapacity:true); indices.removeAll(keepingCapacity:true)
                 }
                 let base = Int32(vertices.count)
                 let dune=max(0,min(1,(max(abs(x),abs(z))-DesertTerrain.townEdge)/30))
-                let strength=Float((style == .tracks ? 0.24:0.19)*(1-dune)+0.14*dune)
+                let strength=Float((style == .tracks ? 0.24:0.19)*(1-dune)+0.14*dune)*Float(load)
                 let e=0.04
                 let nx=state.terrainHeight(x:x-e,z:z)-state.terrainHeight(x:x+e,z:z)
                 let nz=state.terrainHeight(x:x,z:z-e)-state.terrainHeight(x:x,z:z+e)

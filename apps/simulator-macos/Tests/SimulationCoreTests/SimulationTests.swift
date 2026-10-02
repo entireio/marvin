@@ -544,6 +544,7 @@ struct SimulationTests {
         checks.testSandstorm()
         checks.testCooldownLap()
         checks.testDesertTerrain()
+        checks.testSandDeformation()
         if CommandLine.arguments.contains("--dunes-only") { return }
         checks.testCityEscape()
         if CommandLine.arguments.contains("--escape-only") { return }
@@ -579,6 +580,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 37 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 public struct Obstacle: Sendable {
     public let x: Double, z: Double, width: Double, depth: Double, height: Double
@@ -35,9 +36,13 @@ public struct Simulation: Sendable {
     ]
     public private(set) var dirtTrack = false
     public var storm=Sandstorm()
+    public var sand:SandDeformation?
     public var windShelter=1.0
     var aerodynamicProfile:RobotCollisions.Profile?
-    public func terrainHeight(x:Double,z:Double)->Double { storm.height(x:x,z:z) }
+    public func terrainHeight(x:Double,z:Double)->Double { storm.height(x:x,z:z)+(sand?.offset(x:x,z:z) ?? 0) }
+    public var supportHeight:Double {
+        storm.height(x:x,z:z)+(sand?.supportOffset(x:x,z:z,heading:heading,profile:aerodynamicProfile ?? RobotCollisions.profiles[character.rawValue]) ?? 0)
+    }
     public let character: RacePerformance.Character
     public private(set) var groundY = 0.0, bodyPitch = 0.0, bodyRoll = 0.0
     public private(set) var airborne = false
@@ -62,7 +67,15 @@ public struct Simulation: Sendable {
     /// height can flutter a few millimeters above terrain over shallow ripples;
     /// do not tear the trail each time the rigid-body airborne flag toggles.
     public var hasDirtContact: Bool {
-        !airborne || (dirtTrack && groundY-terrainHeight(x:x,z:z) <= 0.006)
+        !airborne || (dirtTrack && groundY-supportHeight <= 0.006)
+    }
+    /// Local support plane followed by heading; Euler XYZ would apply bank in
+    /// world axes and tilt a diagonal chassis away from the slope it sampled.
+    public var duneOrientation:simd_quatd {
+        let up=simd_normalize(SIMD3(-tan(bodyRoll),1,tan(bodyPitch)))
+        let forward=simd_normalize(SIMD3(0,-tan(bodyPitch),1))
+        let right=simd_normalize(simd_cross(up,forward))
+        return simd_quatd(angle:heading,axis:SIMD3(0,1,0))*simd_quatd(simd_double3x3(columns:(right,up,forward)))
     }
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
     /// Chassis motion can differ from drivetrain speed during braking/sliding
@@ -95,7 +108,7 @@ public struct Simulation: Sendable {
         x = body.position.x; z = body.position.z; groundY = body.position.y
         heading = atan2(sin(body.heading),cos(body.heading))
         velocity = body.velocity; angularVelocity = body.angularVelocity; verticalSpeed = velocity.y
-        let ground = terrainHeight(x:x,z:z)
+        let ground = supportHeight
         airborne = groundY > ground+0.001
         previousGround = ground
         contacting = contacting || body.contacted
@@ -247,7 +260,7 @@ public struct Simulation: Sendable {
         rollingTravel += SIMD2(sin(rollingHeading),cos(rollingHeading))*speed*dt
         heading = atan2(sin(heading + omega*dt), cos(heading + omega*dt))
         if dirtTrack {
-            let ground = terrainHeight(x:x,z:z)
+            let ground = supportHeight
             let slopeVelocity = (ground-previousGround)/dt
             if !airborne && verticalSpeed > slopeVelocity+0.55 && abs(speed) > 1 { airborne = true }
             if airborne {
@@ -264,10 +277,13 @@ public struct Simulation: Sendable {
             } else { groundY = ground; verticalSpeed = slopeVelocity }
             previousGround = ground
             if robotDynamics { velocity.y = verticalSpeed }
-            let fx = sin(heading)*0.24, fz = cos(heading)*0.24
-            let lx = cos(heading)*0.26, lz = -sin(heading)*0.26
-            let pitchTarget = -atan2(terrainHeight(x:x+fx,z:z+fz)-terrainHeight(x:x-fx,z:z-fz),0.48)
-            let rollTarget = atan2(terrainHeight(x:x+lx,z:z+lz)-terrainHeight(x:x-lx,z:z-lz),0.52)
+            let dune=max(abs(x),abs(z))>DesertTerrain.townEdge
+            let profile=aerodynamicProfile ?? RobotCollisions.profiles[character.rawValue]
+            let halfLength=dune ? profile.halfDepth:0.24,halfWidth=dune ? profile.halfWidth:0.26
+            let fx = sin(heading)*halfLength, fz = cos(heading)*halfLength
+            let lx = cos(heading)*halfWidth, lz = -sin(heading)*halfWidth
+            let pitchTarget = -atan2(terrainHeight(x:x+fx,z:z+fz)-terrainHeight(x:x-fx,z:z-fz),halfLength*2)
+            let rollTarget = atan2(terrainHeight(x:x+lx,z:z+lz)-terrainHeight(x:x-lx,z:z-lz),halfWidth*2)
             let blend = min(1,dt*15)
             bodyPitch += (pitchTarget-bodyPitch)*blend; bodyRoll += (rollTarget-bodyRoll)*blend
         }

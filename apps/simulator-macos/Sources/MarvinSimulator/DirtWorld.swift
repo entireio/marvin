@@ -7,6 +7,7 @@ import simd
 /// Geometry and textures are generated locally; no network assets are required.
 final class DirtWorld {
     let scene = SCNScene()
+    let duneSand=DeformableSand()
     private(set) var sky: BinarySky!
     private var stormVisual:SandstormWorld!
     private(set) var storm=Sandstorm()
@@ -465,7 +466,7 @@ final class DirtWorld {
         let node = SCNNode(geometry:shape); node.position = SCNVector3(x,y,z); scene.rootNode.addChildNode(node); return node
     }
     func reset() {
-        town.reset()
+        town.reset();duneSand.reset()
         dustBatch.isHidden=true;clodBatch.isHidden=true
         for i in flecks.indices { flecks[i].life = 0; flecks[i].node.isHidden = true }
         trails.forEach { $0.reset() }; emission = [[0,0],[0,0,0],[0],[0,0]]
@@ -475,6 +476,12 @@ final class DirtWorld {
     func update(_ state: Simulation, opponent: Simulation, dt: Double, modelScale: Double, additional: [Simulation]) {
         guard dt > 0 else { return }
         storm=state.storm
+        let allStates=[state,opponent]+additional
+        let allContacts=[[(x:0.262225*modelScale,z:-0.23*modelScale,width:0.155*modelScale),(x: -0.262225*modelScale,z:-0.23*modelScale,width:0.155*modelScale)],R2D2.groundContacts]+additionalContacts
+        duneSand.update(states:allStates,contacts:allContacts.enumerated().map { index,feet in
+            let tracked=index==0 || index==3
+            return feet.map { SandDeformation.Contact(x:$0.x,z:tracked ? 0:$0.z,width:max(0.10,$0.width),length:tracked ? max(abs($0.z)*2,RobotCollisions.profiles[index].halfDepth*1.8):0.12) }
+        },dt:dt)
         if let camera { stormVisual.update(storm,camera:camera,dt:dt) }
         for i in flecks.indices where flecks[i].life > 0 {
             flecks[i].life -= dt
@@ -487,7 +494,7 @@ final class DirtWorld {
                 f.velocity += (wind-f.velocity)*min(1,dt*(f.dust ? 1.8:0.10))
             }
             f.node.simdPosition += SIMD3<Float>(Float(f.velocity.x*dt),Float(f.velocity.y*dt),Float(f.velocity.z*dt))
-            let ground = CGFloat(storm.height(x:Double(f.node.position.x),z:Double(f.node.position.z)))
+            let ground = CGFloat(storm.height(x:Double(f.node.position.x),z:Double(f.node.position.z))+duneSand.field.offset(x:Double(f.node.position.x),z:Double(f.node.position.z)))
             if f.node.position.y < ground + CGFloat(f.radius) {
                 f.node.position.y = ground + CGFloat(f.radius)
                 if f.dust {
@@ -568,13 +575,16 @@ final class DirtWorld {
             let magnitude = abs(speed)
             guard magnitude > 0.18, !state.contacting, state.hasDirtContact else { continue }
             let sign = speed > 0 ? 1.0 : -1.0
-            emission[racer][side] += dt*min(2.5,magnitude)*22
+            let contactZ = (racer == 0 || racer == 3) ? -max(abs(contact.z),RobotCollisions.profiles[racer].halfDepth*0.85)*sign : contact.z
+            let inDunes=max(abs(state.x),abs(state.z))>DesertTerrain.townEdge+8
+            let contactLoad=inDunes ? duneSand.field.contactWeight(state,.init(x:contact.x,z:contactZ,width:contact.width,length:0.1)):1
+            guard contactLoad>0 else { continue }
+            emission[racer][side] += dt*min(2.5,magnitude)*22*contactLoad
             while emission[racer][side] >= 1 {
                 emission[racer][side] -= 1
                 let i = poolIndex; poolIndex = (poolIndex+1)%poolSize
                 // Tracks shed from their trailing end. Fixed wheel contacts stay
                 // in place when reversing (including R2's front wheel).
-                let contactZ = (racer == 0 || racer == 3) ? contact.z*sign : contact.z
                 var position = origin + lateral*(contact.x + Double.random(in:-contact.width*0.35...contact.width*0.35)) + forward*contactZ
                 position.y = state.terrainHeight(x:position.x,z:position.z) + 0.018
                 // Match the dune shader's feather at the town edge. Track clay

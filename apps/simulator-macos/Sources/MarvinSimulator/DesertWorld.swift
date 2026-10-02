@@ -3,8 +3,8 @@ import SimulationCore
 import simd
 
 extension DirtWorld {
-    /// Fixed, prebuilt tiles: no mesh allocation during play. Near tiles use the
-    /// exact collision grid; distant LODs retain matching vertices along their shared edges.
+    /// Prebuilt macro terrain. Local deformable patches replace touched cells;
+    /// distant LODs retain matching vertices along their shared edges.
     func addDesertTerrain(earth:SCNMaterial,progress:((Double)->Void)? = nil) {
         let sand=earth.copy() as! SCNMaterial
         sand.diffuse.contentsTransform=SCNMatrix4Identity
@@ -21,6 +21,7 @@ extension DirtWorld {
         float ripple=sin(p.x*17.0+p.y*5.8+1.8*sin(p.y*0.41)+sin(p.x*0.22));
         _surface.normal=normalize(_surface.normal+float3(0.022*ripple,0.0,0.008*ripple)*desert);
         """]
+        duneSand.configure(material:sand,root:scene.rootNode)
         let tile=64.0
         func geometry(_ x:Double,_ z:Double,_ stride:Int)->SCNGeometry {
             var vertices:[SCNVector3]=[],normals:[SCNVector3]=[],uv:[CGPoint]=[],indices:[Int32]=[]
@@ -36,6 +37,7 @@ extension DirtWorld {
                 normals.append(SCNVector3(normal.x,normal.y,normal.z));uv.append(CGPoint(x:px/4,y:pz/4))
                 return id
             }
+            if stride==1 { for j in 0...32 { for i in 0...32 { _=vertex(i,j) } } }
             for j in Swift.stride(from:0,to:32,by:stride) { for i in Swift.stride(from:0,to:32,by:stride) {
                 let corners=[SIMD2(i,j),SIMD2(i,j+stride),SIMD2(i+stride,j+stride),SIMD2(i+stride,j)]
                 if stride==1 || (i>0 && j>0 && i+stride<32 && j+stride<32) {
@@ -69,6 +71,7 @@ extension DirtWorld {
             let node=SCNNode(geometry:mesh);node.position=SCNVector3(x,0,z)
             node.name="Wind-shaped sand dunes";node.castsShadow=false
             scene.rootNode.addChildNode(node)
+            duneSand.register(node,x:x,z:z)
         };progress?(Double(j+13)/24) }
         // Fill beyond the finite dune field; its perimeter eases back to flat.
         let horizon=SCNNode(geometry:SCNPlane(width:4000,height:4000))
