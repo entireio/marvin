@@ -37,6 +37,52 @@ extension AppController {
                 try bitmap.representation(using:.png,properties:[:])!.write(to:directory.appendingPathComponent(name+".png"))
                 captures.append(name)
             }
+            func verifyTownImpressions(_ location:String) throws {
+                let pose=world.camera.simdTransform
+                let camera=world.camera.camera!,ortho=camera.usesOrthographicProjection,scale=camera.orthographicScale
+                defer { world.camera.simdTransform=pose;camera.usesOrthographicProjection=ortho;camera.orthographicScale=scale }
+                camera.usesOrthographicProjection=true;camera.orthographicScale=3
+                world.camera.position=SCNVector3(simulation.x,simulation.groundY+12,simulation.z)
+                world.camera.look(at:SCNVector3(simulation.x,simulation.groundY,simulation.z),up:SCNVector3(0,0,-1),localFront:SCNVector3(0,0,-1))
+                let roots=dirtWorld.scene.rootNode.childNodes(passingTest: { node,_ in node.name == "Surface-aware ground impressions" })
+                func shot(_ visible:Bool,_ order:Int)->NSBitmapImageRep {
+                    for root in roots { root.isHidden = !visible;root.childNodes.forEach { $0.renderingOrder=order } }
+                    return NSBitmapImageRep(data:renderer.snapshot(atTime:Double(frames)/60,with:CGSize(width:800,height:800),antialiasingMode:.multisampling4X).tiffRepresentation!)!
+                }
+                let base=shot(false,10),old=shot(true,0),fixed=shot(true,10)
+                var oldPixels=0,fixedPixels=0
+                for y in 0..<800 { for x in 0..<800 {
+                    let a=base.colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
+                    for (index,b) in [old,fixed].enumerated() {
+                        let c=b.colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
+                        if a.redComponent-c.redComponent>0.015 && a.greenComponent-c.greenComponent>0.015 {
+                            if index==0 { oldPixels += 1 } else { fixedPixels += 1 }
+                        }
+                    }
+                }}
+                for (name,bitmap) in [("town-treads-default-order",old),("town-treads-after",fixed)] {
+                    try bitmap.representation(using:.png,properties:[:])!.write(to:directory.appendingPathComponent(name+"-"+location+".png"))
+                }
+                print("Rendered town impressions \(location): default order \(oldPixels), corrected \(fixedPixels) visible pixels")
+                guard fixedPixels>100 else { throw NSError(domain:"Town impressions invisible",code:1) }
+                // Reproduce the raised plaza receiver that previously buried
+                // impressions. Test final rendered pixels, not generated geometry.
+                let receiver=SCNNode(geometry:SCNPlane(width:4,height:4))
+                receiver.eulerAngles.x = -.pi/2
+                receiver.position=SCNVector3(simulation.x,0.003,simulation.z)
+                let surface=SCNMaterial();surface.lightingModel = .constant;surface.diffuse.contents=color(0xab9679)
+                receiver.geometry?.materials=[surface];dirtWorld.scene.rootNode.addChildNode(receiver)
+                defer { receiver.removeFromParentNode() }
+                let clean=shot(false,10),imprinted=shot(true,10)
+                var receiverPixels=0
+                for y in 240..<560 { for x in 240..<560 {
+                    let a=clean.colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!,b=imprinted.colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
+                    if a.redComponent-b.redComponent>0.015 && a.greenComponent-b.greenComponent>0.015 { receiverPixels += 1 }
+                }}
+                print("Raised town surface impressions \(location): \(receiverPixels) visible pixels")
+                guard receiverPixels>100 else { throw NSError(domain:"Town surface buried impressions",code:2) }
+
+            }
             func streetCapture(_ name:String) throws {
                 let pose=world.camera.simdTransform,motion=overviewMotion,aim=cameraAim,mode=cameraMode
                 cameraMode=0;updateCamera(snap:true)
@@ -90,7 +136,8 @@ extension AppController {
                 guard let leg=TownEscapeRoute(city:city,origin:cursor).route(from:cursor,to:destination) else { return false }
                 for p in leg.dropFirst() { guard try drive(p) else { return false };route.append(p) }
                 cursor=SIMD2(simulation.x,simulation.z)
-                if destination.x==105 { try capture("03-town") }
+                if destination.x==105 { try capture("03-town");try verifyTownImpressions("outer-town") }
+                if destination.x==60 { try verifyTownImpressions("street") }
                 if [60.0,105,150].contains(destination.x) { try streetCapture("street-out-\(Int(destination.x))") }
             }
             for _ in 0..<180 { var input=DriveInput();input.brake=true;try step(input) }

@@ -7,10 +7,10 @@ extension RaceHUD {
     /// or sampling dune heights on every HUD frame.
     func configureNavigationMap(town:TownWorld) {
         guard townMapImage == nil else { return }
-        let image=NSImage(size:NSSize(width:234,height:150))
+        let image=NSImage(size:NSSize(width:336,height:336))
         image.lockFocusFlipped(true)
-        let scale=150.0/336
-        func point(_ p:SIMD2<Double>)->NSPoint { NSPoint(x:117-p.x*scale,y:75-p.y*scale) }
+        let scale=1.0
+        func point(_ p:SIMD2<Double>)->NSPoint { NSPoint(x:168-p.x*scale,y:168-p.y*scale) }
         color(0xb49a71,alpha:0.7).setFill()
         for corners in town.mapBuildings {
             let path=NSBezierPath()
@@ -19,7 +19,7 @@ extension RaceHUD {
         }
         color(0xe4c899,alpha:0.8).setStroke()
         for street in town.mapStreets {
-            let path=NSBezierPath();path.lineWidth=1;path.lineJoinStyle = .round
+            let path=NSBezierPath();path.lineWidth=1.5;path.lineJoinStyle = .round
             for (i,p) in street.enumerated() { if i==0 { path.move(to:point(p)) } else { path.line(to:point(p)) } }
             path.stroke()
         }
@@ -28,7 +28,7 @@ extension RaceHUD {
             let p=DirtCourse.point(Double(i)*2 * .pi/160),q=point(SIMD2(p.x,p.z))
             if i==0 { course.move(to:q) } else { course.line(to:q) }
         }
-        color(0xf1a477).setStroke();course.lineWidth=1.8;course.stroke()
+        color(0xf1a477).setStroke();course.lineWidth=2.5;course.stroke()
         image.unlockFocus();townMapImage=image
 
         let n=384,bitmap=NSBitmapImageRep(bitmapDataPlanes:nil,pixelsWide:n,pixelsHigh:n,bitsPerSample:8,samplesPerPixel:4,hasAlpha:true,isPlanar:false,colorSpaceName:.deviceRGB,bytesPerRow:n*4,bitsPerPixel:32)!
@@ -46,7 +46,7 @@ extension RaceHUD {
         guard mapRegion != .course else { drawCourseMap(in:map);return }
         NSGraphicsContext.saveGraphicsState();defer { NSGraphicsContext.restoreGraphicsState() }
         NSBezierPath(rect:map).addClip()
-        let radius=mapRegion == .town ? 168:max(240,max(abs(x),abs(z))*1.2)
+        let radius=mapRegion == .town ? max(150,max(abs(x),abs(z))+14):max(240,max(abs(x),abs(z))*1.2)
         let scale=Double(map.height)/(radius*2)
         func point(_ px:Double,_ pz:Double)->NSPoint { NSPoint(x:map.midX-px*scale,y:map.midY-pz*scale) }
         func image(_ image:NSImage?,halfWidth:Double,halfHeight:Double) {
@@ -63,7 +63,7 @@ extension RaceHUD {
             }
             outline.close();color(0x253d38,alpha:0.65).setFill();outline.fill()
         }
-        image(townMapImage,halfWidth:262.08,halfHeight:168)
+        image(townMapImage,halfWidth:168,halfHeight:168)
         if mapRegion == .dunes {
             let line=NSBezierPath();line.move(to:point(0,0));line.line(to:point(x,z));line.setLineDash([3,3],count:2,phase:0)
             color(0xffdf9d,alpha:0.65).setStroke();line.lineWidth=1;line.stroke()

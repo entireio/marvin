@@ -101,7 +101,15 @@ final class DirtTrail {
                     let pz = z-sin(heading)*lateral+cos(heading)*forward
                     normals.append(normal);strengths += [strength,Float(state.storm.elapsed),0,1]
                     uv.append(CGPoint(x:(side+1)/2,y:(along+1)/2))
-                    vertices.append(SCNVector3(px,state.terrainHeight(x:px,z:pz)+0.007,pz))
+                    // Flat-town road/plaza dressing rises above the base sand.
+                    // Place marks over that dressing; fade this floor away before
+                    // the dunes, where impressions must follow the actual terrain.
+                    let edge=max(abs(px),abs(pz))
+                    let blend=max(0,min(1,(edge-(DesertTerrain.townEdge-10))/8))
+                    let floor = -0.025*blend*blend*(3-2*blend)
+                    let ground=state.terrainHeight(x:px,z:pz)
+                    let height=edge<DesertTerrain.townEdge-2 ? max(ground,floor):ground
+                    vertices.append(SCNVector3(px,height+0.007,pz))
                 }
                 indices += [base,base+2,base+1,base,base+3,base+2]
                 count += 1
@@ -115,6 +123,10 @@ final class DirtTrail {
         guard !vertices.isEmpty else { return }
         if chunkIndex == chunks.count {
             let node = SCNNode(); node.castsShadow = false
+            // Town soil, wear and road layers are transparent decals too. Draw
+            // impressions after those layers, while retaining depth occlusion
+            // by robots, buildings and terrain. Distance sorting alone erases them.
+            node.renderingOrder = 10
             root.addChildNode(node); chunks.append(node)
         }
         let tone=strengths.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:vertices.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }

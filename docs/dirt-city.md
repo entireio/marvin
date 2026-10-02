@@ -1595,3 +1595,25 @@ all four robots depart: all ten residents visit homes (57 and 58 total entries),
 longest stationary intervals 11.68 and 3.12 seconds, no resident left stuck,
 collision assertions pass, and robots keep touring with the HUD hidden and
 camera locked. The macOS release build and asset validation also pass.
+
+### Town navigation map and ground impressions (2026-10-02)
+
+The town map now uses a 234 × 212 drawing area inside the same 270-point
+wide overlay, with a 150 m minimum half-height instead of 168 m. This enlarges
+the town by about 58% at ordinary town positions. Its cached raster is square
+and higher resolution; the player stays inside the map near the town boundary.
+The COURSE drawing dimensions and absence of rival markers outside it remain.
+
+Town impressions were generated but could disappear beneath ground dressing:
+base sand is at -0.025 m, while road layers and the plaza extend above it.
+Impressions now clear the highest flat dressing by 4 mm, fade back to terrain
+height before the dunes, and render after transparent ground layers. Depth
+checking remains enabled, so robots and structures still occlude impressions.
+
+The previous navigation and trail-count checks did not assert that impressions
+survived the final composition. NavigationSmoke now compares actual scene
+renders with marks enabled/disabled at two town locations, also testing a
+raised plaza receiver. Screenshots and logs are in `map-trails-verified` under
+`marvin-town-planning`; both locations show visible impressions, including
+2,145 and 1,581 changed pixels in the raised-surface check. These focused checks
+do not constitute general visual parity or exhaustive scene validation.

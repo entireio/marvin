@@ -80,9 +80,10 @@ final class RaceHUD: NSView {
             text("\(i+1).  \(Self.time(score.total))",x+18,78+CGFloat(i)*28,16)
         }
         text("Fastest 3-lap totals",x+18,238,12)
-        panel(x,286,270,212)
+        let mapHeight:CGFloat = mapRegion == .course ? 150:212
+        panel(x,286,270,mapHeight+62)
         text(mapRegion.rawValue,x+18,300,12,true)
-        drawNavigationMap(in:NSRect(x:x+18,y:330,width:234,height:150))
+        drawNavigationMap(in:NSRect(x:x+18,y:330,width:234,height:mapHeight))
         if helpVisible {
             let lines = ["DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", "CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R"]
             let font = NSFont.monospacedSystemFont(ofSize:12,weight:.regular)
