@@ -53,6 +53,11 @@ extension AppController {
                 }
             }
             let shadowComparison=CommandLine.arguments.contains("--shadow-culling-test")
+            let liveShadowBatch=CommandLine.arguments.contains("--benchmark-shadow-batch-live")
+            let shadowBatchComparison=CommandLine.arguments.contains("--benchmark-shadow-batch") || liveShadowBatch
+            var shadowBatchSyncPassed=true
+            let shadowBatch=shadowBatchComparison && !liveShadowBatch ? try TownShadowBatch(root:dirtWorld.scene.rootNode,camera:world.camera.camera!):nil
+            defer { shadowBatch?.setEnabled(false) }
             var frustumPassed=true
             let views:[(String,SCNVector3,SCNVector3)]=[
                 ("street",SCNVector3(35,1.3,14),SCNVector3(40,0.1,22)),
@@ -80,16 +85,40 @@ extension AppController {
                     let optimizedFirst=shadowComparison && name=="reverse-turn"
                     let variants=optimizedFirst ? [("optimized",true),("reference",false)]:[("reference",false),("optimized",true)]
                     for (label,useOptimized) in variants {
-                        terrain.geometry=shadowComparison || meshComparison || useOptimized ? optimized:reference
+                        shadowBatch?.setEnabled(false)
+                        if liveShadowBatch { dirtWorld.town.setShadowBatchEnabled(false) }
+                        terrain.geometry=shadowComparison || shadowBatchComparison || meshComparison || useOptimized ? optimized:reference
                         for (node,old,new) in meshNodes { node.geometry=useOptimized ? new:old }
                         dirtWorld.town.shadowCullingEnabled=shadowComparison && useOptimized
                         dirtWorld.town.shadowDirections=dirtWorld.sky.daylight.directions
                         dirtWorld.town.update(dt:0,camera:eye,player:SIMD2(Double(target.x),Double(target.z)),shadowCamera:world.camera,viewportAspect:1920.0/1080)
+                        shadowBatch?.setEnabled(useOptimized)
+                        if liveShadowBatch {
+                            dirtWorld.town.setShadowBatchEnabled(useOptimized)
+                            // Change the caster footprint while already enabled,
+                            // then return. A frozen-only toggle would leave stale
+                            // proxies or re-enable duplicate original casters.
+                            for position in [SIMD2<Double>(-140,-140),SIMD2(Double(target.x),Double(target.z))] {
+                                dirtWorld.town.update(dt:0,camera:SCNVector3(position.x,eye.y,position.y),player:position,shadowCamera:world.camera,viewportAspect:1920.0/1080)
+                                let state=dirtWorld.town.shadowBatchDiagnostics,expected=dirtWorld.town.shadowCasterCount
+                                shadowBatchSyncPassed = shadowBatchSyncPassed && state["enabled"]==(useOptimized ? 1:0)
+                                    && state["activeProxies"]==(useOptimized ? expected:0)
+                                    && state["originalCasters"]==(useOptimized ? 0:expected)
+                            }
+                            dirtWorld.town.update(dt:0,camera:eye,player:SIMD2(Double(target.x),Double(target.z)),shadowCamera:world.camera,viewportAspect:1920.0/1080)
+                        }
                         casters.append(dirtWorld.town.shadowCasterCount)
                         _=renderer.prepare(dirtWorld.scene,shouldAbortBlock:nil)
                         let image=renderer.snapshot(atTime:0,with:CGSize(width:1920,height:1080),antialiasingMode:view.antialiasingMode)
                         let bitmap=NSBitmapImageRep(data:image.tiffRepresentation!)!;images.append(bitmap)
                         try bitmap.representation(using:.png,properties:[:])!.write(to:directory.appendingPathComponent("\(light)-\(name)-\(label).png"))
+                        if light=="low-sun",name=="uncovered-infield" {
+                            // Same-state controls distinguish snapshot instability
+                            // from differences introduced by the optimization.
+                            let repeatImage=renderer.snapshot(atTime:0,with:CGSize(width:1920,height:1080),antialiasingMode:view.antialiasingMode)
+                            let repeatBitmap=NSBitmapImageRep(data:repeatImage.tiffRepresentation!)!
+                            try repeatBitmap.representation(using:.png,properties:[:])!.write(to:directory.appendingPathComponent("\(light)-\(name)-\(label)-repeat.png"))
+                        }
                     }
                     if optimizedFirst { images.reverse();casters.reverse() }
                     if shadowComparison {
@@ -114,20 +143,40 @@ extension AppController {
                         }}
                     }
                     var changed=0,total=0,error=0.0,maximumError=0.0
-                    // Full-resolution comparison: sparse sampling missed isolated
-                    // normal-map differences at grazing angles.
-                    for y in 0..<1080 { for x in 0..<1920 {
-                        let a=images[0].colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
-                        let b=images[1].colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
-                        let delta=max(abs(a.redComponent-b.redComponent),max(abs(a.greenComponent-b.greenComponent),abs(a.blueComponent-b.blueComponent)))
-                        if delta>5.0/255 { changed += 1 };error += delta;maximumError=max(maximumError,delta);total += 1
-                    }}
-                    rows.append(["view":"\(light)-\(name)","changedFraction":Double(changed)/Double(total),"meanMaxChannelError":error/Double(total),"maximumChannelError":maximumError,"comparedPixels":total,"referenceCasters":casters[0],"optimizedCasters":casters[1]])
+                    let a=images[0],b=images[1]
+                    var pixelEncoding="device RGB components"
+                    // Compare every stored channel directly when both native
+                    // images have the same packed 8-bit representation. Avoid
+                    // millions of AppKit color conversions. Retain the general
+                    // conversion path for other bitmap formats/color spaces.
+                    if !a.isPlanar,!b.isPlanar,a.bitsPerSample==8,b.bitsPerSample==8,
+                       a.samplesPerPixel==b.samplesPerPixel,[3,4].contains(a.samplesPerPixel),
+                       a.bitsPerPixel==a.samplesPerPixel*8,b.bitsPerPixel==b.samplesPerPixel*8,
+                       a.bitmapFormat==b.bitmapFormat,a.colorSpace==b.colorSpace,
+                       let aa=a.bitmapData,let bb=b.bitmapData {
+                        pixelEncoding="packed 8-bit bitmap channels"
+                        let channels=a.samplesPerPixel
+                        for y in 0..<1080 { for x in 0..<1920 {
+                            let ai=y*a.bytesPerRow+x*channels,bi=y*b.bytesPerRow+x*channels
+                            var difference=0
+                            for c in 0..<channels { difference=max(difference,abs(Int(aa[ai+c])-Int(bb[bi+c]))) }
+                            let delta=Double(difference)/255
+                            if difference>5 { changed += 1 };error += delta;maximumError=max(maximumError,delta);total += 1
+                        }}
+                    } else {
+                        for y in 0..<1080 { for x in 0..<1920 {
+                            let aa=a.colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
+                            let bb=b.colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
+                            let delta=max(abs(aa.redComponent-bb.redComponent),max(abs(aa.greenComponent-bb.greenComponent),abs(aa.blueComponent-bb.blueComponent)))
+                            if delta>5.0/255 { changed += 1 };error += delta;maximumError=max(maximumError,delta);total += 1
+                        }}
+                    }
+                    rows.append(["view":"\(light)-\(name)","changedFraction":Double(changed)/Double(total),"meanMaxChannelError":error/Double(total),"maximumChannelError":maximumError,"comparedPixels":total,"pixelEncoding":pixelEncoding,"referenceCasters":casters[0],"optimizedCasters":casters[1]])
                 }
             }
             let reduced=rows.contains { ($0["optimizedCasters"] as! Int)<($0["referenceCasters"] as! Int) }
-            let passed=tangentFixturesPassed && TownMesh.maximumMergedBasisRadians<0.005*Double.pi/180 && meshDataPassed && (!meshComparison || (!meshNodes.isEmpty && TownMesh.outputVertices<TownMesh.inputVertices)) && frustumPassed && (!shadowComparison || reduced) && rows.allSatisfy { ($0["changedFraction"] as! Double)<(shadowComparison || meshComparison ? 0.00001:0.001) }
-            let report:[String:Any]=["passed":passed,"tangentFixturesPassed":tangentFixturesPassed,"meshDataPassed":meshDataPassed,"meshInputVertices":TownMesh.inputVertices,"meshOutputVertices":TownMesh.outputVertices,"maximumMergedBasisDegrees":TownMesh.maximumMergedBasisRadians*180/Double.pi,"mergedBasisComparisons":TownMesh.mergedBasisComparisons,"comparisons":rows,"uvMappingPassed":uvMatches,"frustumPassed":frustumPassed,"shadowComparison":shadowComparison,"casterReductionObserved":reduced,"note":"Original receiver depth, transparent surface and material retained; small rasterization differences require manual review."]
+            let passed=shadowBatchSyncPassed && tangentFixturesPassed && TownMesh.maximumMergedBasisRadians<0.005*Double.pi/180 && meshDataPassed && (!meshComparison || (!meshNodes.isEmpty && TownMesh.outputVertices<TownMesh.inputVertices)) && frustumPassed && (!shadowComparison || reduced) && rows.allSatisfy { ($0["changedFraction"] as! Double)<(shadowComparison || shadowBatchComparison || meshComparison ? 0.00001:0.001) }
+            let report:[String:Any]=["passed":passed,"tangentFixturesPassed":tangentFixturesPassed,"meshDataPassed":meshDataPassed,"meshInputVertices":TownMesh.inputVertices,"meshOutputVertices":TownMesh.outputVertices,"maximumMergedBasisDegrees":TownMesh.maximumMergedBasisRadians*180/Double.pi,"mergedBasisComparisons":TownMesh.mergedBasisComparisons,"comparisons":rows,"uvMappingPassed":uvMatches,"frustumPassed":frustumPassed,"shadowComparison":shadowComparison,"shadowBatch":shadowBatch?.statistics ?? dirtWorld.town.shadowBatchDiagnostics,"shadowBatchSyncPassed":shadowBatchSyncPassed,"casterReductionObserved":reduced,"note":"Original receiver depth, transparent surface and material retained; small rasterization differences require manual review."]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("comparison.json"))
             print(report);return passed
         } catch { print(error);return false }

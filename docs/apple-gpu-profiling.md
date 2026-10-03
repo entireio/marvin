@@ -120,3 +120,69 @@ beyond bracket drift, so they remain diagnostics too.
 The independent Astra Ultra review accepted visual preservation for the tested
 views, including the two adjacent 17/255 and 7/255 PNG outliers in the expanded
 low-sun infield capture. It explicitly did not accept sustained 60 FPS.
+
+## Sustained result after tangent reuse
+
+The clean clear-weather run of `abe4053` (`tangent-production-clear`) still fails:
+603.015 seconds, 54.088 FPS mean, 3,547 callback gaps over 25 ms, 45.3 FPS minimum
+rolling ten-second coverage, and CPU update p95 2.866 ms. It drove 1,354.6 m with
+full audio, 1920×1080, 2× MSAA, both 4096/2048 shadow maps and exploration detail.
+The first two minutes were about 60 FPS; minutes four through ten averaged
+50.7–53.3 FPS. Thermal state ended at 1. The final native image showed 44.5 FPS.
+This is a failed M2 sustained test, not M4 validation or a presentation trace.
+
+## Static town shadow batching experiment
+
+`MARVIN_GPU_VARIANTS=shadow-batch,shadow-batch,shadow-batch` with the frozen GPU
+probe compares shadow-only copies of the static town cells against the ordinary
+casters. The copies weld exact local Float positions and keep all 679,992
+triangles, winding, transforms and both LODs. Single-sided plaster/adobe/metal
+share one material group; double-sided cloth retains another. Camera/light
+category masks keep these copies out of the visible and AO passes while allowing
+them into the directional shadow maps. Apple documents the separate
+[camera/light category filtering](https://developer.apple.com/documentation/scenekit/scnnode/categorybitmask).
+An isolated native scene produced identical reference/proxy pixels, while its
+missing-shadow control differed in 5,474 pixels.
+
+The first three town ABBA comparisons (`shadow-batch-abba`, M2, nominal thermal
+state) measured 11.492–11.542 ms production command-buffer medians versus
+11.274–11.326 ms with batching. CPU encoding medians fell from 3.104–3.208 ms to
+2.667–2.738 ms. Across 92 cells and their LODs, shadow vertices fell from
+1,761,272 to 417,484 and geometry elements from 661 to 338. Each candidate image
+changed 28 pixels, at most 5/255; all production blocks were bit-identical.
+
+Run `--ground-performance-test OUTPUT --benchmark-shadow-batch` for the broader
+native image comparisons. The opt-in `--benchmark-shadow-batch-live` path routes
+TownWorld's authoritative caster decisions to the shadow copies every frame.
+`--shadow-culling-test OUTPUT --benchmark-shadow-batch-live` checks the combined
+changes, moving caster selection away and back while enabled to detect stale or
+duplicate casters. All 33 views passed the numerical gate; 25 were identical,
+182 pixels differed overall, and 17 exceeded 5/255 (maximum 53/255). The low-sun
+infield pair was viewed at native resolution; independent PNG decoding matched
+all reported metrics. Full moving-camera and sustained acceptance remain open.
+
+The full-pixel checker uses matching packed 8-bit bitmap channels when available,
+with the previous color-conversion fallback for other encodings. Independent PNG
+checks verified all pixels and metrics across the 33 views; this avoids repeated
+AppKit color-object allocation without reducing coverage. These measurements do
+not prove sustained 60 FPS or display presentation.
+
+The combined three-ABBA run (`shadow-batch-culling-abba`, all thermal state 0)
+measured 11.813–11.950 ms production GPU medians versus 11.412–11.448 ms
+combined, and 3.107–3.252 ms CPU encoding versus 2.622–2.747 ms. This is a
+modest frozen-frame saving, not a sustained-performance pass.
+
+Same-state low-sun infield controls (`shadow-batch-live-repeat`) were bit-identical
+within both reference and candidate pairs. Between configurations, 62 pixels
+changed, one by more than 5/255, maximum 17/255. Thus the difference is not
+explained by instability between consecutive identical snapshots. Robot placement
+varies between launches; this run does not invalidate the earlier 53/255 outlier.
+The optimization remains opt-in while moving-view validation continues.
+
+Astra Ultra accepted visual preservation for these tested static views after
+reviewing the repeats: no perceptible lost detail, missing shadows, seams or
+changed silhouettes. The pixel differences are candidate-associated, not random
+capture noise. Moving-camera stability and sustained performance were explicitly
+not accepted. The live probe snapshots the live configuration before disabling
+its owner for frozen ABBA; per-second telemetry uses cached logical caster counts,
+while synchronization tests retain actual SceneKit node-state checks.

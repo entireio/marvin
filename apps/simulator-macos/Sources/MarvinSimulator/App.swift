@@ -501,6 +501,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = !isLoadingDirt
         dirtWorld.camera = world.camera
         dirtWorld.sky.attach(camera:world.camera)
+        if CommandLine.arguments.contains("--benchmark-shadow-batch-live") {
+            do { try dirtWorld.town.prepareShadowBatch(camera:world.camera.camera!) }
+            catch { NSLog("Shadow batch preparation failed: %@",String(describing:error));exit(1) }
+        }
         mainMenu.portrait.rendersContinuously = false
         view.antialiasingMode = .multisampling2X
         view.scene = dirtWorld.scene; dirtWorld.scene.rootNode.addChildNode(world.camera)

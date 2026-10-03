@@ -74,7 +74,7 @@ class SustainedGateTests(unittest.TestCase):
         report=dict(self.report,benchmarkArguments=['--city-roam','--benchmark-gpu-capture'])
         self.assertFalse(self.result(report=report)['passed'])
     def test_experimental_mesh_cannot_pass_as_production(self):
-        for flag in ['--benchmark-tangent-reuse','--benchmark-exact-tangents']:
+        for flag in ['--benchmark-tangent-reuse','--benchmark-exact-tangents','--benchmark-shadow-batch','--benchmark-shadow-batch-live']:
             report=dict(self.report,benchmarkArguments=['--city-roam',flag])
             self.assertFalse(self.result(report=report)['passed'])
     def test_empty_counter_fails(self):

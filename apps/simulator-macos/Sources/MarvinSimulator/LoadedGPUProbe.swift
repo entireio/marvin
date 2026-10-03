@@ -13,6 +13,10 @@ extension AppController {
         if let tiff=live.tiffRepresentation,let bitmap=NSBitmapImageRep(data:tiff) {
             try bitmap.representation(using:.png,properties:[:])!.write(to:directory.appendingPathComponent("gpu-probe-live.png"))
         }
+        // Keep the live owner from overriding the frozen ABBA caster decisions.
+        let liveShadowBatchEnabled=dirtWorld.town.shadowBatchDiagnostics["enabled"]==1
+        dirtWorld.town.setShadowBatchEnabled(false)
+        defer { dirtWorld.town.setShadowBatchEnabled(liveShadowBatchEnabled) }
         let colorFormat=view.colorPixelFormat,depthFormat=view.depthPixelFormat,stencilFormat=view.stencilPixelFormat
         let reverseZ=view.usesReverseZ
         let scene=dirtWorld.scene
@@ -116,6 +120,8 @@ extension AppController {
         scene.rootNode.enumerateChildNodes { node,_ in
             if let candidate=node.geometry,let production=productionMeshes[ObjectIdentifier(candidate)] { tangentNodes.append((node,production,candidate)) }
         }
+        let shadowBatch=try TownShadowBatch(root:scene.rootNode,camera:world.camera.camera!)
+        defer { shadowBatch.setEnabled(false) }
         var rows:[[String:Any]]=[]
         renderer.update(atTime:0)
         let requested=ProcessInfo.processInfo.environment["MARVIN_GPU_VARIANTS"] ?? "no-trails,no-sky,no-ssao,no-shadows,no-shadow-casters,no-base-shadow,front-to-back,no-town,constant-ground-pigment,original-base,shadow-culling,no-vertex-pow,no-crowd,no-crowd-motion"
@@ -126,6 +132,7 @@ extension AppController {
         // ABBA at the same retained pose/history brackets each isolation with
         // production blocks. Keep all samples, including drift and outliers.
         for (block,variant) in variants.enumerated() {
+            shadowBatch.setEnabled(false)
             for (node,production,candidate) in tangentNodes { node.geometry=variant=="tangent-reuse" ? candidate:production }
             for (property,contents) in textureProperties.values { property.contents=variant=="tiny-surface-textures" ? tiny:contents }
             // A material can belong to more than one group. Restore it once,
@@ -156,11 +163,12 @@ extension AppController {
             for node in sky.childNodes where node.geometry is SCNSphere { node.isHidden=variant=="no-sky" }
             world.camera.camera!.screenSpaceAmbientOcclusionIntensity=variant=="no-ssao" ? 0:ao
             terrain.geometry=variant=="original-base" ? oldGround:currentGround
-            dirtWorld.town.shadowCullingEnabled=variant=="shadow-culling"
+            dirtWorld.town.shadowCullingEnabled=variant=="shadow-culling" || variant=="shadow-batch-culling"
             dirtWorld.town.update(dt:0,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),shadowCamera:world.camera,viewportAspect:1920.0/1080)
             for light in shadowLights { light.castsShadow=variant != "no-shadows" }
             if variant=="no-shadow-casters" { for node in shadowNodes { node.castsShadow=false } }
             if variant=="no-base-shadow" { terrain.castsShadow=false }
+            shadowBatch.setEnabled(variant=="shadow-batch" || variant=="shadow-batch-culling")
             renderer.update(atTime:0)
             _=renderer.prepare(scene,shouldAbortBlock:nil)
             var samples:[[Double]]=[]
@@ -186,7 +194,7 @@ extension AppController {
             }
             rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue])
         }
-        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","variants":rows]
+        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","variants":rows,"shadowBatch":shadowBatch.statistics]
         try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("loaded-gpu-probe.json"))
     }
 }

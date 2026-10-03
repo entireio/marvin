@@ -34,6 +34,17 @@ final class TownWorld {
     private var explorationCells: [String: TownCell] = [:]
     private var explorationNodes: [SCNNode] = []
     private var architectureNodes:[SCNNode]=[]
+    private var shadowBatch:TownShadowBatch?
+    func prepareShadowBatch(camera:SCNCamera)throws {
+        if shadowBatch==nil {
+            guard let sceneRoot=root.parent else { throw TownShadowBatch.Failure.unsupportedGeometry }
+            shadowBatch=try TownShadowBatch(root:sceneRoot,camera:camera)
+        }
+        shadowBatch?.setEnabled(true)
+    }
+    func setShadowBatchEnabled(_ enabled:Bool) { shadowBatch?.setEnabled(enabled) }
+    var shadowBatchTelemetry:[String:Int] { shadowBatch?.telemetryStatistics ?? [:] }
+    var shadowBatchDiagnostics:[String:Int] { shadowBatch?.statistics ?? [:] }
     var shadowDirections:[SIMD3<Double>]=[]
     var shadowCullingEnabled=CommandLine.arguments.contains("--benchmark-shadow-culling")
     private var shadowProxyDirections:[SIMD3<Double>]=[]
@@ -85,7 +96,7 @@ final class TownWorld {
             var enabled=outside ? hypot(Double(p.x)-focus.x,Double(p.z)-focus.y)<75:(abs(p.x)<48 && abs(p.z)<48)
             if enabled,shadowCullingEnabled,!frusta.isEmpty,let volumes=shadowVolumes[ObjectIdentifier(node)] { enabled=volumes.contains { volume in frusta.contains { $0.intersects(volume) } } }
             if enabled { shadowCasterCount += 1 }
-            if node.castsShadow != enabled { node.castsShadow=enabled }
+            if shadowBatch?.setCaster(node,enabled:enabled) != true, node.castsShadow != enabled { node.castsShadow=enabled }
         }
         let exploring=explorationDetailEnabled && max(abs(focus.x),abs(focus.y))>28 && camera.y<60
         for node in explorationNodes {

@@ -223,7 +223,7 @@ extension AppController {
         let trailsHidden=isolateTrails && ((elapsed>=300 && elapsed<330) || (elapsed>=480 && elapsed<510))
         if isolateTrails { dirtWorld.setBenchmarkTrailsHidden(trailsHidden) }
         if Int(elapsed)>=(townBenchmarkResourceSamples.last?["second"] as? Int ?? -1)+1 {
-            townBenchmarkResourceSamples.append(["second":Int(elapsed),"uptime":now,"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"trailsHidden":trailsHidden,"shadowCasters":dirtWorld.town.shadowCasterCount,"trails":dirtWorld.trailDiagnostics()])
+            townBenchmarkResourceSamples.append(["second":Int(elapsed),"uptime":now,"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"trailsHidden":trailsHidden,"shadowCasters":dirtWorld.town.shadowCasterCount,"trails":dirtWorld.trailDiagnostics(),"shadowBatch":dirtWorld.town.shadowBatchTelemetry])
         }
         var input=DirtOpponent.driveInput(for:simulation)
         if !townBenchmarkRoute.isEmpty {
@@ -293,6 +293,7 @@ extension AppController {
                 if let light=node.light,light.castsShadow { shadowWidths.append(Int(light.shadowMapSize.width)) }
             }
             report["quality"]=["msaaSamples":view.antialiasingMode == .none ? 1:(1 << view.antialiasingMode.rawValue),"shadowMapWidths":shadowWidths.sorted(),"explorationDetail":dirtWorld.town.explorationDetailEnabled]
+            report["shadowBatch"]=dirtWorld.town.shadowBatchTelemetry
             report["thermalState"]=ProcessInfo.processInfo.thermalState.rawValue
             report["benchmarkArguments"]=CommandLine.arguments
             report["benchmarkRunID"]=townBenchmarkRunID
