@@ -1,0 +1,5 @@
+Start from branch `codex/mos-aster-racing-city` in `entireio/marvin`. Read `AGENTS.md` and `docs/simulator-agent-rules.md`, and follow those instructions throughout the session.
+
+Inspect the branch and working tree without discarding changes. Fetch the remote and update safely if needed. Follow the Entire session attachment and trailer verification requirements for every commit.
+
+Then ask me: **“What would you like to work on next?”** Wait for my answer before making changes.
