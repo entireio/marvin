@@ -63,6 +63,15 @@ extension AppController {
             }
         }
         var crowdMaterials:[ObjectIdentifier:(SCNMaterial,[SCNShaderModifierEntryPoint:String])]=[:]
+        var dustMaterials:[ObjectIdentifier:(SCNMaterial,[SCNShaderModifierEntryPoint:String])]=[:]
+        scene.rootNode.enumerateChildNodes { node,_ in
+            for material in node.geometry?.materials ?? [] {
+                if material.lightingModel == .lambert,!material.writesToDepthBuffer,
+                   let modifiers=material.shaderModifiers,modifiers[.geometry]?.contains("dustTint")==true {
+                    dustMaterials[ObjectIdentifier(material)]=(material,modifiers)
+                }
+            }
+        }
         var crowdNodes:[(SCNNode,Bool)]=[]
         scene.rootNode.enumerateChildNodes { node,_ in
             var animated=false
@@ -94,20 +103,42 @@ extension AppController {
             if node.name?.hasPrefix("Town cell ")==true || node.name?.hasPrefix("Exploration detail ")==true { orderedNodes.append((node,node.renderingOrder)) }
         }
         let ao=world.camera.camera!.screenSpaceAmbientOcclusionIntensity
+        // Compare tangent reuse against the actual production mesh, whose
+        // exact-gradient sharing already removes some duplicate vertices.
+        let productionMeshes=Dictionary(uniqueKeysWithValues:TownMesh.tangentProbePairs.map { (ObjectIdentifier($0.1),$0.0) })
+        for (production,candidate) in TownMesh.tangentProbePairs {
+            production.levelsOfDetail=candidate.levelsOfDetail?.map { level in
+                let geometry=level.geometry.flatMap { productionMeshes[ObjectIdentifier($0)] } ?? level.geometry
+                return level.screenSpaceRadius>0 ? SCNLevelOfDetail(geometry:geometry,screenSpaceRadius:level.screenSpaceRadius):SCNLevelOfDetail(geometry:geometry,worldSpaceDistance:level.worldSpaceDistance)
+            }
+        }
+        var tangentNodes:[(SCNNode,SCNGeometry,SCNGeometry)]=[]
+        scene.rootNode.enumerateChildNodes { node,_ in
+            if let candidate=node.geometry,let production=productionMeshes[ObjectIdentifier(candidate)] { tangentNodes.append((node,production,candidate)) }
+        }
         var rows:[[String:Any]]=[]
         renderer.update(atTime:0)
         let requested=ProcessInfo.processInfo.environment["MARVIN_GPU_VARIANTS"] ?? "no-trails,no-sky,no-ssao,no-shadows,no-shadow-casters,no-base-shadow,front-to-back,no-town,constant-ground-pigment,original-base,shadow-culling,no-vertex-pow,no-crowd,no-crowd-motion"
         let variants=requested.split(separator:",").map(String.init).flatMap { ["production",$0,$0,"production"] }
         let shaderMaterials=noiseMaterials.merging(tintMaterials) { original,_ in original }
             .merging(crowdMaterials) { original,_ in original }
+            .merging(dustMaterials) { original,_ in original }
         // ABBA at the same retained pose/history brackets each isolation with
         // production blocks. Keep all samples, including drift and outliers.
         for (block,variant) in variants.enumerated() {
+            for (node,production,candidate) in tangentNodes { node.geometry=variant=="tangent-reuse" ? candidate:production }
             for (property,contents) in textureProperties.values { property.contents=variant=="tiny-surface-textures" ? tiny:contents }
             // A material can belong to more than one group. Restore it once,
             // then apply the requested transform without a later group undoing it.
             for (material,modifiers) in shaderMaterials.values {
                 var value=modifiers
+                if variant=="dust-zero-alpha",dustMaterials[ObjectIdentifier(material)] != nil,let surface=value[.surface] {
+                    value[.surface]=surface.replacingOccurrences(of:"#pragma body",with:"#pragma body\nif (_surface.diffuse.a * in.dustTint.a == 0.0) { discard_fragment(); }")
+                }
+                if variant=="dust-vertex-tint",dustMaterials[ObjectIdentifier(material)] != nil {
+                    value[.geometry]=value[.geometry]?.replacingOccurrences(of:"out.dustTint=_geometry.color;",with:"out.dustTint=float4(pow(max(_geometry.color.rgb,float3(0.0)),float3(2.2)),_geometry.color.a);")
+                    value[.surface]=value[.surface]?.replacingOccurrences(of:"pow(max(in.dustTint.rgb,float3(0.0)),float3(2.2))",with:"in.dustTint.rgb")
+                }
                 if variant=="constant-ground-pigment" { value=value.mapValues { $0.replacingOccurrences(of:TownGround.pigmentFunctions,with:"float townNoise(float2 p) { return 0.5; } float3 townPigment(float2 p) { return float3(0.4); }") } }
                 if variant=="no-vertex-pow" { value=value.mapValues { $0.replacingOccurrences(of:"pow(max(_geometry.color.rgb,float3(0.0)),float3(2.2))",with:"max(_geometry.color.rgb,float3(0.0))").replacingOccurrences(of:"pow(max(_geometry.color.rgb,float3(0)),float3(2.2))",with:"max(_geometry.color.rgb,float3(0))") } }
                 if variant=="no-crowd-motion",let shader=value[.geometry],let start=shader.range(of:"float2 originXZ = _geometry.texcoords[1]") { value[.geometry]=String(shader[..<start.lowerBound]) }
@@ -148,8 +179,10 @@ extension AppController {
                     if frame>=30 { samples.append([(command.gpuEndTime-command.gpuStartTime)*1000,(encoded-begin)*1000]) }
                 }
             }
-            if block==0,let image=CIImage(mtlTexture:resolved,options:[.colorSpace:CGColorSpace(name:CGColorSpace.linearSRGB)!]),let cg=CIContext(mtlDevice:device).createCGImage(image.transformed(by:CGAffineTransform(translationX:0,y:1080).scaledBy(x:1,y:-1)),from:viewport) {
-                try NSBitmapImageRep(cgImage:cg).representation(using:.png,properties:[:])!.write(to:directory.appendingPathComponent("gpu-probe-resolved.png"))
+            if let image=CIImage(mtlTexture:resolved,options:[.colorSpace:CGColorSpace(name:CGColorSpace.linearSRGB)!]),let cg=CIContext(mtlDevice:device).createCGImage(image.transformed(by:CGAffineTransform(translationX:0,y:1080).scaledBy(x:1,y:-1)),from:viewport) {
+                let png=NSBitmapImageRep(cgImage:cg).representation(using:.png,properties:[:])!
+                try png.write(to:directory.appendingPathComponent("gpu-probe-block-\(block).png"))
+                if block==0 { try png.write(to:directory.appendingPathComponent("gpu-probe-resolved.png")) }
             }
             rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue])
         }

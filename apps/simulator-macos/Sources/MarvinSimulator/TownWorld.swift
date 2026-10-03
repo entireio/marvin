@@ -1806,7 +1806,9 @@ final class TownWorld {
 /// primitive nodes survive for each window, brick or spectator body part.
 final class TownMesh {
     static var inputVertices=0,outputVertices=0
+    static var maximumMergedBasisRadians=0.0,mergedBasisComparisons=0
     static var validationPairs:[(SCNGeometry,SCNGeometry)]=[]
+    static var tangentProbePairs:[(SCNGeometry,SCNGeometry)]=[]
     var materialSlot=0
     private var groups:[[Int32]]=[[],[],[],[]]
     var wearUV:[CGPoint]=[]
@@ -1832,6 +1834,7 @@ final class TownMesh {
         groups[materialSlot] += [base,base+1,base+2]
     }
     private struct VertexKey:Hashable {
+        let quantizedBasis:Bool
         let position:SIMD3<Float>,normal:SIMD3<Float>,tangent:SIMD3<Float>,bitangent:SIMD3<Float>
         let uv:SIMD2<Double>,wear:SIMD2<Double>,color:SIMD4<Float>
     }
@@ -1841,33 +1844,67 @@ final class TownMesh {
         // Match each face UV gradient too: merging differing gradients would
         // change SceneKit/exporter generated tangent averages for normal maps.
         // This reduces repeated vertex work in both sun maps and the color pass.
-        var lookup:[VertexKey:Int32]=[:],remap:[Int32]=[]
-        var local:[SCNVector3]=[],outNormals:[SCNVector3]=[],outUV:[CGPoint]=[],outWear:[CGPoint]=[],outColors:[Float]=[]
-        lookup.reserveCapacity(positions.count/2);remap.reserveCapacity(positions.count)
-        var tangent=SIMD3<Float>.zero,bitangent=SIMD3<Float>.zero
-        for i in positions.indices {
-            if i%3==0 {
-                func point(_ j:Int)->SIMD3<Float> { SIMD3(Float(positions[j].x)-origin.x,Float(positions[j].y)-origin.y,Float(positions[j].z)-origin.z) }
-                let e1=point(i+1)-point(i),e2=point(i+2)-point(i)
-                let u1=SIMD2(Float(uv[i+1].x)-Float(uv[i].x),Float(uv[i+1].y)-Float(uv[i].y))
-                let u2=SIMD2(Float(uv[i+2].x)-Float(uv[i].x),Float(uv[i+2].y)-Float(uv[i].y))
-                let determinant=u1.x*u2.y-u1.y*u2.x
-                tangent = .zero;bitangent = .zero
-                if abs(determinant)>1e-8 { tangent=(e1*u2.y-e2*u1.y)/determinant;bitangent=(e2*u1.x-e1*u2.x)/determinant }
+        func build(reuseNearbyTangents:Bool)->SCNGeometry {
+            var lookup:[VertexKey:Int32]=[:],remap:[Int32]=[]
+            var local:[SCNVector3]=[],outNormals:[SCNVector3]=[],outUV:[CGPoint]=[],outWear:[CGPoint]=[],outColors:[Float]=[]
+            lookup.reserveCapacity(positions.count/2);remap.reserveCapacity(positions.count)
+            var basisRepresentatives:[(SIMD3<Float>,SIMD3<Float>)]=[]
+            var tangent=SIMD3<Float>.zero,bitangent=SIMD3<Float>.zero
+            for i in positions.indices {
+                if i%3==0 {
+                    func point(_ j:Int)->SIMD3<Float> { SIMD3(Float(positions[j].x)-origin.x,Float(positions[j].y)-origin.y,Float(positions[j].z)-origin.z) }
+                    let e1=point(i+1)-point(i),e2=point(i+2)-point(i)
+                    let u1=SIMD2(Float(uv[i+1].x)-Float(uv[i].x),Float(uv[i+1].y)-Float(uv[i].y))
+                    let u2=SIMD2(Float(uv[i+2].x)-Float(uv[i].x),Float(uv[i+2].y)-Float(uv[i].y))
+                    let determinant=u1.x*u2.y-u1.y*u2.x
+                    tangent = .zero;bitangent = .zero
+                    if abs(determinant)>1e-8 { tangent=(e1*u2.y-e2*u1.y)/determinant;bitangent=(e2*u1.x-e1*u2.x)/determinant }
+                }
+                let p=SIMD3(Float(positions[i].x)-origin.x,Float(positions[i].y)-origin.y,Float(positions[i].z)-origin.z)
+                let n=SIMD3(Float(normals[i].x),Float(normals[i].y),Float(normals[i].z))
+                let c=SIMD4(colors[i*4],colors[i*4+1],colors[i*4+2],colors[i*4+3])
+                // Compare the basis after normal projection. Raw gradients can
+                // differ greatly in length yet generate the same tangent frame.
+                // Ill-conditioned or degenerate frames retain the exact key.
+                let unitNormal=simd_normalize(n)
+                let projectedT=tangent-unitNormal*simd_dot(unitNormal,tangent)
+                let projectedB=bitangent-unitNormal*simd_dot(unitNormal,bitangent)
+                let tLength=simd_length(projectedT),bLength=simd_length(projectedB)
+                let stable=tLength.isFinite && bLength.isFinite && tLength>0.1 && bLength>0.1
+                    && tLength>=0.25*simd_length(tangent) && bLength>=0.25*simd_length(bitangent)
+                    && abs(simd_dot(simd_cross(unitNormal,projectedT),projectedB))>0.25*tLength*bLength
+                func basisKey(_ exact:SIMD3<Float>,_ projected:SIMD3<Float>,_ length:Float)->SIMD3<Float> {
+                    guard reuseNearbyTangents && stable else { return exact }
+                    let scaled=projected/length*65536
+                    return SIMD3(scaled.x.rounded(),scaled.y.rounded(),scaled.z.rounded())/65536
+                }
+                let key=VertexKey(quantizedBasis:reuseNearbyTangents && stable,position:p,normal:n,tangent:basisKey(tangent,projectedT,tLength),bitangent:basisKey(bitangent,projectedB,bLength),uv:SIMD2(Double(uv[i].x),Double(uv[i].y)),wear:SIMD2(Double(wearUV[i].x),Double(wearUV[i].y)),color:c)
+                if let existing=lookup[key] {
+                    if reuseNearbyTangents && stable {
+                        let previous=basisRepresentatives[Int(existing)]
+                        for (a,b) in [(previous.0,projectedT),(previous.1,projectedB)] {
+                            let x=simd_normalize(SIMD3<Double>(a)),y=simd_normalize(SIMD3<Double>(b))
+                            let angle=atan2(simd_length(simd_cross(x,y)),simd_dot(x,y))
+                            TownMesh.maximumMergedBasisRadians=max(TownMesh.maximumMergedBasisRadians,angle)
+                            TownMesh.mergedBasisComparisons += 1
+                        }
+                    }
+                    remap.append(existing);continue
+                }
+                if reuseNearbyTangents { basisRepresentatives.append((projectedT,projectedB)) }
+                let index=Int32(local.count);lookup[key]=index;remap.append(index)
+                local.append(SCNVector3(p));outNormals.append(normals[i]);outUV.append(uv[i]);outWear.append(wearUV[i]);outColors += [c.x,c.y,c.z,c.w]
             }
-            let p=SIMD3(Float(positions[i].x)-origin.x,Float(positions[i].y)-origin.y,Float(positions[i].z)-origin.z)
-            let n=SIMD3(Float(normals[i].x),Float(normals[i].y),Float(normals[i].z))
-            let c=SIMD4(colors[i*4],colors[i*4+1],colors[i*4+2],colors[i*4+3])
-            let key=VertexKey(position:p,normal:n,tangent:tangent,bitangent:bitangent,uv:SIMD2(Double(uv[i].x),Double(uv[i].y)),wear:SIMD2(Double(wearUV[i].x),Double(wearUV[i].y)),color:c)
-            if let existing=lookup[key] { remap.append(existing);continue }
-            let index=Int32(local.count);lookup[key]=index;remap.append(index)
-            local.append(SCNVector3(p));outNormals.append(normals[i]);outUV.append(uv[i]);outWear.append(wearUV[i]);outColors += [c.x,c.y,c.z,c.w]
+            let source=outColors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:local.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
+            let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:outNormals),SCNGeometrySource(textureCoordinates:outUV),SCNGeometrySource(textureCoordinates:outWear),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0.map{remap[Int($0)]},primitiveType:.triangles)})
+            let materials=[material,CityMaterials.cloth,CityMaterials.metal,CityMaterials.adobe]
+            g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]}
+            return g
         }
-        let source=outColors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:local.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
-        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:outNormals),SCNGeometrySource(textureCoordinates:outUV),SCNGeometrySource(textureCoordinates:outWear),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0.map{remap[Int($0)]},primitiveType:.triangles)})
-        let materials=[material,CityMaterials.cloth,CityMaterials.metal,CityMaterials.adobe]
-        g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]}
-        TownMesh.inputVertices += positions.count;TownMesh.outputVertices += local.count
+        let reuseNearbyTangents=CommandLine.arguments.contains("--benchmark-tangent-reuse")
+        let g=build(reuseNearbyTangents:reuseNearbyTangents)
+        if reuseNearbyTangents { TownMesh.tangentProbePairs.append((build(reuseNearbyTangents:false),g)) }
+        TownMesh.inputVertices += positions.count;TownMesh.outputVertices += g.sources(for:.vertex).first!.vectorCount
         if CommandLine.arguments.contains("--mesh-reuse-test") || CommandLine.arguments.contains("--benchmark-original-vertices") {
             let rawColor=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:positions.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
             let rawLocal=positions.map { SCNVector3(Float($0.x)-origin.x,Float($0.y)-origin.y,Float($0.z)-origin.z) }

@@ -79,3 +79,36 @@ acceptance separately without instrumentation overhead or concurrent builds.
 - [Generate Metal HUD performance reports](https://developer.apple.com/documentation/xcode/generating-performance-reports-with-metal-performance-hud)
 - [Metal HUD performance insights](https://developer.apple.com/documentation/xcode/gaining-performance-insights-with-metal-performance-hud)
 - [WWDC26 trace collection and macOS 27 requirements](https://developer.apple.com/videos/play/wwdc2026/388/)
+
+## Guarded tangent reuse experiment (October 3)
+
+`--benchmark-tangent-reuse` is an opt-in candidate, not the production mesh or
+sustained acceptance. It shares identical complete vertices only when their
+normal-projected tangent and bitangent directions occupy the same fine bin.
+Ill-conditioned frames retain exact gradients; a separate key discriminator
+prevents collisions between these two policies. Degenerate, mirrored, stable
+scaled, and fallback-boundary fixtures exercise those cases.
+
+On the M2 host, three frozen ABBA comparisons at 1920×1080 with 2× MSAA measured
+production medians of 11.769–11.951 ms and candidate medians of 11.592–11.615 ms.
+These are owned-command-buffer envelopes, not GPU busy time or presentation.
+The candidate removes about 10.4% of production town vertices while retaining
+all triangles and attributes. Its maximum observed merged basis angle was
+0.001049 degrees across 713,478 tangent/bitangent comparisons.
+
+The frozen comparison changed one pixel by more than 2/255, with a maximum of
+3/255. Full-resolution analysis of 27 broader comparisons against the original
+triangle soup found isolated larger differences (maximum 12/255); the previous
+checker sampling every second pixel missed some. The native checker now visits
+every pixel, records its maximum error and compared-pixel count, and includes
+magnified street views in clear, low-sun, and storm conditions. Numerical gates
+still require manual image review. The expanded 33-view native run passed its pixel-fraction gate and all four
+tangent fixtures; every view compared 2,073,600 pixels. Its device-RGB maximum
+channel error is recorded separately from PNG byte differences. Neither this
+gain nor the image checks prove ten-minute 60 FPS or adequate headroom.
+
+Artifact directories under the external `marvin-town-planning/sustained-fix`
+workspace: `tangent-basis-abba`, `tangent-basis-comparison`, and
+`tangent-basis-fullpixel`. The two dust shader experiments (`dust-zero-alpha`
+and `dust-vertex-tint`) produced identical frozen pixels but no reliable gain
+beyond bracket drift, so they remain diagnostics too.

@@ -73,6 +73,9 @@ class SustainedGateTests(unittest.TestCase):
     def test_native_gpu_capture_cannot_pass_as_production(self):
         report=dict(self.report,benchmarkArguments=['--city-roam','--benchmark-gpu-capture'])
         self.assertFalse(self.result(report=report)['passed'])
+    def test_experimental_mesh_cannot_pass_as_production(self):
+        report=dict(self.report,benchmarkArguments=['--city-roam','--benchmark-tangent-reuse'])
+        self.assertFalse(self.result(report=report)['passed'])
     def test_empty_counter_fails(self):
         self.assertFalse(self.result(hud=[])['passed'])
     def test_diagnostic_quality_flag_fails(self):

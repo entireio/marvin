@@ -8,6 +8,7 @@ extension AppController {
     func checkGroundPerformance(at directory:URL)->Bool {
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+            let tangentFixturesPassed = !CommandLine.arguments.contains("--benchmark-tangent-reuse") || checkTangentReuseFixtures()
             weatherOverride=false;defer { weatherOverride=nil }
             startDirtTrack();dirtIntro=nil;race.countDown(dt:3)
             guard let terrain=dirtWorld.scene.rootNode.childNode(withName:"Town base terrain",recursively:true),let earth=terrain.geometry?.firstMaterial else { return false }
@@ -62,12 +63,17 @@ extension AppController {
                 ("inner-fade",SCNVector3(27,0.65,0),SCNVector3(36,-0.02,3)),
                 ("grazing",SCNVector3(40,0.64,18),SCNVector3(90,0,20)),
                 ("reverse-turn",SCNVector3(35,1.3,14),SCNVector3(29,0.1,3)),
-                ("lod-boundary",SCNVector3(30,1.3,20),SCNVector3(110,0.8,10))]
+                ("lod-boundary",SCNVector3(30,1.3,20),SCNVector3(110,0.8,10)),
+                ("closeup-street",SCNVector3(35,1.3,14),SCNVector3(40,0.8,22)),
+                ("closeup-reverse",SCNVector3(35,1.3,14),SCNVector3(29,0.8,3))]
+            let originalFOV=world.camera.camera!.fieldOfView
+            defer { world.camera.camera!.fieldOfView=originalFOV }
             for (light,fraction,stormEnabled) in [("midday",0.5,false),("low-sun",0.12,false),("storm",0.5,true)] {
                 var storm=Sandstorm(enabled:stormEnabled);storm.advance(90)
                 dirtWorld.configureStorm(storm)
                 dirtWorld.sky.apply(BinaryDaylight(fraction:fraction,phase:1.2))
                 for (name,eye,target) in views {
+                    world.camera.camera!.fieldOfView=name.hasPrefix("closeup-") ? 20:originalFOV
                     world.camera.position=eye;world.camera.look(at:target,up:eye.x==target.x && eye.z==target.z ? SCNVector3(0,0,-1):SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
                     dirtWorld.sky.updateShadowCenter(SIMD3(Double(target.x),0,Double(target.z)))
                     var images:[NSBitmapImageRep]=[],casters:[Int]=[]
@@ -107,23 +113,40 @@ extension AppController {
                             }
                         }}
                     }
-                    var changed=0,total=0,error=0.0
-                    // Sample every second pixel; final full-resolution captures
-                    // remain available for visual review at boundaries/contact.
-                    for y in stride(from:0,to:1080,by:2) { for x in stride(from:0,to:1920,by:2) {
+                    var changed=0,total=0,error=0.0,maximumError=0.0
+                    // Full-resolution comparison: sparse sampling missed isolated
+                    // normal-map differences at grazing angles.
+                    for y in 0..<1080 { for x in 0..<1920 {
                         let a=images[0].colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
                         let b=images[1].colorAt(x:x,y:y)!.usingColorSpace(.deviceRGB)!
                         let delta=max(abs(a.redComponent-b.redComponent),max(abs(a.greenComponent-b.greenComponent),abs(a.blueComponent-b.blueComponent)))
-                        if delta>5.0/255 { changed += 1 };error += delta;total += 1
+                        if delta>5.0/255 { changed += 1 };error += delta;maximumError=max(maximumError,delta);total += 1
                     }}
-                    rows.append(["view":"\(light)-\(name)","changedFraction":Double(changed)/Double(total),"meanMaxChannelError":error/Double(total),"referenceCasters":casters[0],"optimizedCasters":casters[1]])
+                    rows.append(["view":"\(light)-\(name)","changedFraction":Double(changed)/Double(total),"meanMaxChannelError":error/Double(total),"maximumChannelError":maximumError,"comparedPixels":total,"referenceCasters":casters[0],"optimizedCasters":casters[1]])
                 }
             }
             let reduced=rows.contains { ($0["optimizedCasters"] as! Int)<($0["referenceCasters"] as! Int) }
-            let passed=meshDataPassed && (!meshComparison || (!meshNodes.isEmpty && TownMesh.outputVertices<TownMesh.inputVertices)) && frustumPassed && (!shadowComparison || reduced) && rows.allSatisfy { ($0["changedFraction"] as! Double)<(shadowComparison || meshComparison ? 0.00001:0.001) }
-            let report:[String:Any]=["passed":passed,"meshDataPassed":meshDataPassed,"meshInputVertices":TownMesh.inputVertices,"meshOutputVertices":TownMesh.outputVertices,"comparisons":rows,"uvMappingPassed":uvMatches,"frustumPassed":frustumPassed,"shadowComparison":shadowComparison,"casterReductionObserved":reduced,"note":"Original receiver depth, transparent surface and material retained; small rasterization differences require manual review."]
+            let passed=tangentFixturesPassed && TownMesh.maximumMergedBasisRadians<0.005*Double.pi/180 && meshDataPassed && (!meshComparison || (!meshNodes.isEmpty && TownMesh.outputVertices<TownMesh.inputVertices)) && frustumPassed && (!shadowComparison || reduced) && rows.allSatisfy { ($0["changedFraction"] as! Double)<(shadowComparison || meshComparison ? 0.00001:0.001) }
+            let report:[String:Any]=["passed":passed,"tangentFixturesPassed":tangentFixturesPassed,"meshDataPassed":meshDataPassed,"meshInputVertices":TownMesh.inputVertices,"meshOutputVertices":TownMesh.outputVertices,"maximumMergedBasisDegrees":TownMesh.maximumMergedBasisRadians*180/Double.pi,"mergedBasisComparisons":TownMesh.mergedBasisComparisons,"comparisons":rows,"uvMappingPassed":uvMatches,"frustumPassed":frustumPassed,"shadowComparison":shadowComparison,"casterReductionObserved":reduced,"note":"Original receiver depth, transparent surface and material retained; small rasterization differences require manual review."]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("comparison.json"))
             print(report);return passed
         } catch { print(error);return false }
+    }
+
+    private func checkTangentReuseFixtures()->Bool {
+        func count(_ frames:[(SIMD3<Float>,SIMD3<Float>)])->Int {
+            let mesh=TownMesh(),n=SIMD3<Float>(0,0,1)
+            for (t,b) in frames { mesh.triangle(.zero,t,b,0xffffff,smooth:[n,n,n]) }
+            mesh.uv=frames.flatMap { _ in [CGPoint.zero,CGPoint(x:1,y:0),CGPoint(x:0,y:1)] }
+            return mesh.geometry(material:SCNMaterial()).sources(for:.vertex).first!.vectorCount
+        }
+        let epsilon:Float=0.000002
+        let unstable=count([(SIMD3(epsilon,epsilon,1),SIMD3(-1,0,0)),(SIMD3(-epsilon,epsilon,1),SIMD3(-1,0,0))])==6
+        let mirrored=count([(SIMD3(1,0,0),SIMD3(0,1,0)),(SIMD3(1,0,0),SIMD3(0,-1,0))])==6
+        let stable=count([(SIMD3(1,0,0),SIMD3(0,1,0)),(SIMD3(2,0,0),SIMD3(0,2,0))])==5
+        let y:Float=0.250001
+        let isolatedFallback=count([(SIMD3(1,0,0),SIMD3(sqrt(1-y*y),y,0)),(SIMD3(1,0,0),SIMD3(0.96824646,0.25,0))])==6
+        print("Tangent reuse fixtures: unstable=\(unstable), mirrored=\(mirrored), stable=\(stable), fallback=\(isolatedFallback)")
+        return unstable && mirrored && stable && isolatedFallback
     }
 }
