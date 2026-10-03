@@ -348,3 +348,99 @@ normal-map detail, contact shading, moving residents and robots, dust, trails,
 both suns, storms and camera transitions. Turning it off is only an isolation
 test. A custom implementation needs native visual comparison and sustained
 timing; the measured ceiling is not proof that a replacement will achieve it.
+
+
+## Frozen AO input diagnostic (not a gameplay replacement)
+
+`--benchmark-ao-preparation`, together with `--benchmark-gpu-probe`, now writes
+an isolated RGBA16Float mapped-normal/coverage texture, stored Depth32Float,
+raw GPU/CPU samples, and a viewed PNG. This copies the frozen scene's geometry,
+LODs, presentation transforms, maps and shader modifiers, removes lighting nodes,
+and replaces the final color with encoded normals. It retains the original
+material lighting models: changing them to `.constant` silently drops normal maps.
+The original 1.37 ms unlit result is therefore rejected. The corrected mapped
+preparation measured 1.64 ms before the effect policy below. None of these
+numbers includes AO computation, main rendering, integration or synchronization.
+
+The independent Astra Ultra judge identified two additional input defects:
+ordinary multiply trails multiply the encoded normal, and airborne alpha dust
+blends billboard normals over an unrelated solid depth. The diagnostic now
+suppresses color writes for no-depth-write multiply decals and materials using
+the shared `dustTint` modifier. Depth-writing clods remain. Mapped ground dressing
+still blends its surface normals. This affects only the cloned diagnostic input;
+all impressions, dust, grains and haze remain in the main scene. The policy is
+specific to these current materials, not a generic transparency solution.
+
+`AOPreparationFixture.swift` and `check-ao-preparation-fixture.py` test native
+pixels against analytic planes, including known tangent-space maps, fractional
+coverage, vertex displacement, overlapping mapped dressing, multiply trails,
+airborne dust, rotated normals, and perspective reconstruction at 5, 25 and
+120 metres with the game's 48-degree, 0.02/250 camera. Unlit and unfiltered
+negative controls must reproduce the defects. The source fixture is rendered
+before cloning: fresh nodes do not yet have valid presented world transforms.
+The checker also verifies the unlit control contains the same visible geometry,
+so an empty buffer cannot masquerade as a successful negative control.
+
+Use the actual float projection coefficients when reconstructing reverse-Z
+view depth. Rebuilding ideal coefficients from near/far introduced about 12 mm
+error at 120 m in this fixture; the actual coefficients reduce maximum error to
+0.155 mm. The test covers the game's reverse-Z path, not every SceneKit projection.
+Run the fixture independently of controlled game timing:
+
+```sh
+swiftc apps/simulator-macos/Sources/MarvinSimulator/AOPreparationProbe.swift scripts/rendering/AOPreparationFixture.swift -o /tmp/marvin-ao-fixture
+/tmp/marvin-ao-fixture /tmp/marvin-ao-fixture-output
+python3 scripts/rendering/check-ao-preparation-fixture.py /tmp/marvin-ao-fixture-output
+```
+
+Evidence is under `ao-preparation-fixture-verified`, `ao-preparation-policy-clear`
+and `ao-preparation-policy-storm` in the sustained-fix artifact directory. Both
+native town normal captures and the original storm render were viewed. The clear
+and storm input passes measured 1.594 and 1.397 ms respectively at thermal state
+0, each excluding seven effect materials. They are different poses/populations;
+this is not a clear-versus-storm speedup comparison. These are input diagnostics,
+not a replacement AO algorithm, visual acceptance, or sustained performance proof.
+
+
+The Astra Ultra judge accepted the tested frozen clear/storm input diagnostic,
+including the overlap policy and analytic fixtures. This does not accept live
+synchronization, enabled AO shading or net performance. An AO consumer must
+unpremultiply coverage before decoding normals, normalize blended normals, and
+reject background/uncovered samples.
+
+### Neutral AO integration controls
+
+A separate `neutral-custom-ao` frozen variant binds a texture containing one to
+PBR ambient occlusion with built-in AO disabled. `literal-neutral-ao` appends the
+literal multiplier one without a texture. `check-neutral-ao.py` compares both
+with `no-ssao`, checks repeated images, and checks restoration of production.
+Its default is exact equality; it writes failures as evidence rather than
+silently widening the threshold.
+
+The first material-only binding failed: 25,947 pixels changed by up to 37/255,
+and restoring production left 23,661 changed pixels concentrated on Marvin.
+A follow-up literal control also failed, showing the new texture alone was not
+the cause. The judge inspected the captures and identified loss of fine grime
+and roughness corresponding to the geometry-owned `DirtCoating` surface shader.
+Adding a competing material-owned surface modifier is not a valid composition.
+These rejected runs remain in `ao-neutral-binding-clear` and
+`ao-neutral-binding-controls`, including the rejected binder source. They are
+not performance wins. The next binder keeps the original shader owner and
+isolates materials shared across geometry-owned and material-owned surfaces.
+
+
+The owner-preserving clear run (`ao-neutral-owner-clear`) made the literal
+candidate bit-identical to AO-disabled production. The texture candidate changed
+one pixel by 1/255. However, restored built-in-AO production still changed 23,531
+robot pixels by up to 34/255, while later AO-disabled controls were exact. This
+fails the restoration gate; it is not accepted as a complete neutral binding.
+Copying all geometry/materials during binding (`ao-neutral-isolated-clear`) did
+not fix restoration and added repeat differences. That attempt was archived and
+removed; the owner-preserving diagnostic remains for further investigation.
+No shader-cache cause is asserted solely from these observations. The next
+investigation must compare original/restored AO passes or fresh renderer state,
+while preserving the coating's geometry-owned uniforms.
+
+The existing 27 sustained-gate, five Metal-report and seven overview-parser tests
+also pass. Their coverage and the input-fixture acceptance do not turn the failed
+neutral/restoration checks into a pass. No production AO replacement is enabled.

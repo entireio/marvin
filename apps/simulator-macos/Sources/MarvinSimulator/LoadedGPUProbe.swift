@@ -129,6 +129,10 @@ extension AppController {
         var rows:[[String:Any]]=[]
         renderer.update(atTime:0)
         let requested=ProcessInfo.processInfo.environment["MARVIN_GPU_VARIANTS"] ?? "no-trails,no-sky,no-ssao,no-shadows,no-shadow-casters,no-base-shadow,front-to-back,no-town,constant-ground-pigment,original-base,shadow-culling,no-vertex-pow,no-crowd,no-crowd-motion"
+        let neutralDescriptor=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:.r32Float,width:1,height:1,mipmapped:false)
+        neutralDescriptor.usage = .shaderRead
+        let neutralAO=device.makeTexture(descriptor:neutralDescriptor)!
+        [Float(1)].withUnsafeBytes { neutralAO.replace(region:MTLRegionMake2D(0,0,1,1),mipmapLevel:0,withBytes:$0.baseAddress!,bytesPerRow:4) }
         let variants=requested.split(separator:",").map(String.init).flatMap { ["production",$0,$0,"production"] }
         let shaderMaterials=noiseMaterials.merging(tintMaterials) { original,_ in original }
             .merging(crowdMaterials) { original,_ in original }
@@ -178,7 +182,7 @@ extension AppController {
             dirtWorld.setBenchmarkTrailsHidden(variant=="no-trails")
             // Hide only the sky sphere, retaining both directional lights.
             for node in sky.childNodes where node.geometry is SCNSphere { node.isHidden=variant=="no-sky" }
-            world.camera.camera!.screenSpaceAmbientOcclusionIntensity=variant=="no-ssao" ? 0:ao
+            world.camera.camera!.screenSpaceAmbientOcclusionIntensity=(variant=="no-ssao" || variant=="neutral-custom-ao" || variant=="literal-neutral-ao") ? 0:ao
             terrain.geometry=variant=="original-base" ? oldGround:currentGround
             dirtWorld.town.shadowCullingEnabled=variant=="shadow-culling" || variant=="shadow-batch-culling"
             dirtWorld.town.update(dt:0,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),shadowCamera:world.camera,viewportAspect:1920.0/1080)
@@ -186,6 +190,9 @@ extension AppController {
             if variant=="no-shadow-casters" { for node in shadowNodes { node.castsShadow=false } }
             if variant=="no-base-shadow" { terrain.castsShadow=false }
             shadowBatch.setEnabled(variant=="shadow-batch" || variant=="shadow-batch-culling")
+            let aoBinding=(variant=="neutral-custom-ao" || variant=="literal-neutral-ao") ? try AOMaterialBinding(scene:scene,texture:neutralAO,literalNeutral:variant=="literal-neutral-ao"):nil
+            let boundAOMaterialCount=aoBinding?.materialCount ?? 0
+            defer { aoBinding?.restore() }
             renderer.update(atTime:0)
             _=renderer.prepare(scene,shouldAbortBlock:nil)
             var samples:[[Double]]=[]
@@ -209,9 +216,13 @@ extension AppController {
                 try png.write(to:directory.appendingPathComponent("gpu-probe-block-\(block).png"))
                 if block==0 { try png.write(to:directory.appendingPathComponent("gpu-probe-resolved.png")) }
             }
-            rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount])
+            rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount,"boundAOMaterialCount":boundAOMaterialCount,"boundAOGeometryCount":aoBinding?.geometryCount ?? 0])
         }
         let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","variants":rows,"shadowBatch":shadowBatch.statistics]
         try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("loaded-gpu-probe.json"))
+        if CommandLine.arguments.contains("--benchmark-ao-preparation") {
+            let probe=try AOPreparationProbe(device:device,source:scene,camera:world.camera,reverseZ:reverseZ)
+            try probe.measure(at:directory.appendingPathComponent("ao-preparation"))
+        }
     }
 }

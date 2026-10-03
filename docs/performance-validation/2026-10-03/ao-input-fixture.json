@@ -1,0 +1,42 @@
+{
+  "fixturePassed": true,
+  "gameplayAccepted": false,
+  "reverseZ": true,
+  "scope": "Analytic normal maps, fragment coverage, displaced depth, overlapping mapped dressing, multiply trails, airborne dust, rotated mapped normals and perspective depth; unlit and overlap negative controls",
+  "observations": [
+    {
+      "plane": 0,
+      "maximumColorError": 0.00048059207712380925,
+      "depth": 0.7537688612937927
+    },
+    {
+      "plane": 1,
+      "maximumColorError": 0.0003088856148547592,
+      "depth": 0.7537688612937927
+    },
+    {
+      "plane": 2,
+      "maximumColorError": 0.0003088856148547592,
+      "depth": 0.7537688612937927
+    },
+    {
+      "plane": 3,
+      "maximumColorError": 0.00024029603856190462,
+      "depth": 0.766331672668457
+    }
+  ],
+  "perspective": [
+    {
+      "distance": 5,
+      "maximumDepthError": 8.040500105721549e-07
+    },
+    {
+      "distance": 25,
+      "maximumDepthError": 3.164645131192856e-05
+    },
+    {
+      "distance": 120,
+      "maximumDepthError": 0.00015522100757436874
+    }
+  ]
+}
