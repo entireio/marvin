@@ -292,3 +292,50 @@ and [prior-build GPU diagnostic](performance-validation/2026-10-03/shadow-produc
 Full Instruments traces, native images, frame joins and independent audits remain
 under `/Users/thomi/Projects/marvin-town-planning/sustained-fix/metal-warm-current/`
 and `shadow-production-validation/` in that same artifact root.
+
+
+### October 3: geometry attribution, still diagnostic
+
+The frozen native visibility audit now inventories the initialized renderer and
+checks exact pixel contribution by removing camera-visible town cells while
+retaining independent shadow proxies. Baseline repeats, per-cell restoration and
+combined restoration are checked; this does not establish a future-frame culling
+rule. Two street viewpoints found no entire in-frustum architecture cell with
+zero contribution. The corrected inventory's Town-cell frustum set agrees with
+the removal audit (23 cells). Near/base primitive inventory at that view:
+Marvin hierarchy 992,079; crowd cells 117,147; architecture 109,424. These counts
+are not GPU submissions or selected LOD counts.
+
+A release native M2 diagnostic at 1920×1080, 2× MSAA, clear midday, after a
+15-second town drive used frozen SCNRenderer owned command buffers. Each ABBA
+block retains 60 samples after 30 warmup frames. The explicit
+`MARVIN_GPU_PRODUCTION_SHADOW_BATCH=1` retains the production shadow-mesh path
+in these comparisons. Subsequent probes default to the live shadow path; explicit
+`0` selects the historical reference. No frame capture was active; thermal state was nominal.
+
+- Removing Marvin: baseline block median GPU envelopes 11.507/11.454 ms versus
+  9.501/9.509 ms; CPU encoding 2.723/2.718 versus 1.491/1.492 ms. This is a
+  net removal effect (including shadows, AO and newly exposed background), not
+  an acceptable optimization or isolated vertex cost. CPU encoding is elapsed
+  wall time.
+- Single-sided Marvin materials: no repeatable timing gain and 23,494 changed
+  pixels (maximum channel delta 40/255); rejected as an optimization.
+- Removing motors, servos, bearings, battery and axis mount: baseline medians
+  11.526/11.465 ms versus 11.143/11.143 ms. Removal changed 25 pixels (max 9),
+  but baseline restoration changed 45 pixels (max 9). This is **not** proof of
+  invisibility; retain all parts pending reliable multi-pose enclosure/appearance
+  validation. No gameplay visibility or material default was changed.
+
+Measurements precede remote wall-fix commit `1c8bb11` and use `db1be0f` plus
+uncommitted diagnostic code and existing opt-in prototypes. The internal-parts
+run includes a binary hash. Raw timing samples and the corrected inventory are
+in [geometry attribution](performance-validation/2026-10-03/geometry-attribution/).
+Local images remain under `marvin-town-planning/sustained-fix/` in the matching
+run directories. These short frozen tests do not prove live presentation,
+sustained 60 FPS, or the 12.5 ms P99 headroom goal. Next investigate actual CAD
+pass costs and safe hidden geometry before accepting any removal.
+
+Post-merge release build and native default-path verification passed: with no
+shadow-path environment override, the report records productionShadowBatch=true.
+Its ABBA GPU medians were 11.316/11.260 ms baseline versus 9.361/9.358 ms with
+Marvin removed, consistent with the earlier net removal result.

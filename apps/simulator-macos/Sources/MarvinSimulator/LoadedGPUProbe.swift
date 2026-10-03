@@ -126,6 +126,27 @@ extension AppController {
         }
         let shadowBatch=try TownShadowBatch(root:scene.rootNode,camera:world.camera.camera!)
         defer { shadowBatch.setEnabled(false) }
+        let marvin=scene.rootNode.childNode(withName:"Marvin CAD assembly",recursively:true)!
+        let marvinHidden=marvin.isHidden
+        let internalNames:Set<String>=["Motor_Left","Motor_Right","Servo_Head","Servo_Tilt","Battery","Bearings","Axis_Mount"]
+        var internalNodes:[(SCNNode,Bool)]=[]
+        marvin.enumerateChildNodes { node,_ in
+            if let name=node.name,internalNames.contains(name) { internalNodes.append((node,node.isHidden)) }
+        }
+        var marvinMaterials:[ObjectIdentifier:(SCNMaterial,Bool)]=[:]
+        marvin.enumerateChildNodes { node,_ in
+            for material in node.geometry?.materials ?? [] {
+                marvinMaterials[ObjectIdentifier(material)]=(material,material.isDoubleSided)
+            }
+        }
+        defer {
+            marvin.isHidden=marvinHidden
+            for (node,hidden) in internalNodes { node.isHidden=hidden }
+            for (material,doubleSided) in marvinMaterials.values { material.isDoubleSided=doubleSided }
+        }
+        // Default to the live game's path; explicit 0 retains the historical
+        // reference for comparisons with archived probes.
+        let productionShadowBatch=ProcessInfo.processInfo.environment["MARVIN_GPU_PRODUCTION_SHADOW_BATCH"].map { $0=="1" } ?? liveShadowBatchEnabled
         var rows:[[String:Any]]=[]
         renderer.update(atTime:0)
         let requested=ProcessInfo.processInfo.environment["MARVIN_GPU_VARIANTS"] ?? "no-trails,no-sky,no-ssao,no-shadows,no-shadow-casters,no-base-shadow,front-to-back,no-town,constant-ground-pigment,original-base,shadow-culling,no-vertex-pow,no-crowd,no-crowd-motion"
@@ -145,6 +166,11 @@ extension AppController {
             if freshRenderer {
                 renderer=SCNRenderer(device:device,options:nil)
                 renderer.scene=scene;renderer.pointOfView=world.camera;renderer.usesReverseZ=reverseZ
+            }
+            marvin.isHidden=marvinHidden || variant=="no-marvin"
+            for (node,hidden) in internalNodes { node.isHidden=hidden || variant=="marvin-no-internals" }
+            for (material,doubleSided) in marvinMaterials.values {
+                material.isDoubleSided=variant=="marvin-single-sided" ? false:doubleSided
             }
             var opacityMaterialCount=0
             shadowBatch.setEnabled(false)
@@ -195,7 +221,7 @@ extension AppController {
             for light in shadowLights { light.castsShadow=variant != "no-shadows" }
             if variant=="no-shadow-casters" { for node in shadowNodes { node.castsShadow=false } }
             if variant=="no-base-shadow" { terrain.castsShadow=false }
-            shadowBatch.setEnabled(variant=="shadow-batch" || variant=="shadow-batch-culling")
+            shadowBatch.setEnabled(productionShadowBatch || variant=="shadow-batch" || variant=="shadow-batch-culling")
             let aoBinding=(variant=="neutral-custom-ao" || variant=="literal-neutral-ao") ? try AOMaterialBinding(scene:scene,texture:neutralAO,literalNeutral:variant=="literal-neutral-ao"):nil
             let boundAOMaterialCount=aoBinding?.materialCount ?? 0
             defer {
@@ -242,7 +268,7 @@ extension AppController {
             }
             rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount,"boundAOMaterialCount":boundAOMaterialCount,"boundAOGeometryCount":aoBinding?.geometryCount ?? 0,"captureRequested":captureBlocks.contains(block)])
         }
-        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","captureBlocks":captureBlocks.sorted(),"timingEligible":captureBlocks.isEmpty,"freshRendererPerBlock":freshRenderer,"restoreAOFirst":ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1","variants":rows,"shadowBatch":shadowBatch.statistics]
+        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","captureBlocks":captureBlocks.sorted(),"timingEligible":captureBlocks.isEmpty,"productionShadowBatch":productionShadowBatch,"freshRendererPerBlock":freshRenderer,"restoreAOFirst":ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1","variants":rows,"shadowBatch":shadowBatch.statistics]
         try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("loaded-gpu-probe.json"))
         if CommandLine.arguments.contains("--benchmark-ao-preparation") {
             let probe=try AOPreparationProbe(device:device,source:scene,camera:world.camera,reverseZ:reverseZ)

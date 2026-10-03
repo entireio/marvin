@@ -1,0 +1,6 @@
+{
+  "head": "db1be0fec16feaf5ea7cda4c51857e8fa8e399ab",
+  "binarySHA256": "73f97ab395a6974a28186251f149a5f725f712c881fd8b47bed92990be78d0f3",
+  "sourceDiffSHA256": "3ea1629b3b0f159c5aff0ee6bdcfea92ce123eaf4e25a0bf01a36be4d350f168",
+  "scope": "Frozen GPU diagnostic, not sustained acceptance; includes uncommitted diagnostic changes and preexisting opt-in prototypes."
+}

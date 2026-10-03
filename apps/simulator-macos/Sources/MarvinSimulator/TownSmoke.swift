@@ -319,6 +319,7 @@ extension AppController {
                 if let tiff=image.tiffRepresentation,let bitmap=NSBitmapImageRep(data:tiff),let png=bitmap.representation(using:.png,properties:[:]) {
                     try png.write(to:directory.appendingPathComponent("final-fps.png"))
                 }
+                if CommandLine.arguments.contains("--benchmark-visibility-audit") { try auditTownVisibility(at:directory) }
                 if CommandLine.arguments.contains("--benchmark-gpu-probe") { try profileLoadedGPU(at:directory) }
                 print("Town benchmark complete · \(directory)")
                 exit(0)
