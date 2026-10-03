@@ -186,3 +186,86 @@ capture noise. Moving-camera stability and sustained performance were explicitly
 not accepted. The live probe snapshots the live configuration before disabling
 its owner for frozen ABBA; per-second telemetry uses cached logical caster counts,
 while synchronization tests retain actual SceneKit node-state checks.
+
+## Warm-frame follow-up and combined shadow trial
+
+`native-gpu-warm-production` captured a production frame at 285 seconds after
+the live HUD had fallen to 52.3 FPS. The 315-second diagnostic ended at thermal
+state 1. Xcode replay reported 17.39 ms at its Medium GPU performance setting:
+8 render encoders, 4 compute encoders, 67 blit encoders and 2,180 draws. The dust
+draw (1,506 indices, pipeline 117) occupied 9.49%; the town-ground overlay draw
+(21,786 indices, pipeline 111) occupied 8.15%. These are replay attributions,
+not actual presented-frame timestamps or a controlled cold/warm timing ratio.
+The raw capture, native ledgers and `xcode-profile-observations.json` are retained.
+
+Three frozen ABBA pairs in `dust-draw-ceiling` measured production GPU medians
+11.742–11.904 ms versus 10.719–10.745 ms with dust hidden. CPU encoding remained
+about 3.1 ms. This diagnostic only establishes the rendering-cost ceiling; it
+excludes live geometry rebuilding, and removing dust is not a permitted fix.
+
+The full-quality opt-in shadow batch + culling run `shadow-live-clear-10min`
+completed 603 seconds but still failed: 56.425 FPS mean, 2,145 callback gaps over
+25 ms, and 44.3 FPS minimum rolling ten-second coverage. It travelled 1,334.5 m;
+thermal state ended at 1. The gate also correctly rejects opt-in diagnostic flags.
+This is useful measured progress, not sustained acceptance or M4 validation.
+
+## Low-overhead presentation calibration
+
+Apple's installed **Game Performance Overview** Instruments template successfully
+recorded on this macOS 26 host. Its per-frame interval export defines “On Display”
+as the interval that the drawable is on display. A separate native CAMetalLayer
+calibration app logged public `MTLDrawable.presentedTime` values while rendering
+and deliberately skipping selected updates. All 1,071 exported display intervals
+matched consecutive valid native presentation timestamps within 42.52 ns. Both
+methods identified exactly the same five intervals above 25 ms.
+
+Artifacts: `presentation-calibration-overview/calibration.trace`,
+`native-presentations.json`, the per-frame XML exports, and
+`calibration-verification.json` under the sustained-fix evidence directory.
+This establishes the interval units and semantics for this single-layer test.
+Simulator layer identification, long-run completeness, instrument overhead and
+GPU active-time semantics still require validation before acceptance integration.
+The sustained gate remains fail-closed for unverified presentation evidence.
+
+`overview-town-production` successfully recorded a 315-second full-quality town
+drive with Game Performance Overview (M2, 1920×1080, clear, audio on). The long-lived
+layer had contiguous layer-local frame IDs. A second layer stopped at 9.735 s,
+consistent with the menu lifecycle; direct SCNView attribution remains pending.
+Trace minutes 1–3 each contained 3,600 display-start intervals with no >25 ms
+gaps. Minute 4 contained 3,109 intervals, including 473 above 25 ms; the remaining
+25 seconds contained another 182. Startup is included in trace minute 0 and is
+not gameplay acceptance. Native callbacks independently reported 57.865 FPS and
+666 gaps >25 ms over the 315-second benchmark.
+
+The long-lived layer's median GPU Begin-to-End envelope rose from about 16.9 ms
+in trace minutes 1–3 to 27.0 ms in minute 4. GPU Active Time rose from about
+14.7 ms to 26.9 ms; Apple's documentation describes this as associated command
+buffers in flight, not exclusive encoder busy time. CPU Begin-to-Present includes
+waiting and must not be confused with CPU execution. Native simulation-update
+p95 was 2.666 ms. Instruments recorded Nominal→Fair thermal state at 146.143 s.
+These establish sustained display misses and a coincident GPU timing increase;
+they do not yet isolate all scheduling/thermal causes or prove profiler overhead.
+
+`scripts/rendering/read-game-overview.py` reports each PID/layer separately,
+uses adjacent display starts for cadence, and exposes frame-ID continuity and
+end-to-next-start gaps. It deliberately leaves overall acceptance false.
+
+The native benchmark now emits `TownBenchmarkStart` and `TownBenchmarkEnd`
+Points of Interest, including the run UUID, a fresh marker uptime and the
+benchmark boundary uptime separately. Add `--instrument 'Points of Interest'`
+to the recording command. `overview-marker-final` verified both events against
+the native benchmark UUID and duration: 25.000302208 s, with start/end clock-offset
+estimates differing by 3.80 µs. The end marker follows its tick boundary by
+1.70 ms; consumers must use the distinct fields rather than assuming coincidence.
+
+The checked-in calibration source is `scripts/rendering/PresentationCalibration.swift`.
+Compile it with `xcrun swiftc` and run the resulting binary under the overview
+template, passing a native JSON output path. Export the single-run
+`metal-perf-overview-layer-per-frame-interval-metric` table; then run
+`check-presentation-calibration.py INTERVALS.xml NATIVE.json`. The actual calibration
+passes all 1,071 intervals and shows less than 0.7 ns clock-offset spread.
+`test-game-overview.py` covers held frames, terminal/only-frame handling, PID/layer
+separation, missing/duplicate frame IDs, raw XML references/units, multi-table
+rejection and GPU-envelope interpretation. The parser reports terminal display
+duration separately from adjacent-start cadence coverage. None of these reports
+promotes a short diagnostic run to sustained acceptance.

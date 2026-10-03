@@ -1,6 +1,9 @@
 import AppKit
 import SceneKit
 import SimulationCore
+import os
+
+private let townBenchmarkTraceLog=OSLog(subsystem:"io.entire.marvin.performance",category:.pointsOfInterest)
 
 /// Render callback cadence is recorded separately from simulation callbacks.
 /// This is not a GPU timestamp or a substitute for Instruments presentation data.
@@ -195,6 +198,7 @@ extension AppController {
         }
         view.delegate=townMeter
         townBenchmarkStart=ProcessInfo.processInfo.systemUptime
+        os_signpost(.event,log:townBenchmarkTraceLog,name:"TownBenchmarkStart","run=%{public}@ markerUptime=%.9f benchmarkBoundaryUptime=%.9f",townBenchmarkRunID as NSString,ProcessInfo.processInfo.systemUptime,townBenchmarkStart!)
         let identity:[String:Any]=["runID":townBenchmarkRunID,"startUptime":townBenchmarkStart!,"gpuDevice":view.device?.name ?? "Unavailable","resolution":[view.convertToBacking(view.bounds).width,view.convertToBacking(view.bounds).height]]
         if let data=try? JSONSerialization.data(withJSONObject:identity,options:[.sortedKeys]),let line=String(data:data,encoding:.utf8) {
             FileHandle.standardOutput.write(Data(("MARVIN_BENCHMARK_ID "+line+"\n").utf8))
@@ -266,6 +270,7 @@ extension AppController {
         townBenchmarkTimeline.append([now,elapsed,dt*1000,(physicsEnd-begin)*1000,(modelsEnd-physicsEnd)*1000,(effectsEnd-modelsEnd)*1000,(cameraEnd-effectsEnd)*1000,(finish-cameraEnd)*1000,(finish-begin)*1000,simulation.x,simulation.z,aerial ? 1:0])
         let duration=Double(ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_SECONDS"] ?? "45") ?? 45
         if elapsed>=max(10,duration) {
+            os_signpost(.event,log:townBenchmarkTraceLog,name:"TownBenchmarkEnd","run=%{public}@ markerUptime=%.9f benchmarkBoundaryUptime=%.9f",townBenchmarkRunID as NSString,ProcessInfo.processInfo.systemUptime,now)
             timer?.invalidate();view.delegate=nil
             if #available(macOS 14.0,*) { (frameDisplayLink as? CADisplayLink)?.invalidate() }
             var report=townMeter.report()
