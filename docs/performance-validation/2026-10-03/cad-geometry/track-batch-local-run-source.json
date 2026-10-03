@@ -1,0 +1,5 @@
+{
+  "binarySHA256": "5ea0c7abd1877b8277991799237ff2fcbc6c20ec103f7d341059f4301c6f6c21",
+  "baseCommit": "de62266113b5d89c17084cea9376d900859cb152",
+  "note": "Base plus uncommitted diagnostic code (local transform fix) and preexisting opt-in work; see commit diff."
+}

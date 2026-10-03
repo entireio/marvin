@@ -339,3 +339,90 @@ Post-merge release build and native default-path verification passed: with no
 shadow-path environment override, the report records productionShadowBatch=true.
 Its ABBA GPU medians were 11.316/11.260 ms baseline versus 9.361/9.358 ms with
 Marvin removed, consistent with the earlier net removal result.
+
+
+### October 3: direct CAD enclosure and controlled index experiments
+
+Following the user's correction, geometry is analyzed before using full-scene
+rendering as regression evidence. Native Rhino and tessellated STEP audits found
+open/nonmanifold exterior meshes, so global point-in-solid classification is not
+valid without additional proof. Bounding boxes and sampled rays are insufficient.
+One direct neutral-CAD ray reaches Motor_Left from below; this disproves complete
+enclosure of that whole part in the exported CAD (procedural runtime belts are
+not part of this ray test).
+
+Exact Float32 position+normal comparison found 6,114 same-winding duplicate
+triangles. A stronger enclosure certificate identifies 27,756 triangles wholly
+inside two retained convex `Body` components: Motor_Left 13,412; Motor_Right
+12,518; Servo_Head 1,614; 01_body 212. All 504 enclosing Body triangles remain.
+The exact rational/integer proof checks closed topology, convex halfspaces and
+at least 0.01 mm clearance. These parts share the same rigid parent and opaque
+materials. Astra Ultra reviewed the corrected exact-representability and margin
+predicates. This is geometric containment, not pixel or performance acceptance.
+
+Native diagnostic comparisons use clear midday town, M2, 1920×1080, 2× MSAA,
+production shadow batching, 15 seconds of driving followed by frozen ABBA blocks.
+Each block retains 60 GPU/encoding samples after 30 warmup frames. Runtime source
+geometry and original/candidate index hashes bind every loaded candidate to its
+offline verification manifest. An original-index geometry reconstruction control
+separates reconstruction effects from changed index content.
+
+- Original-index reconstruction: exact images in all three experiments.
+- Vertex-cache index reorder: 11.142/11.162 ms versus bracketing original
+  11.324/11.333 ms GPU medians. 780 pixels changed, maximum channel delta 10/255;
+  unchanged triangle tuples/winding do not imply identical depth-tie pixels.
+- Exact duplicate removal: no consistent GPU benefit (11.600/11.514 versus
+  11.497/11.517 ms); 16 pixels changed by at most 1/255. Not promoted.
+- Certified enclosed triangles: 11.368/11.364 versus 11.416/11.436 ms;
+  about 0.06 ms difference is too small to establish sustained benefit.
+  74 pixels changed by at most 4/255. Not promoted.
+
+The candidate images were inspected. All restored production images match their
+initial references exactly in these three tests. Raw timing samples and pixel
+counts are in [CAD geometry evidence](performance-validation/2026-10-03/cad-geometry/).
+No production geometry changed, no ten-minute acceptance result is claimed, and
+all earlier full-quality sustained/headroom requirements remain open.
+
+Next larger attribution target: Marvin's 224 separate shoe/rib geometry nodes.
+They contain 325,248 triangles; an exact-pose batching experiment must preserve
+those triangles and the coating's original rest coordinates, then measure actual
+draw, encoding and GPU changes before attempting animated batching.
+
+The reusable verifier is `scripts/rendering/check-cad-enclosure.py` (Python 3.10+
+and NumPy). Run:
+
+```sh
+python3 scripts/rendering/check-cad-enclosure.py --self-test --output /tmp/marvin-enclosure
+```
+
+It derives the shells directly from current
+runtime assets, writes an exact containment certificate and original triangle
+indices, and never modifies the assets. Negative fixtures cover open/nonconvex
+shells, winding/duplicate failures, boundary/insufficient clearance, a triangle
+whose centroid is inside but a vertex is outside, and oblique planes with unequal
+non-unit coordinate scales. The saved run passed and reproduces 27,756 triangles.
+Astra Ultra approved the repeatable geometric proof for an isolated candidate;
+runtime opacity and relative transforms remain explicitly reviewed conditions.
+Source hashes bind evidence to files but do not enforce those conditions.
+
+The frozen tread batching prototype (`MARVIN_GPU_VARIANTS=track-batch-control,track-batch`
+with `--benchmark-gpu-probe`) retained all 325,248 triangles and 263,424 vertices,
+combining 224 shoe/rib nodes into four batches. Original-geometry reconstruction
+controls were pixel-identical. CPU encoding medians fell from about 2.7 ms to
+1.705/1.706 ms, but GPU medians were 11.612/11.594 ms versus bracketing production
+11.620/11.496 ms: no established GPU improvement. Candidate images changed 2,365
+pixels by at most 6/255; restoration changed 30 pixels by at most 4/255, so strict
+restoration equivalence failed. The saved candidate image was inspected. No
+animated batching or production change is accepted from this experiment. Raw
+samples, image comparison and the exact binary hash are saved beside the CAD
+reports. CPU submission savings remain a separate possible follow-up.
+
+A follow-up corrected the prototype's world-coordinate round trip by composing
+shoe/rib local transforms directly. The rebuilt native run confirms zero spurious
+shoe X displacement. CPU encoding remains about 1.71–1.73 ms versus 2.71–2.75 ms;
+GPU medians are 11.573/11.612 ms versus bracketing 11.425/11.465 ms, so this test
+regresses GPU time slightly. It changed 2,226 pixels by at most 7/255; copy controls
+and early restored baselines differed by two pixels at 1/255, and final restoration
+by 35 pixels at up to 7/255. Exact visual controls therefore still fail. The native
+candidate image was inspected. The committed prototype uses the corrected local
+transforms, remains diagnostic-only, and is not a validated gameplay optimization.

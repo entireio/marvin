@@ -1,0 +1,37 @@
+[
+  {
+    "block": 1,
+    "changedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "block": 2,
+    "changedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "block": 3,
+    "changedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "block": 4,
+    "changedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "block": 5,
+    "changedPixels": 74,
+    "maxChannelDelta": 4
+  },
+  {
+    "block": 6,
+    "changedPixels": 74,
+    "maxChannelDelta": 4
+  },
+  {
+    "block": 7,
+    "changedPixels": 0,
+    "maxChannelDelta": 0
+  }
+]

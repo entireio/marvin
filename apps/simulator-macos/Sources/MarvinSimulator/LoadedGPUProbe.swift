@@ -1,6 +1,7 @@
 import AppKit
 import Metal
 import CoreImage
+import CryptoKit
 import SceneKit
 
 extension AppController {
@@ -127,6 +128,48 @@ extension AppController {
         let shadowBatch=try TownShadowBatch(root:scene.rootNode,camera:world.camera.camera!)
         defer { shadowBatch.setEnabled(false) }
         let marvin=scene.rootNode.childNode(withName:"Marvin CAD assembly",recursively:true)!
+        var reorderedCAD:[(SCNNode,SCNGeometry,SCNGeometry,SCNGeometry)]=[]
+        var cadVerification:[[String:Any]]=[]
+        if let folder=ProcessInfo.processInfo.environment["MARVIN_CAD_INDEX_DIRECTORY"] {
+            func sha(_ data:Data)->String { SHA256.hash(data:data).map { String(format:"%02x",$0) }.joined() }
+            let directory=URL(fileURLWithPath:folder)
+            let verificationData=try Data(contentsOf:directory.appendingPathComponent("verification.json"))
+            guard let verification=try JSONSerialization.jsonObject(with:verificationData) as? [String:Any],
+                  let entries=verification["parts"] as? [[String:Any]],!entries.isEmpty,
+                  let resources=Bundle.main.resourceURL,
+                  sha(try Data(contentsOf:resources.appendingPathComponent("Marvin/geometry.bin")))==verification["sourceSHA256"] as? String else {
+                throw NSError(domain:"CADIndexProbe",code:1,userInfo:[NSLocalizedDescriptionKey:"CAD source does not match verified inputs"])
+            }
+            var candidates:[SCNNode]=[]
+            marvin.enumerateChildNodes { node,_ in if node.name != nil && node.geometry != nil { candidates.append(node) } }
+            for node in candidates {
+                guard !node.isHidden,let source=node.geometry,source.shaderModifiers?[.surface] != nil,source.elements.count==1,let element=source.elements.first,
+                      element.primitiveType == .triangles,element.bytesPerIndex==4,
+                      let entry=entries.first(where:{$0["part"] as? String==node.name}) else { continue }
+                let data=try Data(contentsOf:directory.appendingPathComponent(node.name!+".bin"))
+                let original=element.data
+                guard sha(original)==entry["sourceIndexSHA256"] as? String,
+                      sha(data)==entry["candidateSHA256"] as? String,data.count>0,data.count%12==0,
+                      data.count/12==entry["candidateTriangles"] as? Int else {
+                    throw NSError(domain:"CADIndexProbe",code:2,userInfo:[NSLocalizedDescriptionKey:"CAD index bytes do not match verification for \(node.name!)"])
+                }
+                func geometry(_ elements:[SCNGeometryElement])->SCNGeometry {
+                    let result=SCNGeometry(sources:source.sources,elements:elements)
+                    result.materials=source.materials;result.shaderModifiers=source.shaderModifiers
+                    result.levelsOfDetail=source.levelsOfDetail;result.name=source.name
+                    for key in ["dirtToBody","dirtHeight","dirtWheelX","duneContact","dirtRolling"] {
+                        result.setValue(source.value(forKey:key),forKey:key)
+                    }
+                    return result
+                }
+                let replacement=SCNGeometryElement(data:data,primitiveType:.triangles,primitiveCount:data.count/12,bytesPerIndex:4)
+                reorderedCAD.append((node,source,geometry(source.elements),geometry([replacement])))
+                cadVerification.append(["part":node.name!,"originalTriangles":element.primitiveCount,
+                    "candidateTriangles":data.count/12,"sourceIndexSHA256":sha(original),"candidateSHA256":sha(data)])
+            }
+            guard reorderedCAD.count==entries.count else { throw NSError(domain:"CADIndexProbe",code:3,userInfo:[NSLocalizedDescriptionKey:"Not every verified CAD part matched the runtime scene"]) }
+        }
+        defer { for (node,source,_,_) in reorderedCAD { node.geometry=source } }
         let marvinHidden=marvin.isHidden
         let internalNames:Set<String>=["Motor_Left","Motor_Right","Servo_Head","Servo_Tilt","Battery","Bearings","Axis_Mount"]
         var internalNodes:[(SCNNode,Bool)]=[]
@@ -156,6 +199,8 @@ extension AppController {
         [Float(1)].withUnsafeBytes { neutralAO.replace(region:MTLRegionMake2D(0,0,1,1),mipmapLevel:0,withBytes:$0.baseAddress!,bytesPerRow:4) }
         let captureBlocks=Set((ProcessInfo.processInfo.environment["MARVIN_GPU_CAPTURE_BLOCKS"] ?? "").split(separator:",").compactMap { Int($0) })
         let freshRenderer=ProcessInfo.processInfo.environment["MARVIN_GPU_FRESH_RENDERER"]=="1"
+        let trackBatch=requested.contains("track-batch") ? try TrackBatchProbe(root:robot.root,tracks:robot.tracks):nil
+        defer { try? trackBatch?.setMode(.original) }
         let variants=requested.split(separator:",").map(String.init).flatMap { ["production",$0,$0,"production"] }
         let shaderMaterials=noiseMaterials.merging(tintMaterials) { original,_ in original }
             .merging(crowdMaterials) { original,_ in original }
@@ -167,11 +212,13 @@ extension AppController {
                 renderer=SCNRenderer(device:device,options:nil)
                 renderer.scene=scene;renderer.pointOfView=world.camera;renderer.usesReverseZ=reverseZ
             }
+            for (node,source,control,candidate) in reorderedCAD { node.geometry=["cad-index-order","cad-deduplicate","cad-enclosure"].contains(variant) ? candidate:variant=="cad-index-control" ? control:source }
             marvin.isHidden=marvinHidden || variant=="no-marvin"
             for (node,hidden) in internalNodes { node.isHidden=hidden || variant=="marvin-no-internals" }
             for (material,doubleSided) in marvinMaterials.values {
                 material.isDoubleSided=variant=="marvin-single-sided" ? false:doubleSided
             }
+            try trackBatch?.setMode(variant=="track-batch" ? .batch:variant=="track-batch-control" ? .copyControl:.original)
             var opacityMaterialCount=0
             shadowBatch.setEnabled(false)
             for (node,production,candidate) in tangentNodes { node.geometry=variant=="tangent-reuse" ? candidate:production }
@@ -268,7 +315,7 @@ extension AppController {
             }
             rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount,"boundAOMaterialCount":boundAOMaterialCount,"boundAOGeometryCount":aoBinding?.geometryCount ?? 0,"captureRequested":captureBlocks.contains(block)])
         }
-        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","captureBlocks":captureBlocks.sorted(),"timingEligible":captureBlocks.isEmpty,"productionShadowBatch":productionShadowBatch,"freshRendererPerBlock":freshRenderer,"restoreAOFirst":ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1","variants":rows,"shadowBatch":shadowBatch.statistics]
+        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","captureBlocks":captureBlocks.sorted(),"timingEligible":captureBlocks.isEmpty,"trackBatch":trackBatch?.statistics ?? [:],"reorderedCADNodes":reorderedCAD.count,"cadVerification":cadVerification,"productionShadowBatch":productionShadowBatch,"freshRendererPerBlock":freshRenderer,"restoreAOFirst":ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1","variants":rows,"shadowBatch":shadowBatch.statistics]
         try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("loaded-gpu-probe.json"))
         if CommandLine.arguments.contains("--benchmark-ao-preparation") {
             let probe=try AOPreparationProbe(device:device,source:scene,camera:world.camera,reverseZ:reverseZ)

@@ -1,0 +1,66 @@
+[
+  {
+    "block": 0,
+    "variant": "production",
+    "gpuMedianMS": 11.466187541373074,
+    "cpuMedianMS": 2.720937365666032,
+    "changedPixels": 0,
+    "maxChannelDelta": 0
+  },
+  {
+    "block": 1,
+    "variant": "track-batch-control",
+    "gpuMedianMS": 11.44841662608087,
+    "cpuMedianMS": 2.782791736535728,
+    "changedPixels": 2,
+    "maxChannelDelta": 1
+  },
+  {
+    "block": 2,
+    "variant": "track-batch-control",
+    "gpuMedianMS": 11.429979233071208,
+    "cpuMedianMS": 2.7491875225678086,
+    "changedPixels": 2,
+    "maxChannelDelta": 1
+  },
+  {
+    "block": 3,
+    "variant": "production",
+    "gpuMedianMS": 11.445083422586322,
+    "cpuMedianMS": 2.742916694842279,
+    "changedPixels": 2,
+    "maxChannelDelta": 1
+  },
+  {
+    "block": 4,
+    "variant": "production",
+    "gpuMedianMS": 11.424750089645386,
+    "cpuMedianMS": 2.7513332897797227,
+    "changedPixels": 2,
+    "maxChannelDelta": 1
+  },
+  {
+    "block": 5,
+    "variant": "track-batch",
+    "gpuMedianMS": 11.573229101486504,
+    "cpuMedianMS": 1.7349791014567018,
+    "changedPixels": 2226,
+    "maxChannelDelta": 7
+  },
+  {
+    "block": 6,
+    "variant": "track-batch",
+    "gpuMedianMS": 11.611583293415606,
+    "cpuMedianMS": 1.7072915798053145,
+    "changedPixels": 2226,
+    "maxChannelDelta": 7
+  },
+  {
+    "block": 7,
+    "variant": "production",
+    "gpuMedianMS": 11.465041781775653,
+    "cpuMedianMS": 2.7129582595080137,
+    "changedPixels": 35,
+    "maxChannelDelta": 7
+  }
+]
