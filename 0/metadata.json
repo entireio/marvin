@@ -1,0 +1,50 @@
+{
+  "cli_version": "0.11.3",
+  "checkpoint_id": "01M3ZMXRG8Q05AFXYMWM81SXQM",
+  "session_id": "01a0ff49-f018-70f0-8082-17d45b54ed5a",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-03T01:09:15.486838Z",
+  "branch": "codex/mos-aster-racing-city",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceAudio.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceAudioSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/TownWorld.swift",
+    "docs/audio-validation/2026-10-02/repair-proximity.json",
+    "docs/race-audio.md",
+    "docs/simulator-agent-rules.md"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "bfd9f6cbf19b",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 79913,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1148288,
+    "output_tokens": 4255,
+    "api_call_count": 25,
+    "subagent_tokens_complete": false
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-03T01:09:15.467357Z",
+    "agent_lines": 251,
+    "agent_removed": 2,
+    "human_added": 0,
+    "human_modified": 0,
+    "human_removed": 0,
+    "total_committed": 251,
+    "total_lines_changed": 253,
+    "agent_percentage": 100,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 0,
+      "user_lines_removed": 0,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0
+    }
+  ]
+}

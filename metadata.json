@@ -1,0 +1,32 @@
+{
+  "cli_version": "0.11.3",
+  "checkpoint_id": "01M3ZMXRG8Q05AFXYMWM81SXQM",
+  "strategy": "manual-commit",
+  "branch": "codex/mos-aster-racing-city",
+  "checkpoints_count": 1,
+  "files_touched": [
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceAudio.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/RaceAudioSmoke.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/TownWorld.swift",
+    "docs/audio-validation/2026-10-02/repair-proximity.json",
+    "docs/race-audio.md",
+    "docs/simulator-agent-rules.md"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 79913,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1148288,
+    "output_tokens": 4255,
+    "api_call_count": 25,
+    "subagent_tokens_complete": false
+  }
+}
