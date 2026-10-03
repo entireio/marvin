@@ -1,0 +1,19 @@
+{
+  "cli_version": "0.11.3",
+  "checkpoint_id": "01M3ZVZNK8VCG1H51Q4K1QJ0CZ",
+  "session_id": "01a0ff49-f018-70f0-8082-17d45b54ed5a",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-03T03:12:38.035515Z",
+  "branch": "codex/mos-aster-racing-city",
+  "checkpoints_count": 1,
+  "files_touched": null,
+  "agent": "Codex",
+  "model": "gpt-6-astra",
+  "turn_id": "bfd9f6cbf19b",
+  "checkpoint_transcript_start": 213,
+  "transcript_lines_at_start": 213,
+  "compact_transcript_start": 28,
+  "session_metrics": {
+    "turn_count": 1
+  }
+}
