@@ -1,0 +1,19 @@
+{
+  "cli_version": "0.11.3-nightly.202609230619.4e2e839c2",
+  "checkpoint_id": "01M40G7ET410T07Q8RJW1Q20N8",
+  "session_id": "01a0fd98-2f5c-78c3-9769-86fbf8a6fc22",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-03T09:07:47.853822Z",
+  "checkpoints_count": 44,
+  "files_touched": null,
+  "agent": "Codex",
+  "model": "",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 1430194,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 102291840,
+    "output_tokens": 230563,
+    "api_call_count": 1853
+  }
+}
