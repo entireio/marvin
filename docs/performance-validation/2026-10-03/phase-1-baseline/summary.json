@@ -137,16 +137,16 @@
     "rankedFromFreshEvidence": true,
     "rank": [
       [
-        "accumulatingWork",
-        "Tentative first: trail work grows and Render Command 8 dominates recorded GPU-channel activity; actual submitted trail geometry and pass/draw identity remain unknown."
+        "thermalLimits",
+        "Tentative first: nominal to fair before slow clean windows; short Metal GPU state shifts mostly Medium to mostly Minimum. Locked-screen/profiler confounds and missing frequency/power/busy counters prevent causation."
       ],
       [
-        "thermalLimits",
-        "Tentative second: nominal to fair at 83/76 seconds precedes slow clean windows; no clock or thermal-limit attribution."
+        "accumulatingWork",
+        "Tentative second: stored trail work grows and Render Command 8 dominates recorded activity; submitted geometry and costly draw identity unknown."
       ],
       [
         "resourcePressure",
-        "Third: modest clear RSS growth, storm RSS falls, zero swap; loaded Metal allocation only about 15MB higher. No proof of pressure."
+        "Third: modest clear RSS growth, storm RSS falls, zero swap, only about 15 MB more Metal allocation."
       ]
     ],
     "causationEstablished": false,
@@ -155,5 +155,16 @@
   "nextMeasurement": "One unlocked, pose-matched early/loaded rendering attribution capture: target Render Command 8 CPU encoding and vertex/fragment elapsed intervals, correlate draw/triangle/upload counts and GPU frequency/counters; verify presentation UUID start/end anchors and replay attachments before accepting attribution. Preserve all production quality/audio/population.",
   "authorizedTargetHardware": "Current M4 MacBook Air",
   "targetOverride": "Ignore the M2 requirement. Use the current computer.",
-  "timeLimitUTC": "2026-10-03T19:15:16Z"
+  "timeLimitUTC": "2026-10-03T19:15:16Z",
+  "definitionOfDone": {
+    "clean600SecondsBothWeatherNativeLedgers": true,
+    "perMinuteCadenceTailGapsUpdateThermal": true,
+    "finalizedPresentationWithIndependentBothMarkers": false,
+    "metalShortFinalizedExported": true,
+    "metalWindowsExactlyMatchedAndUnlocked": false,
+    "gpuCaptureReplayAttachmentsDrawCostExportVerified": false,
+    "metricTypesDistinguished": true,
+    "exactNextAttributionCaptureChosen": true,
+    "productionBehaviorAndQualityPreserved": true
+  }
 }

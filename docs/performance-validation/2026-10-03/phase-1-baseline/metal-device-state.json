@@ -1,0 +1,61 @@
+{
+  "early": {
+    "gpu-performance-state-intervals": {
+      "rows": 1440,
+      "sumIntervalSecondsByStateAndInduced": [
+        {
+          "state": "Maximum",
+          "induced": "Yes",
+          "seconds": 0.8171656690000002
+        },
+        {
+          "state": "Medium",
+          "induced": "Yes",
+          "seconds": 8.41139174500001
+        },
+        {
+          "state": "Minimum",
+          "induced": "Yes",
+          "seconds": 0.12723533900000003
+        }
+      ]
+    },
+    "device-thermal-state-intervals": {
+      "rows": 1,
+      "sumIntervalSecondsByStateAndInduced": [
+        {
+          "state": "Nominal",
+          "induced": "No",
+          "seconds": 11.045617103
+        }
+      ]
+    }
+  },
+  "loaded": {
+    "gpu-performance-state-intervals": {
+      "rows": 1381,
+      "sumIntervalSecondsByStateAndInduced": [
+        {
+          "state": "Minimum",
+          "induced": "Yes",
+          "seconds": 7.491546663999995
+        },
+        {
+          "state": "Medium",
+          "induced": "Yes",
+          "seconds": 0.9948230779999997
+        }
+      ]
+    },
+    "device-thermal-state-intervals": {
+      "rows": 1,
+      "sumIntervalSecondsByStateAndInduced": [
+        {
+          "state": "Fair",
+          "induced": "No",
+          "seconds": 12.329932212
+        }
+      ]
+    }
+  }
+}
