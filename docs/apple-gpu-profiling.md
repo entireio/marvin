@@ -483,3 +483,77 @@ deterministic state/history, and A/B/B/A process order. Matching state must be
 verified, not inferred from the same elapsed wall time. Existing contaminated
 post-toggle production images cannot be reference frames. This does not waive
 reset/lifecycle testing or full-quality ten-minute clear/storm acceptance.
+
+
+### Rejected full-resolution GTAO prototype
+
+The isolated prototype is retained under `scripts/rendering/experimental`, not
+in the app target. It implements a horizon integral adapted from Intel's
+[MIT-licensed XeGTAO](https://github.com/GameTechDev/XeGTAO), based on
+[Jimenez et al. 2016](https://www.activision.com/cdn/research/PracticalRealtimeStrategiesTRfinal.pdf).
+Its license is included in the source. It is not a complete XeGTAO port.
+
+The native harness consumes the validated normal/coverage and depth inputs,
+unpremultiplies coverage, and computes full-resolution visibility plus a 5×5
+normal/depth-aware filter. An initial open-plane darkening failure led to
+normalizing each finite slice estimator against its unobstructed integral.
+Astra Ultra judged that a defensible ratio approximation, not proof of accuracy.
+The first storm run also exposed six values of 1.0000001; final filter output
+is now clamped to its declared range.
+
+On the frozen clear 1920×1080 M2 input, compute/filter alone initially cost about
+15.9 ms. Separate linear-depth preparation reduced stage medians to
+0.464 + 4.030 + 2.752 ms, about 7.25 ms total. This excludes normal/depth scene
+preparation, main shading, synchronization and presentation and is already too
+slow. Caching filter inputs in a threadgroup tile increased the filter to
+3.717 ms; that attempt was archived and removed. No timing here is a production
+win. Clear and storm visibility images were inspected.
+
+`check-gtao-fixture.py` generates analytic flat, tilted and grazing planes,
+mirrored/rotated corners, a finite thin sheet, empty coverage and half coverage.
+It saves cosine-weighted ray references and conditions before native execution.
+The checker validates radius, attenuation, dimensions and input hashes, and
+separates basic sanity from reference accuracy. The current prototype passes
+sanity but **fails reference accuracy**. Its smooth horizon-cosine attenuation
+is not equivalent to the reference's ray-distance attenuation; hard-radius
+controls remove that specific mismatch and use the same 2 mm origin bias.
+
+Expanded hard-radius corner biases at 3 slices × 6 steps per side are
++0.0245, +0.0246 and +0.0195 for the original, mirror and rotated cases. A dense
+12×32 control improves them to +0.0071, +0.0071 and +0.0047, but makes the thin
+sheet worse: p95 absolute error rises from 0.0897 to 0.1865, with a visibly broad
+dark halo. The judge confirmed the ray/plane reference and identified the
+maximum-horizon model's filled angular interval as a structural limitation for
+thin geometry. More samples are not a quality fix.
+
+`SceneKitAOFixture.swift` renders matching native geometry in independent states
+and extracts `_surface.ambientOcclusion` under the main-pass `USE_SSAO` guard.
+A sentinel control produced exactly (0.25, 0.5, 0.75, 1) in every corner pixel,
+verifying that the extraction branch executes. Unit intensity, radius 1.6 and
+bias 0.025 are recorded; this is an AO-buffer diagnostic, **not final gameplay
+appearance** (production uses intensity 0.7). SceneKit's own falloff also differs
+from the hard-radius reference. On the thin sheet, SceneKit has p95 absolute
+reference error 0.00775 versus the candidate's 0.0897 and avoids the candidate's
+visible halo. Grazing-plane error is also lower. This comparison plus the
+candidate's excessive cost is enough to reject adoption; it does not certify
+SceneKit as ground truth or excuse its own corner error.
+
+Reproduction, using Python with NumPy:
+
+```sh
+swiftc scripts/rendering/experimental/GroundTruthAO.swift scripts/rendering/GroundTruthAOFixture.swift -o /tmp/marvin-gtao-fixture
+MARVIN_AO_FALLOFF=0 python3 scripts/rendering/check-gtao-fixture.py OUTPUT --generate
+# For every generated case directory CASE:
+MARVIN_AO_FALLOFF=0 /tmp/marvin-gtao-fixture OUTPUT/CASE OUTPUT/CASE/result
+python3 scripts/rendering/check-gtao-fixture.py OUTPUT
+swiftc scripts/rendering/SceneKitAOFixture.swift -parse-as-library -o /tmp/marvin-scenekit-ao-fixture
+/tmp/marvin-scenekit-ao-fixture OUTPUT/thin-occluder OUTPUT/thin-occluder/scenekit
+```
+
+The final checker is expected to exit 1 for this rejected implementation.
+`MARVIN_AO_SLICES` and `MARVIN_AO_STEPS` select the dense diagnostic control;
+`MARVIN_AO_SENTINEL=1` selects the SceneKit extraction sentinel. Reports, native
+images and source snapshots are in `gtao-expanded-hard` under the sustained-fix
+artifact directory; checked summaries are in `performance-validation/2026-10-03`.
+No AO replacement, quality reduction or sustained-performance acceptance follows
+from these experiments. The ten-minute clear/storm target remains open.

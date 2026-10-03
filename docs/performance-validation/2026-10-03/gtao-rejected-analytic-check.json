@@ -1,0 +1,168 @@
+{
+  "qualityAccepted": false,
+  "scope": "Provisional analytic controls; no live scene, motion or performance acceptance",
+  "referenceComparisons": {
+    "flat": {
+      "samples": 221,
+      "signedMean": -0.0004810324082007775,
+      "meanAbsolute": 0.0004810324082007775,
+      "p95Absolute": 0.001316845417022705,
+      "maxAbsolute": 0.0018177628517150879,
+      "surfaces": {
+        "0": {
+          "samples": 221,
+          "signedMean": -0.0004810324082007775,
+          "meanAbsolute": 0.0004810324082007775,
+          "p95Absolute": 0.001316845417022705,
+          "maxAbsolute": 0.0018177628517150879
+        }
+      }
+    },
+    "tilted": {
+      "samples": 221,
+      "signedMean": -0.0011461803276614365,
+      "meanAbsolute": 0.0011461803276614365,
+      "p95Absolute": 0.004170238971710205,
+      "maxAbsolute": 0.005118250846862793,
+      "surfaces": {
+        "0": {
+          "samples": 221,
+          "signedMean": -0.0011461803276614365,
+          "meanAbsolute": 0.0011461803276614365,
+          "p95Absolute": 0.004170238971710205,
+          "maxAbsolute": 0.005118250846862793
+        }
+      }
+    },
+    "grazing": {
+      "samples": 143,
+      "signedMean": -0.009157031149297327,
+      "meanAbsolute": 0.009157031149297327,
+      "p95Absolute": 0.04081724286079408,
+      "maxAbsolute": 0.04445105791091919,
+      "surfaces": {
+        "0": {
+          "samples": 143,
+          "signedMean": -0.009157031149297327,
+          "meanAbsolute": 0.009157031149297327,
+          "p95Absolute": 0.04081724286079408,
+          "maxAbsolute": 0.04445105791091919
+        }
+      }
+    },
+    "corner": {
+      "samples": 221,
+      "signedMean": 0.02447559526063738,
+      "meanAbsolute": 0.024900496545420512,
+      "p95Absolute": 0.07683557271957397,
+      "maxAbsolute": 0.13195616006851196,
+      "surfaces": {
+        "0": {
+          "samples": 187,
+          "signedMean": 0.02356493983039244,
+          "meanAbsolute": 0.024067095894227054,
+          "p95Absolute": 0.07747499942779541,
+          "maxAbsolute": 0.13195616006851196
+        },
+        "1": {
+          "samples": 34,
+          "signedMean": 0.02948420012698454,
+          "meanAbsolute": 0.02948420012698454,
+          "p95Absolute": 0.04053710103034973,
+          "maxAbsolute": 0.04704463481903076
+        }
+      }
+    },
+    "corner-mirror": {
+      "samples": 221,
+      "signedMean": 0.024613514475153583,
+      "meanAbsolute": 0.02503721665473006,
+      "p95Absolute": 0.07249081134796143,
+      "maxAbsolute": 0.1288272738456726,
+      "surfaces": {
+        "0": {
+          "samples": 187,
+          "signedMean": 0.023593129321215624,
+          "meanAbsolute": 0.024093868260715096,
+          "p95Absolute": 0.07432918548583982,
+          "maxAbsolute": 0.1288272738456726
+        },
+        "1": {
+          "samples": 34,
+          "signedMean": 0.03022563282181235,
+          "meanAbsolute": 0.03022563282181235,
+          "p95Absolute": 0.04206473231315612,
+          "maxAbsolute": 0.04722028970718384
+        }
+      }
+    },
+    "corner-rotated": {
+      "samples": 221,
+      "signedMean": 0.01949833663880016,
+      "meanAbsolute": 0.020547688546763285,
+      "p95Absolute": 0.06724244356155396,
+      "maxAbsolute": 0.13693886995315552,
+      "surfaces": {
+        "0": {
+          "samples": 169,
+          "signedMean": 0.02122122472559912,
+          "meanAbsolute": 0.02180810757642667,
+          "p95Absolute": 0.06997376680374144,
+          "maxAbsolute": 0.13693886995315552
+        },
+        "1": {
+          "samples": 52,
+          "signedMean": 0.013898950356703538,
+          "meanAbsolute": 0.016451326700357292,
+          "p95Absolute": 0.04701763093471527,
+          "maxAbsolute": 0.05521070957183838
+        }
+      }
+    },
+    "thin-occluder": {
+      "samples": 221,
+      "signedMean": -0.015129036763135125,
+      "meanAbsolute": 0.015400179640739751,
+      "p95Absolute": 0.08974325656890869,
+      "maxAbsolute": 0.1987892985343933,
+      "surfaces": {
+        "0": {
+          "samples": 216,
+          "signedMean": -0.015479245947466956,
+          "meanAbsolute": 0.01575666528057169,
+          "p95Absolute": 0.09020279347896576,
+          "maxAbsolute": 0.1987892985343933
+        },
+        "1": {
+          "samples": 5,
+          "signedMean": 0.0,
+          "meanAbsolute": 0.0,
+          "p95Absolute": 0.0,
+          "maxAbsolute": 0.0
+        }
+      }
+    },
+    "half-coverage": {
+      "samples": 221,
+      "signedMean": -0.0004810324082007775,
+      "meanAbsolute": 0.0004810324082007775,
+      "p95Absolute": 0.001316845417022705,
+      "maxAbsolute": 0.0018177628517150879,
+      "surfaces": {
+        "0": {
+          "samples": 221,
+          "signedMean": -0.0004810324082007775,
+          "meanAbsolute": 0.0004810324082007775,
+          "p95Absolute": 0.001316845417022705,
+          "maxAbsolute": 0.0018177628517150879
+        }
+      }
+    }
+  },
+  "flatMinimum": 0.9972551465034485,
+  "tiltedMinimum": 0.99362713098526,
+  "coverageMaximumDifference": 0.0,
+  "emptyMinimum": 1.0,
+  "sanityPassed": true,
+  "referenceAccuracyPassed": false
+}

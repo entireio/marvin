@@ -1,0 +1,23 @@
+{
+  "scope": "Unit-intensity extracted AO only; SceneKit falloff differs from hard-radius ray reference. Not gameplay appearance acceptance.",
+  "comparisons": {
+    "corner": {
+      "signedMean": 0.026389557851385748,
+      "meanAbsolute": 0.07685044232536764,
+      "p95Absolute": 0.27813720703125,
+      "maxAbsolute": 0.29571533203125
+    },
+    "grazing": {
+      "signedMean": -0.0019292231206293707,
+      "meanAbsolute": 0.0019292231206293707,
+      "p95Absolute": 0.005859375,
+      "maxAbsolute": 0.0126953125
+    },
+    "thin-occluder": {
+      "signedMean": 0.0007550684035633484,
+      "meanAbsolute": 0.001748201534219457,
+      "p95Absolute": 0.00775146484375,
+      "maxAbsolute": 0.0128173828125
+    }
+  }
+}
