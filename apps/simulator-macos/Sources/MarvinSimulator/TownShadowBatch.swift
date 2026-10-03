@@ -1,7 +1,7 @@
 import SceneKit
 import simd
 
-/// Diagnostic shadow geometry: identical static town triangles, welded only by
+/// Shadow geometry: identical static town triangles, welded only by
 /// exact position, with separate single/double-sided material groups. The main
 /// camera keeps its original geometry, materials, tangents and LODs.
 final class TownShadowBatch {

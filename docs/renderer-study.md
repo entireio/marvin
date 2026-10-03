@@ -253,3 +253,42 @@ dismissed as only isolated frame misses. This is an M2 result, not an M4 test.
 are retained alongside the benchmark report. Full frame/update timelines and the
 viewed native scene plus live-overlay capture are in
 `/Users/thomi/Projects/marvin-town-planning/fps-ten-minutes/`.
+
+### M2 profiling and production shadow geometry
+
+The current performance target is solely the workspace M2 MacBook Air. Apple
+Metal System Trace, attached for ten seconds after a warmed-up clear town drive,
+separates recorded GPU Active intervals from the command-buffer envelope. Across
+472 interior frames, the union of the app's Vertex/Fragment/Compute intervals
+had median 13.658 ms and P99 15.637 ms; the envelope median was 16.580 ms.
+Channels overlap and must not be added. These are instrumented diagnostics, not
+exclusive GPU cycles or ten-minute acceptance. The preceding correlated capture
+also exposed GPU-capture-layer CPU overhead before its frame capture began.
+No thermal-frequency cause has been established.
+
+Normal gameplay now enables the previously opt-in town shadow mesh. It retains
+679,992 triangles, winding, sidedness and LOD geometry while welding exact equal
+positions and merging opaque shadow material groups: 1,761,272 input vertices
+become 417,484 and 661 geometry elements become 338. Camera-visible geometry,
+material detail and the 4096/2048 shadow maps are unchanged. Unsupported geometry
+keeps the original shadow path rather than terminating the game.
+
+`--benchmark-shadow-batch-reference` selects the original shadow path. Independent
+ground/mesh/shadow comparison tools retain control of their own reference pairs;
+`--benchmark-shadow-batch-live` exercises production activation in those tools.
+The release build, all 33 live reference comparisons (midday, low sun and storm),
+caster synchronization, and default/reference 15-second activation checks passed.
+All three native comparison contact sheets were inspected. Small rasterization
+differences remain; the largest channel difference was 29/255 at a shadow edge.
+This is not pixel identity or a moving-camera flicker acceptance result.
+
+This is a partial optimization, not a sustained-60-FPS fix. Earlier isolated
+measurements showed a small encoding/GPU saving; no new controlled ten-minute
+clear/storm improvement or complete headroom result is claimed here.
+
+Retained reports: [visual comparisons](performance-validation/2026-10-03/shadow-production/comparison.json),
+[activation and quality configuration](performance-validation/2026-10-03/shadow-production/activation.json),
+and [prior-build GPU diagnostic](performance-validation/2026-10-03/shadow-production/prior-build-gpu-diagnostic.json).
+Full Instruments traces, native images, frame joins and independent audits remain
+under `/Users/thomi/Projects/marvin-town-planning/sustained-fix/metal-warm-current/`
+and `shadow-production-validation/` in that same artifact root.

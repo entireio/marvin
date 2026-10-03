@@ -1,0 +1,358 @@
+{
+  "casterReductionObserved": false,
+  "comparisons": [
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.00784313725490196,
+      "meanMaxChannelError": 1.323832001936577e-08,
+      "optimizedCasters": 40,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 40,
+      "view": "midday-street"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 41,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 41,
+      "view": "midday-inner-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 21,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 21,
+      "view": "midday-outer-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 35,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 35,
+      "view": "midday-aerial"
+    },
+    {
+      "changedFraction": 9.645061728395062e-07,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.050980392156862744,
+      "meanMaxChannelError": 2.628752118131198e-07,
+      "optimizedCasters": 34,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 34,
+      "view": "midday-uncovered-infield"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 41,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 41,
+      "view": "midday-inner-fade"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 26,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 26,
+      "view": "midday-grazing"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.011764705882352941,
+      "meanMaxChannelError": 3.593258290970709e-08,
+      "optimizedCasters": 45,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 45,
+      "view": "midday-reverse-turn"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.00392156862745098,
+      "meanMaxChannelError": 3.78237714839022e-09,
+      "optimizedCasters": 18,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 18,
+      "view": "midday-lod-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 40,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 40,
+      "view": "midday-closeup-street"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 45,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 45,
+      "view": "midday-closeup-reverse"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.01568627450980392,
+      "meanMaxChannelError": 1.512950859356088e-08,
+      "optimizedCasters": 40,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 40,
+      "view": "low-sun-street"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 41,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 41,
+      "view": "low-sun-inner-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 21,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 21,
+      "view": "low-sun-outer-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 35,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 35,
+      "view": "low-sun-aerial"
+    },
+    {
+      "changedFraction": 1.9290123456790124e-06,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.11372549019607843,
+      "meanMaxChannelError": 3.006989832970223e-07,
+      "optimizedCasters": 34,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 34,
+      "view": "low-sun-uncovered-infield"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 41,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 41,
+      "view": "low-sun-inner-fade"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 26,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 26,
+      "view": "low-sun-grazing"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.01568627450980392,
+      "meanMaxChannelError": 5.106209150326797e-08,
+      "optimizedCasters": 45,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 45,
+      "view": "low-sun-reverse-turn"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 18,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 18,
+      "view": "low-sun-lod-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 40,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 40,
+      "view": "low-sun-closeup-street"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 45,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 45,
+      "view": "low-sun-closeup-reverse"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 40,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 40,
+      "view": "storm-street"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 41,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 41,
+      "view": "storm-inner-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 21,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 21,
+      "view": "storm-outer-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 35,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 35,
+      "view": "storm-aerial"
+    },
+    {
+      "changedFraction": 4.822530864197531e-07,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0.043137254901960784,
+      "meanMaxChannelError": 7.753873154199945e-08,
+      "optimizedCasters": 34,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 34,
+      "view": "storm-uncovered-infield"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 41,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 41,
+      "view": "storm-inner-fade"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 26,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 26,
+      "view": "storm-grazing"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 45,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 45,
+      "view": "storm-reverse-turn"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 18,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 18,
+      "view": "storm-lod-boundary"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 40,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 40,
+      "view": "storm-closeup-street"
+    },
+    {
+      "changedFraction": 0,
+      "comparedPixels": 2073600,
+      "maximumChannelError": 0,
+      "meanMaxChannelError": 0,
+      "optimizedCasters": 45,
+      "pixelEncoding": "packed 8-bit bitmap channels",
+      "referenceCasters": 45,
+      "view": "storm-closeup-reverse"
+    }
+  ],
+  "frustumPassed": true,
+  "maximumMergedBasisDegrees": 0,
+  "mergedBasisComparisons": 0,
+  "meshDataPassed": true,
+  "meshInputVertices": 2592798,
+  "meshOutputVertices": 2236059,
+  "note": "Original receiver depth, transparent surface and material retained; small rasterization differences require manual review.",
+  "passed": true,
+  "shadowBatch": {
+    "activeProxies": 45,
+    "enabled": 1,
+    "inputElements": 661,
+    "inputVertices": 1761272,
+    "nodes": 92,
+    "originalCasters": 0,
+    "outputElements": 338,
+    "outputVertices": 417484,
+    "triangles": 679992
+  },
+  "shadowBatchSyncPassed": true,
+  "shadowComparison": false,
+  "tangentFixturesPassed": true,
+  "uvMappingPassed": true
+}

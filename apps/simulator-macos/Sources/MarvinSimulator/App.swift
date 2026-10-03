@@ -501,9 +501,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = !isLoadingDirt
         dirtWorld.camera = world.camera
         dirtWorld.sky.attach(camera:world.camera)
-        if CommandLine.arguments.contains("--benchmark-shadow-batch-live") {
+        // Geometry comparison tools own their temporary reference/proxy pairs.
+        // Normal gameplay uses the exact-position shadow mesh by default.
+        let shadowArguments=CommandLine.arguments
+        let independentGeometryComparison=["--ground-performance-test","--shadow-culling-test","--mesh-reuse-test"].contains(where:shadowArguments.contains)
+        let useShadowBatch = !shadowArguments.contains("--benchmark-shadow-batch-reference")
+            && (!independentGeometryComparison || shadowArguments.contains("--benchmark-shadow-batch-live"))
+        if useShadowBatch {
             do { try dirtWorld.town.prepareShadowBatch(camera:world.camera.camera!) }
-            catch { NSLog("Shadow batch preparation failed: %@",String(describing:error));exit(1) }
+            catch { NSLog("Shadow batch unavailable; retaining original shadow geometry: %@",String(describing:error)) }
         }
         mainMenu.portrait.rendersContinuously = false
         view.antialiasingMode = .multisampling2X

@@ -1,0 +1,60 @@
+{
+  "pid": 97697,
+  "allGPUEvents": 50333,
+  "appGPUEvents": 16287,
+  "unmappedAppGPUEvents": 33,
+  "interiorWindowSeconds": [
+    1,
+    9
+  ],
+  "frameCount": 472,
+  "activeUnion": {
+    "count": 472,
+    "meanMS": 13.7250465,
+    "p50MS": 13.6583335,
+    "p95MS": 15.181418,
+    "p99MS": 15.637417,
+    "maxMS": 17.631459
+  },
+  "envelope": {
+    "count": 472,
+    "meanMS": 15.628390351694916,
+    "p50MS": 16.5795005,
+    "p95MS": 17.437125,
+    "p99MS": 17.718583,
+    "maxMS": 19.341709
+  },
+  "channels": {
+    "Vertex": {
+      "count": 472,
+      "meanMS": 8.467519544491525,
+      "p50MS": 8.621812,
+      "p95MS": 10.349749,
+      "p99MS": 10.805416,
+      "maxMS": 11.634249
+    },
+    "Fragment": {
+      "count": 472,
+      "meanMS": 8.799296413135593,
+      "p50MS": 8.718479,
+      "p95MS": 10.03654,
+      "p99MS": 10.483248,
+      "maxMS": 11.5165
+    },
+    "Compute": {
+      "count": 472,
+      "meanMS": 0.9046591059322033,
+      "p50MS": 0.8020215,
+      "p95MS": 1.810625,
+      "p99MS": 2.274124,
+      "maxMS": 3.017626
+    }
+  },
+  "notes": [
+    "Union of Apple Metal GPU Active intervals across Vertex/Fragment/Compute, linked by command buffer to app frame. Channels overlap: do not sum channel times.",
+    "WindowServer work excluded by process ownership. GPU intervals do not provide shader instruction-level attribution.",
+    "Trace boundary frames excluded from aggregate; presentation continuity reviewed separately."
+  ],
+  "sourceDirectory": "/Users/thomi/Projects/marvin-town-planning/sustained-fix/metal-warm-current",
+  "sourceBinarySHA256": "2326e51b49f07fecd1ea21001025062fe26cd6e2a3210bf275b8002f580ce4d3"
+}
