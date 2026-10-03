@@ -1,0 +1,12 @@
+{
+  "baselineSourceCommit": "057f52ecbad7e4d33047004b09ad1ed68bafe1c5",
+  "branch": "codex/mos-aster-perf-phase-1-baseline",
+  "deliveryCommitLookup": "git log -1 --format=%H -- docs/performance-validation/2026-10-03/phase-1-baseline",
+  "sessionID": "01a102c3-12e2-7113-af4a-331e3e624e61",
+  "checkpointID": "01M41HZX37Z276V8CJRMSB6N9V",
+  "checkpointRef": "refs/entire/checkpoints/9V/01M41HZX37Z276V8CJRMSB6N9V",
+  "checkpointGitObject": "5967f580a76d3bc9c188d394c81e462707d44745",
+  "checkpointSnapshotCreatedUTC": "2026-10-03T18:56:33.144663Z",
+  "checkpointRemoteMatchesLocal": true,
+  "limitation": "Initial attach newly captured this task session. Subsequent supported attach reused the existing checkpoint; it did not refresh the transcript after the last Metal-state analysis/reporting amendments. Final commit remote hash is verified separately after delivery."
+}
