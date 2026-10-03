@@ -1,0 +1,11 @@
+{
+  "binarySHA256": "ee87d94bdb1ce49e92af94c1df8753c16f358c115690d9834dd5fcf4c9143631",
+  "baseCommit": "057f52ecbad7e4d33047004b09ad1ed68bafe1c5",
+  "sourcePatchSHA256": "e45dc334e2492dbf221955fd1affd02a9b577190b4829b8c09d032298b46117d",
+  "modifiedProductionSource": [
+    "apps/simulator-macos/Sources/MarvinSimulator/TownSmoke.swift"
+  ],
+  "scope": "Benchmark-only signpost refresh at 10 seconds when explicitly enabled; AO/reporting fields only. No gameplay quality or behavior change.",
+  "assetInventorySHA256": "522ae099997b9dbc45800b9a0cf5b9d8c8dd5c5d846986e5c924a772c8e53b2c",
+  "assetsMatchOriginalCleanBundle": true
+}

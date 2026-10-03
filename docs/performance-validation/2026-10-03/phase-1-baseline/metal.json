@@ -1,0 +1,1075 @@
+{
+  "early": {
+    "cpuEncoderWallMSByLabel": {
+      "Blit Command 0": {
+        "count": 616,
+        "median": 0.033792,
+        "p95": 0.055833,
+        "p99": 0.06875,
+        "max": 0.092834
+      },
+      "Blit Command 4": {
+        "count": 631,
+        "median": 0.034583,
+        "p95": 0.046583,
+        "p99": 0.054583,
+        "max": 0.072084
+      },
+      "Compute Command 3": {
+        "count": 631,
+        "median": 0.008292,
+        "p95": 0.0125,
+        "p99": 0.015958,
+        "max": 0.020166
+      },
+      "Compute Command 5": {
+        "count": 631,
+        "median": 0.004458,
+        "p95": 0.006167,
+        "p99": 0.0075,
+        "max": 0.011667
+      },
+      "Compute Command 7": {
+        "count": 631,
+        "median": 0.007334,
+        "p95": 0.010583,
+        "p99": 0.012375,
+        "max": 0.022167
+      },
+      "Compute Command 9": {
+        "count": 631,
+        "median": 0.006333,
+        "p95": 0.009042,
+        "p99": 0.012208,
+        "max": 0.0175
+      },
+      "Render Command 0": {
+        "count": 631,
+        "median": 1.567333,
+        "p95": 2.149542,
+        "p99": 2.646959,
+        "max": 93.960375
+      },
+      "Render Command 1": {
+        "count": 631,
+        "median": 0.568,
+        "p95": 0.783792,
+        "p99": 0.882875,
+        "max": 1.031208
+      },
+      "Render Command 10": {
+        "count": 631,
+        "median": 0.009625,
+        "p95": 0.014917,
+        "p99": 0.021334,
+        "max": 0.033583
+      },
+      "Render Command 11": {
+        "count": 631,
+        "median": 0.006125,
+        "p95": 0.008125,
+        "p99": 0.009417,
+        "max": 0.013667
+      },
+      "Render Command 12": {
+        "count": 631,
+        "median": 0.009542,
+        "p95": 0.012583,
+        "p99": 0.016208,
+        "max": 0.02375
+      },
+      "Render Command 2": {
+        "count": 631,
+        "median": 1.633417,
+        "p95": 2.039542,
+        "p99": 2.312458,
+        "max": 2.883791
+      },
+      "Render Command 6": {
+        "count": 631,
+        "median": 0.008791,
+        "p95": 0.01525,
+        "p99": 0.021042,
+        "max": 0.026084
+      },
+      "Render Command 8": {
+        "count": 631,
+        "median": 2.083291,
+        "p95": 2.604667,
+        "p99": 2.995208,
+        "max": 3.487042
+      }
+    },
+    "cpuEncoderWallSumPerFrameMS": {
+      "count": 631,
+      "median": 6.025707,
+      "p95": 7.6786249999999985,
+      "p99": 8.370791,
+      "max": 99.22787299999999
+    },
+    "gpuActiveIntervalsByChannelLabelDepth": [
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 8",
+        "count": 645,
+        "sumMS": 2568.001386999997,
+        "maxMS": 7.019125
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 8",
+        "count": 632,
+        "sumMS": 2499.868463,
+        "maxMS": 5.77175
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 2",
+        "count": 646,
+        "sumMS": 1204.0943099999995,
+        "maxMS": 4.088208000000001
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 2",
+        "count": 650,
+        "sumMS": 1005.61429,
+        "maxMS": 2.9881249999999997
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 6",
+        "count": 611,
+        "sumMS": 814.2233930000003,
+        "maxMS": 2.496791
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 0",
+        "count": 651,
+        "sumMS": 791.8860029999996,
+        "maxMS": 2.7505830000000002
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 0",
+        "count": 629,
+        "sumMS": 336.2330019999995,
+        "maxMS": 0.971792
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 7",
+        "count": 632,
+        "sumMS": 274.552614,
+        "maxMS": 2.181542
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 1",
+        "count": 653,
+        "sumMS": 195.8615369999998,
+        "maxMS": 1.913125
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Blit Command 4",
+        "count": 633,
+        "sumMS": 146.39383900000007,
+        "maxMS": 0.801625
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 1",
+        "count": 112,
+        "sumMS": 131.98774799999998,
+        "maxMS": 2.673458
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 5",
+        "count": 631,
+        "sumMS": 73.89216199999994,
+        "maxMS": 0.27779200000000004
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 9",
+        "count": 625,
+        "sumMS": 64.29357500000003,
+        "maxMS": 0.813666
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 12",
+        "count": 629,
+        "sumMS": 59.88345800000005,
+        "maxMS": 0.837125
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 0:Blit Command 0",
+        "count": 614,
+        "sumMS": 35.56950000000004,
+        "maxMS": 1.522667
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 6",
+        "count": 579,
+        "sumMS": 22.479111000000003,
+        "maxMS": 1.178458
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 10",
+        "count": 625,
+        "sumMS": 16.227241999999986,
+        "maxMS": 0.094375
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 11",
+        "count": 630,
+        "sumMS": 13.846503000000016,
+        "maxMS": 1.15625
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 11",
+        "count": 626,
+        "sumMS": 13.40990500000002,
+        "maxMS": 0.253125
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 10",
+        "count": 630,
+        "sumMS": 10.665239000000001,
+        "maxMS": 0.934
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 12",
+        "count": 630,
+        "sumMS": 6.193459000000007,
+        "maxMS": 0.457
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 0:Render Command 8",
+        "count": 1,
+        "sumMS": 4.404541,
+        "maxMS": 4.404541
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 8",
+        "count": 1,
+        "sumMS": 3.186542,
+        "maxMS": 3.186542
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 3",
+        "count": 609,
+        "sumMS": 2.342319000000001,
+        "maxMS": 0.38295799999999997
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Blit Command 0",
+        "count": 2,
+        "sumMS": 1.9378739999999999,
+        "maxMS": 1.058333
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 0:Render Command 2",
+        "count": 1,
+        "sumMS": 1.753875,
+        "maxMS": 1.753875
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 2",
+        "count": 1,
+        "sumMS": 1.7262499999999998,
+        "maxMS": 1.7262499999999998
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 6",
+        "count": 1,
+        "sumMS": 1.5037500000000001,
+        "maxMS": 1.5037500000000001
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 0:Render Command 0",
+        "count": 1,
+        "sumMS": 1.026,
+        "maxMS": 1.026
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 0",
+        "count": 1,
+        "sumMS": 0.458959,
+        "maxMS": 0.458959
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 0:Compute Command 7",
+        "count": 1,
+        "sumMS": 0.397292,
+        "maxMS": 0.397292
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 0:Blit Command 4",
+        "count": 1,
+        "sumMS": 0.26645800000000003,
+        "maxMS": 0.26645800000000003
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 1",
+        "count": 1,
+        "sumMS": 0.171042,
+        "maxMS": 0.171042
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 0:Compute Command 5",
+        "count": 1,
+        "sumMS": 0.121459,
+        "maxMS": 0.121459
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 12",
+        "count": 1,
+        "sumMS": 0.076333,
+        "maxMS": 0.076333
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 0:Compute Command 9",
+        "count": 1,
+        "sumMS": 0.07175,
+        "maxMS": 0.07175
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 10",
+        "count": 1,
+        "sumMS": 0.022291000000000002,
+        "maxMS": 0.022291000000000002
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Render Command 11",
+        "count": 1,
+        "sumMS": 0.018040999999999998,
+        "maxMS": 0.018040999999999998
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 0:Render Command 12",
+        "count": 1,
+        "sumMS": 0.004916,
+        "maxMS": 0.004916
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 0:Render Command 6",
+        "count": 1,
+        "sumMS": 0.003542,
+        "maxMS": 0.003542
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 0:Render Command 10",
+        "count": 1,
+        "sumMS": 0.003333,
+        "maxMS": 0.003333
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 0:Compute Command 3",
+        "count": 1,
+        "sumMS": 0.002333,
+        "maxMS": 0.002333
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 0:Render Command 11",
+        "count": 1,
+        "sumMS": 0.002333,
+        "maxMS": 0.002333
+      }
+    ],
+    "gpuDepth0ChannelUnionSeconds": {
+      "Vertex": 4.5578722799999944,
+      "Compute": 0.5979033010000014,
+      "Fragment": 5.148902391999978
+    },
+    "gpuDepth0AllChannelUnionSeconds": 7.691220899999984,
+    "gpuRowsWithoutTargetPID": 2859,
+    "cpuSamples": {
+      "count": 9739,
+      "weightedSecondsByThread": {
+        "Main Thread (0x350b02) (MarvinSimulator, pid: 65595)": 1.4389999999999523,
+        "com.apple.audio.IOThread.client (0x350c1a) (MarvinSimulator, pid: 65595)": 2.442999999999842,
+        "MarvinSimulator (0x3511a2) (MarvinSimulator, pid: 65595)": 0.5870000000000004,
+        "MarvinSimulator (0x351177) (MarvinSimulator, pid: 65595)": 0.5710000000000004,
+        "MarvinSimulator (0x350b47) (MarvinSimulator, pid: 65595)": 0.9130000000000007,
+        "MarvinSimulator (0x350d67) (MarvinSimulator, pid: 65595)": 0.47300000000000036,
+        "MarvinSimulator (0x350b49) (MarvinSimulator, pid: 65595)": 0.6410000000000005,
+        "MarvinSimulator (0x351185) (MarvinSimulator, pid: 65595)": 0.6950000000000005,
+        "MarvinSimulator (0x350b4a) (MarvinSimulator, pid: 65595)": 0.5120000000000003,
+        "MarvinSimulator (0x350b48) (MarvinSimulator, pid: 65595)": 0.33500000000000024,
+        "MarvinSimulator (0x350b36) (MarvinSimulator, pid: 65595)": 0.44600000000000034,
+        "MarvinSimulator (0x3511e7) (MarvinSimulator, pid: 65595)": 0.6830000000000005,
+        "CVDisplayLink (0x350b3b) (MarvinSimulator, pid: 65595)": 0.001
+      },
+      "topLeavesSeconds": [
+        [
+          "iokit_user_client_trap",
+          0.8830000000000007
+        ],
+        [
+          "void Resampler2::ConvertSIMD<Resampler2::FixedRate>(float*, float*, unsigned int, unsigned int)",
+          0.8700000000000007
+        ],
+        [
+          "__kdebug_trace64",
+          0.7350000000000005
+        ],
+        [
+          "mach_msg2_trap",
+          0.5510000000000004
+        ],
+        [
+          "objc_msgSend",
+          0.35100000000000026
+        ],
+        [
+          "0x1562ad418",
+          0.3070000000000002
+        ],
+        [
+          "0x1562ad2b4",
+          0.2650000000000002
+        ],
+        [
+          "-[NSConcreteMapTable countByEnumeratingWithState:objects:count:]",
+          0.19700000000000015
+        ],
+        [
+          "_platform_memmove",
+          0.16800000000000012
+        ],
+        [
+          "__sincos_stret",
+          0.12600000000000008
+        ],
+        [
+          "0x1562c7d8c",
+          0.12500000000000008
+        ],
+        [
+          "<deduplicated_symbol>",
+          0.09100000000000007
+        ],
+        [
+          "__CF_IS_OBJC",
+          0.08900000000000007
+        ],
+        [
+          "pow",
+          0.08000000000000006
+        ],
+        [
+          "IOGPUMetalSuballocatorFree",
+          0.07400000000000005
+        ]
+      ],
+      "topInclusiveSeconds": [
+        [
+          "start_wqthread",
+          5.769000000000261
+        ],
+        [
+          "_pthread_wqthread",
+          5.715000000000243
+        ],
+        [
+          "_dispatch_workloop_worker_thread",
+          5.7040000000002395
+        ],
+        [
+          "_dispatch_root_queue_drain_deferred_wlh",
+          5.697000000000237
+        ],
+        [
+          "_dispatch_lane_invoke",
+          5.696000000000237
+        ],
+        [
+          "_dispatch_lane_serial_drain",
+          5.694000000000236
+        ],
+        [
+          "_dispatch_client_callout",
+          5.288000000000101
+        ],
+        [
+          "_dispatch_source_invoke",
+          4.943999999999986
+        ],
+        [
+          "_dispatch_continuation_pop",
+          4.942999999999985
+        ],
+        [
+          "_dispatch_source_latch_and_call",
+          4.942999999999985
+        ],
+        [
+          "-[SCNDisplayLink _displayLinkCallbackReturningImmediately]",
+          4.251999999999755
+        ],
+        [
+          "-[SCNView _drawAtTime:WithContext:]",
+          4.251999999999755
+        ],
+        [
+          "__83-[NSObject(SCN_DisplayLinkExtensions) SCN_setupDisplayLinkWithQueue:screen:policy:]_block_invoke",
+          4.251999999999755
+        ],
+        [
+          "-[SCNView SCN_displayLinkCallback:]",
+          4.251999999999755
+        ],
+        [
+          "-[SCNRenderer _drawScene:]",
+          4.233999999999749
+        ],
+        [
+          "-[SCNRenderer _drawAtTime:]",
+          4.233999999999749
+        ],
+        [
+          "-[SCNRenderer _drawSceneWithNewRenderer:]",
+          4.233999999999749
+        ],
+        [
+          "-[SCNRenderer _renderSceneWithEngineContext:sceneTime:]",
+          4.225999999999746
+        ],
+        [
+          "C3D::RenderGraph::execute()",
+          3.8799999999996837
+        ],
+        [
+          "C3D::__renderSlice(C3D::RenderGraph*, C3D::RenderPass*, unsigned short&, C3D::RenderGraph::GraphNode const&, C3D::RenderGraph::Stage*&, C3D::RenderArgs, bool, id<MTLCommandBuffer>&)",
+          3.802999999999692
+        ]
+      ]
+    },
+    "metalAllocatedBytes": {
+      "count": 468194,
+      "median": 1950400512,
+      "p95": 1950580736,
+      "p99": 1950613504,
+      "max": 1950744576
+    },
+    "metalAllocatedFirstLast": [
+      1950023680,
+      1950449664
+    ]
+  },
+  "loaded": {
+    "cpuEncoderWallMSByLabel": {
+      "Blit Command 0": {
+        "count": 411,
+        "median": 0.110041,
+        "p95": 0.166291,
+        "p99": 0.217417,
+        "max": 0.701959
+      },
+      "Blit Command 4": {
+        "count": 411,
+        "median": 0.113625,
+        "p95": 0.158666,
+        "p99": 0.176417,
+        "max": 0.288833
+      },
+      "Compute Command 3": {
+        "count": 411,
+        "median": 0.032667,
+        "p95": 0.053583,
+        "p99": 0.059291,
+        "max": 0.071833
+      },
+      "Compute Command 5": {
+        "count": 411,
+        "median": 0.015625,
+        "p95": 0.026,
+        "p99": 0.034583,
+        "max": 0.051333
+      },
+      "Compute Command 7": {
+        "count": 411,
+        "median": 0.023625,
+        "p95": 0.038667,
+        "p99": 0.054166,
+        "max": 0.131875
+      },
+      "Compute Command 9": {
+        "count": 411,
+        "median": 0.031292,
+        "p95": 0.06025,
+        "p99": 0.072583,
+        "max": 0.123083
+      },
+      "Render Command 0": {
+        "count": 411,
+        "median": 5.22275,
+        "p95": 6.722,
+        "p99": 7.372333,
+        "max": 219.727709
+      },
+      "Render Command 1": {
+        "count": 411,
+        "median": 2.9045,
+        "p95": 3.827584,
+        "p99": 4.346458,
+        "max": 4.896958
+      },
+      "Render Command 10": {
+        "count": 411,
+        "median": 0.053416,
+        "p95": 0.103208,
+        "p99": 0.124583,
+        "max": 0.217042
+      },
+      "Render Command 11": {
+        "count": 411,
+        "median": 0.018792,
+        "p95": 0.040792,
+        "p99": 0.064875,
+        "max": 0.133
+      },
+      "Render Command 12": {
+        "count": 411,
+        "median": 0.031375,
+        "p95": 0.060292,
+        "p99": 0.0755,
+        "max": 0.10825
+      },
+      "Render Command 2": {
+        "count": 411,
+        "median": 6.057542,
+        "p95": 9.958125,
+        "p99": 11.575,
+        "max": 236.24525
+      },
+      "Render Command 6": {
+        "count": 411,
+        "median": 0.051125,
+        "p95": 0.091666,
+        "p99": 0.109625,
+        "max": 1.246792
+      },
+      "Render Command 8": {
+        "count": 411,
+        "median": 8.589792,
+        "p95": 12.68675,
+        "p99": 14.313625,
+        "max": 252.62875
+      }
+    },
+    "cpuEncoderWallSumPerFrameMS": {
+      "count": 411,
+      "median": 23.214332999999996,
+      "p95": 32.027708000000004,
+      "p99": 35.4145,
+      "max": 272.629499
+    },
+    "gpuActiveIntervalsByChannelLabelDepth": [
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 8",
+        "count": 423,
+        "sumMS": 2365.1085860000003,
+        "maxMS": 9.163833
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 8",
+        "count": 430,
+        "sumMS": 1813.7727200000018,
+        "maxMS": 9.307583
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 2",
+        "count": 428,
+        "sumMS": 883.0432989999991,
+        "maxMS": 5.598583
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 2",
+        "count": 393,
+        "sumMS": 803.6566600000006,
+        "maxMS": 4.840084
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 0",
+        "count": 445,
+        "sumMS": 738.8146199999996,
+        "maxMS": 5.143875
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 6",
+        "count": 400,
+        "sumMS": 448.67774600000007,
+        "maxMS": 2.646166
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 0",
+        "count": 422,
+        "sumMS": 292.57157399999966,
+        "maxMS": 1.703916
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 7",
+        "count": 418,
+        "sumMS": 217.58394999999982,
+        "maxMS": 2.3526670000000003
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 1",
+        "count": 80,
+        "sumMS": 130.193042,
+        "maxMS": 3.883
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 1",
+        "count": 406,
+        "sumMS": 117.06717399999997,
+        "maxMS": 2.1807499999999997
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 11",
+        "count": 408,
+        "sumMS": 103.72946099999997,
+        "maxMS": 1.7904170000000001
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Blit Command 4",
+        "count": 410,
+        "sumMS": 97.58900599999997,
+        "maxMS": 1.117875
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 10",
+        "count": 404,
+        "sumMS": 74.07883400000001,
+        "maxMS": 1.245084
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 9",
+        "count": 409,
+        "sumMS": 65.75996399999995,
+        "maxMS": 2.339417
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 0:Blit Command 0",
+        "count": 406,
+        "sumMS": 65.32853999999996,
+        "maxMS": 2.1336250000000003
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 12",
+        "count": 409,
+        "sumMS": 53.22925499999998,
+        "maxMS": 2.27175
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 5",
+        "count": 410,
+        "sumMS": 52.90308299999999,
+        "maxMS": 0.5640000000000001
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 6",
+        "count": 382,
+        "sumMS": 24.804621000000004,
+        "maxMS": 1.297
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 10",
+        "count": 406,
+        "sumMS": 14.352163,
+        "maxMS": 0.161
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Render Command 12",
+        "count": 409,
+        "sumMS": 12.511164999999995,
+        "maxMS": 0.881625
+      },
+      {
+        "channel": "Fragment",
+        "label": "GPU Execution",
+        "count": 9,
+        "sumMS": 12.47646,
+        "maxMS": 4.050042
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 1:Render Command 11",
+        "count": 410,
+        "sumMS": 11.376657999999994,
+        "maxMS": 0.08025
+      },
+      {
+        "channel": "Compute",
+        "label": "Command Buffer 1:Compute Command 3",
+        "count": 407,
+        "sumMS": 7.721583000000001,
+        "maxMS": 1.073667
+      },
+      {
+        "channel": "Vertex",
+        "label": "GPU Execution",
+        "count": 5,
+        "sumMS": 6.788624,
+        "maxMS": 5.3095
+      },
+      {
+        "channel": "Fragment",
+        "label": "Command Buffer 0:Blit Command 0",
+        "count": 3,
+        "sumMS": 1.340416,
+        "maxMS": 0.609375
+      },
+      {
+        "channel": "Compute",
+        "label": "GPU Execution",
+        "count": 6,
+        "sumMS": 1.126083,
+        "maxMS": 0.535917
+      },
+      {
+        "channel": "Vertex",
+        "label": "Command Buffer 1:Blit Command 4",
+        "count": 1,
+        "sumMS": 0.018167,
+        "maxMS": 0.018167
+      }
+    ],
+    "gpuDepth0ChannelUnionSeconds": {
+      "Compute": 0.5080122090000041,
+      "Vertex": 3.7083679140000276,
+      "Fragment": 4.199243330999998
+    },
+    "gpuDepth0AllChannelUnionSeconds": 6.406093965999988,
+    "gpuRowsWithoutTargetPID": 3072,
+    "cpuSamples": {
+      "count": 19041,
+      "weightedSecondsByThread": {
+        "MarvinSimulator (0x3511e7) (MarvinSimulator, pid: 65595)": 9.985999999999905,
+        "com.apple.audio.IOThread.client (0x350c1a) (MarvinSimulator, pid: 65595)": 2.3939999999998474,
+        "MarvinSimulator (0x350d67) (MarvinSimulator, pid: 65595)": 0.6260000000000004,
+        "MarvinSimulator (0x351a95) (MarvinSimulator, pid: 65595)": 0.3710000000000003,
+        "MarvinSimulator (0x350b48) (MarvinSimulator, pid: 65595)": 0.4950000000000004,
+        "Main Thread (0x350b02) (MarvinSimulator, pid: 65595)": 2.743999999999809,
+        "MarvinSimulator (0x350b47) (MarvinSimulator, pid: 65595)": 0.2940000000000002,
+        "MarvinSimulator (0x3511a2) (MarvinSimulator, pid: 65595)": 0.5390000000000004,
+        "MarvinSimulator (0x350b36) (MarvinSimulator, pid: 65595)": 0.35300000000000026,
+        "MarvinSimulator (0x351185) (MarvinSimulator, pid: 65595)": 0.5430000000000004,
+        "MarvinSimulator (0x350b49) (MarvinSimulator, pid: 65595)": 0.3140000000000002,
+        "MarvinSimulator (0x351177) (MarvinSimulator, pid: 65595)": 0.2920000000000002,
+        "CVDisplayLink (0x350b3b) (MarvinSimulator, pid: 65595)": 0.003,
+        "MarvinSimulator (0x350b4a) (MarvinSimulator, pid: 65595)": 0.08700000000000006
+      },
+      "topLeavesSeconds": [
+        [
+          "__kdebug_trace64",
+          1.204999999999978
+        ],
+        [
+          "mach_msg2_trap",
+          1.0559999999999945
+        ],
+        [
+          "iokit_user_client_trap",
+          0.9300000000000007
+        ],
+        [
+          "void Resampler2::ConvertSIMD<Resampler2::FixedRate>(float*, float*, unsigned int, unsigned int)",
+          0.8270000000000006
+        ],
+        [
+          "objc_msgSend",
+          0.6490000000000005
+        ],
+        [
+          "-[NSConcreteMapTable countByEnumeratingWithState:objects:count:]",
+          0.3730000000000003
+        ],
+        [
+          "0x1562ad418",
+          0.3090000000000002
+        ],
+        [
+          "_platform_memmove",
+          0.3010000000000002
+        ],
+        [
+          "0x1562ad2b4",
+          0.2590000000000002
+        ],
+        [
+          "-[AGXG16GFamilyRenderContext setFragmentBuffer:offset:atIndex:]",
+          0.21300000000000016
+        ],
+        [
+          "C3DProgramHashCodeStoreGetProgramHashCodeForRenderElement",
+          0.20700000000000016
+        ],
+        [
+          "probeGC",
+          0.20500000000000015
+        ],
+        [
+          "objc_release",
+          0.20200000000000015
+        ],
+        [
+          "-[SCNMTLRenderContext _executeDrawCommand:]",
+          0.18800000000000014
+        ],
+        [
+          "ioGPUResourceListAddHashValue",
+          0.17800000000000013
+        ]
+      ],
+      "topInclusiveSeconds": [
+        [
+          "start_wqthread",
+          12.426999999998552
+        ],
+        [
+          "_pthread_wqthread",
+          12.349999999998595
+        ],
+        [
+          "_dispatch_workloop_worker_thread",
+          12.348999999998595
+        ],
+        [
+          "_dispatch_lane_invoke",
+          12.345999999998597
+        ],
+        [
+          "_dispatch_root_queue_drain_deferred_wlh",
+          12.345999999998597
+        ],
+        [
+          "_dispatch_lane_serial_drain",
+          12.3409999999986
+        ],
+        [
+          "_dispatch_client_callout",
+          11.358999999999144
+        ],
+        [
+          "_dispatch_source_invoke",
+          10.567999999999582
+        ],
+        [
+          "_dispatch_continuation_pop",
+          10.565999999999583
+        ],
+        [
+          "_dispatch_source_latch_and_call",
+          10.565999999999583
+        ],
+        [
+          "-[SCNDisplayLink _displayLinkCallbackReturningImmediately]",
+          9.984999999999905
+        ],
+        [
+          "__83-[NSObject(SCN_DisplayLinkExtensions) SCN_setupDisplayLinkWithQueue:screen:policy:]_block_invoke",
+          9.983999999999906
+        ],
+        [
+          "-[SCNView SCN_displayLinkCallback:]",
+          9.983999999999906
+        ],
+        [
+          "-[SCNView _drawAtTime:WithContext:]",
+          9.981999999999907
+        ],
+        [
+          "-[SCNRenderer _drawAtTime:]",
+          9.929999999999936
+        ],
+        [
+          "-[SCNRenderer _drawScene:]",
+          9.928999999999936
+        ],
+        [
+          "-[SCNRenderer _drawSceneWithNewRenderer:]",
+          9.927999999999937
+        ],
+        [
+          "-[SCNRenderer _renderSceneWithEngineContext:sceneTime:]",
+          9.891999999999957
+        ],
+        [
+          "C3D::RenderGraph::execute()",
+          9.267000000000303
+        ],
+        [
+          "C3D::__renderSlice(C3D::RenderGraph*, C3D::RenderPass*, unsigned short&, C3D::RenderGraph::GraphNode const&, C3D::RenderGraph::Stage*&, C3D::RenderArgs, bool, id<MTLCommandBuffer>&)",
+          9.107000000000392
+        ]
+      ]
+    },
+    "metalAllocatedBytes": {
+      "count": 284476,
+      "median": 1965342720,
+      "p95": 1966260224,
+      "p99": 1966374912,
+      "max": 1966489600
+    },
+    "metalAllocatedFirstLast": [
+      1965342720,
+      1966112768
+    ]
+  }
+}

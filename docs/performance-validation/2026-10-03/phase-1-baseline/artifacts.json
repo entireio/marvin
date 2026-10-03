@@ -1,0 +1,606 @@
+{
+  "hashMethod": "SHA256 of files; directories identified by SHA256 of sorted relative-path/size/file-SHA256 inventory JSON. No raw trace committed.",
+  "generatedUTC": "2026-10-03T18:58:00.739985+00:00",
+  "artifacts": [
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/analyze-metal.py",
+      "kind": "file",
+      "bytes": 3604,
+      "sha256": "97a120f9727c42ade097b67bab99c32a9b610ae0c212a8cd20f0988e70fcc106"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/asset-inventory.json",
+      "kind": "file",
+      "bytes": 32521,
+      "sha256": "522ae099997b9dbc45800b9a0cf5b9d8c8dd5c5d846986e5c924a772c8e53b2c"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/blocker-evidence.txt",
+      "kind": "file",
+      "bytes": 497,
+      "sha256": "334b60bcef384247cc60feaa8acf5663d7a1325dc0192702b9834bf69fbd341d"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/build.log",
+      "kind": "file",
+      "bytes": 1590,
+      "sha256": "4c7746fb4e0a0d0a89e0b3fa4f4e5bec85d32c5bc00f5e48811c8736a2886cd6"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-baseline-MarvinSimulator",
+      "kind": "file",
+      "bytes": 3834464,
+      "sha256": "3485a9a014c7aad8ecfa7650f161cc15dd2c3f8af99a6d9fe68ca183cf184ab3"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-clear",
+      "kind": "directory",
+      "files": 9,
+      "bytes": 16968783,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/clean-clear.json",
+      "inventorySHA256": "cd8d53e74fb15098ded1deeae44f50d736e4ca0e6b47608231317fcab5371ea7"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-clear-os-resources.json",
+      "kind": "file",
+      "bytes": 10407,
+      "sha256": "0aa3721ffd287ccf2b01b435df5b717140ad136f67eeeb6b63e744da390eef92"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-clear-runner.log",
+      "kind": "file",
+      "bytes": 759,
+      "sha256": "319edb5e76d26f167d799dd4433ee26af0bb15a22587a883e803ca9ea632c2d0"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-clear-summary-log.json",
+      "kind": "file",
+      "bytes": 25314,
+      "sha256": "2d519be4ee4550596c0e9162a270e62ceb9d04a5234692949b101c71d1d662a6"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-storm",
+      "kind": "directory",
+      "files": 10,
+      "bytes": 16195552,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/clean-storm.json",
+      "inventorySHA256": "1b613d5407455f26fc9920c6f24b7d739d88328c768ecaf75239d8d63b15674c"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-storm-os-resources.json",
+      "kind": "file",
+      "bytes": 10953,
+      "sha256": "f70b2f5ffc9219aeb106427a29794b590c04554a98e21ce12c9778825909f135"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-storm-runner.log",
+      "kind": "file",
+      "bytes": 904,
+      "sha256": "7aaac5c9b429c29835191fb0ee7b125bba157876080f5fb9ac6af7edff8fedc5"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clean-storm-summary-log.json",
+      "kind": "file",
+      "bytes": 25321,
+      "sha256": "a485f021db10c4ee68bf328370f4d87219c916ff5e5846c22c4543af02c1c9e5"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/clear-context.txt",
+      "kind": "file",
+      "bytes": 1670,
+      "sha256": "72a90e0881bd9ee556f0675df3380977ec928943ca173cb572f27bc41a6e3db5"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/collect-metal.py",
+      "kind": "file",
+      "bytes": 2498,
+      "sha256": "c15e88df0c61fe8055aabebaea852938a56db6b926abf3f8290ac3a98b5622e1"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/diagnostic-build-manifest.json",
+      "kind": "file",
+      "bytes": 631,
+      "sha256": "71417fd502033e4f0c075c24e3bab6f5100e3cb53b35979882028ee45d09a5a0"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/diagnostic-build.log",
+      "kind": "file",
+      "bytes": 802,
+      "sha256": "12d61521494ea4e2d5483e33b9189f23cd3c790ee454ac575a42382719049fff"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/diagnostic-source.patch",
+      "kind": "file",
+      "bytes": 2686,
+      "sha256": "e45dc334e2492dbf221955fd1affd02a9b577190b4829b8c09d032298b46117d"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/display-configuration.json",
+      "kind": "file",
+      "bytes": 1845,
+      "sha256": "005a2d31da6c0d5783ffe715c8f7173cb6ef5adb77f7c511c3dd6628a223bb87"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/export-metal.py",
+      "kind": "file",
+      "bytes": 1096,
+      "sha256": "081f90732705f51f900495d5fd690aaa6c4039a6f9d3878266802857e3585a65"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/gpu-loaded",
+      "kind": "directory",
+      "files": 12,
+      "bytes": 11175088,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/gpu-loaded.json",
+      "inventorySHA256": "6b9fa28915f07466800b509c69cee262f5af25cf45a4380413fb92d1e948f7c5"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/gpu-loaded-native.log",
+      "kind": "file",
+      "bytes": 734,
+      "sha256": "20e657f06658a81b1559dc9bb348e6525c5668f65a302fc1a707d4cdea1fdcb5"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/hash-artifacts.py",
+      "kind": "file",
+      "bytes": 1250,
+      "sha256": "9045200e1591e0d0276576a7d8b5244683d6a5d8e42e677393fb3c535b34ed92"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/host-preflight.json",
+      "kind": "file",
+      "bytes": 5101,
+      "sha256": "f9a5b2d8e34bc10201696c56f4bb97dae190c666037b64eb242a8bf36013c63a"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/inspect-presentation.py",
+      "kind": "file",
+      "bytes": 5453,
+      "sha256": "60e36189f742e37f5ef1d618f9cb7e5f57373d00ff92c1f5daab14ee462f8312"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/loginwindow-log-status.txt",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/loginwindow-visibility-log.json",
+      "kind": "file",
+      "bytes": 558609,
+      "sha256": "7eb1ce1960bd039dc202aff74fa774faea2ab7e2b9b2471dab2f170832ad6432"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/marker-check",
+      "kind": "directory",
+      "files": 5,
+      "bytes": 3558663,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/marker-check.json",
+      "inventorySHA256": "0cf6b72b2bfa03b2614f0ffb7c76c9c7c9465d0c155bbf44f7c150a3a38ea539"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/marker-check-native.log",
+      "kind": "file",
+      "bytes": 93651,
+      "sha256": "f8ea307b5afb6a42e434d299411298ac9096f0e189a61200484abbf328806279"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/marker-check-poi.xml",
+      "kind": "file",
+      "bytes": 6420,
+      "sha256": "14bc480ce917f81b42caadb9967214eaa3408b3a2a29ae7ef1cea191047bb69f"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/marker-check-record.log",
+      "kind": "file",
+      "bytes": 305,
+      "sha256": "c0155e4620f893fcb3f4fd443f54efa351cb8045758b1d4d73ef1679e4d501bd"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/marker-check.trace",
+      "kind": "directory",
+      "files": 348,
+      "bytes": 19335229,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/marker-check.trace.json",
+      "inventorySHA256": "9ca05a17f237e9b927c248d5e5d66dfb280f61b8557808839ef8a7b7db23b071"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-analysis.json",
+      "kind": "file",
+      "bytes": 8520496,
+      "sha256": "35e2cd440e8e2d218d90cebb07d5e86ee18879689a535dd72826ca4f4c700978"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-capture-manifest.json",
+      "kind": "file",
+      "bytes": 2318,
+      "sha256": "f4b926a2371620eecfc69fcde362f2e58f1441f8b86a7feb99adf34dd4a68160"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-clear",
+      "kind": "directory",
+      "files": 5,
+      "bytes": 7884273,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/metal-clear.json",
+      "inventorySHA256": "1838bee9d1a69fb7196103e7aed32b0d21285e3c8ab38ad87a19b653eb4b2409"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-clear-native.log",
+      "kind": "file",
+      "bytes": 613,
+      "sha256": "42599cabe7d439a602fcf1e8f69a8912095e69b4c7342171937758b7a61a92da"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-collector.log",
+      "kind": "file",
+      "bytes": 1287,
+      "sha256": "6f2b525cf2103c1a091b3fb50cc1c18dbe22ae71b40d71122acf86ab05c2c3a8"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-device-thermal-state-intervals.xml",
+      "kind": "file",
+      "bytes": 1473,
+      "sha256": "3195ce60027ba3392c59fa27408c0beb987046e4bcbbd518097c68d5d6aef9f4"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-gpu-performance-state-intervals.xml",
+      "kind": "file",
+      "bytes": 351446,
+      "sha256": "699b5761a7f8f735324477984456a2e5e988616c181f755560dfc71e6d0f10e9"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-metal-application-command-buffer-submissions.xml",
+      "kind": "file",
+      "bytes": 830350,
+      "sha256": "312d2f0af21e5c9050cec075e1793d708e011f55edbb94c68e80686ca878f1b6"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-metal-application-encoders-list.xml",
+      "kind": "file",
+      "bytes": 4357915,
+      "sha256": "b7fb8a6ca99a22959dba69394d9cb25bc72ee051353c81e4f6d58711c30e84f8"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-metal-current-allocated-size.xml",
+      "kind": "file",
+      "bytes": 121963853,
+      "sha256": "6d9bc6874c650e55b65845d3af7cb2f83c2d4945299c38dc499a74f6622d0639"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-metal-gpu-intervals.xml",
+      "kind": "file",
+      "bytes": 17309844,
+      "sha256": "6bb17ce45c12aba8a7cd15f5baabe7fdc346b79b3691a10e5c7b0310ae6bf887"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-record.log",
+      "kind": "file",
+      "bytes": 306,
+      "sha256": "47dda3a8c40854ee9bb2446dfd5d7925ccbe60b1325358541a76a64eb49402a4"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-time-profile.xml",
+      "kind": "file",
+      "bytes": 5070775,
+      "sha256": "12bdd891224f024442c24361d25681e4d38fe5a30b02f4e5bbf7c72bff923891"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-toc.xml",
+      "kind": "file",
+      "bytes": 42391,
+      "sha256": "661a018e60e2c8cf492fde13fc84d2a370cbd91abc88bfffa6e6da91cd28f2ee"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early.trace",
+      "kind": "directory",
+      "files": 624,
+      "bytes": 292321947,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/metal-early.trace.json",
+      "inventorySHA256": "0422525d112a1017ac380829a6a9e83228ad434e12eaaa295322a87dddae080f"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-export-results.json",
+      "kind": "file",
+      "bytes": 9795,
+      "sha256": "c3f5217b71fe7cdb0bf340aeccef7986526091643520a49bf6d793cc6965e3ab"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-device-thermal-state-intervals.xml",
+      "kind": "file",
+      "bytes": 1464,
+      "sha256": "8bcdf65da46bee4c5dbf6f6e77a3a34913e9b23251366265ec5cbbe930fa68a6"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-gpu-performance-state-intervals.xml",
+      "kind": "file",
+      "bytes": 335171,
+      "sha256": "bfbe41e5c34f967f7cea8649534a15cc37764c253b53dd936914053cddc66e2f"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-metal-application-command-buffer-submissions.xml",
+      "kind": "file",
+      "bytes": 564003,
+      "sha256": "d122e7c67f56d2470748ce2f8b11bda89ddb6b84a8ac02005fab0f37d7b0f562"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-metal-application-encoders-list.xml",
+      "kind": "file",
+      "bytes": 2879891,
+      "sha256": "dc1dc10d8e71215477390fbb099c25f599a19e4b7d870695a69d13449c35bf35"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-metal-current-allocated-size.xml",
+      "kind": "file",
+      "bytes": 73314317,
+      "sha256": "177adfa089febbb1610d13368404dbe0e86d175be1fb8d1d81f6af552c676b20"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-metal-gpu-intervals.xml",
+      "kind": "file",
+      "bytes": 12500830,
+      "sha256": "e26ba1967056f6f2bd82f2a16db585e24c81a85e0fc7df0a7079f4805d61e1ee"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-record.log",
+      "kind": "file",
+      "bytes": 307,
+      "sha256": "4a2ef7ea470e861d34dda251e6130494c75d83e0484e1917c9ab78bae9666453"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-time-profile.xml",
+      "kind": "file",
+      "bytes": 9064627,
+      "sha256": "14a03aea72285714c519ba5cbd8bc232d68fdf13b83bf4e1035ac2bde91588b2"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-toc.xml",
+      "kind": "file",
+      "bytes": 40389,
+      "sha256": "edfc3f05929d4cc02e1e65069dff8152467730b9bb68d849b66db53a6b447089"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded.trace",
+      "kind": "directory",
+      "files": 622,
+      "bytes": 225613887,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/metal-loaded.trace.json",
+      "inventorySHA256": "ad7c8488aef5615b6ed7ae1ba0c75b92561530f8b730f804c33c424be9f0f085"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-pose-check.json",
+      "kind": "file",
+      "bytes": 1015,
+      "sha256": "4744d3aa874e79284b1f68c5c4e5666d81923a308c63cfc4cae146417c220b9e"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-recording-options.json",
+      "kind": "file",
+      "bytes": 259,
+      "sha256": "b4e416bd834c83bb96498d78160e80dcfa816ef2372e002b220c7b297705a0b5"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-worker-attribution.json",
+      "kind": "file",
+      "bytes": 7646,
+      "sha256": "cecbef73b3ff0abc9d5b6a902bd5f90bdb4ac05182ceb3ba2372ce5613091d6b"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-all-signposts.xml",
+      "kind": "file",
+      "bytes": 4206,
+      "sha256": "31e732487f47ddbbea374d45e56c189c81cfd6c6ace9315e9b28d0ad1c47da84"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-clear",
+      "kind": "directory",
+      "files": 5,
+      "bytes": 16405755,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/overview-clear.json",
+      "inventorySHA256": "f379809d8dc95c9e822c0c687626415c8a3b3aa685600802aa49118f19e075e1"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-clear-native.log",
+      "kind": "file",
+      "bytes": 85980,
+      "sha256": "4533fa78a531b8d46a6589cdd6b203f12ca666b95440182d789035857999d3ad"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-clear.trace",
+      "kind": "directory",
+      "files": 358,
+      "bytes": 77013028,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/overview-clear.trace.json",
+      "inventorySHA256": "2eee68489a3616b9f3524864ad929b8204334c37da9cb035e411ab4a6009ec83"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-context.txt",
+      "kind": "file",
+      "bytes": 1228,
+      "sha256": "66bb08212ddbd6a9601b45c149bdba1e758d359c01c6c54295ee64ab17db90ad"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-cpu.xml",
+      "kind": "file",
+      "bytes": 219874096,
+      "sha256": "d8a71fc05234cdd5c40174b4682891ba97cd8bbe828c752cac7bc8dc990a9540"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-diagnostic.json",
+      "kind": "file",
+      "bytes": 12874,
+      "sha256": "4939405a64ba8986e626ccc5b7a179248fadac55aea7d70ae8ef3b08c074c506"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-injected-environment.json",
+      "kind": "file",
+      "bytes": 207,
+      "sha256": "f156cdd5c1da64e6c0d8a6d1db7ad9ccb786bf3ff8cc8eadae728b9c421bf084"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-intervals.xml",
+      "kind": "file",
+      "bytes": 57410915,
+      "sha256": "6ba60789d5d951bcc7533cf66a3adc542353693317ddbbaf45dc25fcc555e311"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-layer-count.xml",
+      "kind": "file",
+      "bytes": 970692,
+      "sha256": "6f7fbfa2e25ec46272a56812b269d5da58ba2c8e6a09a8b066dea0eab47984d1"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-poi.xml",
+      "kind": "file",
+      "bytes": 4084,
+      "sha256": "d3d6830c8951d327b88b28a1a499a464b6f23e4f3375248707dabeca92f29a1d"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-reader.log",
+      "kind": "file",
+      "bytes": 12874,
+      "sha256": "4939405a64ba8986e626ccc5b7a179248fadac55aea7d70ae8ef3b08c074c506"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-record.log",
+      "kind": "file",
+      "bytes": 308,
+      "sha256": "9e92c2e35b2b3ce676c63f532524ac7b0bcbf6cdb9f3a3ec4724f66477028b99"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-recording-options.json",
+      "kind": "file",
+      "bytes": 342,
+      "sha256": "13018cad4bacc1cbbbd98906c59f866bf8978c0f82b1ed370b1f73292a9cf3a4"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-thermal.xml",
+      "kind": "file",
+      "bytes": 1824,
+      "sha256": "5a3ecee9e8ae34b1c2083c7aec22d530f5d71780615184783a99d3dded5baff1"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-toc.xml",
+      "kind": "file",
+      "bytes": 9166,
+      "sha256": "8ef0ac1aef5bf5da93ae42416b158d96938cd1372d6b102bbd85d389fead544f"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-validation-log.json",
+      "kind": "file",
+      "bytes": 5741,
+      "sha256": "d5acbae76c3eec131f8b4a7c993fa190db13dff55c6d2767269a5b114a55c391"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-validation.json",
+      "kind": "file",
+      "bytes": 5741,
+      "sha256": "d5acbae76c3eec131f8b4a7c993fa190db13dff55c6d2767269a5b114a55c391"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified",
+      "kind": "directory",
+      "files": 5,
+      "bytes": 15303657,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/overview-verified.json",
+      "inventorySHA256": "f5858e1b404d7733bfe7deb92c11cb167072499f0ae03fba5264b680432c9892"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-cpu.xml",
+      "kind": "file",
+      "bytes": 228285483,
+      "sha256": "496b13758bd20b64f3c4f7b0847d82edabbf4cef757df3df2e211ae0dc9e7c8f"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-duration.xml",
+      "kind": "file",
+      "bytes": 8665029,
+      "sha256": "d7fd24f2b16535e6db8f92c7531559710cb28f237b013499ee08fcfb0d1e074c"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-intervals.xml",
+      "kind": "file",
+      "bytes": 1695,
+      "sha256": "b03b331552aecea1de177448acf41594c19d03b93c432b65ff50b7f72d2de788"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-layer-count.xml",
+      "kind": "file",
+      "bytes": 898791,
+      "sha256": "b44a9438caacb976830c47d5b74a7ce3048e730203dd3cc58369d1ccf030cbb3"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-native.log",
+      "kind": "file",
+      "bytes": 85166,
+      "sha256": "b5e1eeeb20dadef11fba60d6e7bc495e178d4633ece6aabd005997b582d34f50"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-poi.xml",
+      "kind": "file",
+      "bytes": 4083,
+      "sha256": "64af64bc86e8f3ff40f395e10c9ba7ad80747ed318de4b195ffe5856c6945005"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-record.log",
+      "kind": "file",
+      "bytes": 311,
+      "sha256": "c5ec4b97ccc92b524d07f40c0613d74b729f8afc423f4fcb0c36c0f0f7b765b0"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-thermal.xml",
+      "kind": "file",
+      "bytes": 1824,
+      "sha256": "a746815958d2af28f161fdef877e1a41252c5c8fe3015f1a464b1c75fa34610c"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-toc.xml",
+      "kind": "file",
+      "bytes": 9242,
+      "sha256": "620a7072afb327b77b43c1788bcd13958d1b4c82156cd5f94d68f11d3d9370d1"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified-validation-log.json",
+      "kind": "file",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/overview-verified.trace",
+      "kind": "directory",
+      "files": 356,
+      "bytes": 60039467,
+      "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/artifact-inventories/overview-verified.trace.json",
+      "inventorySHA256": "e83590cf9bf17b779738fc29ff868054bb95679e708063d5dd848a26c94722b0"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/power-settings.txt",
+      "kind": "file",
+      "bytes": 713,
+      "sha256": "772f846f280f7af3f7f11d5593d4195d22d5e57719a8e4d7c05099f5b6054cdb"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/sample-resources.py",
+      "kind": "file",
+      "bytes": 837,
+      "sha256": "b8e9408cadf5ce77a74b7edfe4cd91715b400b8defe7a12c73d71789d5615118"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/summarize-baseline.py",
+      "kind": "file",
+      "bytes": 3629,
+      "sha256": "ed6d4cc9ca2e8a6db1b82cabe6f903259e42b81e84c81408754f1b3c2088b793"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/write-report.py",
+      "kind": "file",
+      "bytes": 22046,
+      "sha256": "5369d7f5630d05ee8de0298cc930c5c4a6abac81f3d0ce12b353a19147743366"
+    },
+    {
+      "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/xctrace-templates.txt",
+      "kind": "file",
+      "bytes": 382,
+      "sha256": "6e71632e368787ef85e5c7e8a2c80cac45a9b5b0963fc92de01bbfa69a63b880"
+    }
+  ]
+}

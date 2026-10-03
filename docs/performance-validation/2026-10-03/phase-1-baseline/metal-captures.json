@@ -1,0 +1,84 @@
+{
+  "binarySHA256": "ee87d94bdb1ce49e92af94c1df8753c16f358c115690d9834dd5fcf4c9143631",
+  "sourceCommit": "057f52ecbad7e4d33047004b09ad1ed68bafe1c5",
+  "environment": {
+    "HOME": "/Users/thomi",
+    "USER": "thomi",
+    "TMPDIR": "/var/folders/7g/r0pg1n495tb1snh2zvk9y0_r0000gn/T/",
+    "PATH": "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin",
+    "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer",
+    "MARVIN_BENCHMARK_SECONDS": "240",
+    "MARVIN_DAYLIGHT_FRACTION": "0.5",
+    "MARVIN_SANDSTORM": "0"
+  },
+  "captureRuns": [
+    {
+      "name": "early",
+      "pid": 65595,
+      "identity": {
+        "gpuDevice": "Apple M4",
+        "resolution": [
+          1920,
+          1080
+        ],
+        "runID": "C30A7E43-1A40-4041-9C5E-5444F580E777",
+        "startUptime": 119459.11587854168
+      },
+      "command": [
+        "xcrun",
+        "xctrace",
+        "record",
+        "--template",
+        "Metal System Trace",
+        "--instrument",
+        "Time Profiler",
+        "--attach",
+        "65595",
+        "--time-limit",
+        "10s",
+        "--output",
+        "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early.trace"
+      ],
+      "requestedElapsed": 60,
+      "requestUptime": 119519.180716625,
+      "requestWallTime": 1791052430.5363991,
+      "exitCode": 0,
+      "finishedUptime": 119666.064688291,
+      "finishedWallTime": 1791052577.420811
+    },
+    {
+      "name": "loaded",
+      "pid": 65595,
+      "identity": {
+        "gpuDevice": "Apple M4",
+        "resolution": [
+          1920,
+          1080
+        ],
+        "runID": "C30A7E43-1A40-4041-9C5E-5444F580E777",
+        "startUptime": 119459.11587854168
+      },
+      "command": [
+        "xcrun",
+        "xctrace",
+        "record",
+        "--template",
+        "Metal System Trace",
+        "--instrument",
+        "Time Profiler",
+        "--attach",
+        "65595",
+        "--time-limit",
+        "10s",
+        "--output",
+        "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded.trace"
+      ],
+      "requestedElapsed": 210,
+      "requestUptime": 119669.240342,
+      "requestWallTime": 1791052580.5964658,
+      "exitCode": 0,
+      "finishedUptime": 119732.543238625,
+      "finishedWallTime": 1791052643.899542
+    }
+  ]
+}

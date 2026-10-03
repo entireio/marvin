@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "phaseStatus": "partial",
+  "phaseComplete": false,
+  "reason": "Missing start POI in retained presentation trace; second full overview has zero per-frame rows; locked-screen detailed captures and unverified Xcode GPU replay/pass attribution.",
+  "runDate": "2026-10-03",
+  "startedAtUTC": "2026-10-03T17:15:16Z",
+  "branch": "codex/mos-aster-perf-phase-1-baseline",
+  "worktree": "/Users/thomi/Projects/marvee-perf-phase-1-baseline",
+  "baselineSourceCommit": "057f52ecbad7e4d33047004b09ad1ed68bafe1c5",
+  "deliveryCommitLookup": "git log -1 --format=%H -- docs/performance-validation/2026-10-03/phase-1-baseline",
+  "build": {
+    "status": "passed",
+    "performanceEligibleOnTarget": true,
+    "configuration": "release",
+    "binaryPath": "/Users/thomi/Projects/marvee-perf-phase-1-baseline/apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator",
+    "binarySHA256": "3485a9a014c7aad8ecfa7650f161cc15dd2c3f8af99a6d9fe68ca183cf184ab3",
+    "assetInventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/asset-inventory.json",
+    "assetInventorySHA256": "522ae099997b9dbc45800b9a0cf5b9d8c8dd5c5d846986e5c924a772c8e53b2c",
+    "assetFiles": 217,
+    "assetBytes": 178247127,
+    "codesignVerification": "codesign --verify --deep --strict: exit 0",
+    "lfsVerification": "git lfs fsck: exit 0"
+  },
+  "observedHost": {
+    "chip_type": "Apple M4",
+    "machine_model": "Mac16,12",
+    "machine_name": "MacBook Air",
+    "number_processors": "proc 10:0:4:6",
+    "physical_memory": "32 GB",
+    "boot_mode": "normal_boot",
+    "kernel_version": "Darwin 27.0.0",
+    "os_version": "macOS 27.0 (26A428)",
+    "xcode": "Xcode 27.0\nBuild version 27A266a",
+    "xctrace": "xctrace version 27.0 (27A266a)",
+    "developerDir": "/Applications/Xcode.app/Contents/Developer",
+    "defaultAudioOutput": {
+      "name": "MacBook Air Speakers",
+      "sampleRateHz": 48000,
+      "outputChannels": 2,
+      "transport": "Built-in"
+    },
+    "performanceEnvironment": {}
+  },
+  "quality": {
+    "verification": "Clean native manifests verify drawable/MSAA/detail/shadows/audio; AO verified by unchanged source and later runtime reporting. GPU attachment verification pending Xcode replay.",
+    "drawableDimensions": [
+      1920,
+      1080
+    ],
+    "msaaSamples": 2,
+    "ambientOcclusion": {
+      "intensity": 0.7,
+      "radius": 1.6,
+      "bias": 0.025
+    },
+    "shadowMapWidths": [
+      2048,
+      4096
+    ],
+    "productionBehaviorChanged": false,
+    "diagnosticSourceChanged": true,
+    "resourcesUnchanged": true
+  },
+  "runs": {
+    "cleanClear": {
+      "status": "native_collection_valid_performance_gate_failed",
+      "measuredSeconds": 600,
+      "runID": "744EA611-2A4F-4476-B3DF-EE7FA1DA884A",
+      "summaryFile": "clean-clear.json",
+      "callbacksPerSecond": 56.415
+    },
+    "cleanStorm": {
+      "status": "native_collection_valid_performance_gate_failed",
+      "measuredSeconds": 600,
+      "runID": "972948C7-F94C-41ED-BCAE-6A3E3E46AE40",
+      "summaryFile": "clean-storm.json",
+      "callbacksPerSecond": 56.185
+    },
+    "presentation": {
+      "status": "finalized_exported_with_missing_start_marker",
+      "runID": "EA272D91-5ECD-422A-A4BE-63BAB34A3CE5",
+      "pid": 62417,
+      "layerID": "524709308096",
+      "coverageBrackets600Seconds": true,
+      "bothMarkersRetained": false,
+      "identityAndCoverageVerified": false
+    },
+    "presentationRepeat": {
+      "status": "finalized_but_zero_per_frame_rows",
+      "runID": "612B711B-25EC-4399-95CD-C1741AD5E88E",
+      "lockedScreen": true
+    },
+    "metalEarly": {
+      "status": "finalized_exported_diagnostic_only",
+      "requestedElapsed": 60,
+      "lockedScreen": true
+    },
+    "metalLoaded": {
+      "status": "finalized_exported_diagnostic_only",
+      "requestedElapsed": 210,
+      "lockedScreen": true
+    },
+    "gpuCapture": {
+      "status": "bundle_written_replay_unverified",
+      "runID": "BEE8A04E-C25C-4FF4-B873-8A022EA30EE4",
+      "requestedElapsed": 212,
+      "lockedScreen": true,
+      "usableInXcode": false
+    }
+  },
+  "performanceGate": "Both cadence gates failed; native ledgers are valid. These failures do not establish failed trace collection.",
+  "capabilities": {
+    "runnerPresentationOption": false,
+    "runnerOptions": [
+      "--storm",
+      "--daylight",
+      "--gpu-hud"
+    ],
+    "overviewReaderDiagnosticOnly": true,
+    "nativeOutputs": [
+      "benchmark.json",
+      "timeline.json",
+      "resources.json",
+      "displayed-fps.json",
+      "final-fps.png"
+    ],
+    "nativeResourceCounters": [
+      "thermalState",
+      "shadowCasters",
+      "trails",
+      "shadowBatch"
+    ],
+    "nativeResourceLimitations": "No CPU/GPU frequency or exclusive GPU busy-time ledger. Added benchmark-only AO runtime report; OS RSS/CPU/swap sampled separately."
+  },
+  "hypotheses": {
+    "rankedFromFreshEvidence": true,
+    "rank": [
+      [
+        "accumulatingWork",
+        "Tentative first: trail work grows and Render Command 8 dominates recorded GPU-channel activity; actual submitted trail geometry and pass/draw identity remain unknown."
+      ],
+      [
+        "thermalLimits",
+        "Tentative second: nominal to fair at 83/76 seconds precedes slow clean windows; no clock or thermal-limit attribution."
+      ],
+      [
+        "resourcePressure",
+        "Third: modest clear RSS growth, storm RSS falls, zero swap; loaded Metal allocation only about 15MB higher. No proof of pressure."
+      ]
+    ],
+    "causationEstablished": false,
+    "confound": "Detailed captures occurred after automatic screen lock, with profiling overhead and approximately rather than exactly matched pose."
+  },
+  "nextMeasurement": "One unlocked, pose-matched early/loaded rendering attribution capture: target Render Command 8 CPU encoding and vertex/fragment elapsed intervals, correlate draw/triangle/upload counts and GPU frequency/counters; verify presentation UUID start/end anchors and replay attachments before accepting attribution. Preserve all production quality/audio/population.",
+  "authorizedTargetHardware": "Current M4 MacBook Air",
+  "targetOverride": "Ignore the M2 requirement. Use the current computer.",
+  "timeLimitUTC": "2026-10-03T19:15:16Z"
+}

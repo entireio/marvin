@@ -1,0 +1,272 @@
+{
+  "early": {
+    "samples": 683,
+    "leafSeconds": [
+      [
+        "iokit_user_client_trap",
+        0.10500000000000008
+      ],
+      [
+        "__kdebug_trace64",
+        0.08500000000000006
+      ],
+      [
+        "mach_msg2_trap",
+        0.06700000000000005
+      ],
+      [
+        "objc_msgSend",
+        0.03800000000000003
+      ],
+      [
+        "-[NSConcreteMapTable countByEnumeratingWithState:objects:count:]",
+        0.016000000000000007
+      ],
+      [
+        "probeGC",
+        0.014000000000000005
+      ],
+      [
+        "<deduplicated_symbol>",
+        0.011000000000000003
+      ],
+      [
+        "_platform_strcmp$VARIANT$Base",
+        0.009000000000000001
+      ],
+      [
+        "-[SCNMTLRenderContext _executeDrawCommand:]",
+        0.008
+      ],
+      [
+        "AGX::RenderContext<AGX::HAL200::Encoders, AGX::HAL200::Classes, AGX::HAL200::ObjClasses, AGX::HAL200::CommandEncoding>::setVertexProgramBuffers(AGXG16GFamilyBuffer const**, unsigned long const*, unsigned int, unsigned int, unsigned long const*)",
+        0.008
+      ],
+      [
+        "IOGPUResourceListAddResource",
+        0.008
+      ],
+      [
+        "MTLRangeAllocatorGetMaxFreeSize",
+        0.007
+      ]
+    ],
+    "sceneKitAndMetalInclusiveSeconds": [
+      [
+        "-[SCNView _drawAtTime:WithContext:]",
+        0.5340000000000004
+      ],
+      [
+        "-[SCNDisplayLink _displayLinkCallbackReturningImmediately]",
+        0.5340000000000004
+      ],
+      [
+        "-[SCNView SCN_displayLinkCallback:]",
+        0.5340000000000004
+      ],
+      [
+        "__83-[NSObject(SCN_DisplayLinkExtensions) SCN_setupDisplayLinkWithQueue:screen:policy:]_block_invoke",
+        0.5340000000000004
+      ],
+      [
+        "-[SCNRenderer _drawScene:]",
+        0.5330000000000004
+      ],
+      [
+        "-[SCNRenderer _drawSceneWithNewRenderer:]",
+        0.5330000000000004
+      ],
+      [
+        "-[SCNRenderer _drawAtTime:]",
+        0.5330000000000004
+      ],
+      [
+        "-[SCNRenderer _renderSceneWithEngineContext:sceneTime:]",
+        0.5300000000000004
+      ],
+      [
+        "C3D::RenderGraph::execute()",
+        0.4890000000000004
+      ],
+      [
+        "C3D::__renderSlice(C3D::RenderGraph*, C3D::RenderPass*, unsigned short&, C3D::RenderGraph::GraphNode const&, C3D::RenderGraph::Stage*&, C3D::RenderArgs, bool, id<MTLCommandBuffer>&)",
+        0.4830000000000004
+      ],
+      [
+        "C3D::DrawNodesPass::_renderEye(long)",
+        0.47400000000000037
+      ],
+      [
+        "C3D::DrawNodesPass::execute(C3D::RenderArgs const&)",
+        0.47400000000000037
+      ],
+      [
+        "-[SCNMTLRenderContext processRendererElements:count:engineIterationContext:]",
+        0.46700000000000036
+      ],
+      [
+        "_processRendererElement(SCNMTLRenderContext*, __C3DRendererElement*, __C3DFXPassInstance*)",
+        0.46600000000000036
+      ],
+      [
+        "-[SCNMTLRenderContext drawRenderElement:withPass:]",
+        0.46200000000000035
+      ],
+      [
+        "-[SCNMTLRenderContext _executeDrawCommand:]",
+        0.44100000000000034
+      ],
+      [
+        "-[SCNMTLResourceManager renderResourceForMaterial:geometry:renderPipeline:engineContext:]",
+        0.18800000000000014
+      ],
+      [
+        "C3D::ScenePass::execute(C3D::RenderArgs const&)",
+        0.16100000000000012
+      ],
+      [
+        "-[AGXBuffer(Internal) initWithDevice:length:alignment:options:isSuballocDisabled:resourceInArgs:pinnedGPULocation:]",
+        0.1210000000000001
+      ],
+      [
+        "-[AGXBuffer(Internal) initWithDevice:length:alignment:pointerTag:options:isSuballocDisabled:resourceInArgs:pinnedGPULocation:]",
+        0.1210000000000001
+      ]
+    ]
+  },
+  "loaded": {
+    "samples": 9986,
+    "leafSeconds": [
+      [
+        "mach_msg2_trap",
+        1.0439999999999958
+      ],
+      [
+        "__kdebug_trace64",
+        0.9460000000000007
+      ],
+      [
+        "objc_msgSend",
+        0.5050000000000003
+      ],
+      [
+        "-[AGXG16GFamilyRenderContext setFragmentBuffer:offset:atIndex:]",
+        0.21300000000000016
+      ],
+      [
+        "C3DProgramHashCodeStoreGetProgramHashCodeForRenderElement",
+        0.20700000000000016
+      ],
+      [
+        "probeGC",
+        0.20500000000000015
+      ],
+      [
+        "-[NSConcreteMapTable countByEnumeratingWithState:objects:count:]",
+        0.19000000000000014
+      ],
+      [
+        "-[SCNMTLRenderContext _executeDrawCommand:]",
+        0.18800000000000014
+      ],
+      [
+        "ioGPUResourceListAddHashValue",
+        0.17800000000000013
+      ],
+      [
+        "IOGPUResourceListAddResource",
+        0.16700000000000012
+      ],
+      [
+        "MTLResourceListAddResource",
+        0.16600000000000012
+      ],
+      [
+        "AGX::RenderContext<AGX::HAL200::Encoders, AGX::HAL200::Classes, AGX::HAL200::ObjClasses, AGX::HAL200::CommandEncoding>::encodeAndEmitRenderState(AGX::HAL200::VertexProgramVariant const*, AGX::HAL200::FragmentProgramVariant const*, AGX::HAL200::FixedLayoutUserArgumentTable*, AGX::HAL200::FixedLayoutUserArgumentTable*, AGX::RenderDirtyBits<AGX::HAL200::Classes>&, bool)",
+        0.1590000000000001
+      ]
+    ],
+    "sceneKitAndMetalInclusiveSeconds": [
+      [
+        "-[SCNDisplayLink _displayLinkCallbackReturningImmediately]",
+        9.984999999999905
+      ],
+      [
+        "-[SCNView SCN_displayLinkCallback:]",
+        9.983999999999906
+      ],
+      [
+        "__83-[NSObject(SCN_DisplayLinkExtensions) SCN_setupDisplayLinkWithQueue:screen:policy:]_block_invoke",
+        9.983999999999906
+      ],
+      [
+        "-[SCNView _drawAtTime:WithContext:]",
+        9.981999999999907
+      ],
+      [
+        "-[SCNRenderer _drawAtTime:]",
+        9.929999999999936
+      ],
+      [
+        "-[SCNRenderer _drawScene:]",
+        9.928999999999936
+      ],
+      [
+        "-[SCNRenderer _drawSceneWithNewRenderer:]",
+        9.927999999999937
+      ],
+      [
+        "-[SCNRenderer _renderSceneWithEngineContext:sceneTime:]",
+        9.891999999999957
+      ],
+      [
+        "C3D::RenderGraph::execute()",
+        9.267000000000303
+      ],
+      [
+        "C3D::__renderSlice(C3D::RenderGraph*, C3D::RenderPass*, unsigned short&, C3D::RenderGraph::GraphNode const&, C3D::RenderGraph::Stage*&, C3D::RenderArgs, bool, id<MTLCommandBuffer>&)",
+        9.107000000000392
+      ],
+      [
+        "C3D::DrawNodesPass::execute(C3D::RenderArgs const&)",
+        8.868000000000524
+      ],
+      [
+        "C3D::DrawNodesPass::_renderEye(long)",
+        8.866000000000525
+      ],
+      [
+        "-[SCNMTLRenderContext processRendererElements:count:engineIterationContext:]",
+        8.692000000000622
+      ],
+      [
+        "_processRendererElement(SCNMTLRenderContext*, __C3DRendererElement*, __C3DFXPassInstance*)",
+        8.437000000000763
+      ],
+      [
+        "-[SCNMTLRenderContext drawRenderElement:withPass:]",
+        8.42500000000077
+      ],
+      [
+        "-[SCNMTLRenderContext _executeDrawCommand:]",
+        7.966000000000995
+      ],
+      [
+        "C3D::ScenePass::execute(C3D::RenderArgs const&)",
+        3.4179999999997346
+      ],
+      [
+        "-[SCNMTLResourceManager renderResourceForMaterial:geometry:renderPipeline:engineContext:]",
+        3.040999999999776
+      ],
+      [
+        "-[AGXBuffer(Internal) initWithDevice:length:alignment:options:isSuballocDisabled:resourceInArgs:pinnedGPULocation:]",
+        1.9669999999998942
+      ],
+      [
+        "-[AGXBuffer(Internal) initWithDevice:length:alignment:pointerTag:options:isSuballocDisabled:resourceInArgs:pinnedGPULocation:]",
+        1.9629999999998946
+      ]
+    ]
+  }
+}

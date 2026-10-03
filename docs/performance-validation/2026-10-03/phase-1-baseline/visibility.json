@@ -1,0 +1,8 @@
+{
+  "screenLockedAtLocal": "2026-10-03T11:16:09-07:00",
+  "screenLockedAtUTC": "2026-10-03T18:16:09Z",
+  "evidence": "loginwindow setScreenIsLocked: setting to 1 and screen locked notification; raw loginwindow-visibility-log.json",
+  "cleanRunsAndFirstOverviewBeforeObservedLock": true,
+  "laterDetailedCapturesLocked": true,
+  "limitation": "Log bounds the observed lock event; continuous foreground/occlusion state was not independently recorded. CUA reported locked and automatic unlock unavailable at 11:38."
+}

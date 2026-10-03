@@ -1,0 +1,18 @@
+import json,sys,bisect,math
+from pathlib import Path
+p=Path(sys.argv[1]);r=json.loads((p/'benchmark.json').read_text());t=json.loads((p/'timeline.json').read_text());resources=json.loads((p/'resources.json').read_text());hud=json.loads((p/'displayed-fps.json').read_text())
+a=r['startUptime']+3;b=a+600;frames=t['renderFrames'];updates=t['updates'];times=[v[0] for v in frames]
+def dist(v):
+ v=sorted(v)
+ return {'samples':len(v),**{n:v[int((len(v)-1)*q)] if v else None for n,q in [('p50MS',.5),('p95MS',.95),('p99MS',.99),('worstMS',1)]},'over25MS':sum(x>25 for x in v)}
+def window(x,y):
+ f=[v for v in frames if x<=v[0]<y];u=[v for v in updates if x<=v[0]<y]
+ return {'seconds':y-x,'callbackFrames':len(f),'callbacksPerSecond':len(f)/(y-x),'callbackIntervals':dist([v[1] for v in f]),'cpuUpdates':{'totalMS':dist([v[8] for v in u]),'stages':{name:dist([v[i] for v in u]) for i,name in enumerate(t['updateColumns']) if 3<=i<=7}}}
+roll=[{'startElapsed':3+s,'callbacksPerSecond':(bisect.bisect_left(times,a+s+10)-bisect.bisect_left(times,a+s))/10} for s in range(591)]
+therm=[{'elapsed':v['uptime']-r['startUptime'],'state':v['thermalState']} for v in resources];changes=[]
+for v in therm:
+ if not changes or changes[-1]['state']!=v['state']:changes.append(v)
+quality=r.get('quality',{});flags=r.get('benchmarkArguments',[])
+validity={'duration603OrMore':r['durationSeconds']>=603,'drawable1920x1080':[r['drawableWidth'],r['drawableHeight']]==[1920,1080],'msaa2':quality.get('msaaSamples')==2,'bothShadowMaps':quality.get('shadowMapWidths')==[2048,4096],'explorationDetail':quality.get('explorationDetail') is True,'audioActive':r.get('audioActive') is True,'metal':r.get('metalRenderer') is True,'town':r.get('townEnabled') is True,'continuousRoute':'--city-roam' in flags,'ledgerMonotonic':all(y[0]>x[0] for x,y in zip(frames,frames[1:])),'intervalsAgreeWithTimestamps':all(abs((y[0]-x[0])*1000-y[1])<.01 for x,y in zip(frames,frames[1:])),'startCoverage':frames[0][0]<=a+.04,'endCoverage':frames[-1][0]>=b-.04,'updateCoverage':bool(updates) and updates[0][0]<=a+.04 and updates[-1][0]>=b-.04,'updatesMonotonic':all(y[0]>x[0] for x,y in zip(updates,updates[1:])),'finiteLedgers':all(all(isinstance(x,(int,float)) and math.isfinite(x) for x in v) for v in frames+updates)}
+result={'runID':r['benchmarkRunID'],'gpuDevice':r['gpuDevice'],'storm':r['sandstorm'],'daylightFraction':r['daylightFraction'],'quality':quality,'measuredWindow':{'startUptime':a,'endUptime':b,'seconds':600,'rule':'Half-open windows by callback end timestamp; boundary-crossing intervals retained conservatively. Quantiles use floor((n-1)*q). Rolling 10-second windows every one second.'},'collectionChecks':validity,'collectionValid':all(validity.values()),'wholeWindow':window(a,b),'minutes':[{'minute':i+1,**window(a+i*60,a+(i+1)*60)} for i in range(10)],'worstRolling10Seconds':min(roll,key=lambda x:x['callbacksPerSecond']),'thermalHistory':changes,'thermalSamples':len(therm),'nativeResourceFirst':resources[0] if resources else None,'nativeResourceLast':resources[-1] if resources else None,'fpsReadout':{'samples':len(hud),'minimum':min(x['fps'] for x in hud if isinstance(x.get('fps'),(int,float))),'maximum':max(x['fps'] for x in hud if isinstance(x.get('fps'),(int,float)))},'limitations':['Callback cadence is not presentation.','CPU update wall time excludes rendering/audio IO thread CPU.','AO source default and actual GPU attachments require separate validation.','Performance-gate failure is separate from collection validity.']}
+(p/'baseline-summary.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))

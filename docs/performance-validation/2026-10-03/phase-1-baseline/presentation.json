@@ -1,0 +1,226 @@
+{
+  "runID": "EA272D91-5ECD-422A-A4BE-63BAB34A3CE5",
+  "pid": 62417,
+  "layerID": "524709308096",
+  "layerName": "SCNMetalBackingLayer: MarvinSimulator.SimulatorView",
+  "events": [
+    {
+      "name": "TownBenchmarkEnd",
+      "traceSeconds": 616.16811175,
+      "runID": "EA272D91-5ECD-422A-A4BE-63BAB34A3CE5",
+      "markerUptime": 117697.571189583,
+      "benchmarkBoundaryUptime": 117697.567536666,
+      "clockOriginUptime": 117081.403077833,
+      "pid": 62417
+    }
+  ],
+  "clockOffsetSpreadMicroseconds": null,
+  "bothMarkersRetained": false,
+  "clockAlignmentMethod": "single retained end POI anchor; no independent whole-window offset consistency check",
+  "measuredTraceWindowSeconds": [
+    16.144147458675434,
+    616.1441474586754
+  ],
+  "measuredSeconds": 600,
+  "drawableDimensions": [
+    1920,
+    1080
+  ],
+  "runtimeAO": null,
+  "quality": {
+    "explorationDetail": true,
+    "msaaSamples": 2,
+    "shadowMapWidths": [
+      2048,
+      4096
+    ]
+  },
+  "firstDisplayStartSeconds": 14.342000666,
+  "lastDisplayStartSeconds": 617.440798958,
+  "frameIDsContiguous": true,
+  "displayStartsBracketWindow": true,
+  "distribution": {
+    "count": 32962,
+    "meanMS": 18.202742667040837,
+    "p50MS": 16.666625,
+    "p95MS": 33.33325,
+    "p99MS": 33.333333,
+    "maxMS": 66.666583,
+    "over25MS": 3009
+  },
+  "minutes": [
+    {
+      "minute": 1,
+      "displayStartsPerSecond": 59.983333333333334,
+      "intervals": {
+        "count": 3599,
+        "meanMS": 16.67127073492637,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 33.333292,
+        "over25MS": 1
+      }
+    },
+    {
+      "minute": 2,
+      "displayStartsPerSecond": 60.0,
+      "intervals": {
+        "count": 3600,
+        "meanMS": 16.666636585555555,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 16.677084,
+        "over25MS": 0
+      }
+    },
+    {
+      "minute": 3,
+      "displayStartsPerSecond": 60.0,
+      "intervals": {
+        "count": 3600,
+        "meanMS": 16.666634375,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 16.668125,
+        "over25MS": 0
+      }
+    },
+    {
+      "minute": 4,
+      "displayStartsPerSecond": 59.96666666666667,
+      "intervals": {
+        "count": 3598,
+        "meanMS": 16.67589527737632,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 33.333333,
+        "over25MS": 2
+      }
+    },
+    {
+      "minute": 5,
+      "displayStartsPerSecond": 55.18333333333333,
+      "intervals": {
+        "count": 3311,
+        "meanMS": 18.121374697976442,
+        "p50MS": 16.666625,
+        "p95MS": 33.33325,
+        "p99MS": 33.333333,
+        "maxMS": 33.333416,
+        "over25MS": 289
+      }
+    },
+    {
+      "minute": 6,
+      "displayStartsPerSecond": 51.7,
+      "intervals": {
+        "count": 3102,
+        "meanMS": 19.342319632495165,
+        "p50MS": 16.666625,
+        "p95MS": 33.333292,
+        "p99MS": 33.333334,
+        "maxMS": 66.666583,
+        "over25MS": 489
+      }
+    },
+    {
+      "minute": 7,
+      "displayStartsPerSecond": 49.166666666666664,
+      "intervals": {
+        "count": 2950,
+        "meanMS": 20.338941158305087,
+        "p50MS": 16.666666,
+        "p95MS": 33.333292,
+        "p99MS": 33.333334,
+        "maxMS": 49.999958,
+        "over25MS": 643
+      }
+    },
+    {
+      "minute": 8,
+      "displayStartsPerSecond": 49.516666666666666,
+      "intervals": {
+        "count": 2971,
+        "meanMS": 20.195178923931337,
+        "p50MS": 16.666666,
+        "p95MS": 33.333292,
+        "p99MS": 33.333334,
+        "maxMS": 49.999917,
+        "over25MS": 623
+      }
+    },
+    {
+      "minute": 9,
+      "displayStartsPerSecond": 50.28333333333333,
+      "intervals": {
+        "count": 3017,
+        "meanMS": 19.88726447364932,
+        "p50MS": 16.666625,
+        "p95MS": 33.333292,
+        "p99MS": 33.333334,
+        "maxMS": 49.999917,
+        "over25MS": 579
+      }
+    },
+    {
+      "minute": 10,
+      "displayStartsPerSecond": 53.56666666666667,
+      "intervals": {
+        "count": 3214,
+        "meanMS": 18.668287712507777,
+        "p50MS": 16.666625,
+        "p95MS": 33.333291,
+        "p99MS": 33.333333,
+        "maxMS": 49.999917,
+        "over25MS": 383
+      }
+    }
+  ],
+  "worstRolling10Seconds": {
+    "startMeasuredSecond": 323,
+    "displayStartsPerSecond": 43.9
+  },
+  "envelopes": [
+    {
+      "pid": "62417",
+      "process": "MarvinSimulator",
+      "layer": "524709308096",
+      "metric": "0.CPU Begin to Present",
+      "distribution": {
+        "count": 32961,
+        "meanMS": 17.701991375838112,
+        "p50MS": 17.790125,
+        "p95MS": 29.227459,
+        "p99MS": 34.59175,
+        "maxMS": 49.51025,
+        "over25MS": 4535
+      }
+    },
+    {
+      "pid": "62417",
+      "process": "MarvinSimulator",
+      "layer": "524709308096",
+      "metric": "1.GPU Begin to End",
+      "distribution": {
+        "count": 32961,
+        "meanMS": 13.818027024574498,
+        "p50MS": 15.735875,
+        "p95MS": 18.352,
+        "p99MS": 19.580666,
+        "maxMS": 36.407,
+        "over25MS": 55
+      }
+    }
+  ],
+  "limitations": [
+    "Instrumented run only; not clean-run presentation.",
+    "GPU Begin to End and CPU Begin to Present are elapsed envelopes, not exclusive GPU busy or CPU execution.",
+    "No independent lost-event detector; contiguous layer frame IDs and full bracketing provide continuity checks. Missing start POI remains an unresolved collection limitation.",
+    "Quantiles use the existing diagnostic parser; rolling windows step one second."
+  ],
+  "identityAndCoverageVerified": false
+}

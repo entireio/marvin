@@ -1,0 +1,30 @@
+{
+  "clear": {
+    "method": "ps process CPU percent, RSS and VSZ; systemwide vm.swapusage every 15 seconds. Separate native per-second thermal/trail counters. CPU percent 100 equals one core; sampling starts after process launch. Polling overhead not independently measured.",
+    "firstSampleElapsed": 51.337080207653344,
+    "samples": 37,
+    "rssMiB": {
+      "first": 2305.90625,
+      "last": 2372.796875,
+      "peak": 2375.828125
+    },
+    "processCPUPercentMedian": 99.5,
+    "swapObserved": [
+      "total = 0.00M  used = 0.00M  free = 0.00M  (encrypted)"
+    ]
+  },
+  "storm": {
+    "method": "ps process CPU percent, RSS and VSZ; systemwide vm.swapusage every 15 seconds. Separate native per-second thermal/trail counters. CPU percent 100 equals one core; sampling starts after process launch. Polling overhead not independently measured.",
+    "firstSampleElapsed": 23.902752833324485,
+    "samples": 39,
+    "rssMiB": {
+      "first": 2772.0625,
+      "last": 2316.09375,
+      "peak": 2772.0625
+    },
+    "processCPUPercentMedian": 103.5,
+    "swapObserved": [
+      "total = 0.00M  used = 0.00M  free = 0.00M  (encrypted)"
+    ]
+  }
+}

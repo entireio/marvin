@@ -227,6 +227,14 @@ extension AppController {
         let trailsHidden=isolateTrails && ((elapsed>=300 && elapsed<330) || (elapsed>=480 && elapsed<510))
         if isolateTrails { dirtWorld.setBenchmarkTrailsHidden(trailsHidden) }
         if Int(elapsed)>=(townBenchmarkResourceSamples.last?["second"] as? Int ?? -1)+1 {
+            // Instruments can miss the launch-time event while enabling its
+            // process logging. Refresh the clock anchor only in an explicitly
+            // instrumented benchmark; retain the original benchmark boundary.
+            if ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_POI_REFRESH"] == "1",
+               elapsed >= 10,
+               (townBenchmarkResourceSamples.last?["second"] as? Int ?? -1) < 10 {
+                os_signpost(.event,log:townBenchmarkTraceLog,name:"TownBenchmarkStart","run=%{public}@ markerUptime=%.9f benchmarkBoundaryUptime=%.9f",townBenchmarkRunID as NSString,ProcessInfo.processInfo.systemUptime,start)
+            }
             townBenchmarkResourceSamples.append(["second":Int(elapsed),"uptime":now,"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"trailsHidden":trailsHidden,"shadowCasters":dirtWorld.town.shadowCasterCount,"trails":dirtWorld.trailDiagnostics(),"shadowBatch":dirtWorld.town.shadowBatchTelemetry])
         }
         var input=DirtOpponent.driveInput(for:simulation)
@@ -298,6 +306,8 @@ extension AppController {
                 if let light=node.light,light.castsShadow { shadowWidths.append(Int(light.shadowMapSize.width)) }
             }
             report["quality"]=["msaaSamples":view.antialiasingMode == .none ? 1:(1 << view.antialiasingMode.rawValue),"shadowMapWidths":shadowWidths.sorted(),"explorationDetail":dirtWorld.town.explorationDetailEnabled]
+            report["ambientOcclusion"]=["intensity":world.camera.camera?.screenSpaceAmbientOcclusionIntensity ?? 0,"radius":world.camera.camera?.screenSpaceAmbientOcclusionRadius ?? 0,"bias":world.camera.camera?.screenSpaceAmbientOcclusionBias ?? 0]
+            report["startSignpostRefreshEnabled"]=ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_POI_REFRESH"] == "1"
             report["shadowBatch"]=dirtWorld.town.shadowBatchTelemetry
             report["thermalState"]=ProcessInfo.processInfo.thermalState.rawValue
             report["benchmarkArguments"]=CommandLine.arguments

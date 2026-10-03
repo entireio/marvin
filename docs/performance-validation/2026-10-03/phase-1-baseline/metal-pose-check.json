@@ -1,0 +1,59 @@
+{
+  "requestedWindowPoseSamples": [
+    {
+      "requestedElapsed": 60,
+      "actualElapsed": 59.997600041664555,
+      "x": 36.21952302524925,
+      "z": 28.647944629993198,
+      "updateMS": 1.176250007119961
+    },
+    {
+      "requestedElapsed": 69,
+      "actualElapsed": 68.99761125000077,
+      "x": 33.49332286046382,
+      "z": 6.016674117407503,
+      "updateMS": 1.618124995729886
+    },
+    {
+      "requestedElapsed": 210,
+      "actualElapsed": 209.9931304583297,
+      "x": 36.25679528036948,
+      "z": 28.6491434287574,
+      "updateMS": 3.322541670058854
+    },
+    {
+      "requestedElapsed": 221,
+      "actualElapsed": 220.99396720832738,
+      "x": 33.50881521160469,
+      "z": 6.200619616509269,
+      "updateMS": 5.823416664497927
+    }
+  ],
+  "closestEarlyForLoadedStart": {
+    "elapsed": 60.59614199999487,
+    "distanceMeters": 0.03729146980098746
+  },
+  "limitation": "Wall-clock conversion from TOC and collector assumes stable wall/Mach offset. Requested 60/210 phase match does not establish capture-window match. Actual windows only partially overlap in route phase, no heading/drawable-state proof; locked screen confound.",
+  "actualTraceWindows": [
+    {
+      "name": "early",
+      "traceElapsedStartApproximate": 62.73943901062012,
+      "traceElapsedEndApproximate": 73.78505601062011,
+      "poseSampleElapsed": 62.74758991666022,
+      "x": 34.542182037514976,
+      "z": 24.192672707149367
+    },
+    {
+      "name": "loaded",
+      "traceElapsedStartApproximate": 218.5569977760315,
+      "traceElapsedEndApproximate": 230.88692977603148,
+      "poseSampleElapsed": 218.56580108332855,
+      "x": 34.77567662307298,
+      "z": 12.841373493818832
+    }
+  ],
+  "closestEarlyForActualLoadedStart": {
+    "elapsed": 66.68058070832922,
+    "distanceMeters": 0.03454631719162594
+  }
+}

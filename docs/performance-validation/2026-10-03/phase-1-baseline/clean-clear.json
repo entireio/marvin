@@ -1,0 +1,894 @@
+{
+  "runID": "744EA611-2A4F-4476-B3DF-EE7FA1DA884A",
+  "gpuDevice": "Apple M4",
+  "storm": false,
+  "daylightFraction": 0.5,
+  "quality": {
+    "explorationDetail": true,
+    "msaaSamples": 2,
+    "shadowMapWidths": [
+      2048,
+      4096
+    ]
+  },
+  "measuredWindow": {
+    "startUptime": 115451.31711433335,
+    "endUptime": 116051.31711433335,
+    "seconds": 600,
+    "rule": "Half-open windows by callback end timestamp; boundary-crossing intervals retained conservatively. Quantiles use floor((n-1)*q). Rolling 10-second windows every one second."
+  },
+  "collectionChecks": {
+    "duration603OrMore": true,
+    "drawable1920x1080": true,
+    "msaa2": true,
+    "bothShadowMaps": true,
+    "explorationDetail": true,
+    "audioActive": true,
+    "metal": true,
+    "town": true,
+    "continuousRoute": true,
+    "ledgerMonotonic": true,
+    "intervalsAgreeWithTimestamps": true,
+    "startCoverage": true,
+    "endCoverage": true,
+    "updateCoverage": true,
+    "updatesMonotonic": true,
+    "finiteLedgers": true
+  },
+  "collectionValid": true,
+  "wholeWindow": {
+    "seconds": 600.0,
+    "callbackFrames": 33849,
+    "callbacksPerSecond": 56.415,
+    "callbackIntervals": {
+      "samples": 33849,
+      "p50MS": 16.730916671804152,
+      "p95MS": 25.60745834489353,
+      "p99MS": 33.81916666694451,
+      "worstMS": 85.8731666667154,
+      "over25MS": 1896
+    },
+    "cpuUpdates": {
+      "totalMS": {
+        "samples": 33835,
+        "p50MS": 2.048041656962596,
+        "p95MS": 3.9283333462662995,
+        "p99MS": 4.924291657516733,
+        "worstMS": 16.09587500570342,
+        "over25MS": 0
+      },
+      "stages": {
+        "physicsMS": {
+          "samples": 33835,
+          "p50MS": 0.27241666975896806,
+          "p95MS": 0.5587916675722227,
+          "p99MS": 0.7107916753739119,
+          "worstMS": 2.0412083249539137,
+          "over25MS": 0
+        },
+        "modelsMS": {
+          "samples": 33835,
+          "p50MS": 0.13929167471360415,
+          "p95MS": 0.2539583365432918,
+          "p99MS": 0.2954166557174176,
+          "worstMS": 0.589250004850328,
+          "over25MS": 0
+        },
+        "effectsMS": {
+          "samples": 33835,
+          "p50MS": 0.742000003810972,
+          "p95MS": 1.4252083346946165,
+          "p99MS": 1.607250000233762,
+          "worstMS": 4.144499995163642,
+          "over25MS": 0
+        },
+        "cameraMS": {
+          "samples": 33835,
+          "p50MS": 0.06495833804365247,
+          "p95MS": 0.12383333523757756,
+          "p99MS": 0.1452916767448187,
+          "worstMS": 0.23133332433644682,
+          "over25MS": 0
+        },
+        "townMS": {
+          "samples": 33835,
+          "p50MS": 0.7817916630301625,
+          "p95MS": 2.0249166700523347,
+          "p99MS": 2.5877083389787003,
+          "worstMS": 14.31412500096485,
+          "over25MS": 0
+        }
+      }
+    }
+  },
+  "minutes": [
+    {
+      "minute": 1,
+      "seconds": 60.0,
+      "callbackFrames": 3600,
+      "callbacksPerSecond": 60.0,
+      "callbackIntervals": {
+        "samples": 3600,
+        "p50MS": 16.65849999699276,
+        "p95MS": 17.481583330663852,
+        "p99MS": 18.144208326702937,
+        "worstMS": 26.97108333813958,
+        "over25MS": 1
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3599,
+          "p50MS": 1.343083320534788,
+          "p95MS": 2.2613750043092296,
+          "p99MS": 6.385958331520669,
+          "worstMS": 14.873083346174099,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3599,
+            "p50MS": 0.19370832887943834,
+            "p95MS": 0.26795832673087716,
+            "p99MS": 0.32845832174643874,
+            "worstMS": 0.6495833222288638,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3599,
+            "p50MS": 0.09887499618344009,
+            "p95MS": 0.13029166439082474,
+            "p99MS": 0.15870833885855973,
+            "worstMS": 0.26766667724587023,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3599,
+            "p50MS": 0.4749999934574589,
+            "p95MS": 0.6636666657868773,
+            "p99MS": 0.7402916671708226,
+            "worstMS": 1.0281666764058173,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3599,
+            "p50MS": 0.04408332461025566,
+            "p95MS": 0.05699999746866524,
+            "p99MS": 0.06595833110623062,
+            "worstMS": 0.1237499964190647,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3599,
+            "p50MS": 0.5018333322368562,
+            "p95MS": 1.3174166670069098,
+            "p99MS": 5.529916670639068,
+            "worstMS": 14.208458334906027,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 2,
+      "seconds": 60.0,
+      "callbackFrames": 3600,
+      "callbacksPerSecond": 60.0,
+      "callbackIntervals": {
+        "samples": 3600,
+        "p50MS": 16.656083331326954,
+        "p95MS": 17.333166673779488,
+        "p99MS": 17.76408334262669,
+        "worstMS": 27.673749995301478,
+        "over25MS": 1
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3600,
+          "p50MS": 1.3279999984661117,
+          "p95MS": 2.1089583315188065,
+          "p99MS": 3.1382916640723124,
+          "worstMS": 12.874916661530733,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3600,
+            "p50MS": 0.184416669071652,
+            "p95MS": 0.23316666192840785,
+            "p99MS": 0.26741666079033166,
+            "worstMS": 0.3533333365339786,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3600,
+            "p50MS": 0.09625000529922545,
+            "p95MS": 0.1192083436762914,
+            "p99MS": 0.1392499980283901,
+            "worstMS": 0.20662500173784792,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3600,
+            "p50MS": 0.5037916707806289,
+            "p95MS": 0.6230416765902191,
+            "p99MS": 0.6863749877084047,
+            "worstMS": 1.0435833391966298,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3600,
+            "p50MS": 0.04354165866971016,
+            "p95MS": 0.05783334199804813,
+            "p99MS": 0.06487499922513962,
+            "worstMS": 0.10645833390299231,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3600,
+            "p50MS": 0.4933749878546223,
+            "p95MS": 1.224583334987983,
+            "p99MS": 2.2842916660010815,
+            "worstMS": 11.959791663684882,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 3,
+      "seconds": 60.0,
+      "callbackFrames": 3355,
+      "callbacksPerSecond": 55.916666666666664,
+      "callbackIntervals": {
+        "samples": 3355,
+        "p50MS": 16.742666673962958,
+        "p95MS": 27.465250008390285,
+        "p99MS": 33.82308332948014,
+        "worstMS": 42.53083332150709,
+        "over25MS": 235
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3356,
+          "p50MS": 2.0576249953592196,
+          "p95MS": 3.9996249979594722,
+          "p99MS": 5.085000011604279,
+          "worstMS": 10.981583327520639,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3356,
+            "p50MS": 0.26000000070780516,
+            "p95MS": 0.5769999988842756,
+            "p99MS": 0.7365000055870041,
+            "worstMS": 1.1430833401391283,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3356,
+            "p50MS": 0.13749999925494194,
+            "p95MS": 0.2637083234731108,
+            "p99MS": 0.3101250040344894,
+            "worstMS": 0.589250004850328,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3356,
+            "p50MS": 0.725916659575887,
+            "p95MS": 1.5069583314470947,
+            "p99MS": 1.6969583375612274,
+            "worstMS": 1.9340416620252654,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3356,
+            "p50MS": 0.06179166666697711,
+            "p95MS": 0.13033332652412355,
+            "p99MS": 0.15799999528098851,
+            "worstMS": 0.21462500444613397,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3356,
+            "p50MS": 0.7593333284603432,
+            "p95MS": 2.0252916583558545,
+            "p99MS": 2.6515416684560478,
+            "worstMS": 8.697416662471369,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 4,
+      "seconds": 60.0,
+      "callbackFrames": 3059,
+      "callbacksPerSecond": 50.983333333333334,
+      "callbackIntervals": {
+        "samples": 3059,
+        "p50MS": 16.959750006208196,
+        "p95MS": 33.615458334679715,
+        "p99MS": 35.1141249993816,
+        "worstMS": 46.75716666679364,
+        "over25MS": 554
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3056,
+          "p50MS": 2.6855833420995623,
+          "p95MS": 4.446875012945384,
+          "p99MS": 5.566124993492849,
+          "worstMS": 16.09587500570342,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3056,
+            "p50MS": 0.37708332820329815,
+            "p95MS": 0.7036666647763923,
+            "p99MS": 0.8594999962951988,
+            "worstMS": 1.2007916666334495,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3056,
+            "p50MS": 0.16900000628083944,
+            "p95MS": 0.28283333813305944,
+            "p99MS": 0.32049999572336674,
+            "worstMS": 0.4581250104820356,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3056,
+            "p50MS": 1.0059583291877061,
+            "p95MS": 1.5464583411812782,
+            "p99MS": 1.686208343016915,
+            "worstMS": 2.0235833362676203,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3056,
+            "p50MS": 0.08883333066478372,
+            "p95MS": 0.13516665785573423,
+            "p99MS": 0.15783333219587803,
+            "worstMS": 0.2182916650781408,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3056,
+            "p50MS": 0.9759166714502499,
+            "p95MS": 2.318625003681518,
+            "p99MS": 2.9732083348790184,
+            "worstMS": 14.31412500096485,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 5,
+      "seconds": 60.0,
+      "callbackFrames": 3161,
+      "callbacksPerSecond": 52.68333333333333,
+      "callbackIntervals": {
+        "samples": 3161,
+        "p50MS": 16.942791669862345,
+        "p95MS": 29.279583337483928,
+        "p99MS": 34.20383333286736,
+        "worstMS": 42.54075000062585,
+        "over25MS": 441
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3161,
+          "p50MS": 2.4897499970393255,
+          "p95MS": 4.205624994938262,
+          "p99MS": 4.869583324762061,
+          "worstMS": 10.358666666434146,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3161,
+            "p50MS": 0.3303333214716986,
+            "p95MS": 0.6312500045169145,
+            "p99MS": 0.7643333374289796,
+            "worstMS": 1.0039583430625498,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3161,
+            "p50MS": 0.16045832308009267,
+            "p95MS": 0.2582916640676558,
+            "p99MS": 0.30066666658967733,
+            "worstMS": 0.5039999959990382,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3161,
+            "p50MS": 0.8946666639531031,
+            "p95MS": 1.4790416753385216,
+            "p99MS": 1.6162499960046262,
+            "worstMS": 4.144499995163642,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3161,
+            "p50MS": 0.081791658885777,
+            "p95MS": 0.1253749942407012,
+            "p99MS": 0.14375000318977982,
+            "worstMS": 0.23133332433644682,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3161,
+            "p50MS": 0.9853749943431467,
+            "p95MS": 2.2017916780896485,
+            "p99MS": 2.5305000017397106,
+            "worstMS": 8.10349998937454,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 6,
+      "seconds": 60.0,
+      "callbackFrames": 3435,
+      "callbacksPerSecond": 57.25,
+      "callbackIntervals": {
+        "samples": 3435,
+        "p50MS": 16.763750012614764,
+        "p95MS": 23.837250002543442,
+        "p99MS": 28.634125003009103,
+        "worstMS": 34.82029166480061,
+        "over25MS": 115
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3435,
+          "p50MS": 2.45800000266172,
+          "p95MS": 3.854624999803491,
+          "p99MS": 4.538083332590759,
+          "worstMS": 11.710416671121493,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3435,
+            "p50MS": 0.33108334173448384,
+            "p95MS": 0.545625007362105,
+            "p99MS": 0.6812916690250859,
+            "worstMS": 0.9204166708514094,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3435,
+            "p50MS": 0.1592083426658064,
+            "p95MS": 0.26141667331103235,
+            "p99MS": 0.29708333022426814,
+            "worstMS": 0.376416661310941,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3435,
+            "p50MS": 0.9195833263220266,
+            "p95MS": 1.4397500053746626,
+            "p99MS": 1.5827916649868712,
+            "worstMS": 2.006208334933035,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3435,
+            "p50MS": 0.07870832632761449,
+            "p95MS": 0.1273333327844739,
+            "p99MS": 0.1458333426853642,
+            "worstMS": 0.19512500148266554,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3435,
+            "p50MS": 0.897999998414889,
+            "p95MS": 1.9060416670981795,
+            "p99MS": 2.3602500004926696,
+            "worstMS": 10.381833330029622,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 7,
+      "seconds": 60.0,
+      "callbackFrames": 3480,
+      "callbacksPerSecond": 58.0,
+      "callbackIntervals": {
+        "samples": 3480,
+        "p50MS": 16.675083330483176,
+        "p95MS": 22.944124997593462,
+        "p99MS": 33.1198750063777,
+        "worstMS": 35.10187499341555,
+        "over25MS": 107
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3479,
+          "p50MS": 1.971333331312053,
+          "p95MS": 3.5805833322228864,
+          "p99MS": 4.437666677404195,
+          "worstMS": 13.33595834148582,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3479,
+            "p50MS": 0.24879166448954493,
+            "p95MS": 0.47091666783671826,
+            "p99MS": 0.5782083317171782,
+            "worstMS": 0.7725000032223761,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3479,
+            "p50MS": 0.1293333334615454,
+            "p95MS": 0.24020833370741457,
+            "p99MS": 0.272749995929189,
+            "worstMS": 0.3411250072531402,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3479,
+            "p50MS": 0.677916657878086,
+            "p95MS": 1.3310416688909754,
+            "p99MS": 1.5427083271788433,
+            "worstMS": 1.817875003325753,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3479,
+            "p50MS": 0.059791665989905596,
+            "p95MS": 0.11999999696854502,
+            "p99MS": 0.1408749958500266,
+            "worstMS": 0.18266667029820383,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3479,
+            "p50MS": 0.8491250046063215,
+            "p95MS": 1.8097083375323564,
+            "p99MS": 2.319749997695908,
+            "worstMS": 12.592333339853212,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 8,
+      "seconds": 60.0,
+      "callbackFrames": 3516,
+      "callbacksPerSecond": 58.6,
+      "callbackIntervals": {
+        "samples": 3516,
+        "p50MS": 16.66395833308343,
+        "p95MS": 21.057208330603316,
+        "p99MS": 32.17833333474118,
+        "worstMS": 34.91924999980256,
+        "over25MS": 76
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3515,
+          "p50MS": 1.9108333362964913,
+          "p95MS": 3.411333338590339,
+          "p99MS": 4.107999993721023,
+          "worstMS": 5.123625000123866,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3515,
+            "p50MS": 0.2638750011101365,
+            "p95MS": 0.4332083335611969,
+            "p99MS": 0.5399583315011114,
+            "worstMS": 0.7690833299420774,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3515,
+            "p50MS": 0.13137499627191573,
+            "p95MS": 0.23337500169873238,
+            "p99MS": 0.2719583280850202,
+            "worstMS": 0.5216666759224609,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3515,
+            "p50MS": 0.725583333405666,
+            "p95MS": 1.2160833284724504,
+            "p99MS": 1.404583323164843,
+            "worstMS": 1.672624988714233,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3515,
+            "p50MS": 0.06350000330712646,
+            "p95MS": 0.10833333362825215,
+            "p99MS": 0.12966665963176638,
+            "worstMS": 0.18208332767244428,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3515,
+            "p50MS": 0.6600000051548705,
+            "p95MS": 1.8130416719941422,
+            "p99MS": 2.256499996292405,
+            "worstMS": 2.8564166714204475,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 9,
+      "seconds": 60.0,
+      "callbackFrames": 3317,
+      "callbacksPerSecond": 55.28333333333333,
+      "callbackIntervals": {
+        "samples": 3317,
+        "p50MS": 16.77124999696389,
+        "p95MS": 25.302333335275762,
+        "p99MS": 34.8037916701287,
+        "worstMS": 85.8731666667154,
+        "over25MS": 184
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3311,
+          "p50MS": 2.568541662185453,
+          "p95MS": 4.162458324572071,
+          "p99MS": 5.170708333025686,
+          "worstMS": 15.53250000870321,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3311,
+            "p50MS": 0.3200833307346329,
+            "p95MS": 0.5564583407249302,
+            "p99MS": 0.681583333062008,
+            "worstMS": 2.0412083249539137,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3311,
+            "p50MS": 0.15745832934044302,
+            "p95MS": 0.2550833305576816,
+            "p99MS": 0.292125012492761,
+            "worstMS": 0.5151250079507008,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3311,
+            "p50MS": 0.8669583330629393,
+            "p95MS": 1.405375005560927,
+            "p99MS": 1.5379583346657455,
+            "worstMS": 2.037124999333173,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3311,
+            "p50MS": 0.07599999662488699,
+            "p95MS": 0.1234166556969285,
+            "p99MS": 0.14345833915285766,
+            "worstMS": 0.22358333808369935,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3311,
+            "p50MS": 1.0602916590869427,
+            "p95MS": 2.266291674459353,
+            "p99MS": 2.8283749998081475,
+            "worstMS": 13.986791658680886,
+            "over25MS": 0
+          }
+        }
+      }
+    },
+    {
+      "minute": 10,
+      "seconds": 60.0,
+      "callbackFrames": 3326,
+      "callbacksPerSecond": 55.43333333333333,
+      "callbackIntervals": {
+        "samples": 3326,
+        "p50MS": 16.90029166638851,
+        "p95MS": 25.194083340466022,
+        "p99MS": 31.95716666232329,
+        "worstMS": 36.9325833307812,
+        "over25MS": 182
+      },
+      "cpuUpdates": {
+        "totalMS": {
+          "samples": 3323,
+          "p50MS": 2.4890833446988836,
+          "p95MS": 4.242541661369614,
+          "p99MS": 4.934750002576038,
+          "worstMS": 10.137333345483057,
+          "over25MS": 0
+        },
+        "stages": {
+          "physicsMS": {
+            "samples": 3323,
+            "p50MS": 0.3267499996582046,
+            "p95MS": 0.5726666713599116,
+            "p99MS": 0.6852499936940148,
+            "worstMS": 0.9880416764644906,
+            "over25MS": 0
+          },
+          "modelsMS": {
+            "samples": 3323,
+            "p50MS": 0.15925000479910523,
+            "p95MS": 0.26466666895430535,
+            "p99MS": 0.3099583409493789,
+            "worstMS": 0.4386249929666519,
+            "over25MS": 0
+          },
+          "effectsMS": {
+            "samples": 3323,
+            "p50MS": 0.901999999769032,
+            "p95MS": 1.54320833098609,
+            "p99MS": 1.6782916645752266,
+            "worstMS": 2.000333333853632,
+            "over25MS": 0
+          },
+          "cameraMS": {
+            "samples": 3323,
+            "p50MS": 0.07754165562801063,
+            "p95MS": 0.13300000864546746,
+            "p99MS": 0.1541250094305724,
+            "worstMS": 0.22875001013744622,
+            "over25MS": 0
+          },
+          "townMS": {
+            "samples": 3323,
+            "p50MS": 0.9497083374299109,
+            "p95MS": 2.148375002434477,
+            "p99MS": 2.547416661400348,
+            "worstMS": 7.368458333075978,
+            "over25MS": 0
+          }
+        }
+      }
+    }
+  ],
+  "worstRolling10Seconds": {
+    "startElapsed": 211,
+    "callbacksPerSecond": 44.1
+  },
+  "thermalHistory": [
+    {
+      "elapsed": 0.05077274999348447,
+      "state": 0
+    },
+    {
+      "elapsed": 83.01043774999562,
+      "state": 1
+    }
+  ],
+  "thermalSamples": 604,
+  "nativeResourceFirst": {
+    "second": 0,
+    "shadowBatch": {
+      "activeProxies": 34,
+      "enabled": 1,
+      "inputElements": 661,
+      "inputVertices": 1761272,
+      "nodes": 92,
+      "outputElements": 338,
+      "outputVertices": 417484,
+      "triangles": 679992
+    },
+    "shadowCasters": 0,
+    "thermalState": 0,
+    "trails": [
+      {
+        "emittedMarks": 0,
+        "geometryUploads": 0,
+        "nodes": 0,
+        "quads": 0,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      },
+      {
+        "emittedMarks": 0,
+        "geometryUploads": 0,
+        "nodes": 0,
+        "quads": 0,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      },
+      {
+        "emittedMarks": 0,
+        "geometryUploads": 0,
+        "nodes": 0,
+        "quads": 0,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      },
+      {
+        "emittedMarks": 0,
+        "geometryUploads": 0,
+        "nodes": 0,
+        "quads": 0,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      }
+    ],
+    "trailsHidden": false,
+    "uptime": 115448.36788708334
+  },
+  "nativeResourceLast": {
+    "second": 603,
+    "shadowBatch": {
+      "activeProxies": 41,
+      "enabled": 1,
+      "inputElements": 661,
+      "inputVertices": 1761272,
+      "nodes": 92,
+      "outputElements": 338,
+      "outputVertices": 417484,
+      "triangles": 679992
+    },
+    "shadowCasters": 41,
+    "thermalState": 1,
+    "trails": [
+      {
+        "emittedMarks": 41104,
+        "geometryUploads": 20052,
+        "nodes": 128,
+        "quads": 32656,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      },
+      {
+        "emittedMarks": 92664,
+        "geometryUploads": 27542,
+        "nodes": 128,
+        "quads": 32760,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      },
+      {
+        "emittedMarks": 32274,
+        "geometryUploads": 28977,
+        "nodes": 127,
+        "quads": 32274,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      },
+      {
+        "emittedMarks": 59930,
+        "geometryUploads": 26976,
+        "nodes": 128,
+        "quads": 32538,
+        "visibleNodes": -1,
+        "visibleQuads": -1
+      }
+    ],
+    "trailsHidden": false,
+    "uptime": 116051.32958858334
+  },
+  "fpsReadout": {
+    "samples": 1176,
+    "minimum": 13.230542518672536,
+    "maximum": 62.183551106272446
+  },
+  "limitations": [
+    "Callback cadence is not presentation.",
+    "CPU update wall time excludes rendering/audio IO thread CPU.",
+    "AO source default and actual GPU attachments require separate validation.",
+    "Performance-gate failure is separate from collection validity."
+  ]
+}
