@@ -82,11 +82,15 @@ acceptance separately without instrumentation overhead or concurrent builds.
 
 ## Guarded tangent reuse experiment (October 3)
 
-`--benchmark-tangent-reuse` is an opt-in candidate, not the production mesh or
-sustained acceptance. It shares identical complete vertices only when their
+Guarded tangent reuse is enabled for the production town mesh following the
+33-view comparison and independent Astra Ultra review. It shares identical
+complete vertices only when their
 normal-projected tangent and bitangent directions occupy the same fine bin.
 Ill-conditioned frames retain exact gradients; a separate key discriminator
-prevents collisions between these two policies. Degenerate, mirrored, stable
+prevents collisions between these two policies. `--benchmark-exact-tangents`
+restores the previous policy for diagnostics. `--benchmark-tangent-reuse` with
+`--benchmark-gpu-probe` retains a reference mesh for the frozen ABBA comparison;
+normal play neither builds nor retains that duplicate. Degenerate, mirrored, stable
 scaled, and fallback-boundary fixtures exercise those cases.
 
 On the M2 host, three frozen ABBA comparisons at 1920×1080 with 2× MSAA measured
@@ -112,3 +116,7 @@ workspace: `tangent-basis-abba`, `tangent-basis-comparison`, and
 `tangent-basis-fullpixel`. The two dust shader experiments (`dust-zero-alpha`
 and `dust-vertex-tint`) produced identical frozen pixels but no reliable gain
 beyond bracket drift, so they remain diagnostics too.
+
+The independent Astra Ultra review accepted visual preservation for the tested
+views, including the two adjacent 17/255 and 7/255 PNG outliers in the expanded
+low-sun infield capture. It explicitly did not accept sustained 60 FPS.

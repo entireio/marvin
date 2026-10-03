@@ -1841,9 +1841,10 @@ final class TownMesh {
     func geometry(material:SCNMaterial,relativeTo origin:SIMD3<Float> = .zero)->SCNGeometry {
         // Reuse only identical complete vertex attributes. Keep every original
         // triangle, material slot and index order, including normal/UV seams.
-        // Match each face UV gradient too: merging differing gradients would
-        // change SceneKit/exporter generated tangent averages for normal maps.
+        // Guard projected tangent directions too: unrestricted merging would
+        // change SceneKit-generated tangent averages for normal maps.
         // This reduces repeated vertex work in both sun maps and the color pass.
+        let collectBasisComparisons=CommandLine.arguments.contains("--mesh-reuse-test") || CommandLine.arguments.contains("--benchmark-tangent-reuse")
         func build(reuseNearbyTangents:Bool)->SCNGeometry {
             var lookup:[VertexKey:Int32]=[:],remap:[Int32]=[]
             var local:[SCNVector3]=[],outNormals:[SCNVector3]=[],outUV:[CGPoint]=[],outWear:[CGPoint]=[],outColors:[Float]=[]
@@ -1880,7 +1881,7 @@ final class TownMesh {
                 }
                 let key=VertexKey(quantizedBasis:reuseNearbyTangents && stable,position:p,normal:n,tangent:basisKey(tangent,projectedT,tLength),bitangent:basisKey(bitangent,projectedB,bLength),uv:SIMD2(Double(uv[i].x),Double(uv[i].y)),wear:SIMD2(Double(wearUV[i].x),Double(wearUV[i].y)),color:c)
                 if let existing=lookup[key] {
-                    if reuseNearbyTangents && stable {
+                    if reuseNearbyTangents && stable && collectBasisComparisons {
                         let previous=basisRepresentatives[Int(existing)]
                         for (a,b) in [(previous.0,projectedT),(previous.1,projectedB)] {
                             let x=simd_normalize(SIMD3<Double>(a)),y=simd_normalize(SIMD3<Double>(b))
@@ -1891,7 +1892,7 @@ final class TownMesh {
                     }
                     remap.append(existing);continue
                 }
-                if reuseNearbyTangents { basisRepresentatives.append((projectedT,projectedB)) }
+                if reuseNearbyTangents && collectBasisComparisons { basisRepresentatives.append((projectedT,projectedB)) }
                 let index=Int32(local.count);lookup[key]=index;remap.append(index)
                 local.append(SCNVector3(p));outNormals.append(normals[i]);outUV.append(uv[i]);outWear.append(wearUV[i]);outColors += [c.x,c.y,c.z,c.w]
             }
@@ -1901,9 +1902,11 @@ final class TownMesh {
             g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]}
             return g
         }
-        let reuseNearbyTangents=CommandLine.arguments.contains("--benchmark-tangent-reuse")
+        let reuseNearbyTangents = !CommandLine.arguments.contains("--benchmark-exact-tangents")
         let g=build(reuseNearbyTangents:reuseNearbyTangents)
-        if reuseNearbyTangents { TownMesh.tangentProbePairs.append((build(reuseNearbyTangents:false),g)) }
+        if CommandLine.arguments.contains("--benchmark-tangent-reuse") && CommandLine.arguments.contains("--benchmark-gpu-probe") {
+            TownMesh.tangentProbePairs.append((build(reuseNearbyTangents:false),g))
+        }
         TownMesh.inputVertices += positions.count;TownMesh.outputVertices += g.sources(for:.vertex).first!.vectorCount
         if CommandLine.arguments.contains("--mesh-reuse-test") || CommandLine.arguments.contains("--benchmark-original-vertices") {
             let rawColor=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:positions.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }

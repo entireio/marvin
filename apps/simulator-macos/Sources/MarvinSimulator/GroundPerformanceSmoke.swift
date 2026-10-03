@@ -8,7 +8,7 @@ extension AppController {
     func checkGroundPerformance(at directory:URL)->Bool {
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
-            let tangentFixturesPassed = !CommandLine.arguments.contains("--benchmark-tangent-reuse") || checkTangentReuseFixtures()
+            let tangentFixturesPassed = CommandLine.arguments.contains("--benchmark-exact-tangents") || checkTangentReuseFixtures()
             weatherOverride=false;defer { weatherOverride=nil }
             startDirtTrack();dirtIntro=nil;race.countDown(dt:3)
             guard let terrain=dirtWorld.scene.rootNode.childNode(withName:"Town base terrain",recursively:true),let earth=terrain.geometry?.firstMaterial else { return false }
