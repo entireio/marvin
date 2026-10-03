@@ -68,13 +68,17 @@ extension AppController {
         }
         var crowdMaterials:[ObjectIdentifier:(SCNMaterial,[SCNShaderModifierEntryPoint:String])]=[:]
         var dustMaterials:[ObjectIdentifier:(SCNMaterial,[SCNShaderModifierEntryPoint:String])]=[:]
+        var dustNodes:[(SCNNode,Bool)]=[]
         scene.rootNode.enumerateChildNodes { node,_ in
+            var isDust=false
             for material in node.geometry?.materials ?? [] {
                 if material.lightingModel == .lambert,!material.writesToDepthBuffer,
                    let modifiers=material.shaderModifiers,modifiers[.geometry]?.contains("dustTint")==true {
                     dustMaterials[ObjectIdentifier(material)]=(material,modifiers)
+                    isDust=true
                 }
             }
+            if isDust { dustNodes.append((node,node.isHidden)) }
         }
         var crowdNodes:[(SCNNode,Bool)]=[]
         scene.rootNode.enumerateChildNodes { node,_ in
@@ -132,6 +136,7 @@ extension AppController {
         // ABBA at the same retained pose/history brackets each isolation with
         // production blocks. Keep all samples, including drift and outliers.
         for (block,variant) in variants.enumerated() {
+            var opacityMaterialCount=0
             shadowBatch.setEnabled(false)
             for (node,production,candidate) in tangentNodes { node.geometry=variant=="tangent-reuse" ? candidate:production }
             for (property,contents) in textureProperties.values { property.contents=variant=="tiny-surface-textures" ? tiny:contents }
@@ -139,6 +144,16 @@ extension AppController {
             // then apply the requested transform without a later group undoing it.
             for (material,modifiers) in shaderMaterials.values {
                 var value=modifiers
+                if variant=="ground-surface-opacity",let fragment=value[.fragment],
+                   fragment.contains("_output.color.a=blend;"),let surface=value[.surface] {
+                    let opacity=fragment.replacingOccurrences(of:"#pragma transparent",with:"")
+                        .replacingOccurrences(of:"#pragma body",with:"")
+                        .replacingOccurrences(of:"_output.color.rgb *= blend;",with:"")
+                        .replacingOccurrences(of:"_output.color.a=blend;",with:"_surface.diffuse.a=blend;")
+                    value[.surface]=surface.replacingOccurrences(of:"#pragma body",with:"#pragma transparent\n#pragma body")+"\n"+opacity
+                    value.removeValue(forKey:.fragment)
+                    opacityMaterialCount += 1
+                }
                 if variant=="dust-zero-alpha",dustMaterials[ObjectIdentifier(material)] != nil,let surface=value[.surface] {
                     value[.surface]=surface.replacingOccurrences(of:"#pragma body",with:"#pragma body\nif (_surface.diffuse.a * in.dustTint.a == 0.0) { discard_fragment(); }")
                 }
@@ -152,6 +167,8 @@ extension AppController {
                 material.shaderModifiers=value
             }
             for (node,hidden) in crowdNodes { node.isHidden=hidden || variant=="no-crowd" }
+            // Isolation only: estimate the ceiling before changing dust shaders.
+            for (node,hidden) in dustNodes { node.isHidden=hidden || variant=="no-dust" }
             for (node,order) in orderedNodes {
                 let p=node.position,camera=world.camera.position
                 node.renderingOrder=variant=="front-to-back" && node.name?.hasPrefix("Town cell ")==true ? -9000+Int(hypot(Double(p.x-camera.x),Double(p.z-camera.z))):order
@@ -192,7 +209,7 @@ extension AppController {
                 try png.write(to:directory.appendingPathComponent("gpu-probe-block-\(block).png"))
                 if block==0 { try png.write(to:directory.appendingPathComponent("gpu-probe-resolved.png")) }
             }
-            rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue])
+            rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount])
         }
         let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","variants":rows,"shadowBatch":shadowBatch.statistics]
         try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("loaded-gpu-probe.json"))

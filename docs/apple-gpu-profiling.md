@@ -269,3 +269,82 @@ separation, missing/duplicate frame IDs, raw XML references/units, multi-table
 rejection and GPU-envelope interpretation. The parser reports terminal display
 duration separately from adjacent-start cadence coverage. None of these reports
 promotes a short diagnostic run to sustained acceptance.
+
+## Rejected ground hash lookup
+
+`ground-noise-table-probe` had a missed shader-call rewrite in the sand-transition
+material and produced visible magenta errors; its apparent speedup is invalid.
+The corrected GPU-precomputed RGBA32Float lattice table preserved the original
+noise interpolation and matched the frozen native image within three pixels at
+1/255, but was slower (about 12.04–12.06 ms versus 11.75–11.92 ms controls).
+Two ABBA pairs each for RGBA16Float and RGBA8Unorm in `ground-noise-table-formats`
+were also slower: typically about 12.00 ms versus 11.63–11.70 ms production, all
+thermal state 0. Half-float changed 161 pixels by at most 1/255; normalized-byte
+changed 150,357 pixels by at most 1/255. No format was enabled. The candidate was
+removed from the worktree; source, native captures and timing ledgers remain
+with the diagnostic artifacts so this failed approach need not be repeated.
+
+The five-minute overview CPU samples also separate sustained costs: in trace
+seconds 60–120, the audio IO thread accounted for 16.862 CPU seconds, including
+6.777 seconds self time in `Resampler2::ConvertSIMD`. In seconds 240–300, these
+were 16.565 and 7.142 seconds respectively. Total sampled CPU across threads
+decreased from 55.340 to 52.335 seconds as frame throughput fell. This is not
+evidence of a growing simulation-update CPU leak. Raw samples and the cold/warm
+aggregation are in `overview-town-production/time-profile.xml` and
+`cpu-cold-warm.json`.
+
+## Audio processing isolation (not accepted)
+
+All 161 current source WAVs are mono, while the production graph duplicates
+loops into stereo before varispeed and filtering. An opt-in prototype processes
+loops in mono and restores stereo balance afterward. Offline render time fell
+by roughly 55–60%, but this is not a transparent change: the strengthened native
+comparison fails during startup, boosts, moving perspectives and restarts.
+The original-versus-original control is bit-identical in all seven scenarios,
+including storm, shelter and abrupt camera turns. Expected boost events also
+pass, ruling out a silent or missing-event false positive.
+
+Standalone AVAudioEngine probes isolate a further problem even at fixed pan:
+changing rate alone agrees within 3.73e-9, but changing player volume at pan
+0.65 produces maximum sample errors of 0.00137–0.00143. Centered versions are
+bit-identical. Moving balance after DSP changes volume/pan ramp behavior, so
+fixed-gain equivalence was insufficient. Removing an always-unity varispeed
+also changes latency by approximately 48 samples and leaves an aligned residual;
+that shortcut has not been applied to production either.
+
+`audio-layout-control` and `audio-layout-controls-mono` contain the native WAVs,
+reports, source snapshots and standalone probes. The candidate remains opt-in,
+fails the existing equivalence limits, and has no live performance acceptance.
+These signal checks do not claim a listening judgment or sustained 60 FPS.
+
+## AO pass attribution and opacity experiment
+
+Replaying the saved warm frame again in Xcode gave a 16.83 ms diagnostic frame.
+Render encoder 3 (20.46%) writes a full-resolution RGBA16Float texture and a
+temporary depth attachment. Render encoder 4 (9.95%) is one full-screen triangle
+using `scn_ssao_compute`: it reads that RGBA16Float texture as `depthSampler`
+and a half-resolution R8Uint texture as `minMaxSampler`. This establishes the
+AO preparation/calculation path, rather than inferring it from encoder order.
+The ground overlay contributes 5.35% of the frame in encoder 3 alone: draw
+10269, 21,786 indices, pipeline 70, `commonprofile_frag (14)`. Xcode exposes
+its PBR material source, normal/roughness textures and radial opacity modifier.
+Source and bindings alone do not establish which instructions survive compiler
+optimization. The observation record is
+`native-gpu-warm-production/xcode-ao-pass-observations.json`.
+
+The `ground-surface-opacity` frozen probe moves just that material's opacity
+calculation from the fragment modifier to the surface modifier, retaining its
+maps and pigment. The initial experiment accidentally matched a street modifier
+too and produced visible magenta errors; its apparent speedup is invalid.
+The corrected selector changed exactly one material. Two ABBA pairs at thermal
+state 0 measured candidate medians 11.676–11.698 ms against production
+11.667–11.698 ms: no useful improvement. All production repeat images matched;
+the candidate changed 726,769 pixels, by up to 38/255. Both images were viewed.
+It remains a diagnostic, not a production change. Raw timings, captures, source
+diff and binary hash are in `ground-surface-opacity-corrected`.
+
+Any replacement for the AO path must preserve its lighting contribution,
+normal-map detail, contact shading, moving residents and robots, dust, trails,
+both suns, storms and camera transitions. Turning it off is only an isolation
+test. A custom implementation needs native visual comparison and sustained
+timing; the measured ceiling is not proof that a replacement will achieve it.
