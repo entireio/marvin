@@ -335,6 +335,8 @@ Historical claims of “final” in these documents are not user acceptance.
   Boost needs distinct onset, sustained thrust and release, driven by actual input.
 - Reduce excessive squeaking/voice density; mechanical feedback must lead the mix.
 - Give Mos Aster localized city life and continuing exploration audio.
+- Keep infield repair sounds barely audible from the racing lane; increase them
+  smoothly on entering the infield and approaching each repair tent.
 - Sandstorms need evolving wind and airborne-grit audio tied to gusts and shelter,
   with less exposed city activity and clear driving/boost feedback through the mix.
 - Use an independent Codex Astra judge at Ultra reasoning effort for this redesign.

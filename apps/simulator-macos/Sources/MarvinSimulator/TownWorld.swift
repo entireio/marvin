@@ -67,7 +67,7 @@ final class TownWorld {
         var zones=venueSites.enumerated().map { i,site in
             TownSoundZone(position:site.center,kind:i==0 ? .workshop:i==1 ? .cantina:.market)
         }
-        zones += InfieldLayout.tentOrigins.map { TownSoundZone(position:$0,kind:.workshop,activity:0.65) }
+        zones += InfieldLayout.tentOrigins.map { TownSoundZone(position:$0,kind:.workshop,activity:0.65,infieldRepair:true) }
         let groups=Dictionary(grouping:streetActivities,by:{$0.group})
         for key in groups.keys.sorted() {
             let group=groups[key]!

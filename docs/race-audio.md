@@ -206,3 +206,20 @@ Independent Astra Ultra review identified and closed reversed camera stereo,
 post-collision speed hiding head-on impacts, assisted braking retaining boost,
 rapid-tap release loss and misleading cumulative event checks. Perceptual listening
 and AAA parity remain unverified; neither agent had an audio-perception tool.
+
+## Repair-area proximity correction
+
+The infield tents now use a 14 m audible radius and a 2.5 m proximity scale,
+with a smooth 2.5 m fade into the infield beyond the retaining wall. From the
+racing lane, repair gain is suppressed and low-pass filtered to 1.8 kHz; it
+opens up near the tents. Other town workshop emitters keep their existing mix.
+
+The rebuilt native audio suite passed 61 checks; see
+[audio-validation/2026-10-02/repair-proximity.json](audio-validation/2026-10-02/repair-proximity.json).
+Across 768 course positions at the centerline and both lane edges, maximum
+combined repair gain fell from 0.18979 to 0.00274 (36.8 dB). Both tent approach
+sweeps increase monotonically to 0.2600. The PCM approach/return render is at
+`/tmp/marvee-repair-audio/repair-approach.wav`. These are synthetic spatial sweeps
+through the native mixer, not collision-tested drives through the entrance.
+Independent review also checked rising gain along the actual entrance coordinates.
+Perceptual loudness remains unverified; these measurements are not listening acceptance.

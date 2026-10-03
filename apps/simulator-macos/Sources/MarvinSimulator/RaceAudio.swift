@@ -12,6 +12,7 @@ struct TownSoundZone {
     enum Kind:Int { case market,workshop,cantina }
     let position:SIMD2<Double>,kind:Kind
     var activity:Double=1
+    var infieldRepair=false
 }
 
 /// Fixed, predecoded voice budget. No file I/O or synthesis on the gameplay thread.
@@ -41,6 +42,21 @@ final class RaceAudio {
         let gain=edge*edge*(3-2*edge)/(1+pow(d/6,2))
         let right=SIMD2(-cos(heading),sin(heading))
         return Mix(gain:Float(gain),pan:Float(max(-0.9,min(0.9,simd_dot(delta,right)/max(2,d)))),cutoff:Float(max(1400,16000/(1+d/10))))
+    }
+    static func townSpatial(zone:TownSoundZone,listener:SIMD2<Double>,heading:Double)->Mix {
+        var mix=spatial(source:zone.position,listener:listener,heading:heading,
+                        range:zone.infieldRepair ? 14:zone.kind == .workshop ? 26:32)
+        if zone.infieldRepair {
+            // The retaining wall keeps tools faint from the racing lane. Fade
+            // continuously across the entrance, then localize each tent closely.
+            let offset=DirtCourse.projection(x:listener.x,z:listener.y).offset
+            let depth=max(0,min(1,(-offset-DirtCourse.fenceOffset)/2.5))
+            let inside=depth*depth*(3-2*depth)
+            let distance=simd_distance(zone.position,listener)
+            mix.gain *= Float((0.035+0.965*inside)*(1+pow(distance/6,2))/(1+pow(distance/2.5,2)))
+            mix.cutoff=min(mix.cutoff,Float(1800+10200*inside))
+        }
+        return mix
     }
     private final class Voice {
         let player=AVAudioPlayerNode(),pitch=AVAudioUnitVarispeed(),eq=AVAudioUnitEQ(numberOfBands:1)
@@ -234,7 +250,7 @@ final class RaceAudio {
         for kind in [TownSoundZone.Kind.market,.workshop,.cantina] {
             var energy:Float=0,weightedPan:Float=0,cutoff:Float=0
             for zone in town where ambience && zone.kind==kind {
-                let mix=Self.spatial(source:zone.position,listener:listener,heading:heading,range:kind == .workshop ? 26:32)
+                let mix=Self.townSpatial(zone:zone,listener:listener,heading:heading)
                 let gain=mix.gain*Float(zone.activity)*(storm && kind != .cantina ? 0.12:1)
                 energy+=gain*gain;weightedPan+=gain*gain*mix.pan;cutoff+=gain*gain*mix.cutoff
             }

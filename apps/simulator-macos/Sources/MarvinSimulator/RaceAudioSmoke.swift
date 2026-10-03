@@ -173,6 +173,45 @@ extension AppController {
                 measurements["city\(kind.rawValue)DBFS"]=levels
                 checks["city\(kind.rawValue)Range"]=levels[2]-levels[0]>10 && levels[2]-levels[3]>10
             }
+            // Actual authored tents and the entire racing lane: the old broad
+            // workshop falloff let tools dominate even along the inner edge.
+            let repairZones=dirtWorld.town.soundZones.filter{$0.infieldRepair}
+            func repairGain(_ p:SIMD2<Double>,legacy:Bool=false)->Double {
+                sqrt(repairZones.reduce(0.0) { sum,zone in
+                    let mix=legacy ? RaceAudio.spatial(source:zone.position,listener:p,heading:0,range:26):RaceAudio.townSpatial(zone:zone,listener:p,heading:0)
+                    return sum+pow(Double(mix.gain)*zone.activity*0.4,2)
+                })
+            }
+            var lanePeak=0.0,oldLanePeak=0.0
+            for sample in 0..<768 {
+                for offset in [-DirtCourse.width,0,DirtCourse.width] {
+                    let p=DirtCourse.point(Double(sample)*2 * .pi/768,offset:offset)
+                    lanePeak=max(lanePeak,repairGain(SIMD2(p.x,p.z)))
+                    oldLanePeak=max(oldLanePeak,repairGain(SIMD2(p.x,p.z),legacy:true))
+                }
+            }
+            checks["repairQuietAcrossRacingLane"]=repairZones.count==2 && lanePeak<0.01 && lanePeak<oldLanePeak*0.06
+            measurements["repairLanePeakBeforeAfter"]=[oldLanePeak,lanePeak]
+            let repairFile=try AVAudioFile(forWriting:directory.appendingPathComponent("repair-approach.wav"),settings:format.settings)
+            var tentLevels=[[Double]]()
+            for tent in InfieldLayout.tentOrigins {
+                let projection=DirtCourse.projection(x:tent.x,z:tent.y)
+                let lane=DirtCourse.point(projection.phase)
+                let start=SIMD2(lane.x,lane.z)
+                let route=(0...4).map { start+(tent-start)*Double($0)/4 }
+                let gains=route.map{repairGain($0)}
+                tentLevels.append(gains)
+                checks["repairTent\(tentLevels.count)Approach"]=zip(gains,gains.dropFirst()).allSatisfy{$0 <= $1} && gains.last!>0.12 && gains.last!>gains.first!*20
+                audio.resetConversation()
+                // Continuous approach then return, rendered through the real mixer.
+                for frame in 0..<960 {
+                    let t=Double(frame<480 ? frame:960-frame)/480
+                    var a=actors(0);a[0].position=start+(tent-start)*t
+                    audio.update(actors:a,lineup:lineup,zones:[],heading:0,storm:false,racing:true,dt:1.0/60,town:repairZones,expressions:false)
+                    _=try render(repairFile)
+                }
+            }
+            measurements["repairTentApproachGains"]=tentLevels
             audio.resetConversation()
             let close=SpectatorSoundZone(position:SIMD2(2,0),people:50,stormPeople:1)
             let far=SpectatorSoundZone(position:SIMD2(500,0),people:50,stormPeople:1)
