@@ -1,0 +1,66 @@
+[
+  {
+    "block": 0,
+    "variant": "production",
+    "gpuMedianMS": 12.68187491223216,
+    "changedPixels": 0,
+    "maxDelta": 0,
+    "meanDelta": 0.0
+  },
+  {
+    "block": 1,
+    "variant": "ground-pack-diffuse-control",
+    "gpuMedianMS": 12.807499966584146,
+    "changedPixels": 960978,
+    "maxDelta": 26,
+    "meanDelta": 4.160837914737654
+  },
+  {
+    "block": 2,
+    "variant": "ground-pack-diffuse-control",
+    "gpuMedianMS": 12.90552073623985,
+    "changedPixels": 960915,
+    "maxDelta": 26,
+    "meanDelta": 4.16082477334105
+  },
+  {
+    "block": 3,
+    "variant": "production",
+    "gpuMedianMS": 12.775395880453289,
+    "changedPixels": 7,
+    "maxDelta": 2,
+    "meanDelta": 1.8084490740740741e-06
+  },
+  {
+    "block": 4,
+    "variant": "production",
+    "gpuMedianMS": 12.735937489196658,
+    "changedPixels": 0,
+    "maxDelta": 0,
+    "meanDelta": 0.0
+  },
+  {
+    "block": 5,
+    "variant": "ground-pack-dual-control",
+    "gpuMedianMS": 12.883770861662924,
+    "changedPixels": 960915,
+    "maxDelta": 26,
+    "meanDelta": 4.16082477334105
+  },
+  {
+    "block": 6,
+    "variant": "ground-pack-dual-control",
+    "gpuMedianMS": 12.937125051394105,
+    "changedPixels": 960915,
+    "maxDelta": 26,
+    "meanDelta": 4.16082477334105
+  },
+  {
+    "block": 7,
+    "variant": "production",
+    "gpuMedianMS": 13.014333322644234,
+    "changedPixels": 0,
+    "maxDelta": 0,
+    "meanDelta": 0.0
+  }
+]

@@ -1,4 +1,5 @@
 import AppKit
+import Metal
 import SceneKit
 import SimulationCore
 import simd
@@ -42,6 +43,14 @@ final class DirtWorld {
     private let dustMaterial = SCNMaterial()
     private let clodGeometry = SCNSphere(radius: 0.012)
     private let poolSize = 1600
+    var debrisMetalBuffersEnabled=CommandLine.arguments.contains("--benchmark-debris-metal-buffers")
+    var diagnosticExplicitDebrisBounds=false
+    private(set) var debrisMetalBuildCount=0
+    private(set) var debrisMetalFallbackCount=0
+    private var debrisBuffers:DebrisGeometryBuffers?
+    func prepareDebrisBuffers(device:MTLDevice?) {
+        debrisBuffers=device.map{DebrisGeometryBuffers(device:$0,capacity:poolSize)}
+    }
     private var poolIndex = 0
     private(set) var emittedCount = 0
 
@@ -603,9 +612,21 @@ final class DirtWorld {
             let batch=dust ? dustBatch:clodBatch
             batch.isHidden=indices.isEmpty
             guard !indices.isEmpty else { continue }
+            if debrisMetalBuffersEnabled,let geometry=debrisBuffers?.geometry(vertices:vertices,normals:normals,uv:uv,rgba:rgba,dust:dust,material:dust ? dustMaterial:clodGeometry.materials[0]) {
+                batch.geometry=geometry;debrisMetalBuildCount += 1;continue
+            }
+            if debrisMetalBuffersEnabled { debrisMetalFallbackCount += 1 }
             let colors=rgba.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:vertices.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
             let geometry=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),colors],elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
             geometry.materials=[dust ? dustMaterial:clodGeometry.materials[0]]
+            if diagnosticExplicitDebrisBounds {
+                var low=SIMD3<Float>(repeating:.infinity),high=SIMD3<Float>(repeating:-.infinity)
+                for vertex in vertices {
+                    let p=SIMD3(Float(vertex.x),Float(vertex.y),Float(vertex.z))
+                    low=simd_min(low,p);high=simd_max(high,p)
+                }
+                geometry.boundingBox=(SCNVector3(low),SCNVector3(high))
+            }
             batch.geometry=geometry
         }
     }
@@ -747,6 +768,11 @@ extension DirtWorld {
 
 // Diagnostic pairs retain identical simulation state and vary only dust visibility.
 extension DirtWorld {
+    func printDebrisBounds(_ label:String) {
+        for (kind,node) in [("dust",dustBatch),("clods",clodBatch)] {
+            print("Debris bounds \(label) \(kind): node \(node.boundingBox) sphere \(node.boundingSphere); geometry \(String(describing:node.geometry?.boundingBox)) sphere \(String(describing:node.geometry?.boundingSphere))")
+        }
+    }
     func diagnosticDust(_ visible:Bool) { rebuildDebrisBatches();dustBatch.isHidden = !visible }
     var diagnosticDustCount:Int { flecks.filter{$0.life>0 && $0.dust}.count }
 }

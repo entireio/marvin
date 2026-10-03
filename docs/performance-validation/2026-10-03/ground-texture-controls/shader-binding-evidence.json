@@ -1,0 +1,35 @@
+{
+  "status": "rejected-control-before-packing",
+  "nativeImagesInspected": true,
+  "productionChanges": false,
+  "captureDirectory": "/Users/thomi/Projects/marvin-town-planning/sustained-fix/ground-pack-capture",
+  "draw": 12375,
+  "indexCount": 21786,
+  "production": {
+    "block": 0,
+    "pipeline": 105,
+    "library": 32,
+    "fragment": "commonprofile_frag (31)",
+    "DIFFUSE_PREMULTIPLIED": true,
+    "USE_PBR_TRANSPARENCY": true,
+    "USE_DISCARD": null
+  },
+  "explicitDiffuseControl": {
+    "block": 1,
+    "pipeline": 123,
+    "library": 43,
+    "fragment": "commonprofile_frag (42)",
+    "DIFFUSE_PREMULTIPLIED": false,
+    "USE_PBR_TRANSPARENCY": true,
+    "USE_DISCARD": 2
+  },
+  "observationMethod": "Xcode GPU debugger: selected main ground draw, Render Pipeline State > Fragment Function > Compile Options > Preprocessor Macros. Actual bound control texture was GroundPack alpha=1 control, RGBA8Unorm_sRGB; same sampler5 for diffuse and roughness.",
+  "sourceFile": "FF3049996A2FFD64",
+  "sourceSHA256": "eddbadf84f81dc9df1f74a3a01ad99e316700abc62d222aff0afa675c65c818e",
+  "mechanism": "prepareForPBR multiplies albedo by surface diffuse alpha without DIFFUSE_PREMULTIPLIED; original URL path avoids that second modulation. Ground near track has nonunit vertex alpha.",
+  "notEstablished": [
+    "packed candidate rendering or timing",
+    "production-equivalent explicit diffuse control",
+    "sustained speedup"
+  ]
+}

@@ -426,3 +426,34 @@ and early restored baselines differed by two pixels at 1/255, and final restorat
 by 35 pixels at up to 7/255. Exact visual controls therefore still fail. The native
 candidate image was inspected. The committed prototype uses the corrected local
 transforms, remains diagnostic-only, and is not a validated gameplay optimization.
+
+### October 3: captured ground-texture controls
+
+The next experiment targets texture traffic, preserving the original diffuse RGB
+and linear roughness bytes at every mip. Xcode exports supplied all twelve levels;
+diffuse levels 0–5 and roughness levels 0–4 match the capture's corresponding raw
+texture resources byte for byte. Smaller levels have no independent raw reference.
+The opt-in `GroundTexturePackProbe` checks asset/shader hashes, component masks,
+sampler properties and original opaque alpha before loading explicit Metal textures.
+It does not alter normal gameplay.
+
+The initial native controls **failed before packing was attempted**. At the frozen
+15-second clear-town pose, replacing just diffuse with the explicit original bytes
+changed about 961,000 pixels (maximum channel delta 26/255); adding the explicit
+roughness texture produced the same image. The captures were inspected: ground
+near the track fade darkens, while distant ground remains unchanged. These are
+not valid equivalent-rendering timing comparisons and no speedup is accepted.
+
+A new production/control Metal capture identified the cause. Main ground draw
+12375 uses pipeline 105 / library 32 in production and pipeline 123 / library 43
+with explicit diffuse. Both use `USE_PBR_TRANSPARENCY`, but only the original URL
+binding uses `DIFFUSE_PREMULTIPLIED`. In the captured `prepareForPBR`, absence of
+that flag multiplies albedo by diffuse alpha again. Original vertex alpha is
+nonunit near the track transition. Explicit byte identity therefore does not
+preserve SceneKit's material interpretation. Shader flags, raw samples and control
+comparisons are in [ground texture evidence](performance-validation/2026-10-03/ground-texture-controls/).
+
+Any follow-up must first preserve that material interpretation and pass the
+explicit-texture and restoration controls. Aliasing two material properties to
+one texture does not itself prove removal of a texture fetch. No texture packing,
+quality reduction or sustained-performance acceptance follows from this test.

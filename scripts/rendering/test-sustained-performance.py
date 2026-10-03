@@ -1,29 +1,86 @@
 #!/usr/bin/env python3
 """Exercise acceptance failures that previously escaped short average-only checks."""
 import copy
+import contextlib
+import io
 import importlib.util
+import json
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 spec=importlib.util.spec_from_file_location('gate',Path(__file__).with_name('check-sustained-performance.py'))
 gate=importlib.util.module_from_spec(spec);spec.loader.exec_module(gate)
+fixture_spec=importlib.util.spec_from_file_location('presentation_fixtures',Path(__file__).with_name('test-game-overview.py'))
+fixtures=importlib.util.module_from_spec(fixture_spec);fixture_spec.loader.exec_module(fixtures)
+
+class GateProvenanceIntegrationTests(unittest.TestCase):
+    def test_cli_reopens_finalized_manifest_and_raw_exports(self):
+        raw=fixtures.PresentationXMLTests()
+        raw.setUp();self.addCleanup(raw.doCleanups)
+        presentation=raw.read()
+        (raw.root/'presentation.json').write_text(json.dumps(presentation))
+        (raw.root/'benchmark.json').write_text(json.dumps(raw.benchmark))
+        (raw.root/'run-manifest.json').write_text(json.dumps(raw.manifest))
+        (raw.root/'timeline.json').write_text(json.dumps(dict(renderFrames=[],updates=[])))
+        (raw.root/'displayed-fps.json').write_text('[]')
+        argv=['check-sustained-performance.py',str(raw.root),'--presentation-report',str(raw.root/'presentation.json'),'--scope','presentation']
+        with patch('sys.argv',argv),contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(gate.main(),1)  # Sparse cadence, valid provenance.
+        result=json.loads((raw.root/'sustained-gate.json').read_text())
+        self.assertTrue(result['presentationVerified'])
+        self.assertTrue(result['presentation']['provenanceVerified'])
+        (raw.root/'run-manifest.json').write_text(json.dumps(dict(raw.manifest,binarySHA256='b'*64)))
+        with patch('sys.argv',argv),contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(gate.main(),1)
+        result=json.loads((raw.root/'sustained-gate.json').read_text())
+        self.assertFalse(result['presentationVerified'])
+        self.assertIn('manifest hash mismatch',result['presentation']['failures'][0])
 
 class SustainedGateTests(unittest.TestCase):
+    def setUp(self):
+        # These tests isolate gate arithmetic from filesystem provenance. The
+        # real reimport/manifest/source-hash path is exercised by PresentationXMLTests.
+        verifier=lambda data,report,manifest=None:gate.presentation_overview.verify_presentation_ledger(data,report)
+        patched=patch.object(gate.presentation_overview,'verify_presentation',verifier)
+        patched.start();self.addCleanup(patched.stop)
     @classmethod
     def setUpClass(cls):
-        cls.report=dict(startUptime=1000,durationSeconds=603,drawableWidth=1920,drawableHeight=1080,metalRenderer=True,townEnabled=True,audioActive=True,benchmarkArguments=['--city-roam'],gpuDevice='Test GPU',benchmarkRunID='test-run',quality=dict(msaaSamples=2,shadowMapWidths=[2048,4096],explorationDetail=True))
+        cls.report=dict(startUptime=1000,durationSeconds=603,drawableWidth=1920,drawableHeight=1080,metalRenderer=True,townEnabled=True,audioActive=True,benchmarkArguments=['--city-roam'],gpuDevice='Test GPU',benchmarkRunID='test-run',sandstorm=False,daylightFraction=.5,quality=dict(msaaSamples=2,shadowMapWidths=[2048,4096],explorationDetail=True))
         cls.frames=[[1003+i/60,1000/60] for i in range(36001)]
         cls.updates=[[1003+i/60,3+i/60,0,0,0,0,0,0,0,i/30,0,0] for i in range(36001)]
         cls.hud=[dict(elapsedSeconds=3.5+i*.5,fps=60,text='60.0 FPS') for i in range(1200)]
         cls.gpu=dict(metricKind='encoderBusyUnion',runID='test-run',measuredSeconds=600,runStartUptime=1000,gpuDevice='Test GPU',resolution=[1920,1080],minutes=[dict(start=3+i*60,end=3+(i+1)*60,firstElapsed=4+i*60,lastElapsed=62+i*60,maximumBatchGapSeconds=.5,samples=1000,p99MS=10,maxMS=12) for i in range(10)])
+        _, cls.presentation=fixtures.presentation_fixture(cls.report)
     def result(self,frames=None,report=None,hud=None,gpu=None):
-        return gate.evaluate(report or self.report,dict(renderFrames=self.frames if frames is None else frames,updates=self.updates),self.hud if hud is None else hud,self.gpu if gpu is None else gpu)
+        report=report or self.report
+        presentation=dict(self.presentation,benchmarkSHA256=gate.presentation_overview.json_hash(report))
+        return gate.evaluate(report,dict(renderFrames=self.frames if frames is None else frames,updates=self.updates),self.hud if hud is None else hud,self.gpu if gpu is None else gpu,presentation)
     def test_valid_complete_ledger(self):
         self.assertTrue(self.result()['passed'])
     def test_legacy_gpu_envelope_cannot_claim_headroom(self):
         self.assertFalse(self.result(gpu=dict(self.gpu,metricKind='commandBufferEnvelope'))['passed'])
     def test_callback_and_gpu_do_not_prove_presentation(self):
-        self.assertFalse(self.result()['overallComplete'])
-        self.assertFalse(self.result()['presentationVerified'])
+        result=gate.evaluate(self.report,dict(renderFrames=self.frames,updates=self.updates),self.hud,self.gpu)
+        self.assertFalse(result['overallComplete'])
+        self.assertFalse(result['presentationVerified'])
+        self.assertFalse(result['passed'])
+        self.assertFalse(gate.scope_passed(result,'presentation'))
+        self.assertTrue(gate.scope_passed(result,'cadence'))
+    def test_presentation_scope_does_not_claim_headroom_or_completion(self):
+        result=gate.evaluate(self.report,dict(renderFrames=self.frames,updates=self.updates),self.hud,None,self.presentation)
+        self.assertTrue(gate.scope_passed(result,'presentation'))
+        self.assertFalse(result['passed'])
+        self.assertFalse(gate.scope_passed(result,'complete'))
+    def test_presentation_scope_requires_callback_and_real_display_pass(self):
+        for key in ('callbackGatePassed','presentationVerified','presentationGatePassed'):
+            result=dict(callbackGatePassed=True,presentationVerified=True,presentationGatePassed=True)
+            result[key]=False
+            self.assertFalse(gate.scope_passed(result,'presentation'))
+    def test_forged_presentation_summary_is_recomputed(self):
+        presentation=dict(self.presentation,intervals={},validation=dict(presentationVerified=True,presentationGatePassed=True))
+        result=gate.evaluate(self.report,dict(renderFrames=self.frames,updates=self.updates),self.hud,self.gpu,presentation)
+        self.assertFalse(result['passed'])
+        self.assertFalse(result['presentationVerified'])
     def test_missing_frame_cannot_hide_gap(self):
         frames=self.frames.copy();del frames[21000]
         self.assertFalse(self.result(frames=frames)['passed'])
@@ -46,6 +103,9 @@ class SustainedGateTests(unittest.TestCase):
         self.assertFalse(result['passed'])
     def test_sustained_58_counter_fails(self):
         self.assertFalse(self.result(hud=[dict(h,fps=58) for h in self.hud])['passed'])
+    def test_unmeasured_presentation_tail_does_not_fail_live_counter(self):
+        hud=self.hud+[dict(elapsedSeconds=603.5+i*.5,fps=40,text='40.0 FPS') for i in range(5)]
+        self.assertTrue(self.result(hud=hud)['passed'])
     def test_false_counter_fails(self):
         hud=[dict(h,fps=1) for h in self.hud]
         self.assertFalse(self.result(hud=hud)['passed'])

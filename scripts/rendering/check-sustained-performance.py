@@ -2,17 +2,24 @@
 """Fail closed on sustained town regressions. Callback cadence is NOT presentation.
 
 Usage: check-sustained-performance.py RUN_DIRECTORY [--gpu-report GPU_JSON]
-GPU_JSON must contain per-minute p99MS/maxMS plus a measured duration. A callback
-pass without a supplied headroom report is deliberately not overall acceptance.
+       [--presentation-report PRESENTATION_JSON]
+GPU_JSON must contain per-minute p99MS/maxMS plus a measured duration. The
+presentation scope requires both callback and actual display cadence. Complete
+acceptance still needs full GPU coverage and a paired clear/storm result.
 """
 import argparse
 import bisect
+import importlib.util
 import json
 import math
 from pathlib import Path
 
+_spec = importlib.util.spec_from_file_location('presentation_overview', Path(__file__).with_name('read-game-overview.py'))
+presentation_overview = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(presentation_overview)
 
-def evaluate(report, timeline, hud, gpu=None):
+
+def evaluate(report, timeline, hud, gpu=None, presentation=None, manifest=None):
     failures = []
     def require(ok, reason):
         if not ok:
@@ -65,11 +72,14 @@ def evaluate(report, timeline, hud, gpu=None):
         require(travel>=10, f'Insufficient driving during seconds {second}–{second+30}')
     require(all(b-a<=.025 for a,b in zip(update_times,update_times[1:])), 'Simulation-update gap exceeds 25 ms')
     require(distance >= 1000, 'Less than 1000 m of real driving')
-    valid_hud=[h for h in hud if isinstance(h.get('fps'),(int,float)) and math.isfinite(h['fps'])]
+    finite_hud=[h for h in hud if isinstance(h.get('fps'),(int,float)) and math.isfinite(h['fps']) and isinstance(h.get('elapsedSeconds'),(int,float)) and math.isfinite(h['elapsedSeconds'])]
+    require(len(finite_hud)==len(hud), 'Invalid live counter value')
+    # The post-window tail exists to close actual presentation intervals. It is
+    # not part of the measured drive, nor is startup before the warmup boundary.
+    valid_hud=[h for h in finite_hud if 3 <= h['elapsedSeconds'] <= 603]
     require(len(valid_hud) >= 1100, 'Missing live FPS samples')
     require(bool(valid_hud) and valid_hud[0]['elapsedSeconds'] <= 4.1 and valid_hud[-1]['elapsedSeconds'] >= 602, 'Incomplete live counter coverage')
     require(all(b['elapsedSeconds']-a['elapsedSeconds'] <= 1 for a,b in zip(valid_hud,valid_hud[1:])), 'Live counter sample gap')
-    require(len(valid_hud)==len(hud), 'Invalid live counter value')
     require(all(h['fps']>=59 for h in valid_hud), 'Live counter falls below 59 FPS')
     for a,b in zip(valid_hud,valid_hud[1:]):
         dt=b['elapsedSeconds']-a['elapsedSeconds']
@@ -89,17 +99,37 @@ def evaluate(report, timeline, hud, gpu=None):
         require(all(m.get('samples',0)>=1000 and m.get('lastElapsed',0)-m.get('firstElapsed',0)>=57 and m.get('maximumBatchGapSeconds',math.inf)<=1.1 for m in minutes), 'Sparse or missing GPU timeline')
         require(all(m.get('start')==3+i*60 and m.get('end')==3+(i+1)*60 for i,m in enumerate(minutes)), 'GPU minute windows do not match benchmark')
         require(all(all(isinstance(m.get(k),(int,float)) and math.isfinite(m[k]) and m[k]>=0 for k in ['p99MS','maxMS']) and m['p99MS']<=12.5 and m['maxMS']<1000/60 for m in minutes), 'GPU budget exceeded or invalid (p99 12.5 ms, max 16.667 ms)')
-    return {'passed':not failures,'callbackGatePassed':callback_passed,'presentationVerified':False,'overallComplete':False,'failures':failures,'measuredFrames':len(selected),'gapsOver25MS':gaps,'minimumRolling10SecondFPS':min(windows,default=0),'distanceMeters':distance,'method':'SceneKit render callback ledger; not display presentation. GPU evidence is separately required.'}
+    presentation_result = (presentation_overview.verify_presentation(presentation, report, manifest) if presentation is not None
+                           else {'presentationVerified': False, 'presentationGatePassed': False,
+                                 'failures': ['Presentation ledger missing']})
+    failures.extend(presentation_result['failures'])
+    return {'passed':not failures,'callbackGatePassed':callback_passed,
+            'presentationVerified':presentation_result['presentationVerified'],
+            'presentationGatePassed':presentation_result['presentationGatePassed'],
+            'presentation':presentation_result,'overallComplete':False,
+            'completionBlockers':['GPU aggregate samples do not establish complete per-frame busy-time coverage.',
+                                  'A paired clear/storm acceptance result is not implemented.'],
+            'failures':failures,'measuredFrames':len(selected),'gapsOver25MS':gaps,
+            'minimumRolling10SecondFPS':min(windows,default=0),'distanceMeters':distance,
+            'method':'Callback and driving ledgers plus independently revalidated Apple On Display presentation ledger. GPU headroom and paired-weather completion remain separately required.'}
+
+
+def scope_passed(result, scope):
+    if scope == 'presentation':
+        return all(result.get(key) is True for key in ('callbackGatePassed', 'presentationVerified', 'presentationGatePassed'))
+    return result.get('callbackGatePassed' if scope == 'cadence' else 'overallComplete') is True
 
 
 def main():
-    p=argparse.ArgumentParser(description=__doc__);p.add_argument('directory',type=Path);p.add_argument('--gpu-report',type=Path);p.add_argument('--scope',choices=['complete','cadence'],default='complete');a=p.parse_args()
+    p=argparse.ArgumentParser(description=__doc__);p.add_argument('directory',type=Path);p.add_argument('--gpu-report',type=Path);p.add_argument('--presentation-report',type=Path);p.add_argument('--scope',choices=['complete','cadence','presentation'],default='complete');a=p.parse_args()
     try:
-        result=evaluate(*(json.loads((a.directory/n).read_text()) for n in ['benchmark.json','timeline.json','displayed-fps.json']),json.loads(a.gpu_report.read_text()) if a.gpu_report else None)
+        result=evaluate(*(json.loads((a.directory/n).read_text()) for n in ['benchmark.json','timeline.json','displayed-fps.json']),json.loads(a.gpu_report.read_text()) if a.gpu_report else None,json.loads(a.presentation_report.read_text()) if a.presentation_report else None,json.loads((a.directory/'run-manifest.json').read_text()) if a.presentation_report else None)
     except (OSError,ValueError,TypeError,KeyError,IndexError,AttributeError,OverflowError,ZeroDivisionError) as e:
         result={'passed':False,'failures':[f'Invalid or missing evidence: {e}']}
+    result['requestedScope']=a.scope
+    result['scopePassed']=scope_passed(result,a.scope)
     (a.directory/'sustained-gate.json').write_text(json.dumps(result,indent=2)+'\n')
-    print(json.dumps(result,indent=2));return 0 if result.get('callbackGatePassed' if a.scope=='cadence' else 'overallComplete',False) else 1
+    print(json.dumps(result,indent=2));return 0 if result['scopePassed'] else 1
 
 if __name__=='__main__':
     raise SystemExit(main())

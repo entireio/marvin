@@ -61,6 +61,8 @@ final class RaceAudio {
     private final class Voice {
         let player=AVAudioPlayerNode(),pitch=AVAudioUnitVarispeed(),eq=AVAudioUnitEQ(numberOfBands:1)
         var mix=Mix()
+        var appliedMix:Mix?
+        var spatial:AVAudioMixerNode?
     }
     private final class Shot {
         let player=AVAudioPlayerNode()
@@ -86,7 +88,17 @@ final class RaceAudio {
     private(set) var lastMix=[Mix](repeating:Mix(),count:loopCount)
     var speakingCount:Int { shots.filter{$0.speech && $0.remaining>0}.count }
     var active:Bool { playing && engine.isRunning }
-    init(resources:URL,offline:Bool=false) throws {
+    private(set) var monoLoopsEnabled=false
+    private let skipUnchangedParameters:Bool
+    init(resources:URL,offline:Bool=false,monoLoops:Bool=CommandLine.arguments.contains("--benchmark-audio-mono-loops"),skipUnchangedParameters:Bool=CommandLine.arguments.contains("--benchmark-audio-skip-unchanged")) throws {
+        self.skipUnchangedParameters=skipUnchangedParameters
+        let loopNames=Set(characters.flatMap { [$0,$0+"-ground",$0+"-high",$0+"-boost",$0+"-sand"] }
+            + ["crowd","sparse-crowd","finish-crowd","desert-wind","market","workshop","cantina","storm-gust","storm-grit"])
+        // Keep future stereo assets on the original graph rather than downmixing.
+        monoLoopsEnabled=monoLoops && loopNames.allSatisfy { name in
+            (try? AVAudioFile(forReading:resources.appendingPathComponent("Audio/"+name+".wav")).processingFormat.channelCount)==1
+        }
+        let loopFormat=monoLoopsEnabled ? AVAudioFormat(standardFormatWithSampleRate:48000,channels:1)!:format
         var names=["crowd","sparse-crowd","finish-crowd","desert-wind","market","workshop","cantina","impact","countdown","go","finish","storm-gust","storm-grit"]
         for name in characters {
             names += [name,name+"-ground",name+"-high",name+"-boost",name+"-sand",name+"-boost-on",name+"-boost-off"]
@@ -97,9 +109,10 @@ final class RaceAudio {
             let source=AVAudioPCMBuffer(pcmFormat:file.processingFormat,frameCapacity:AVAudioFrameCount(file.length))!
             try file.read(into:source)
             guard source.format.sampleRate==48000,source.frameLength>0 else { throw CocoaError(.fileReadCorruptFile) }
-            let stereo=AVAudioPCMBuffer(pcmFormat:format,frameCapacity:source.frameLength)!
+            let destination=loopNames.contains(name) ? loopFormat:format
+            let stereo=AVAudioPCMBuffer(pcmFormat:destination,frameCapacity:source.frameLength)!
             stereo.frameLength=source.frameLength
-            for channel in 0..<2 { stereo.floatChannelData![channel].update(from:source.floatChannelData![min(channel,Int(source.format.channelCount)-1)],count:Int(source.frameLength)) }
+            for channel in 0..<Int(destination.channelCount) { stereo.floatChannelData![channel].update(from:source.floatChannelData![min(channel,Int(source.format.channelCount)-1)],count:Int(source.frameLength)) }
             buffers[name]=stereo
         }
         engine.attach(limiter)
@@ -107,8 +120,13 @@ final class RaceAudio {
         engine.connect(bus,to:limiter,format:format);engine.connect(limiter,to:engine.mainMixerNode,format:format)
         for voice in voices {
             engine.attach(voice.player);engine.attach(voice.pitch);engine.attach(voice.eq)
-            engine.connect(voice.player,to:voice.pitch,format:format)
-            engine.connect(voice.pitch,to:voice.eq,format:format);engine.connect(voice.eq,to:bus,format:format)
+            engine.connect(voice.player,to:voice.pitch,format:loopFormat)
+            engine.connect(voice.pitch,to:voice.eq,format:loopFormat)
+            if monoLoopsEnabled {
+                let spatial=AVAudioMixerNode();voice.spatial=spatial;engine.attach(spatial)
+                engine.connect(voice.eq,to:spatial,format:loopFormat)
+                engine.connect(spatial,to:bus,format:format)
+            } else { engine.connect(voice.eq,to:bus,format:format) }
             voice.eq.bands[0].filterType = .lowPass;voice.eq.bands[0].bypass=false;voice.eq.bands[0].frequency=18000
             voice.player.volume=0
         }
@@ -123,7 +141,7 @@ final class RaceAudio {
         impactReady=Array(repeating:0,count:4)
     }
     func stop() {
-        for voice in voices { voice.player.volume=0;voice.player.stop();voice.mix=Mix() }
+        for voice in voices { voice.player.volume=0;voice.player.stop();voice.mix=Mix();voice.appliedMix=nil }
         for shot in shots { shot.player.stop();shot.remaining=0;shot.robot = -1 }
         engine.pause();playing=false;lastMix=Array(repeating:Mix(),count:Self.loopCount)
     }
@@ -264,7 +282,16 @@ final class RaceAudio {
             v.mix.pan += (target[i].pan-v.mix.pan)*blend
             v.mix.rate += (target[i].rate-v.mix.rate)*blend
             v.mix.cutoff += (target[i].cutoff-v.mix.cutoff)*blend
-            v.player.volume=v.mix.gain;v.player.pan=v.mix.pan;v.pitch.rate=v.mix.rate;v.eq.bands[0].frequency=v.mix.cutoff
+            let applied=v.appliedMix
+            if !skipUnchangedParameters || applied?.gain != v.mix.gain { v.player.volume=v.mix.gain }
+            // Preserve DSP order and every changed value; only duplicate setter
+            // calls are omitted by this opt-in equivalence/performance control.
+            if !skipUnchangedParameters || applied?.pan != v.mix.pan {
+                if let spatial=v.spatial { spatial.pan=v.mix.pan } else { v.player.pan=v.mix.pan }
+            }
+            if !skipUnchangedParameters || applied?.rate != v.mix.rate { v.pitch.rate=v.mix.rate }
+            if !skipUnchangedParameters || applied?.cutoff != v.mix.cutoff { v.eq.bands[0].frequency=v.mix.cutoff }
+            v.appliedMix=v.mix
             lastMix[i]=v.mix
         }
         for shot in shots where shot.remaining>0 {

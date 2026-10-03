@@ -201,6 +201,27 @@ extension AppController {
         let freshRenderer=ProcessInfo.processInfo.environment["MARVIN_GPU_FRESH_RENDERER"]=="1"
         let trackBatch=requested.contains("track-batch") ? try TrackBatchProbe(root:robot.root,tracks:robot.tracks):nil
         defer { try? trackBatch?.setMode(.original) }
+        var groundPack:GroundTexturePackProbe?
+        if let folder=ProcessInfo.processInfo.environment["MARVIN_GROUND_PACK_DIRECTORY"] {
+            var targets:[SCNNode]=[]
+            scene.rootNode.enumerateChildNodes { node,_ in
+                if node.name=="Trampled sand in town, blended out before the circuit and dunes" { targets.append(node) }
+            }
+            guard targets.count==1,let materials=targets[0].geometry?.materials,materials.count==1 else {
+                throw GroundTexturePackProbe.Failure("Expected exactly one trampled-ground material")
+            }
+            let material=materials[0]
+            let observed:[String:Any]=[
+                "diffuseTextureComponents":material.diffuse.textureComponents.rawValue,
+                "roughnessTextureComponents":material.roughness.textureComponents.rawValue,
+                "surfaceModifierSHA256":SHA256.hash(data:Data((material.shaderModifiers?[.surface] ?? "").utf8)).map { String(format:"%02x",$0) }.joined()]
+            try JSONSerialization.data(withJSONObject:observed,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("ground-pack-runtime.json"))
+            groundPack=try GroundTexturePackProbe(material:material,device:device,queue:queue,manifestDirectory:URL(fileURLWithPath:folder))
+        }
+        guard !requested.contains("ground-pack-") || groundPack != nil else {
+            throw GroundTexturePackProbe.Failure("Ground packing variants require MARVIN_GROUND_PACK_DIRECTORY")
+        }
+        defer { groundPack?.restore() }
         let variants=requested.split(separator:",").map(String.init).flatMap { ["production",$0,$0,"production"] }
         let shaderMaterials=noiseMaterials.merging(tintMaterials) { original,_ in original }
             .merging(crowdMaterials) { original,_ in original }
@@ -208,6 +229,7 @@ extension AppController {
         // ABBA at the same retained pose/history brackets each isolation with
         // production blocks. Keep all samples, including drift and outliers.
         for (block,variant) in variants.enumerated() {
+            groundPack?.restore()
             if freshRenderer {
                 renderer=SCNRenderer(device:device,options:nil)
                 renderer.scene=scene;renderer.pointOfView=world.camera;renderer.usesReverseZ=reverseZ
@@ -248,6 +270,15 @@ extension AppController {
                 if variant=="no-vertex-pow" { value=value.mapValues { $0.replacingOccurrences(of:"pow(max(_geometry.color.rgb,float3(0.0)),float3(2.2))",with:"max(_geometry.color.rgb,float3(0.0))").replacingOccurrences(of:"pow(max(_geometry.color.rgb,float3(0)),float3(2.2))",with:"max(_geometry.color.rgb,float3(0))") } }
                 if variant=="no-crowd-motion",let shader=value[.geometry],let start=shader.range(of:"float2 originXZ = _geometry.texcoords[1]") { value[.geometry]=String(shader[..<start.lowerBound]) }
                 material.shaderModifiers=value
+            }
+            if let groundPack {
+                switch variant {
+                case "ground-pack-diffuse-control":groundPack.setMode(.diffuseControl)
+                case "ground-pack-dual-control":groundPack.setMode(.dualTextureControl)
+                case "ground-pack-alpha-control":groundPack.setMode(.packedAlphaControl)
+                case "ground-pack-aliased":groundPack.setMode(.packedAliased)
+                default:break
+                }
             }
             for (node,hidden) in crowdNodes { node.isHidden=hidden || variant=="no-crowd" }
             // Isolation only: estimate the ceiling before changing dust shaders.
@@ -315,7 +346,7 @@ extension AppController {
             }
             rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount,"boundAOMaterialCount":boundAOMaterialCount,"boundAOGeometryCount":aoBinding?.geometryCount ?? 0,"captureRequested":captureBlocks.contains(block)])
         }
-        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","captureBlocks":captureBlocks.sorted(),"timingEligible":captureBlocks.isEmpty,"trackBatch":trackBatch?.statistics ?? [:],"reorderedCADNodes":reorderedCAD.count,"cadVerification":cadVerification,"productionShadowBatch":productionShadowBatch,"freshRendererPerBlock":freshRenderer,"restoreAOFirst":ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1","variants":rows,"shadowBatch":shadowBatch.statistics]
+        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","captureBlocks":captureBlocks.sorted(),"timingEligible":captureBlocks.isEmpty,"trackBatch":trackBatch?.statistics ?? [:],"groundPack":groundPack?.statistics ?? [:],"reorderedCADNodes":reorderedCAD.count,"cadVerification":cadVerification,"productionShadowBatch":productionShadowBatch,"freshRendererPerBlock":freshRenderer,"restoreAOFirst":ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1","variants":rows,"shadowBatch":shadowBatch.statistics]
         try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("loaded-gpu-probe.json"))
         if CommandLine.arguments.contains("--benchmark-ao-preparation") {
             let probe=try AOPreparationProbe(device:device,source:scene,camera:world.camera,reverseZ:reverseZ)

@@ -514,6 +514,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         mainMenu.portrait.rendersContinuously = false
         view.antialiasingMode = .multisampling2X
         view.scene = dirtWorld.scene; dirtWorld.scene.rootNode.addChildNode(world.camera)
+        if dirtWorld.debrisMetalBuffersEnabled || CommandLine.arguments.contains("--benchmark-debris-buffer-comparison") { dirtWorld.prepareDebrisBuffers(device:view.device) }
         dirtWorld.scene.rootNode.addChildNode(robot.root)
         dirtWorld.scene.rootNode.addChildNode(r2d2.root)
         dirtWorld.scene.rootNode.addChildNode(bb8.root); dirtWorld.scene.rootNode.addChildNode(wallE.root)

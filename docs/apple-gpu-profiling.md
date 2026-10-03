@@ -557,3 +557,45 @@ images and source snapshots are in `gtao-expanded-hard` under the sustained-fix
 artifact directory; checked summaries are in `performance-validation/2026-10-03`.
 No AO replacement, quality reduction or sustained-performance acceptance follows
 from these experiments. The ten-minute clear/storm target remains open.
+
+## Strict ten-minute presentation evidence
+
+Build first, stop GPU replays and other simulator workloads, then run:
+
+```sh
+python3 scripts/rendering/run-sustained-performance.py NEW_CLEAR_DIRECTORY --presentation
+python3 scripts/rendering/run-sustained-performance.py NEW_STORM_DIRECTORY --presentation --storm
+```
+
+Run these sequentially. The runner records Game Performance Overview plus Points
+of Interest, with HUD/capture instrumentation and inherited simulator diagnostic
+overrides disabled. Each drive lasts 606 seconds. The measured window remains
+`[3,603)`; subsequent real frames close presentation intervals at its end.
+
+The importer selects the unique SimulatorView layer for the target PID and binds
+the trace to the benchmark UUID using both native marker uptimes. It preserves
+raw nanoseconds, requires actual display starts bracketing the full window and
+checks every presented frame's CPU/GPU lifecycle. Duplicate, missing, ambiguous,
+truncated or unresolved interior events fail verification. Terminal pending work
+outside the window is retained separately. The 100 ns interval-end allowance
+covers the independently calibrated 41–42 ns export quantization, not dropped
+frames. Marker offsets must agree within 0.1 ms.
+
+The finalized run manifest binds the binary, requested and actual weather,
+daylight, duration and benchmark UUID. When evaluating `--scope presentation`,
+the gate reloads that manifest, verifies the three raw export hashes and reimports
+them to check the saved ledger. Editing cached validation booleans or substituting
+a ledger cannot make the gate pass. A verified trace may still demonstrate bad
+frame pacing: `presentationVerified` and `presentationGatePassed` are separate.
+
+Presentation scope requires both callback/driving checks and actual displayed
+frame cadence. It does not establish GPU headroom or the paired clear/storm
+objective. `overallComplete` remains false: current aggregate GPU reports lack
+complete per-frame busy-time coverage, and Overview's GPU in-flight envelope is
+not encoder busy-union time. Each output records the requested scope and its
+explicit `scopePassed` result.
+
+The runner also resolves the unrestricted Points of Interest signpost table
+uniquely. A schema-only `os-signpost` export is ambiguous on this Xcode version:
+the same trace can contain unrelated condition and restricted subsystem tables.
+Recording, export or structural-import failure stops before the performance gate.

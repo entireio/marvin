@@ -6,6 +6,7 @@ import simd
 
 extension AppController {
     func checkRaceAudio(at directory:URL)->Bool {
+        if CommandLine.arguments.contains("--benchmark-audio-mono-comparison") { return checkAudioMonoLayout(at:directory) }
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
             let audio=try RaceAudio(resources:Bundle.main.resourceURL!,offline:true)
