@@ -1,0 +1,151 @@
+{
+  "neutralBindingPassed": false,
+  "gameplayAccepted": false,
+  "scope": "Frozen final color and repeat/restoration controls; no enabled AO or sustained timing acceptance",
+  "comparisons": [
+    {
+      "label": "production repeat/restoration",
+      "blocks": [
+        0,
+        3
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "production repeat/restoration",
+      "blocks": [
+        0,
+        4
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "production repeat/restoration",
+      "blocks": [
+        0,
+        7
+      ],
+      "changedPixels": 23999,
+      "maximumChannelError": 34
+    },
+    {
+      "label": "production repeat/restoration",
+      "blocks": [
+        0,
+        8
+      ],
+      "changedPixels": 23999,
+      "maximumChannelError": 34
+    },
+    {
+      "label": "production repeat/restoration",
+      "blocks": [
+        0,
+        11
+      ],
+      "changedPixels": 23999,
+      "maximumChannelError": 34
+    },
+    {
+      "label": "production repeat/restoration",
+      "blocks": [
+        0,
+        12
+      ],
+      "changedPixels": 23999,
+      "maximumChannelError": 34
+    },
+    {
+      "label": "production repeat/restoration",
+      "blocks": [
+        0,
+        15
+      ],
+      "changedPixels": 23999,
+      "maximumChannelError": 34
+    },
+    {
+      "label": "no-ssao repeat/restoration",
+      "blocks": [
+        1,
+        2
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "no-ssao repeat/restoration",
+      "blocks": [
+        1,
+        13
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "no-ssao repeat/restoration",
+      "blocks": [
+        1,
+        14
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "literal-neutral-ao repeat/restoration",
+      "blocks": [
+        5,
+        6
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "neutral-custom-ao repeat/restoration",
+      "blocks": [
+        9,
+        10
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "literal-neutral-ao versus AO disabled",
+      "blocks": [
+        1,
+        5
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "literal-neutral-ao versus AO disabled",
+      "blocks": [
+        1,
+        6
+      ],
+      "changedPixels": 0,
+      "maximumChannelError": 0
+    },
+    {
+      "label": "neutral-custom-ao versus AO disabled",
+      "blocks": [
+        1,
+        9
+      ],
+      "changedPixels": 2,
+      "maximumChannelError": 1
+    },
+    {
+      "label": "neutral-custom-ao versus AO disabled",
+      "blocks": [
+        1,
+        10
+      ],
+      "changedPixels": 2,
+      "maximumChannelError": 1
+    }
+  ]
+}

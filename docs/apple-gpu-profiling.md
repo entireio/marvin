@@ -444,3 +444,42 @@ while preserving the coating's geometry-owned uniforms.
 The existing 27 sustained-gate, five Metal-report and seven overview-parser tests
 also pass. Their coverage and the input-fixture acceptance do not turn the failed
 neutral/restoration checks into a pass. No production AO replacement is enabled.
+
+
+### Native AO restoration captures and bounded controls
+
+`MARVIN_GPU_CAPTURE_BLOCKS=0,3` with `MTL_CAPTURE_ENABLED=1` captures selected
+owned-command-buffer diagnostic blocks to `.gputrace`. Captured runs explicitly
+report `timingEligible:false`; they are inspection evidence, not timing samples.
+`MARVIN_GPU_FRESH_RENDERER=1` creates a new renderer per block, and
+`MARVIN_GPU_RESTORE_AO_FIRST=1` restores camera intensity before restoring shader
+modifiers. These switches affect only the frozen diagnostic.
+
+The original/restored clear captures in `ao-restore-capture` were replayed in
+Xcode 27.0 without profiling. Render encoder 4, draw 9918 (`scn_ssao_compute`),
+binds the full-resolution RGBA16Float depth/normal input (texture 39 before,
+44 after) and writes the 960×540 RGBA16Float output (42 before, 37 after).
+Exported KTX mip-zero files are byte-identical for both pairs, including signed
+half-float values. `scripts/rendering/compare-ao-exports.py` checks format,
+dimensions, payload length, finite values, hashes and per-channel differences.
+The checked report is `performance-validation/2026-10-03/ao-raw-export-comparison.json`.
+This rules out differences in those two buffers. It does not independently test
+subsequent filtering, main-pass texture bindings or shader specialization.
+
+The final color still differs by 23,597 pixels, maximum 41/255. Creating fresh
+renderers did not fix restoration (22,589 pixels, maximum 40/255). Restoring AO
+intensity first also failed (23,999 pixels, maximum 34/255); its restored final
+image was inspected. In both latter runs the literal-neutral candidate and all
+AO-disabled repeats were exact; the texture-neutral candidate differed by two
+pixels at 1/255. Their failed check reports are retained alongside the raw-buffer
+report. No tolerance has been relaxed and no optimization is accepted here.
+
+The Astra Ultra judge reviewed the code and evidence and found no concrete
+missing Swift restoration operation. Shader specialization or binding remains
+an inference, not an established cause. Stop expanding restoration controls:
+use independent-process baseline/candidate comparisons for replacement work,
+with baseline never installing the candidate, candidate configured once, matched
+deterministic state/history, and A/B/B/A process order. Matching state must be
+verified, not inferred from the same elapsed wall time. Existing contaminated
+post-toggle production images cannot be reference frames. This does not waive
+reset/lifecycle testing or full-quality ten-minute clear/storm acceptance.

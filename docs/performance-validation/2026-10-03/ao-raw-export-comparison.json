@@ -1,0 +1,48 @@
+{
+  "scope": "AO mip-zero input and output only; not main shading, gameplay, or timing acceptance",
+  "exports": {
+    "input": {
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "beforeSHA256": "9cea189ca8dccd38197ea225f6848f96ad70b559242b3c7ea9329bd28e4c6772",
+      "afterSHA256": "9cea189ca8dccd38197ea225f6848f96ad70b559242b3c7ea9329bd28e4c6772",
+      "changedPixels": 0,
+      "changedPixelsPerChannel": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumDifferencePerChannel": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "output": {
+      "dimensions": [
+        960,
+        540
+      ],
+      "beforeSHA256": "00d0311a7bc433b2162270be6adf4000ca88a9ec0c686842a65ee9d0fd7d4424",
+      "afterSHA256": "00d0311a7bc433b2162270be6adf4000ca88a9ec0c686842a65ee9d0fd7d4424",
+      "changedPixels": 0,
+      "changedPixelsPerChannel": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "maximumDifferencePerChannel": [
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "aoBuffersEqual": true
+}

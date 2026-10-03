@@ -21,7 +21,7 @@ extension AppController {
         let reverseZ=view.usesReverseZ
         let scene=dirtWorld.scene
         view.rendersContinuously=false;view.isPlaying=false;view.scene=nil
-        let renderer=SCNRenderer(device:device,options:nil)
+        var renderer=SCNRenderer(device:device,options:nil)
         renderer.scene=scene;renderer.pointOfView=world.camera;renderer.usesReverseZ=reverseZ
         let color=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:colorFormat,width:1920,height:1080,mipmapped:false)
         color.usage=[.renderTarget,.shaderRead];color.storageMode = .private
@@ -133,6 +133,8 @@ extension AppController {
         neutralDescriptor.usage = .shaderRead
         let neutralAO=device.makeTexture(descriptor:neutralDescriptor)!
         [Float(1)].withUnsafeBytes { neutralAO.replace(region:MTLRegionMake2D(0,0,1,1),mipmapLevel:0,withBytes:$0.baseAddress!,bytesPerRow:4) }
+        let captureBlocks=Set((ProcessInfo.processInfo.environment["MARVIN_GPU_CAPTURE_BLOCKS"] ?? "").split(separator:",").compactMap { Int($0) })
+        let freshRenderer=ProcessInfo.processInfo.environment["MARVIN_GPU_FRESH_RENDERER"]=="1"
         let variants=requested.split(separator:",").map(String.init).flatMap { ["production",$0,$0,"production"] }
         let shaderMaterials=noiseMaterials.merging(tintMaterials) { original,_ in original }
             .merging(crowdMaterials) { original,_ in original }
@@ -140,6 +142,10 @@ extension AppController {
         // ABBA at the same retained pose/history brackets each isolation with
         // production blocks. Keep all samples, including drift and outliers.
         for (block,variant) in variants.enumerated() {
+            if freshRenderer {
+                renderer=SCNRenderer(device:device,options:nil)
+                renderer.scene=scene;renderer.pointOfView=world.camera;renderer.usesReverseZ=reverseZ
+            }
             var opacityMaterialCount=0
             shadowBatch.setEnabled(false)
             for (node,production,candidate) in tangentNodes { node.geometry=variant=="tangent-reuse" ? candidate:production }
@@ -192,12 +198,30 @@ extension AppController {
             shadowBatch.setEnabled(variant=="shadow-batch" || variant=="shadow-batch-culling")
             let aoBinding=(variant=="neutral-custom-ao" || variant=="literal-neutral-ao") ? try AOMaterialBinding(scene:scene,texture:neutralAO,literalNeutral:variant=="literal-neutral-ao"):nil
             let boundAOMaterialCount=aoBinding?.materialCount ?? 0
-            defer { aoBinding?.restore() }
+            defer {
+                if ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1" {
+                    world.camera.camera!.screenSpaceAmbientOcclusionIntensity=ao
+                    renderer.update(atTime:0)
+                }
+                aoBinding?.restore()
+            }
             renderer.update(atTime:0)
             _=renderer.prepare(scene,shouldAbortBlock:nil)
             var samples:[[Double]]=[]
             for frame in 0..<90 {
                 try autoreleasepool {
+                    let capture=MTLCaptureManager.shared()
+                    let capturing=captureBlocks.contains(block) && frame==45
+                    if capturing {
+                        guard capture.supportsDestination(.gpuTraceDocument) else {
+                            throw NSError(domain:"LoadedGPUProbe",code:2,userInfo:[NSLocalizedDescriptionKey:"Set MTL_CAPTURE_ENABLED=1 to capture selected diagnostic blocks"])
+                        }
+                        let descriptor=MTLCaptureDescriptor()
+                        descriptor.captureObject=queue;descriptor.destination = .gpuTraceDocument
+                        descriptor.outputURL=directory.appendingPathComponent("gpu-probe-block-\(block).gputrace")
+                        try capture.startCapture(with:descriptor)
+                    }
+                    defer { if capturing { capture.stopCapture() } }
                     let command=queue.makeCommandBuffer()!
                     command.label="Loaded town GPU diagnostic: \(variant)"
                     let begin=ProcessInfo.processInfo.systemUptime
@@ -216,9 +240,9 @@ extension AppController {
                 try png.write(to:directory.appendingPathComponent("gpu-probe-block-\(block).png"))
                 if block==0 { try png.write(to:directory.appendingPathComponent("gpu-probe-resolved.png")) }
             }
-            rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount,"boundAOMaterialCount":boundAOMaterialCount,"boundAOGeometryCount":aoBinding?.geometryCount ?? 0])
+            rows.append(["block":block,"variant":variant,"samples":samples,"columns":["gpuCommandBufferMS","cpuEncodingMS"],"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"opacityMaterialCount":opacityMaterialCount,"boundAOMaterialCount":boundAOMaterialCount,"boundAOGeometryCount":aoBinding?.geometryCount ?? 0,"captureRequested":captureBlocks.contains(block)])
         }
-        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","variants":rows,"shadowBatch":shadowBatch.statistics]
+        let report:[String:Any]=["gpuDevice":device.name,"resolution":[1920,1080],"msaaSamples":2,"colorPixelFormat":colorFormat.rawValue,"depthPixelFormat":depthFormat.rawValue,"stencilPixelFormat":stencilFormat.rawValue,"reverseZ":reverseZ,"method":"Frozen loaded scene, SCNRenderer owned command buffer, fully encoded before commit, 30 warmup + 60 measured frames per variant. Diagnostic GPU envelope; not display presentation or sustained acceptance.","captureBlocks":captureBlocks.sorted(),"timingEligible":captureBlocks.isEmpty,"freshRendererPerBlock":freshRenderer,"restoreAOFirst":ProcessInfo.processInfo.environment["MARVIN_GPU_RESTORE_AO_FIRST"]=="1","variants":rows,"shadowBatch":shadowBatch.statistics]
         try JSONSerialization.data(withJSONObject:report,options:[.sortedKeys,.prettyPrinted]).write(to:directory.appendingPathComponent("loaded-gpu-probe.json"))
         if CommandLine.arguments.contains("--benchmark-ao-preparation") {
             let probe=try AOPreparationProbe(device:device,source:scene,camera:world.camera,reverseZ:reverseZ)
