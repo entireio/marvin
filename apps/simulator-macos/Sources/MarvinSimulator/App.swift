@@ -1027,34 +1027,46 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     }
                 }
                 raceHUD.frame = hudFrame
-                var fencePosts = 0, fenceRails = 0
-                var fencePassed = true
+                // Both brick boundaries must exist, start below the ground and
+                // reach their target height wherever bricks are laid; only the
+                // gate and service openings may leave short uncovered stretches.
+                var trackWalls = 0
+                var wallPassed = true
+                var wallReport: [String: Any] = [:]
                 dirtWorld.scene.rootNode.enumerateChildNodes { node, _ in
-                    if node.name == "Dirt fence post", let box = node.geometry as? SCNBox {
-                        fencePosts += 1
-                        let ground = DirtCourse.height(x:Double(node.position.x),z:Double(node.position.z))
-                        let bottom = Double(node.position.y)-Double(box.height)/2
-                        let top = Double(node.position.y)+Double(box.height)/2
-                        fencePassed = fencePassed && abs(bottom-(ground-DirtCourse.postEmbed)) < 1e-5
-                            && abs(top-(ground+DirtCourse.postHeight)) < 1e-5
-                    }
-                    if node.name == "Dirt fence rail", let source = node.geometry?.sources(for:.vertex).first {
-                        fenceRails += 1
-                        for i in 0..<source.vectorCount {
-                            let values: [Double] = (0..<3).map { component in
-                                source.data.withUnsafeBytes { bytes in
-                                    let offset = source.dataOffset+i*source.dataStride+component*source.bytesPerComponent
-                                    return source.bytesPerComponent == 4 ? Double(bytes.loadUnaligned(fromByteOffset:offset,as:Float.self))
-                                        : bytes.loadUnaligned(fromByteOffset:offset,as:Double.self)
-                                }
+                    guard let name = node.name, name.hasSuffix("irregular brick track wall"),
+                          let source = node.geometry?.sources(for:.vertex).first else { return }
+                    trackWalls += 1
+                    var cells: [SIMD2<Int>: [SIMD3<Double>]] = [:]
+                    for i in 0..<source.vectorCount {
+                        let values: [Double] = (0..<3).map { component in
+                            source.data.withUnsafeBytes { bytes in
+                                let offset = source.dataOffset+i*source.dataStride+component*source.bytesPerComponent
+                                return source.bytesPerComponent == 4 ? Double(bytes.loadUnaligned(fromByteOffset:offset,as:Float.self))
+                                    : bytes.loadUnaligned(fromByteOffset:offset,as:Double.self)
                             }
-                            let ground = DirtCourse.height(x:values[0],z:values[2])
-                            let clearance = DirtCourse.railClearance+(i%2 == 0 ? -0.0225 : 0.0225)
-                            fencePassed = fencePassed && abs(values[1]-ground-clearance) < 0.002
                         }
+                        cells[SIMD2(Int(floor(values[0]/0.5)),Int(floor(values[2]/0.5))),default:[]].append(SIMD3(values[0],values[1],values[2]))
                     }
+                    let side = name.hasPrefix("Inner") ? -1.0 : 1.0
+                    let samples = DirtCourse.surfacePoints(offset:side*(DirtCourse.fenceOffset+DirtCourse.boundaryWallThickness/2))
+                    var covered = 0, floating = 0, short = 0, worstShortfall = 0.0, worstFloat = 0.0
+                    for p in samples {
+                        let cell = SIMD2(Int(floor(p.x/0.5)),Int(floor(p.y/0.5)))
+                        let nearby = (-1...1).flatMap { dx in (-1...1).flatMap { dz in cells[cell &+ SIMD2(dx,dz)] ?? [] } }
+                            .filter { simd_length(SIMD2($0.x,$0.z)-p) < 0.3 }
+                        guard let top = nearby.map(\.y).max(), let bottom = nearby.map(\.y).min() else { continue }
+                        covered += 1
+                        let ground = DirtCourse.height(x:p.x,z:p.y)
+                        let target = side > 0 ? CityExit.wallTop(p) : ground+DirtCourse.postHeight
+                        if bottom > ground { floating += 1; worstFloat = max(worstFloat,bottom-ground) }
+                        if top < target-0.03 { short += 1; worstShortfall = max(worstShortfall,target-top) }
+                    }
+                    wallPassed = wallPassed && floating == 0 && short == 0 && covered*10 >= samples.count*9
+                    wallReport[name] = ["samples":samples.count,"covered":covered,"floating":floating,"worstFloat":worstFloat,
+                                        "short":short,"worstShortfall":worstShortfall]
                 }
-                fencePassed = fencePassed && fencePosts > 300 && fenceRails == 2
+                wallPassed = wallPassed && trackWalls == 2
                 let raceContactCount = racePhysics.contactCount
                 let trailCounts = dirtWorld.trailCounts, racerEmissions = dirtWorld.racerEmittedCount
                 dirtWorld.update(simulation,opponent:opponent.simulation,dt:0,modelScale:robot.modelScale,additional:[bb8Opponent.simulation,wallEOpponent.simulation])
@@ -1066,7 +1078,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let dirtEffectsPassed = airborneTrailsPassed && effectsPaused && trailCounts.allSatisfy { $0 > 40 }
                     && racerEmissions.allSatisfy { $0 > 20 } && trailCounts == dirtWorld.trailCounts
                     && racerEmissions == dirtWorld.racerEmittedCount
-                let dirtPassed = dirtEffectsPassed && fencePassed && opponentPassed && dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
+                let dirtPassed = dirtEffectsPassed && wallPassed && opponentPassed && dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
                     && DirtCourse.projection(x:simulation.x,z:simulation.z).distance < DirtCourse.fenceOffset
                 for (mode,name) in [(2,"dirt-overview.png"),(0,"dirt-driving.png")] {
                     cameraMode = mode; updateCamera(snap:true)
@@ -1129,7 +1141,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let passed = sandboxContactPassed && fullRaceTrailsPassed && raceFinishPassed && robotContactsPassed && actingPassed && newModelsPassed && coatingPassed && boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
                     && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
-                let report: [String: Any] = ["passed": passed, "sandboxContactPassed":sandboxContactPassed, "fullRaceTrailsPassed":fullRaceTrailsPassed, "raceFinishPassed":raceFinishPassed, "robotContactsPassed":robotContactsPassed, "raceContactCount":raceContactCount, "actingPassed":actingPassed, "bb8MotionPassed":bb8MotionPassed, "wallEMotionPassed":wallEMotionPassed, "newModelsPassed":newModelsPassed, "coatingPassed": coatingPassed, "bodyDirtAmounts": dirtAmounts, "dirtEffectsPassed": dirtEffectsPassed, "racerTrailMarks": trailCounts, "racerDirtParticles": racerEmissions, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "fencePassed": fencePassed, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
+                let report: [String: Any] = ["passed": passed, "sandboxContactPassed":sandboxContactPassed, "fullRaceTrailsPassed":fullRaceTrailsPassed, "raceFinishPassed":raceFinishPassed, "robotContactsPassed":robotContactsPassed, "raceContactCount":raceContactCount, "actingPassed":actingPassed, "bb8MotionPassed":bb8MotionPassed, "wallEMotionPassed":wallEMotionPassed, "newModelsPassed":newModelsPassed, "coatingPassed": coatingPassed, "bodyDirtAmounts": dirtAmounts, "dirtEffectsPassed": dirtEffectsPassed, "racerTrailMarks": trailCounts, "racerDirtParticles": racerEmissions, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "wallPassed": wallPassed, "trackWalls": wallReport, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,

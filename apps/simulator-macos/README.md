@@ -58,7 +58,7 @@ entering Sandbox starts a fresh course.
 ## Dirt Track
 
 Wheels, tracks, and BB-8's shell keep spinning under drive during jumps and
-against fences or sandbox obstacles. Barriers stop the chassis, not its running
+against track walls or sandbox obstacles. Barriers stop the chassis, not its running
 gear. Braking stops drivetrain spin; pausing freezes it and restarting resets it.
 
 **Steering assist** and **Braking assist** are on by default and can be switched
@@ -91,10 +91,12 @@ jumps, a raised hill/step-up, and whoops. The route uses a closed spline and a
 single continuous height surface. The compacted lane is now 50% wider (3.9 scene units) with the same centerline
 and 136.256-unit plan-view lap length. Taller tabletop/rhythm jumps, larger
 rollers and whoops, a 1.3-unit hill, and three additional broad climbs add
-vertical variation. Course shoulders descend into the terrain outside the fence.
-The red/white rail follows the ground with 0.31-unit center clearance; every
-post extends 0.08 units below the ground and 0.40 above it. Inside offset loops
-are trimmed at tight bends so the wider surface and fence do not cross themselves.
+vertical variation. Course shoulders descend into the terrain outside the walls.
+Both track boundaries are level-coursed brick walls rising from a common
+foundation below the ground to at least 0.40 units above it, measured at each
+brick's ends and midpoint; the outer wall steps up to meet the city gate. Inside
+offset loops are trimmed at tight bends so the wider surface and walls do not
+cross themselves.
 
 Select **Dirt Track**, watch the bird’s-eye fly-in, then wait for the three-second countdown, and complete **three
 laps** in the marked direction. The HUD shows current-lap time, best lap, total,
@@ -106,7 +108,7 @@ Race times freeze individually at the finish. Pause freezes both the procession
 and camera flight, and restart restores player control.
 The timer uses monotonic elapsed time, excluding countdown, pauses, and time while the app is inactive; slow frames do not improve scores. Lap
 crossings interpolate within a frame; signed course progress prevents reverse
-finish crossings from awarding laps. Loose shoulders reduce grip; the fence and other robots block Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
+finish crossings from awarding laps. Loose shoulders reduce grip; the track walls and other robots block Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
 Command-R starts a fresh race. The Main Menu toolbar button returns to the menu.
 
 Race against autonomous **R2-D2, BB-8 and WALL-E**. All four racers are randomly
@@ -337,7 +339,10 @@ from the repository root (requires `rsvg-convert` and macOS `iconutil`).
 
 Dirt checks cover a complete three-lap driven race with jumps, boundaries, reverse
 finish crossings, split timing, score sorting and disk round trips. Native smoke
-checks mode switching, rendering, debris emission, score recording, and reset;
+checks mode switching, rendering, debris emission, score recording, and reset.
+`trackWalls` in `smoke.json` reports, per brick wall, how many boundary samples
+are covered, floating above the ground, or short of the target height; gate and
+service openings may leave at most 10% uncovered;
 `dirt-overview.png` and `dirt-driving.png` capture the new scene.
 
 Opponent checks run complete three-lap AI races at 30, 60 and 120 fps, checking

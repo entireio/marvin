@@ -24,9 +24,7 @@ public enum DirtCourse {
     public static func serviceAccess(x:Double,z:Double,clearance:Double=0) -> Bool {
         abs(x-serviceEntryX) < max(0,serviceEntryHalfWidth-clearance) && z > -15.4 && z < -5.3
     }
-    public static let railClearance = 0.31
     public static let postHeight = 0.40
-    public static let postEmbed = 0.08
     private static let controls: [SIMD2<Double>] = [
         .init(0,-10),.init(8,-10),.init(12,-6),.init(10,0),
         .init(5,0),.init(4,-4),.init(-1,-4),.init(-2,3),

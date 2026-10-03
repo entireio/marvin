@@ -222,7 +222,7 @@ final class DirtWorld {
                 let seed=i*73+row*193+(side>0 ? 31:0)
                 // Global horizontal bed joints: hills add courses from the same
                 // foundation instead of tilting the individual bricks uphill.
-                let target=side>0 ? max(CityExit.wallTop(a),CityExit.wallTop(b)):max(wallGround(a),wallGround(b))+DirtCourse.postHeight
+                let target=side>0 ? max(CityExit.wallTop(a),CityExit.wallTop(b)):max(wallGround(a),wallGround(center),wallGround(b))+DirtCourse.postHeight
                 let localRows=max(3,Int(ceil((target-foundation)/courseHeight)))
                 guard row<localRows else { continue }
                 let base=foundation+Double(row)*courseHeight
