@@ -16,6 +16,8 @@ final class DirtTrail {
     private var indices: [Int32] = []
     private var chunkIndex = 0
     private var dirty = false
+    private var shaderStormTime: Float = 0
+    private var shaderStormActive: Float = 0
     private(set) var geometryUploads = 0
     private var previous: (x: Double, z: Double, heading: Double)?
     private var remainder = 0.0
@@ -79,8 +81,15 @@ final class DirtTrail {
         previous = nil; remainder = 0; count = 0; dirty = false; geometryUploads = 0
     }
     func update(_ state: Simulation, contacts: [(x: Double, z: Double, width: Double)]) {
-        ink.setValue(Float(state.storm.elapsed),forKey:"stormTime")
-        ink.setValue(Float(state.storm.enabled ? 1:0),forKey:"stormActive")
+        // Shared by every retained chunk. Rewriting unchanged values can
+        // invalidate SceneKit's per-draw material resources across the history.
+        let stormTime=Float(state.storm.elapsed),stormActive=Float(state.storm.enabled ? 1:0)
+        if stormTime != shaderStormTime {
+            ink.setValue(stormTime,forKey:"stormTime");shaderStormTime=stormTime
+        }
+        if stormActive != shaderStormActive {
+            ink.setValue(stormActive,forKey:"stormActive");shaderStormActive=stormActive
+        }
         guard state.hasDirtContact else { previous = nil; remainder = 0; return }
         defer { previous = (state.x, state.z, state.heading) }
         guard let previous else { return }

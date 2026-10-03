@@ -48,13 +48,76 @@ extension AppController {
             if let light=node.light,light.castsShadow { shadowLights.append(light) }
             if node.geometry != nil && node.castsShadow { shadowNodes.append(node) }
         }
+        var noiseMaterials:[ObjectIdentifier:(SCNMaterial,[SCNShaderModifierEntryPoint:String])]=[:]
+        scene.rootNode.enumerateChildNodes { node,_ in
+            for material in node.geometry?.materials ?? [] {
+                if let modifiers=material.shaderModifiers,modifiers.values.contains(where:{$0.contains(TownGround.pigmentFunctions)}) { noiseMaterials[ObjectIdentifier(material)]=(material,modifiers) }
+            }
+        }
+        var tintMaterials:[ObjectIdentifier:(SCNMaterial,[SCNShaderModifierEntryPoint:String])]=[:]
+        scene.rootNode.enumerateChildNodes { node,_ in
+            for geometry in [node.geometry]+(node.geometry?.levelsOfDetail ?? []).map({$0.geometry}) {
+                for material in geometry?.materials ?? [] {
+                    if let modifiers=material.shaderModifiers,modifiers.values.contains(where:{$0.contains("pow(max(_geometry.color.rgb")}) { tintMaterials[ObjectIdentifier(material)]=(material,modifiers) }
+                }
+            }
+        }
+        var crowdMaterials:[ObjectIdentifier:(SCNMaterial,[SCNShaderModifierEntryPoint:String])]=[:]
+        var crowdNodes:[(SCNNode,Bool)]=[]
+        scene.rootNode.enumerateChildNodes { node,_ in
+            var animated=false
+            for geometry in [node.geometry]+(node.geometry?.levelsOfDetail ?? []).map({$0.geometry}) {
+                for material in geometry?.materials ?? [] {
+                    if let modifiers=material.shaderModifiers,modifiers[.geometry]?.contains("float2 originXZ = _geometry.texcoords[1]")==true {
+                        crowdMaterials[ObjectIdentifier(material)]=(material,modifiers);animated=true
+                    }
+                }
+            }
+            if animated { crowdNodes.append((node,node.isHidden)) }
+        }
+        var textureProperties:[ObjectIdentifier:(SCNMaterialProperty,Any?)]=[:]
+        scene.rootNode.enumerateChildNodes { node,_ in
+            for geometry in [node.geometry]+(node.geometry?.levelsOfDetail ?? []).map({$0.geometry}) {
+                for material in geometry?.materials ?? [] {
+                    for property in [material.normal,material.roughness] where property.contents is URL || property.contents is NSImage || property.contents is MTLTexture {
+                        textureProperties[ObjectIdentifier(property)]=(property,property.contents)
+                    }
+                }
+            }
+        }
+        let tinyDescriptor=MTLTextureDescriptor.texture2DDescriptor(pixelFormat:.rgba8Unorm,width:1,height:1,mipmapped:false)
+        tinyDescriptor.usage = .shaderRead
+        let tiny=device.makeTexture(descriptor:tinyDescriptor)!
+        [UInt8(128),128,255,255].withUnsafeBytes { tiny.replace(region:MTLRegionMake2D(0,0,1,1),mipmapLevel:0,withBytes:$0.baseAddress!,bytesPerRow:4) }
+        var orderedNodes:[(SCNNode,Int)]=[]
+        scene.rootNode.enumerateChildNodes { node,_ in
+            if node.name?.hasPrefix("Town cell ")==true || node.name?.hasPrefix("Exploration detail ")==true { orderedNodes.append((node,node.renderingOrder)) }
+        }
         let ao=world.camera.camera!.screenSpaceAmbientOcclusionIntensity
         var rows:[[String:Any]]=[]
         renderer.update(atTime:0)
-        let variants=["no-trails","no-sky","no-ssao","no-shadows","no-shadow-casters","no-town","original-base","shadow-culling"].flatMap { ["production",$0,$0,"production"] }
+        let requested=ProcessInfo.processInfo.environment["MARVIN_GPU_VARIANTS"] ?? "no-trails,no-sky,no-ssao,no-shadows,no-shadow-casters,no-base-shadow,front-to-back,no-town,constant-ground-pigment,original-base,shadow-culling,no-vertex-pow,no-crowd,no-crowd-motion"
+        let variants=requested.split(separator:",").map(String.init).flatMap { ["production",$0,$0,"production"] }
+        let shaderMaterials=noiseMaterials.merging(tintMaterials) { original,_ in original }
+            .merging(crowdMaterials) { original,_ in original }
         // ABBA at the same retained pose/history brackets each isolation with
         // production blocks. Keep all samples, including drift and outliers.
         for (block,variant) in variants.enumerated() {
+            for (property,contents) in textureProperties.values { property.contents=variant=="tiny-surface-textures" ? tiny:contents }
+            // A material can belong to more than one group. Restore it once,
+            // then apply the requested transform without a later group undoing it.
+            for (material,modifiers) in shaderMaterials.values {
+                var value=modifiers
+                if variant=="constant-ground-pigment" { value=value.mapValues { $0.replacingOccurrences(of:TownGround.pigmentFunctions,with:"float townNoise(float2 p) { return 0.5; } float3 townPigment(float2 p) { return float3(0.4); }") } }
+                if variant=="no-vertex-pow" { value=value.mapValues { $0.replacingOccurrences(of:"pow(max(_geometry.color.rgb,float3(0.0)),float3(2.2))",with:"max(_geometry.color.rgb,float3(0.0))").replacingOccurrences(of:"pow(max(_geometry.color.rgb,float3(0)),float3(2.2))",with:"max(_geometry.color.rgb,float3(0))") } }
+                if variant=="no-crowd-motion",let shader=value[.geometry],let start=shader.range(of:"float2 originXZ = _geometry.texcoords[1]") { value[.geometry]=String(shader[..<start.lowerBound]) }
+                material.shaderModifiers=value
+            }
+            for (node,hidden) in crowdNodes { node.isHidden=hidden || variant=="no-crowd" }
+            for (node,order) in orderedNodes {
+                let p=node.position,camera=world.camera.position
+                node.renderingOrder=variant=="front-to-back" && node.name?.hasPrefix("Town cell ")==true ? -9000+Int(hypot(Double(p.x-camera.x),Double(p.z-camera.z))):order
+            }
             for node in shadowNodes { node.castsShadow=true }
             dirtWorld.town.root.isHidden=variant=="no-town"
             dirtWorld.setBenchmarkTrailsHidden(variant=="no-trails")
@@ -66,6 +129,7 @@ extension AppController {
             dirtWorld.town.update(dt:0,camera:world.camera.position,player:SIMD2(simulation.x,simulation.z),shadowCamera:world.camera,viewportAspect:1920.0/1080)
             for light in shadowLights { light.castsShadow=variant != "no-shadows" }
             if variant=="no-shadow-casters" { for node in shadowNodes { node.castsShadow=false } }
+            if variant=="no-base-shadow" { terrain.castsShadow=false }
             renderer.update(atTime:0)
             _=renderer.prepare(scene,shouldAbortBlock:nil)
             var samples:[[Double]]=[]

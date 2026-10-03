@@ -70,6 +70,9 @@ class SustainedGateTests(unittest.TestCase):
     def test_unknown_diagnostic_flag_fails(self):
         report=dict(self.report,benchmarkArguments=['--city-roam','--benchmark-mystery-quality-change'])
         self.assertFalse(self.result(report=report)['passed'])
+    def test_native_gpu_capture_cannot_pass_as_production(self):
+        report=dict(self.report,benchmarkArguments=['--city-roam','--benchmark-gpu-capture'])
+        self.assertFalse(self.result(report=report)['passed'])
     def test_empty_counter_fails(self):
         self.assertFalse(self.result(hud=[])['passed'])
     def test_diagnostic_quality_flag_fails(self):
@@ -81,6 +84,25 @@ class SustainedGateTests(unittest.TestCase):
     def test_late_gpu_budget_failure(self):
         gpu=copy.deepcopy(self.gpu);gpu['minutes'][-1]['p99MS']=15
         self.assertFalse(self.result(gpu=gpu)['passed'])
+    def test_temporary_stop_fails_despite_sufficient_total_distance(self):
+        updates=copy.deepcopy(self.updates)
+        for i,u in enumerate(updates):
+            u[9]=min(i/30,240) if i<10800 else i/30-120
+        result=gate.evaluate(self.report,dict(renderFrames=self.frames,updates=updates),self.hud,self.gpu)
+        self.assertGreater(result['distanceMeters'],1000)
+        self.assertTrue(any('Insufficient driving during seconds 120' in f for f in result['failures']))
+        self.assertFalse(result['passed'])
+    def test_update_slowdown_cannot_hide_behind_smooth_rendering(self):
+        updates=[u for i,u in enumerate(self.updates) if not (12000<=i<12600 and i%20==0)]
+        result=gate.evaluate(self.report,dict(renderFrames=self.frames,updates=updates),self.hud,self.gpu)
+        self.assertEqual(result['gapsOver25MS'],0)
+        self.assertTrue(any('Rolling simulation-update rate' in f for f in result['failures']))
+        self.assertFalse(result['passed'])
+    def test_reduced_detail_manifest_fails(self):
+        for key,value in [('msaaSamples',1),('shadowMapWidths',[1024,2048]),('explorationDetail',False)]:
+            with self.subTest(key=key):
+                report=copy.deepcopy(self.report);report['quality'][key]=value
+                self.assertFalse(self.result(report=report)['passed'])
     def test_no_frames_fails(self):
         self.assertFalse(self.result(frames=[])['passed'])
 

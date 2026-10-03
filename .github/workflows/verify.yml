@@ -3,6 +3,14 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  simulator-performance-gate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify sustained-performance evidence rejection
+        run: |
+          python3 scripts/rendering/test-sustained-performance.py
+          python3 scripts/rendering/test-metal-report.py
   software:
     runs-on: ubuntu-24.04
     services:

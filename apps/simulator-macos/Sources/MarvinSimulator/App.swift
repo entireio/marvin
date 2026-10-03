@@ -23,6 +23,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     let loadingView=LevelLoadingView()
     let raceHUD = RaceHUD()
     let frameRateHUD = FrameRateHUD()
+    let benchmarkGPUCapture = BenchmarkGPUCapture()
     var race = DirtRace()
     var racePhysics = DirtRacePhysics()
     var opponent = DirtOpponent()
@@ -155,7 +156,10 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         }
         installContentOverlay(mainMenu)
         frameRateHUD.isHidden=true;installContentOverlay(frameRateHUD)
-        view.delegate=frameRateHUD
+        // Keep the delegate's optional callback capabilities stable while
+        // SceneKit renders on its background queue.
+        townMeter.fpsHUD=frameRateHUD
+        view.delegate=townMeter
         mainMenu.onSandbox = { [weak self] in self?.startSandbox() }
         mainMenu.onDirtTrack = { [weak self] in self?.loadDirtTrack() }
         makeMenu()

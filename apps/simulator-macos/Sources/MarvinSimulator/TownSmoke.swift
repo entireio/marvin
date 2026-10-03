@@ -9,6 +9,7 @@ final class TownFrameMeter: NSObject, SCNSceneRendererDelegate {
     private let lock = NSLock()
     private var previous: Double?
     private var intervals: [Double] = []
+    private var collecting = false
     private var frameStart=0.0,cycleStart=0.0,animationsEnd=0.0,physicsEnd=0.0,constraintsEnd=0.0
     func renderer(_ renderer:SCNSceneRenderer,didApplyAnimationsAtTime time:TimeInterval) {
         lock.lock();animationsEnd=ProcessInfo.processInfo.systemUptime;lock.unlock()
@@ -30,10 +31,11 @@ final class TownFrameMeter: NSObject, SCNSceneRendererDelegate {
         fpsHUD?.renderer(renderer,didRenderScene:scene,atTime:time)
         let now=ProcessInfo.processInfo.systemUptime
         lock.lock(); defer { lock.unlock() }
+        guard collecting else { return }
         if let previous { intervals.append(now-previous);frames.append([now,(now-previous)*1000,(now-frameStart)*1000,(now-cycleStart)*1000,(animationsEnd-cycleStart)*1000,(physicsEnd-animationsEnd)*1000,(constraintsEnd-physicsEnd)*1000,(frameStart-constraintsEnd)*1000]) }
         previous=now
     }
-    func reset() { lock.lock();intervals=[];frames=[];previous=nil;lock.unlock() }
+    func reset() { lock.lock();collecting=true;intervals=[];frames=[];previous=nil;lock.unlock() }
     func timeline()->[[Double]] { lock.lock();defer { lock.unlock() };return frames }
     func report() -> [String:Any] {
         lock.lock();let values=intervals;lock.unlock()
@@ -214,6 +216,7 @@ extension AppController {
     func tickTownBenchmark(now:Double,dt:Double) {
         guard let start=townBenchmarkStart,let directory=townBenchmarkDirectory else { return }
         let elapsed=now-start
+        benchmarkGPUCapture.update(elapsed:elapsed,device:view.device,directory:directory)
         if elapsed<3 { townMeter.reset();townBenchmarkCPU=[];townBenchmarkTimeline=[] }
         let begin=ProcessInfo.processInfo.systemUptime
         let isolateTrails=CommandLine.arguments.contains("--benchmark-isolate-trails")
