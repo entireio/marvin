@@ -93,6 +93,32 @@ enum TownGround {
         root.addChildNode(trampledGround());root.addChildNode(node)
         return root
     }
+    /// Keep the original receiver depth and the transparent town surface. The
+    /// fully covered base needs depth, but its expensive pigment/PBR color will
+    /// be overwritten. Leave a generous inset from every analytic blend edge.
+    static func coveredTerrain(material:SCNMaterial)->SCNGeometry {
+        var vertices:[SCNVector3]=[],uv:[CGPoint]=[],normals:[SCNVector3]=[]
+        var shaded:[Int32]=[],covered:[Int32]=[]
+        for y in stride(from:-128,to:128,by:4) { for x in stride(from:-128,to:128,by:4) {
+            let nearest=hypot(Double(max(0,max(x,-(x+4)))),Double(max(0,max(y,-(y+4)))))
+            let farthest=hypot(Double(max(abs(x),abs(x+4))),Double(max(abs(y),abs(y+4))))
+            let hidden=nearest>=38 && farthest<=93
+            let base=Int32(vertices.count)
+            for (dx,dy) in [(0,0),(4,0),(4,4),(0,4)] {
+                vertices.append(SCNVector3(x+dx,y+dy,0));normals.append(SCNVector3(0,0,1))
+                uv.append(CGPoint(x:Double(x+dx+128)/256,y:Double(128-y-dy)/256))
+            }
+            let indices=[base,base+1,base+2,base,base+2,base+3]
+            if hidden { covered += indices } else { shaded += indices }
+        }}
+        let depth=SCNMaterial();depth.lightingModel = .constant
+        depth.colorBufferWriteMask=[];depth.writesToDepthBuffer=material.writesToDepthBuffer
+        depth.isDoubleSided=material.isDoubleSided;depth.cullMode=material.cullMode
+        depth.readsFromDepthBuffer=material.readsFromDepthBuffer
+        let geometry=SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv)],elements:[SCNGeometryElement(indices:shaded,primitiveType:.triangles),SCNGeometryElement(indices:covered,primitiveType:.triangles)])
+        geometry.materials=[material,depth];return geometry
+    }
+
     private static func trampledGround()->SCNNode {
         let mesh=TownMesh(),step=4
         for z in stride(from:-176,to:176,by:step) { for x in stride(from:-176,to:176,by:step) {

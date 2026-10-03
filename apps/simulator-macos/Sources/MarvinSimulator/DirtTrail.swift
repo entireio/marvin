@@ -11,12 +11,28 @@ final class DirtTrail {
     private var normals: [SCNVector3] = []
     private var strengths: [Float] = []
     private var chunks: [SCNNode] = []
+    private var chunkMarks:[Int]=[]
     private var vertices: [SCNVector3] = []
     private var indices: [Int32] = []
     private var chunkIndex = 0
+    private var dirty = false
+    private(set) var geometryUploads = 0
     private var previous: (x: Double, z: Double, heading: Double)?
     private var remainder = 0.0
     private(set) var count = 0
+
+    func diagnostics(visible: ((SCNNode) -> Bool)? = nil) -> [String:Int] {
+        var visibleQuads = -1, visibleNodes = -1
+        // isNode can synchronize with rendering. Only explicit diagnostic
+        // runs may request these tests; normal telemetry reads cached counts.
+        if let visible {
+            visibleQuads=0;visibleNodes=0
+            for (index,node) in chunks.enumerated() where visible(node) {
+                visibleNodes += 1;visibleQuads += chunkMarks[index]
+            }
+        }
+        return ["nodes":chunks.count,"quads":chunkMarks.reduce(0,+),"visibleNodes":visibleNodes,"visibleQuads":visibleQuads,"emittedMarks":count,"geometryUploads":geometryUploads]
+    }
 
     init(style: Style = .tracks) {
         self.style = style
@@ -58,9 +74,9 @@ final class DirtTrail {
         ink.writesToDepthBuffer = false
     }
     func reset() {
-        chunks.forEach { $0.removeFromParentNode() }; chunks.removeAll()
+        chunks.forEach { $0.removeFromParentNode() }; chunks.removeAll();chunkMarks.removeAll()
         vertices.removeAll(); normals.removeAll(); strengths.removeAll(); uv.removeAll(); indices.removeAll(); chunkIndex = 0
-        previous = nil; remainder = 0; count = 0
+        previous = nil; remainder = 0; count = 0; dirty = false; geometryUploads = 0
     }
     func update(_ state: Simulation, contacts: [(x: Double, z: Double, width: Double)]) {
         ink.setValue(Float(state.storm.elapsed),forKey:"stormTime")
@@ -112,7 +128,7 @@ final class DirtTrail {
                     vertices.append(SCNVector3(px,height+0.007,pz))
                 }
                 indices += [base,base+2,base+1,base,base+3,base+2]
-                count += 1
+                count += 1; dirty = true
             }
             travel += spacing
         }
@@ -120,19 +136,20 @@ final class DirtTrail {
         flush()
     }
     private func flush() {
-        guard !vertices.isEmpty else { return }
+        guard dirty, !vertices.isEmpty else { return }
+        dirty = false; geometryUploads += 1
         if chunkIndex == chunks.count {
             let node = SCNNode(); node.castsShadow = false
             // Town soil, wear and road layers are transparent decals too. Draw
             // impressions after those layers, while retaining depth occlusion
             // by robots, buildings and terrain. Distance sorting alone erases them.
             node.renderingOrder = 10
-            root.addChildNode(node); chunks.append(node)
+            root.addChildNode(node); chunks.append(node);chunkMarks.append(0)
         }
         let tone=strengths.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:vertices.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
         let geometry = SCNGeometry(sources:[SCNGeometrySource(vertices:vertices),SCNGeometrySource(textureCoordinates:uv),
             SCNGeometrySource(normals:normals),tone],
             elements:[SCNGeometryElement(indices:indices,primitiveType:.triangles)])
-        geometry.materials = [ink]; chunks[chunkIndex].geometry = geometry
+        geometry.materials = [ink]; chunks[chunkIndex].geometry = geometry;chunkMarks[chunkIndex]=vertices.count/4
     }
 }

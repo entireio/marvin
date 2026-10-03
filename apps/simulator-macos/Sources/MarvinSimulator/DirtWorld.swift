@@ -37,6 +37,8 @@ final class DirtWorld {
     private var emission = [[0.0, 0.0], [0.0, 0.0, 0.0], [0.0], [0.0,0.0]]
     private(set) var racerEmittedCount = [0, 0, 0, 0]
     var trailCounts: [Int] { trails.map { $0.count } }
+    func trailDiagnostics(visible:((SCNNode)->Bool)? = nil)->[[String:Int]] { trails.map { $0.diagnostics(visible:visible) } }
+    func setBenchmarkTrailsHidden(_ hidden:Bool) { for trail in trails { trail.root.isHidden=hidden } }
     private let dustMaterial = SCNMaterial()
     private let clodGeometry = SCNSphere(radius: 0.012)
     private let poolSize = 1600
@@ -77,7 +79,7 @@ final class DirtWorld {
             channel.contentsTransform = SCNMatrix4MakeScale(64, 64, 1)
         }
         ground.materials = [earth]
-        let terrain = SCNNode(geometry: ground); terrain.eulerAngles.x = -.pi/2; terrain.position.y = -0.025
+        let terrain = SCNNode(geometry: CommandLine.arguments.contains("--benchmark-transparent-ground") ? ground:TownGround.coveredTerrain(material:earth)); terrain.name="Town base terrain"; terrain.eulerAngles.x = -.pi/2; terrain.position.y = -0.025
         scene.rootNode.addChildNode(terrain)
         addDesertTerrain(earth:earth,progress:{ fraction in progress?(0.50+fraction*0.34,"Building the dunes") })
         let clay = material(0x986441, roughness: 0.94)
@@ -518,6 +520,7 @@ final class DirtWorld {
     func update(_ state: Simulation, opponent: Simulation, dt: Double, modelScale: Double, additional: [Simulation]) {
         guard dt > 0 else { return }
         storm=state.storm
+        town.shadowDirections=sky.daylight.directions
         let allStates=[state,opponent]+additional
         let allContacts=[[(x:0.262225*modelScale,z:-0.23*modelScale,width:0.155*modelScale),(x: -0.262225*modelScale,z:-0.23*modelScale,width:0.155*modelScale)],R2D2.groundContacts]+additionalContacts
         duneSand.update(states:allStates,contacts:allContacts.enumerated().map { index,feet in

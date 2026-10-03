@@ -73,10 +73,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     let townMeter = TownFrameMeter()
     var rendererStudy: AnyObject?
     var townBenchmarkStart: Double?
+    var townBenchmarkRunID=UUID().uuidString
     var townBenchmarkDirectory: URL?
     var townBenchmarkCPU: [Double] = []
     var townBenchmarkTimeline:[[Double]]=[]
     var townBenchmarkHUDSamples:[[String:Any]]=[]
+    var townBenchmarkResourceSamples:[[String:Any]]=[]
     var frameDisplayLink:AnyObject?
     var townBenchmarkRoute:[SIMD2<Double>]=[]
     var townBenchmarkWaypoint=0
@@ -86,7 +88,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--passage-smoke-test", "--navigation-smoke-test", "--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--mesh-reuse-test", "--shadow-culling-test", "--ground-performance-test", "--passage-smoke-test", "--navigation-smoke-test", "--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
@@ -246,6 +248,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 }
                 if CommandLine.arguments.contains("--debris-smoke-test") {
                     timer?.invalidate();let passed=dirtWorld.checkDebris();exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--mesh-reuse-test") || CommandLine.arguments.contains("--ground-performance-test") || CommandLine.arguments.contains("--shadow-culling-test") {
+                    timer?.invalidate();let passed=checkGroundPerformance(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
                 }
                 if CommandLine.arguments.contains("--trail-material-smoke-test") {
                     timer?.invalidate();let passed=checkTrailMaterial(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
@@ -430,7 +435,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         if isDirtTrack {
             dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
-            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
+            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) },shadowCamera:world.camera,viewportAspect:Double(view.bounds.width/view.bounds.height))
         }
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
         updateRaceAudio(dt:step,advancing:advancing)

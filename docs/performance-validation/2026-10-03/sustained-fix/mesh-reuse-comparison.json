@@ -1,0 +1,202 @@
+{
+  "casterReductionObserved" : false,
+  "comparisons" : [
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 5.1922268337673608e-08,
+      "optimizedCasters" : 40,
+      "referenceCasters" : 40,
+      "view" : "midday-street"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 3.3759810950285124e-08,
+      "optimizedCasters" : 41,
+      "referenceCasters" : 41,
+      "view" : "midday-inner-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 1.3594550115090829e-08,
+      "optimizedCasters" : 21,
+      "referenceCasters" : 21,
+      "view" : "midday-outer-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 8.71025761704386e-08,
+      "optimizedCasters" : 35,
+      "referenceCasters" : 35,
+      "view" : "midday-aerial"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 0,
+      "optimizedCasters" : 34,
+      "referenceCasters" : 34,
+      "view" : "midday-uncovered-infield"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 6.1401292497729076e-08,
+      "optimizedCasters" : 41,
+      "referenceCasters" : 41,
+      "view" : "midday-inner-fade"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 5.5739081200258232e-08,
+      "optimizedCasters" : 26,
+      "referenceCasters" : 26,
+      "view" : "midday-grazing"
+    },
+    {
+      "changedFraction" : 1.9290123456790124e-06,
+      "meanMaxChannelError" : 1.4716868553264641e-07,
+      "optimizedCasters" : 45,
+      "referenceCasters" : 45,
+      "view" : "midday-reverse-turn"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 5.3563005762335694e-08,
+      "optimizedCasters" : 18,
+      "referenceCasters" : 18,
+      "view" : "midday-lod-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 8.9747819727585641e-08,
+      "optimizedCasters" : 40,
+      "referenceCasters" : 40,
+      "view" : "low-sun-street"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 6.8136651850776913e-08,
+      "optimizedCasters" : 41,
+      "referenceCasters" : 41,
+      "view" : "low-sun-inner-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 7.6442611990151588e-08,
+      "optimizedCasters" : 21,
+      "referenceCasters" : 21,
+      "view" : "low-sun-outer-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 6.5746774644027526e-08,
+      "optimizedCasters" : 35,
+      "referenceCasters" : 35,
+      "view" : "low-sun-aerial"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 0,
+      "optimizedCasters" : 34,
+      "referenceCasters" : 34,
+      "view" : "low-sun-uncovered-infield"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 7.7569224860197232e-08,
+      "optimizedCasters" : 41,
+      "referenceCasters" : 41,
+      "view" : "low-sun-inner-fade"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 7.9963586212676243e-08,
+      "optimizedCasters" : 26,
+      "referenceCasters" : 26,
+      "view" : "low-sun-grazing"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 8.2686152539135504e-08,
+      "optimizedCasters" : 45,
+      "referenceCasters" : 45,
+      "view" : "low-sun-reverse-turn"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 1.4205566710895961e-07,
+      "optimizedCasters" : 18,
+      "referenceCasters" : 18,
+      "view" : "low-sun-lod-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 3.0963026263095712e-08,
+      "optimizedCasters" : 40,
+      "referenceCasters" : 40,
+      "view" : "storm-street"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 4.3649076955553929e-08,
+      "optimizedCasters" : 41,
+      "referenceCasters" : 41,
+      "view" : "storm-inner-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 7.7896510009412407e-09,
+      "optimizedCasters" : 21,
+      "referenceCasters" : 21,
+      "view" : "storm-outer-boundary"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 3.4825600407741691e-08,
+      "optimizedCasters" : 35,
+      "referenceCasters" : 35,
+      "view" : "storm-aerial"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 0,
+      "optimizedCasters" : 34,
+      "referenceCasters" : 34,
+      "view" : "storm-uncovered-infield"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 1.0581779075257572e-07,
+      "optimizedCasters" : 41,
+      "referenceCasters" : 41,
+      "view" : "storm-inner-fade"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 1.4112641414006552e-08,
+      "optimizedCasters" : 26,
+      "referenceCasters" : 26,
+      "view" : "storm-grazing"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 1.3387664278716217e-07,
+      "optimizedCasters" : 45,
+      "referenceCasters" : 45,
+      "view" : "storm-reverse-turn"
+    },
+    {
+      "changedFraction" : 0,
+      "meanMaxChannelError" : 3.8741236943521619e-08,
+      "optimizedCasters" : 18,
+      "referenceCasters" : 18,
+      "view" : "storm-lod-boundary"
+    }
+  ],
+  "frustumPassed" : true,
+  "meshDataPassed" : true,
+  "meshInputVertices" : 2592774,
+  "meshOutputVertices" : 2495307,
+  "note" : "Original receiver depth, transparent surface and material retained; small rasterization differences require manual review.",
+  "passed" : true,
+  "shadowComparison" : false,
+  "uvMappingPassed" : true
+}

@@ -34,10 +34,46 @@ final class TownWorld {
     private var explorationCells: [String: TownCell] = [:]
     private var explorationNodes: [SCNNode] = []
     private var architectureNodes:[SCNNode]=[]
+    var shadowDirections:[SIMD3<Double>]=[]
+    var shadowCullingEnabled=CommandLine.arguments.contains("--benchmark-shadow-culling")
+    private var shadowProxyDirections:[SIMD3<Double>]=[]
+    private var priorShadowFrusta:[ShadowFrustum]=[]
+    private var shadowVolumes:[ObjectIdentifier:[ShadowBounds]]=[:]
+    private(set) var shadowCasterCount=0
+    private func prepareShadowVolumes() {
+        guard shadowDirections != shadowProxyDirections else { return }
+        shadowProxyDirections=shadowDirections;shadowVolumes.removeAll()
+        guard shadowDirections.count==2,shadowDirections.allSatisfy({ $0.x.isFinite && $0.y.isFinite && $0.z.isFinite && $0.y>0.01 }) else { return }
+        for node in architectureNodes {
+            let allBounds=[node.boundingBox]+(node.geometry?.levelsOfDetail ?? []).compactMap { $0.geometry?.boundingBox }
+            var low=SIMD3<Double>(repeating:.infinity),high=SIMD3<Double>(repeating:-.infinity)
+            for bounds in allBounds { for x in [bounds.min.x,bounds.max.x] { for y in [bounds.min.y,bounds.max.y] { for z in [bounds.min.z,bounds.max.z] {
+                let p=node.convertPosition(SCNVector3(x,y,z),to:nil)
+                let point=SIMD3(Double(p.x),Double(p.y),Double(p.z))
+                low=simd_min(low,point);high=simd_max(high,point)
+            }}}}
+            guard (0..<3).allSatisfy({low[$0].isFinite && high[$0].isFinite && high[$0]>=low[$0]}) else { continue }
+            // One metre around the caster exceeds the current 116m/2048 map's
+            // 2–3 texel filter footprint. Expand BEFORE low-sun projection.
+            low -= SIMD3(repeating:1);high += SIMD3(repeating:1)
+            var volumes:[ShadowBounds]=[]
+            for sun in shadowDirections {
+                var shadowLow=low,shadowHigh=high
+                for point in ShadowBounds(low:low,high:high).corners {
+                    let end=point-sun*(max(0,point.y+2)/sun.y)
+                    shadowLow=simd_min(shadowLow,end);shadowHigh=simd_max(shadowHigh,end)
+                }
+                volumes.append(ShadowBounds(low:shadowLow,high:shadowHigh))
+            }
+            shadowVolumes[ObjectIdentifier(node)]=volumes
+        }
+    }
     private(set) var explorationTriangles = 0
     var explorationDetailEnabled = true // native benchmark comparison only
     var activeExplorationCells:Int { explorationNodes.filter { !$0.isHidden }.count }
-    func updateExplorationDetail(camera:SCNVector3,player:SIMD2<Double>) {
+    func updateExplorationDetail(camera:SCNVector3,player:SIMD2<Double>,frusta:[ShadowFrustum]=[]) {
+        if shadowCullingEnabled { prepareShadowVolumes() }
+        shadowCasterCount=0
         // A street-level view outside the circuit gets a moving detail window.
         // Neither the racing cameras nor the locked finish overview needs it.
         // Shadow casters follow the player into town. Keeping only the original
@@ -46,7 +82,9 @@ final class TownWorld {
         let outside=max(abs(focus.x),abs(focus.y))>28
         for node in architectureNodes {
             let p=node.position
-            let enabled=outside ? hypot(Double(p.x)-focus.x,Double(p.z)-focus.y)<75:(abs(p.x)<48 && abs(p.z)<48)
+            var enabled=outside ? hypot(Double(p.x)-focus.x,Double(p.z)-focus.y)<75:(abs(p.x)<48 && abs(p.z)<48)
+            if enabled,shadowCullingEnabled,!frusta.isEmpty,let volumes=shadowVolumes[ObjectIdentifier(node)] { enabled=volumes.contains { volume in frusta.contains { $0.intersects(volume) } } }
+            if enabled { shadowCasterCount += 1 }
             if node.castsShadow != enabled { node.castsShadow=enabled }
         }
         let exploring=explorationDetailEnabled && max(abs(focus.x),abs(focus.y))>28 && camera.y<60
@@ -1634,8 +1672,12 @@ final class TownWorld {
                     at:SCNVector3(3,0.82,20.76),width:3.6,height:0.55,yaw:.pi,into:root)
     }
 
-    func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>,robots:[RobotCollisions.Body]=[],visible:((SCNNode)->Bool)?=nil) {
-        updateExplorationDetail(camera:camera,player:player)
+    func update(dt:Double,camera:SCNVector3,player:SIMD2<Double>,robots:[RobotCollisions.Body]=[],visible:((SCNNode)->Bool)?=nil,shadowCamera:SCNNode?=nil,viewportAspect:Double=1) {
+        let current=shadowCullingEnabled ? ShadowFrustum.cameras(shadowCamera,aspect:viewportAspect):[]
+        // Querying SceneKit presentation nodes synchronizes with rendering.
+        // Retain our own preceding camera poses instead, plus the current pose.
+        updateExplorationDetail(camera:camera,player:player,frusta:current+priorShadowFrusta)
+        priorShadowFrusta=Array((current+priorShadowFrusta).prefix(2))
         guard dt>0 else { return }
         clock += dt
         crowd.update(time:clock);residents?.update(dt:dt,robots:robots,pedestrians:streetResidents?.bodies ?? [],visible:visible)
@@ -1763,6 +1805,8 @@ final class TownWorld {
 /// Offline-style mesh batching performed once at scene preparation. No SceneKit
 /// primitive nodes survive for each window, brick or spectator body part.
 final class TownMesh {
+    static var inputVertices=0,outputVertices=0
+    static var validationPairs:[(SCNGeometry,SCNGeometry)]=[]
     var materialSlot=0
     private var groups:[[Int32]]=[[],[],[],[]]
     var wearUV:[CGPoint]=[]
@@ -1787,12 +1831,52 @@ final class TownMesh {
         indices += [base,base+1,base+2]
         groups[materialSlot] += [base,base+1,base+2]
     }
+    private struct VertexKey:Hashable {
+        let position:SIMD3<Float>,normal:SIMD3<Float>,tangent:SIMD3<Float>,bitangent:SIMD3<Float>
+        let uv:SIMD2<Double>,wear:SIMD2<Double>,color:SIMD4<Float>
+    }
     func geometry(material:SCNMaterial,relativeTo origin:SIMD3<Float> = .zero)->SCNGeometry {
-        let source=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:positions.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
-        let local=positions.map { SCNVector3(Float($0.x)-origin.x,Float($0.y)-origin.y,Float($0.z)-origin.z) }
-        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),SCNGeometrySource(textureCoordinates:wearUV),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
+        // Reuse only identical complete vertex attributes. Keep every original
+        // triangle, material slot and index order, including normal/UV seams.
+        // Match each face UV gradient too: merging differing gradients would
+        // change SceneKit/exporter generated tangent averages for normal maps.
+        // This reduces repeated vertex work in both sun maps and the color pass.
+        var lookup:[VertexKey:Int32]=[:],remap:[Int32]=[]
+        var local:[SCNVector3]=[],outNormals:[SCNVector3]=[],outUV:[CGPoint]=[],outWear:[CGPoint]=[],outColors:[Float]=[]
+        lookup.reserveCapacity(positions.count/2);remap.reserveCapacity(positions.count)
+        var tangent=SIMD3<Float>.zero,bitangent=SIMD3<Float>.zero
+        for i in positions.indices {
+            if i%3==0 {
+                func point(_ j:Int)->SIMD3<Float> { SIMD3(Float(positions[j].x)-origin.x,Float(positions[j].y)-origin.y,Float(positions[j].z)-origin.z) }
+                let e1=point(i+1)-point(i),e2=point(i+2)-point(i)
+                let u1=SIMD2(Float(uv[i+1].x)-Float(uv[i].x),Float(uv[i+1].y)-Float(uv[i].y))
+                let u2=SIMD2(Float(uv[i+2].x)-Float(uv[i].x),Float(uv[i+2].y)-Float(uv[i].y))
+                let determinant=u1.x*u2.y-u1.y*u2.x
+                tangent = .zero;bitangent = .zero
+                if abs(determinant)>1e-8 { tangent=(e1*u2.y-e2*u1.y)/determinant;bitangent=(e2*u1.x-e1*u2.x)/determinant }
+            }
+            let p=SIMD3(Float(positions[i].x)-origin.x,Float(positions[i].y)-origin.y,Float(positions[i].z)-origin.z)
+            let n=SIMD3(Float(normals[i].x),Float(normals[i].y),Float(normals[i].z))
+            let c=SIMD4(colors[i*4],colors[i*4+1],colors[i*4+2],colors[i*4+3])
+            let key=VertexKey(position:p,normal:n,tangent:tangent,bitangent:bitangent,uv:SIMD2(Double(uv[i].x),Double(uv[i].y)),wear:SIMD2(Double(wearUV[i].x),Double(wearUV[i].y)),color:c)
+            if let existing=lookup[key] { remap.append(existing);continue }
+            let index=Int32(local.count);lookup[key]=index;remap.append(index)
+            local.append(SCNVector3(p));outNormals.append(normals[i]);outUV.append(uv[i]);outWear.append(wearUV[i]);outColors += [c.x,c.y,c.z,c.w]
+        }
+        let source=outColors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:local.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
+        let g=SCNGeometry(sources:[SCNGeometrySource(vertices:local),SCNGeometrySource(normals:outNormals),SCNGeometrySource(textureCoordinates:outUV),SCNGeometrySource(textureCoordinates:outWear),source],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0.map{remap[Int($0)]},primitiveType:.triangles)})
         let materials=[material,CityMaterials.cloth,CityMaterials.metal,CityMaterials.adobe]
-        g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]};return g
+        g.materials=groups.indices.filter{!groups[$0].isEmpty}.map{materials[$0]}
+        TownMesh.inputVertices += positions.count;TownMesh.outputVertices += local.count
+        if CommandLine.arguments.contains("--mesh-reuse-test") || CommandLine.arguments.contains("--benchmark-original-vertices") {
+            let rawColor=colors.withUnsafeBytes { SCNGeometrySource(data:Data($0),semantic:.color,vectorCount:positions.count,usesFloatComponents:true,componentsPerVector:4,bytesPerComponent:4,dataOffset:0,dataStride:16) }
+            let rawLocal=positions.map { SCNVector3(Float($0.x)-origin.x,Float($0.y)-origin.y,Float($0.z)-origin.z) }
+            let original=SCNGeometry(sources:[SCNGeometrySource(vertices:rawLocal),SCNGeometrySource(normals:normals),SCNGeometrySource(textureCoordinates:uv),SCNGeometrySource(textureCoordinates:wearUV),rawColor],elements:groups.filter{!$0.isEmpty}.map{SCNGeometryElement(indices:$0,primitiveType:.triangles)})
+            original.materials=groups.indices.filter { !groups[$0].isEmpty }.map { [material,CityMaterials.cloth,CityMaterials.metal,CityMaterials.adobe][$0] }
+            if CommandLine.arguments.contains("--benchmark-original-vertices") { return original }
+            TownMesh.validationPairs.append((original,g))
+        }
+        return g
     }
 }
 final class TownCollisionBuilder { var bodies:[RobotCollisions.Body]=[] }

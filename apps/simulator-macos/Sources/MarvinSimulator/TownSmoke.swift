@@ -65,7 +65,7 @@ extension AppController {
                 updateOpponents();updateRaceWorld(dt:1.0/60)
                 dirtWorld.town.update(dt:1.0/60,camera:SCNVector3(0,5,-12),player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
-            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
+            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) },shadowCamera:world.camera,viewportAspect:Double(view.bounds.width/view.bounds.height))
             }
             let cameras:[(String,SCNVector3,SCNVector3)] = [
                 ("town-overview",SCNVector3(0,46,-52),SCNVector3(0,0,0)),
@@ -182,8 +182,21 @@ extension AppController {
         if CommandLine.arguments.contains("--benchmark-no-shadows") {
             dirtWorld.scene.rootNode.enumerateChildNodes { node,_ in node.light?.castsShadow=false }
         }
+        if CommandLine.arguments.contains("--benchmark-no-ssao") { world.camera.camera?.screenSpaceAmbientOcclusionIntensity=0 }
+        if CommandLine.arguments.contains("--benchmark-no-bloom") { world.camera.camera?.bloomIntensity=0 }
+        if CommandLine.arguments.contains("--benchmark-flat-ground") {
+            dirtWorld.scene.rootNode.enumerateChildNodes { node,_ in
+                for material in node.geometry?.materials ?? [] where (material.shaderModifiers ?? [:]).values.contains(where:{$0.contains("townNoise")}) {
+                    material.shaderModifiers=nil;material.lightingModel = .constant
+                }
+            }
+        }
         view.delegate=townMeter
         townBenchmarkStart=ProcessInfo.processInfo.systemUptime
+        let identity:[String:Any]=["runID":townBenchmarkRunID,"startUptime":townBenchmarkStart!,"gpuDevice":view.device?.name ?? "Unavailable","resolution":[view.convertToBacking(view.bounds).width,view.convertToBacking(view.bounds).height]]
+        if let data=try? JSONSerialization.data(withJSONObject:identity,options:[.sortedKeys]),let line=String(data:data,encoding:.utf8) {
+            FileHandle.standardOutput.write(Data(("MARVIN_BENCHMARK_ID "+line+"\n").utf8))
+        }
         frameRateHUD.resetSamples();frameRateHUD.isHidden=false
         townMeter.fpsHUD=frameRateHUD;townBenchmarkHUDSamples=[]
         frameRateHUD.onSample={ [weak self] now,fps in
@@ -203,6 +216,12 @@ extension AppController {
         let elapsed=now-start
         if elapsed<3 { townMeter.reset();townBenchmarkCPU=[];townBenchmarkTimeline=[] }
         let begin=ProcessInfo.processInfo.systemUptime
+        let isolateTrails=CommandLine.arguments.contains("--benchmark-isolate-trails")
+        let trailsHidden=isolateTrails && ((elapsed>=300 && elapsed<330) || (elapsed>=480 && elapsed<510))
+        if isolateTrails { dirtWorld.setBenchmarkTrailsHidden(trailsHidden) }
+        if Int(elapsed)>=(townBenchmarkResourceSamples.last?["second"] as? Int ?? -1)+1 {
+            townBenchmarkResourceSamples.append(["second":Int(elapsed),"uptime":now,"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"trailsHidden":trailsHidden,"shadowCasters":dirtWorld.town.shadowCasterCount,"trails":dirtWorld.trailDiagnostics()])
+        }
         var input=DirtOpponent.driveInput(for:simulation)
         if !townBenchmarkRoute.isEmpty {
             var target=townBenchmarkRoute[townBenchmarkWaypoint]
@@ -236,7 +255,7 @@ extension AppController {
         if !dirtWorld.town.root.isHidden {
             dirtWorld.town.update(dt:dt,camera:world.camera.position,player:detailPlayer,robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
-            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) })
+            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) },shadowCamera:world.camera,viewportAspect:Double(view.bounds.width/view.bounds.height))
         }
         updateRaceAudio(dt:dt,advancing:true)
         let finish=ProcessInfo.processInfo.systemUptime
@@ -266,14 +285,21 @@ extension AppController {
             report["drawableWidth"]=view.convertToBacking(view.bounds).width
             report["drawableHeight"]=view.convertToBacking(view.bounds).height
             report["simulationSeconds"]=race.elapsed;report["laps"]=race.laps.count
+            var shadowWidths:[Int]=[]
+            dirtWorld.scene.rootNode.enumerateChildNodes { node,_ in
+                if let light=node.light,light.castsShadow { shadowWidths.append(Int(light.shadowMapSize.width)) }
+            }
+            report["quality"]=["msaaSamples":view.antialiasingMode == .none ? 1:(1 << view.antialiasingMode.rawValue),"shadowMapWidths":shadowWidths.sorted(),"explorationDetail":dirtWorld.town.explorationDetailEnabled]
             report["thermalState"]=ProcessInfo.processInfo.thermalState.rawValue
             report["benchmarkArguments"]=CommandLine.arguments
+            report["benchmarkRunID"]=townBenchmarkRunID
             report["startUptime"]=start
             report["endWallTime"]=Date().timeIntervalSince1970
             do {
                 let timeline:[String:Any]=["renderColumns":["uptime","intervalMS","renderCallbackSpanMS","rendererCycleMS","sceneAnimationMS","scenePhysicsMS","sceneConstraintsMS","preRenderMS"],"renderFrames":townMeter.timeline(),"updateColumns":["uptime","elapsed","tickMS","physicsMS","modelsMS","effectsMS","cameraMS","townMS","totalMS","x","z","aerial"],"updates":townBenchmarkTimeline]
                 try JSONSerialization.data(withJSONObject:timeline).write(to:directory.appendingPathComponent("timeline.json"))
                 try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("benchmark.json"))
+                try JSONSerialization.data(withJSONObject:townBenchmarkResourceSamples,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("resources.json"))
                 try JSONSerialization.data(withJSONObject:townBenchmarkHUDSamples,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("displayed-fps.json"))
                 // SCNView snapshots omit AppKit overlays; draw the actual live
                 // counter over the native scene at its unchanged view position.
@@ -284,6 +310,7 @@ extension AppController {
                 if let tiff=image.tiffRepresentation,let bitmap=NSBitmapImageRep(data:tiff),let png=bitmap.representation(using:.png,properties:[:]) {
                     try png.write(to:directory.appendingPathComponent("final-fps.png"))
                 }
+                if CommandLine.arguments.contains("--benchmark-gpu-probe") { try profileLoadedGPU(at:directory) }
                 print("Town benchmark complete · \(directory)")
                 exit(0)
             } catch { print(error);exit(1) }

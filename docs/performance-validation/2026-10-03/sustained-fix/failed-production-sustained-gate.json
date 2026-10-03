@@ -1,0 +1,21 @@
+{
+  "passed": false,
+  "callbackGatePassed": false,
+  "presentationVerified": false,
+  "overallComplete": false,
+  "failures": [
+    "4185 render callback gaps exceed 25 ms",
+    "Rolling 10-second coverage below 598/600 frames",
+    "Full-run coverage below 35998/36000 frames",
+    "Insufficient simulation-update coverage for 60 Hz motion",
+    "Rolling simulation-update rate below 59.8 Hz",
+    "Simulation-update gap exceeds 25 ms",
+    "Live counter falls below 59 FPS",
+    "GPU headroom evidence missing"
+  ],
+  "measuredFrames": 31814,
+  "gapsOver25MS": 4185,
+  "minimumRolling10SecondFPS": 42.7,
+  "distanceMeters": 1384.5829363138657,
+  "method": "SceneKit render callback ledger; not display presentation. GPU evidence is separately required."
+}

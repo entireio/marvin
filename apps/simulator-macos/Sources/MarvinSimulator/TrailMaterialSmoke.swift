@@ -9,6 +9,22 @@ extension AppController {
             let trail=DirtTrail(style:.tracks)
             var state=Simulation(),input=DriveInput();input.throttle=1
             for _ in 0..<45 { trail.update(state,contacts:[(x:0,z:0,width:0.2)]);state.advance(input,dt:1.0/60) }
+            // Small real motion below mark spacing must not replace already
+            // published geometry. Previously every moving update uploaded it.
+            trail.update(state,contacts:[(x:0,z:0,width:0.2)])
+            let beforeCount=trail.count,beforeUploads=trail.geometryUploads
+            let identities=trail.root.childNodes.compactMap { $0.geometry }.map(ObjectIdentifier.init)
+            state.advance(input,dt:0.000001)
+            trail.update(state,contacts:[(x:0,z:0,width:0.2)])
+            let unchanged=trail.count==beforeCount && trail.geometryUploads==beforeUploads
+                && identities==trail.root.childNodes.compactMap { $0.geometry }.map(ObjectIdentifier.init)
+            guard unchanged else { print("Sub-spacing trail upload regression");return false }
+            state.storm.enabled=true;state.storm.advance(10)
+            trail.update(state,contacts:[(x:0,z:0,width:0.2)])
+            guard let ink=trail.root.childNodes.first?.geometry?.firstMaterial,
+                  (ink.value(forKey:"stormTime") as? NSNumber)?.doubleValue==10,
+                  trail.geometryUploads==beforeUploads else { print("Storm uniforms stopped without geometry upload");return false }
+            state.storm.enabled=false;trail.update(state,contacts:[(x:0,z:0,width:0.2)])
             guard let first=trail.root.childNodes.first,let geometry=first.geometry else { return false }
             let source=geometry.sources(for:.vertex)[0]
             var points:[SCNVector3]=[]
