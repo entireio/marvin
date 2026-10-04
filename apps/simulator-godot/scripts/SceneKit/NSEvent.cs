@@ -8,7 +8,8 @@ namespace Marvin.SceneKit;
 /// NSEvent: keyboard, mouse and scroll events in AppKit terms, built from Godot input events.
 /// keyCode is the macOS virtual key code of the physical key (PORTING.md: NSEvent.keyCode ->
 /// InputEventKey.PhysicalKeycode), so layout-independent key handling (W A S D, arrows) matches the
-/// Mac; characters come from the keyboard layout. Mouse locations are window coordinates (origin at the
+/// Mac; characters come from the keyboard layout. The Command modifier is the Control key except on macOS
+/// (<see cref="commandIsControlKey"/>). Mouse locations are window coordinates (origin at the
 /// window's bottom left); deltaX/deltaY are in points with y growing downwards, as in AppKit.
 /// </summary>
 public sealed class NSEvent
@@ -85,15 +86,23 @@ public sealed class NSEvent
     /// <summary>macOS virtual key code of a physical Godot key (0xFFFF when unmapped).</summary>
     public static ushort KeyCodeFor(Key physical) => keyCodes.TryGetValue(physical, out var code) ? code : (ushort)0xFFFF;
 
+    /// <summary>
+    /// Whether the Command key is the keyboard's Control key: true except on macOS. AppKit's Command shortcuts (menu key
+    /// equivalents, the views' "modifierFlags.contains(.command)" checks) become Control shortcuts on Windows and Linux,
+    /// where the Windows/Super key is reported as <c>.control</c> instead.
+    /// </summary>
+    public static readonly bool commandIsControlKey = OS.GetName() != "macOS";
     private static ModifierFlags Modifiers(InputEventWithModifiers e)
     {
         ModifierFlags f = 0;
         if (e.ShiftPressed) f |= ModifierFlags.shift;
-        if (e.CtrlPressed) f |= ModifierFlags.control;
+        if (e.CtrlPressed) f |= commandIsControlKey ? ModifierFlags.command : ModifierFlags.control;
         if (e.AltPressed) f |= ModifierFlags.option;
-        if (e.MetaPressed) f |= ModifierFlags.command;
+        if (e.MetaPressed) f |= commandIsControlKey ? ModifierFlags.control : ModifierFlags.command;
         return f;
     }
+    /// <summary>The AppKit modifier flags of a Godot key event (after the key's own press or release).</summary>
+    internal static ModifierFlags ModifiersOf(InputEventWithModifiers e) => Modifiers(e);
     private static CGPoint WindowLocation(Control control, Vector2 viewportPosition)
     {
         float height = control.GetViewport() is Viewport v ? v.GetVisibleRect().Size.Y : 0;
@@ -119,7 +128,13 @@ public sealed class NSEvent
                 if (modifierKey)
                 {
                     // flagsChanged reports the state after the change.
-                    var changed = physical switch { Key.Shift => ModifierFlags.shift, Key.Ctrl => ModifierFlags.control, Key.Alt => ModifierFlags.option, Key.Meta => ModifierFlags.command, _ => ModifierFlags.capsLock };
+                    var changed = physical switch
+                    {
+                        Key.Shift => ModifierFlags.shift, Key.Alt => ModifierFlags.option,
+                        Key.Ctrl => commandIsControlKey ? ModifierFlags.command : ModifierFlags.control,
+                        Key.Meta => commandIsControlKey ? ModifierFlags.control : ModifierFlags.command,
+                        _ => ModifierFlags.capsLock,
+                    };
                     flags = key.Pressed ? flags | changed : flags & ~changed;
                 }
                 string chars = key.Unicode != 0 ? char.ConvertFromUtf32((int)key.Unicode) : "";

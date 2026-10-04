@@ -173,6 +173,15 @@ public sealed class NSImage
         return image == null || image.IsEmpty() ? null : new NSImage(image, path);
     }
     public static NSImage contentsOfFile(string path) => contentsOf(path);
+    /// <summary>
+    /// NSImage(systemSymbolName:accessibilityDescription:). PORT: SF Symbols are Apple system artwork and are not
+    /// shipped; the image keeps the symbol's name and the places that show symbols (the toolbar) draw a vector stand-in.
+    /// </summary>
+    public static NSImage systemSymbolName(string name, string accessibilityDescription) =>
+        new(new CGSize(0, 0)) { symbolName = name, accessibilityDescription = accessibilityDescription };
+    /// <summary>The SF Symbol name of a systemSymbolName image (null otherwise).</summary>
+    public string symbolName { get; private set; }
+    public string accessibilityDescription;
     /// <summary>NSImage(data:).</summary>
     public static NSImage data(byte[] bytes) { var img = Decode(bytes); return img == null ? null : new NSImage(img, null); }
 

@@ -7,6 +7,8 @@ namespace Marvin.SceneKit;
 /// <summary>NSControl: common text attributes of NSTextField and NSButton.</summary>
 public partial class NSControl : NSView
 {
+    /// <summary>NSControl.StateValue (button and menu item states).</summary>
+    public enum StateValue { mixed = -1, off = 0, on = 1 }
     private NSFont _font;
     private NSTextAlignment _alignment = NSTextAlignment.natural;
     public int tag;
