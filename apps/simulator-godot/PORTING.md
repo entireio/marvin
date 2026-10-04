@@ -53,6 +53,10 @@ apps/simulator-godot/tools/godot -- <game args> # game arguments go after "--" (
 
 **Randomness.** Seeded generators (custom `RandomNumberGenerator` structs, LCGs, hashes) must give identical sequences. Swift's `Double.random(in:using:)`, `Float.random(in:using:)`, `Int.random(in:using:)`, `Bool.random(using:)` and `shuffle(using:)` / `shuffled(using:)` / `randomElement(using:)` have specific stdlib algorithms. Port them **exactly**, from the Swift stdlib source, into `Marvin.Core.SwiftRandom`. Unseeded calls (`SystemRandomNumberGenerator`, plain `.random(in:)`) may use `System.Random.Shared`.
 
+**Core helpers (src/Core).** Beyond `Simd` and `SwiftRandom`, `Swift.cs` ports Swift/Darwin behaviour the app also needs: `Swift.format` (exact `String(format:)`, Darwin rounding), `Swift.description` (Swift number/array printing), libm `hypot`, stable `sorted`, `stride`. Measured: Apple's `simd_cross`, quaternion maths and `stride` use fused multiply-add; .NET's `double.Hypot` differs from Darwin's. Never format numbers with `$"{x}"`/`ToString()` for user-visible or report text; use `Swift.format`/`Swift.description` (the current culture would print decimal commas or U+2212 minus signs). Value-type models that hold collections (`DirtRacePhysics`, `PostRaceEscape`, `RacePerformance`, `SandDeformation`) have `Clone()`; call it wherever Swift copies one and mutates either side. Structs with Swift default values have explicit parameterless constructors: never use `default(T)` or `new T[n]` for them.
+
+**Reference numbers.** `reference/simulation-checks-swift.txt` comes from a **debug** Swift build (`swift run SimulationChecks`); an optimized Swift build differs in the last digits. The C# port matches the debug build byte for byte on macOS.
+
 **Collections.** Swift `Dictionary`/`Set` iteration order is unspecified. Where Swift code depends on iteration order, the result was already nondeterministic: keep the C# behaviour deterministic and note it.
 
 ## SceneKit → Godot
