@@ -42,6 +42,8 @@ public static class GameModes
     public static string OutputDirectory(string arg, string fallback)
     {
         string dir = string.IsNullOrEmpty(arg) || arg.StartsWith("--") ? fallback : arg;
+        // The modes write with System.IO, which does not know Godot's user:// (it would create a "user:" folder).
+        if (dir.StartsWith("user://")) dir = ProjectSettings.GlobalizePath(dir);
         if (!dir.StartsWith("res://") && !dir.StartsWith("user://") && !System.IO.Path.IsPathRooted(dir))
             dir = System.IO.Path.GetFullPath(dir, System.IO.Directory.GetCurrentDirectory());
         if (!dir.StartsWith("res://") && !dir.StartsWith("user://")) System.IO.Directory.CreateDirectory(dir);
