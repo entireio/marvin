@@ -19,7 +19,7 @@ public static class FacadeTest
     private static readonly Dictionary<string, double[]> measurements = new();
     private static string dir;
 
-    public static void Run(string outputDirectory, SceneTree tree)
+    public static async System.Threading.Tasks.Task Run(string outputDirectory, SceneTree tree)
     {
         dir = outputDirectory;
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
@@ -32,6 +32,7 @@ public static class FacadeTest
         VisualMaterials();
         VisualSign();
         VisualTransforms();
+        await Threading(tree);
         var json = new StringBuilder("{\n");
         json.Append(string.Join(",\n", measurements.Select(kv => $"  \"{kv.Key}\": [{string.Join(", ", kv.Value.Select(v => v.ToString("0.0000", System.Globalization.CultureInfo.InvariantCulture)))}]")));
         json.Append("\n}\n");
@@ -105,6 +106,87 @@ public static class FacadeTest
         var sources = new List<SCNGeometrySource> { SCNGeometrySource.vertices(v), cs };
         if (normals) sources.Add(SCNGeometrySource.normals(Enumerable.Repeat(new SCNVector3(0, 0, 1), 4).ToArray()));
         return new SCNGeometry(sources, new[] { new SCNGeometryElement(new[] { 0, 1, 2, 0, 2, 3 }, SCNGeometryPrimitiveType.triangles) });
+    }
+
+    // =====================================================================
+    // Threads: LevelLoading builds DirtWorld on DispatchQueue.global and hands it to the main queue.
+    // The same content built on the main thread and on a builder thread must render identically,
+    // both as a whole scene (adopted when shown) and as a subtree attached on the main thread.
+    private static SCNNode ThreadContent()
+    {
+        var group = new SCNNode { name = "content" };
+        var image = new NSImage(new NSSize(32, 32));
+        image.lockFocus();
+        NSColor.srgbRed(0.9, 0.2, 0.1, 1).setFill(); new CGRect(0, 0, 32, 32).fill();
+        NSColor.srgbRed(0.1, 0.4, 0.9, 1).setFill(); new CGRect(0, 0, 16, 32).fill();
+        image.unlockFocus();
+        var box = new SCNNode(new SCNBox(1.2, 1.2, 1.2, 0.1));
+        box.geometry.firstMaterial.diffuse.contents = image;
+        box.eulerAngles = new SCNVector3(0.4, 0.6, 0);
+        group.addChildNode(box);
+        box.position = new SCNVector3(-0.9, 0, 0); // changed after attaching: parked off the main thread
+        var tinted = new SCNNode(coloredPlane(new[] { 0.2f, 0.8f, 0.3f, 1f }));
+        tinted.scale = new SCNVector3(0.25, 0.25, 1);
+        tinted.constraints = new List<SCNConstraint> { SCNTransformConstraint.positionConstraint(true, (_, p) => p + new SCNVector3(1.1, 0, 0)) };
+        tinted.geometry.firstMaterial.lightingModel = SCNMaterial.LightingModel.physicallyBased;
+        group.addChildNode(tinted);
+        var sun = new SCNNode { light = new SCNLight() };
+        sun.light.type = SCNLight.LightType.directional; sun.light.intensity = 900; sun.eulerAngles = new SCNVector3(-0.6, 0.4, 0);
+        group.addChildNode(sun);
+        return group;
+    }
+    private static (SCNScene, SCNNode) ThreadScene(SCNNode content)
+    {
+        var (scene, cam) = flatScene(mat(SCNMaterial.LightingModel.lambert, gray(0.3)));
+        scene.rootNode.childNodes[0].position = new SCNVector3(0, 0, -1);
+        cam.camera.usesOrthographicProjection = false; cam.camera.fieldOfView = 40;
+        if (content != null) scene.rootNode.addChildNode(content);
+        return (scene, cam);
+    }
+    private static double MeanAbs(Image a, Image b)
+    {
+        double sum = 0;
+        for (int y = 0; y < a.GetHeight(); y++)
+            for (int x = 0; x < a.GetWidth(); x++)
+            {
+                Color p = a.GetPixel(x, y), q = b.GetPixel(x, y);
+                sum += Math.Abs(p.R - q.R) + Math.Abs(p.G - q.G) + Math.Abs(p.B - q.B);
+            }
+        return sum * 255 / (3.0 * a.GetWidth() * a.GetHeight());
+    }
+    /// <summary>Waits for a builder task while the main thread keeps drawing frames: Godot answers a builder
+    /// thread's synchronous RenderingServer calls (e.g. creating a SubViewport) on the main thread.</summary>
+    private static async System.Threading.Tasks.Task<T> Await<T>(SceneTree tree, System.Threading.Tasks.Task<T> task)
+    {
+        while (!task.IsCompleted) await tree.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        return task.Result;
+    }
+    private static async System.Threading.Tasks.Task Threading(SceneTree tree)
+    {
+        var reference = ThreadScene(ThreadContent());
+        var expected = render(reference.Item1, reference.Item2, 128, 96);
+        save("Q_thread_main", expected);
+        // Whole scene built on a pool thread (stays detached until the renderer shows it).
+        var built = await Await(tree, System.Threading.Tasks.Task.Run(() => ThreadScene(ThreadContent())));
+        var fromThread = render(built.Item1, built.Item2, 128, 96);
+        save("Q_thread_scene", fromThread);
+        measurements["Q_thread_scene_mean_abs"] = new[] { MeanAbs(expected, fromThread) };
+        // Subtree built on a pool thread, attached to a main-thread scene.
+        var host = ThreadScene(null);
+        var subtree = await Await(tree, System.Threading.Tasks.Task.Run(ThreadContent));
+        host.Item1.rootNode.addChildNode(subtree);
+        var attached = render(host.Item1, host.Item2, 128, 96);
+        measurements["Q_thread_subtree_mean_abs"] = new[] { MeanAbs(expected, attached) };
+        // DispatchQueue.main.async from a pool thread runs on the main thread, in order, when drained.
+        var order = new List<int>();
+        bool allMain = true;
+        await Await(tree, System.Threading.Tasks.Task.Run(() =>
+        {
+            for (int i = 0; i < 3; i++) { int k = i; DispatchQueue.main.async(() => { allMain &= SceneKitRuntime.OnMainThread; order.Add(k); }); }
+            return 0;
+        }));
+        for (int frame = 0; frame < 3 && order.Count < 3; frame++) await tree.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
+        measurements["Q_dispatch_main_in_order"] = new[] { allMain && order.SequenceEqual(new[] { 0, 1, 2 }) ? 1.0 : 0.0 };
     }
 
     // =====================================================================

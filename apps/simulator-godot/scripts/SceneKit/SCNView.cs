@@ -63,6 +63,7 @@ internal sealed class ViewRig
     }
     internal void SetScene(SCNScene s)
     {
+        s?.EnsureAttached();
         scene = s;
         viewport.World3D = s?.World;
     }

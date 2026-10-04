@@ -195,9 +195,13 @@ public static class AppKitDrawing
 /// </summary>
 public sealed class NSGraphicsContext
 {
-    public static NSGraphicsContext current;
-    private static readonly Stack<(NSGraphicsContext ctx, NSColor fill, NSColor stroke)> stack = new();
-    internal static NSColor FillColor = NSColor.black, StrokeColor = NSColor.black;
+    // Per thread, as in AppKit (images may be drawn on a builder thread).
+    [ThreadStatic] public static NSGraphicsContext current;
+    [ThreadStatic] private static Stack<(NSGraphicsContext ctx, NSColor fill, NSColor stroke)> stackStorage;
+    [ThreadStatic] private static NSColor fillColor, strokeColor;
+    private static Stack<(NSGraphicsContext ctx, NSColor fill, NSColor stroke)> stack => stackStorage ??= new();
+    internal static NSColor FillColor { get => fillColor ?? NSColor.black; set => fillColor = value; }
+    internal static NSColor StrokeColor { get => strokeColor ?? NSColor.black; set => strokeColor = value; }
     internal readonly NSBitmapImageRep rep;
     public bool shouldAntialias = true;
     /// <summary>isFlipped: y grows downwards (NSImage.lockFocusFlipped(true)).</summary>

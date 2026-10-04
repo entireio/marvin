@@ -32,7 +32,7 @@ public partial class SceneKitRuntime : Node
     /// <summary>Creates the runtime node (deferred add to the scene tree root) and the global shader uniforms.</summary>
     public static void EnsureStarted()
     {
-        if (instance != null) return;
+        if (instance != null || !OnMainThread) return;
         // Runs after every other node's _Process; Godot then applies the transform notifications.
         instance = new SceneKitRuntime { Name = "SceneKitRuntime", ProcessPriority = int.MaxValue, ProcessMode = ProcessModeEnum.Always };
         // The composer's global uniforms (scn_fog_color, scn_ambient, scn_sh0..8, ...) are declared in
@@ -45,12 +45,18 @@ public partial class SceneKitRuntime : Node
         if (Engine.GetMainLoop() is SceneTree tree)
             tree.Root.CallDeferred(Node.MethodName.AddChild, instance);
     }
+    internal static void EnsureStartedFromAnyThread()
+    {
+        if (instance != null) return;
+        if (OnMainThread) EnsureStarted();
+        else Callable.From(EnsureStarted).CallDeferred();
+    }
     public override void _Ready()
     {
         foreach (var h in pendingHosts) if (h.GetParent() == null) AddChild(h);
         pendingHosts.Clear();
     }
-    public override void _Process(double delta) { SceneTime += delta; Flush(); }
+    public override void _Process(double delta) { SceneTime += delta; DispatchQueue.Drain(); Flush(); }
 
     internal static void AttachHost(SubViewport host)
     {
@@ -59,17 +65,95 @@ public partial class SceneKitRuntime : Node
         else pendingHosts.Add(host);
     }
 
+    // ---- Threads
+    // SceneKit objects may be built on a background queue (the game builds DirtWorld that way) and handed
+    // to the main thread. The facade follows that model: Godot nodes outside the scene tree may be
+    // changed from any thread, so a scene created off the main thread stays detached, and changes made
+    // off the main thread are parked here instead of entering the per-frame dirty sets. The main thread
+    // adopts them when it takes the objects over: when a scene is shown (SCNView/SCNRenderer.scene) and
+    // when addChildNode attaches a subtree. Everything else in the facade is main-thread only, like Godot.
+    private static int mainThreadId = -1;
+    /// <summary>True on Godot's main thread (cheap: compares managed thread ids after the first call there).</summary>
+    internal static bool OnMainThread
+    {
+        get
+        {
+            int id = System.Environment.CurrentManagedThreadId;
+            if (id == mainThreadId) return true;
+            if (mainThreadId != -1) return false;
+            if (OS.GetThreadCallerId() != OS.GetMainThreadId()) return false;
+            mainThreadId = id;
+            return true;
+        }
+    }
+    private static readonly object parkGate = new();
+    private static readonly Dictionary<SCNNode, int> parkedNodes = new();
+    private static readonly HashSet<MaterialGpu> parkedMaterials = new();
+    private static readonly HashSet<MTLTexture> parkedTextures = new();
+    private static volatile bool anyParked;
+    private const int ParkedConstrain = 1 << 29, ParkedUnconstrain = 1 << 30;
+
+    /// <summary>Main thread: takes over the changes other threads parked for a subtree (and all parked materials and textures).</summary>
+    internal static void Adopt(SCNNode subtree)
+    {
+        if (!anyParked || !OnMainThread) return;
+        var nodes = new List<(SCNNode node, int flags)>();
+        MaterialGpu[] mats;
+        MTLTexture[] texs;
+        lock (parkGate)
+        {
+            subtree?.enumerateHierarchy((n, _) => { if (parkedNodes.Remove(n, out var f)) nodes.Add((n, f)); });
+            mats = parkedMaterials.ToArray(); parkedMaterials.Clear();
+            texs = parkedTextures.ToArray(); parkedTextures.Clear();
+            anyParked = parkedNodes.Count > 0;
+        }
+        foreach (var m in mats) dirtyMaterials.Add(m);
+        foreach (var t in texs) dirtyTextures.Add(t);
+        foreach (var (n, f) in nodes)
+        {
+            if ((f & ParkedConstrain) != 0) constrained.Add(n);
+            if ((f & ParkedUnconstrain) != 0) constrained.Remove(n);
+            int flags = f & ~(ParkedConstrain | ParkedUnconstrain);
+            if (flags != 0) NodeDirty(n, flags);
+        }
+        sceneStateDirty = true;
+    }
+    private static void Park(SCNNode node, int flags)
+    {
+        lock (parkGate)
+        {
+            parkedNodes.TryGetValue(node, out var f);
+            if ((flags & ParkedConstrain) != 0) f &= ~ParkedUnconstrain;
+            if ((flags & ParkedUnconstrain) != 0) f &= ~ParkedConstrain;
+            parkedNodes[node] = f | flags;
+            anyParked = true;
+        }
+    }
+
     internal static void NodeDirty(SCNNode node, int flags)
     {
+        if (!OnMainThread) { Park(node, flags); return; }
         if (dirtyNodes.TryGetValue(node, out var f)) { if ((f | flags) != f) dirtyNodes[node] = f | flags; }
         else dirtyNodes[node] = flags;
     }
-    internal static void MaterialDirty(MaterialGpu m) => dirtyMaterials.Add(m);
+    internal static void MaterialDirty(MaterialGpu m)
+    {
+        if (OnMainThread) { dirtyMaterials.Add(m); return; }
+        lock (parkGate) { parkedMaterials.Add(m); anyParked = true; }
+    }
     private static readonly HashSet<MTLTexture> dirtyTextures = new();
-    internal static void TextureDirty(MTLTexture t) => dirtyTextures.Add(t);
+    internal static void TextureDirty(MTLTexture t)
+    {
+        if (OnMainThread) { dirtyTextures.Add(t); return; }
+        lock (parkGate) { parkedTextures.Add(t); anyParked = true; }
+    }
     internal static void SceneStateDirty() => sceneStateDirty = true;
     internal static void MasksChanged() { masksDirty = true; sceneStateDirty = true; }
-    internal static void ConstraintsChanged(SCNNode node, bool has) { if (has) constrained.Add(node); else { constrained.Remove(node); NodeDirty(node, SCNNode.DirtyTransform); } }
+    internal static void ConstraintsChanged(SCNNode node, bool has)
+    {
+        if (!OnMainThread) { Park(node, has ? ParkedConstrain : ParkedUnconstrain | SCNNode.DirtyTransform); return; }
+        if (has) constrained.Add(node); else { constrained.Remove(node); NodeDirty(node, SCNNode.DirtyTransform); }
+    }
 
     /// <summary>Maps a SceneKit category bit mask to Godot's 20 render layers (bits allocated on first use).</summary>
     internal static uint GodotLayers(int mask)
@@ -102,10 +186,11 @@ public partial class SceneKitRuntime : Node
     /// <summary>Applies all pending SceneKit changes to Godot. Called before every frame and by snapshot().</summary>
     public static void Flush()
     {
-        if (flushing) return;
+        if (flushing || !OnMainThread) return;
         flushing = true;
         try
         {
+            foreach (var view in LiveViews()) view.scene?.EnsureAttached();
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateUpdate();
             if (masksDirty)
             {

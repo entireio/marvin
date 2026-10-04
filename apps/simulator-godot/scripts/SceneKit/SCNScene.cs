@@ -24,9 +24,9 @@ public sealed class SCNScene : IPropertyOwner
     internal SubViewport host;
     internal int stateVersion;
 
+    private bool attached;
     public SCNScene()
     {
-        SceneKitRuntime.EnsureStarted();
         rootNode = new SCNNode { name = "root" };
         rootNode.SetSceneOwner(this);
         background = new SCNMaterialProperty(null, this);
@@ -42,7 +42,16 @@ public sealed class SCNScene : IPropertyOwner
             Disable3D = false,
         };
         host.AddChild(rootNode);
+        // A scene built off the main thread stays outside the tree until the main thread shows it.
+        if (SceneKitRuntime.OnMainThread) EnsureAttached();
+    }
+    /// <summary>Main thread: puts the scene's world into the tree and adopts changes parked by builder threads.</summary>
+    internal void EnsureAttached()
+    {
+        if (attached || !SceneKitRuntime.OnMainThread) return;
+        attached = true;
         SceneKitRuntime.AttachHost(host);
+        SceneKitRuntime.Adopt(rootNode);
     }
 
     public double fogStartDistance { get => _fogStartDistance; set { _fogStartDistance = value; Changed(); } }
