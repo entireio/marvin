@@ -1,0 +1,7 @@
+.godot/
+bin/
+obj/
+*.user
+/assets/
+/reference/
+/captures/

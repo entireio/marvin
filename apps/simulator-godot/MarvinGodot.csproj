@@ -1,0 +1,15 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Marvin</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Core and checks are separate projects; Godot must not compile their sources twice. -->
+    <Compile Remove="src/**" />
+    <ProjectReference Include="src/Core/MarvinCore.csproj" />
+  </ItemGroup>
+</Project>
