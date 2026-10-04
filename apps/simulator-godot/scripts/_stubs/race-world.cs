@@ -53,6 +53,92 @@ public sealed class TownWorld
     public int visiblePopulation => 0;
     public void setStorm(bool active) { stormActive = active; }
     public void reset() { }
+    // The camera-boom queries AppController.updateCamera calls, ported verbatim from TownWorld.swift. With the stub's
+    // empty collision world and no roof bounds only InfieldLayout.obstacles and the terrain constrain the boom.
+    private readonly List<(Double3, Double3)> cameraBounds = new();
+    public SCNVector3 cameraPivot(Double3 position, double chassisHeight)
+    {
+        var head = new SCNVector3(position.x, position.y + chassisHeight + 0.18, position.z);
+        double rise = Math.Min(0.72, cameraRoom(head, range: 0.9));
+        var raised = new SCNVector3(position.x, head.y + rise, position.z);
+        return clearCamera(head, raised);
+    }
+    public double cameraRoom(SCNVector3 point, double range = 9)
+    {
+        var a = new Double3(point.x, point.y, point.z);
+        double radius = Math.Max(0.1, (range + 0.2) / Math.Sqrt(2));
+        var query = new RobotCollisions.Body(position: a, profile: new RobotCollisions.Profile(mass: 1, halfWidth: radius, halfDepth: radius, height: 1));
+        double room = double.PositiveInfinity;
+        foreach (var body in collisionWorld.nearby(query).Concat(InfieldLayout.obstacles))
+        {
+            if (body.profile.mass == 70) continue;
+            var d = a - body.position; double c = Math.Cos(body.heading), s = Math.Sin(body.heading); var p = body.profile;
+            var q = new Double3(Math.Abs(c * d.x - s * d.z) - p.halfWidth, Math.Max(-d.y, d.y - p.height), Math.Abs(s * d.x + c * d.z) - p.halfDepth);
+            room = Math.Min(room, Simd.length(Simd.max(q, Double3.zero)));
+        }
+        foreach (var (low, high) in cameraBounds) room = Math.Min(room, Simd.length(Simd.max(Simd.max(low - a, a - high), Double3.zero)));
+        return Math.Max(0, room - 0.16);
+    }
+    public SCNVector3 terrainCamera(SCNVector3 from, SCNVector3 to)
+    {
+        var pivot = from; var desired = to;
+        if (!(Math.Max(Math.Abs(pivot.x), Math.Abs(pivot.z)) > DesertTerrain.townEdge)) return desired;
+        var result = desired;
+        for (int i = 1; i <= 64; i++)
+        {
+            double t = (double)i / 64, x = pivot.x + (desired.x - pivot.x) * t, z = pivot.z + (desired.z - pivot.z) * t;
+            double needed = (DirtCourse.height(x, z) + 0.25 - pivot.y * (1 - t)) / t;
+            result.y = Math.Max(result.y, needed);
+        }
+        return result;
+    }
+    public SCNVector3 clearCamera(SCNVector3 from, SCNVector3 to)
+    {
+        var a = new Double3(from.x, from.y, from.z);
+        Double3 b = new Double3(to.x, to.y, to.z), delta = b - a;
+        double limit = 1.0;
+        void clip(Double3 origin, Double3 direction, Double3 low, Double3 high)
+        {
+            Double3 lo = low - new Double3(0.14, 0.14, 0.14), hi = high + new Double3(0.14, 0.14, 0.14);
+            double enter = 0.0, leave = 1.0;
+            for (int axis = 0; axis < 3; axis++)
+            {
+                if (Math.Abs(direction[axis]) < 1e-8)
+                {
+                    if (origin[axis] < lo[axis] || origin[axis] > hi[axis]) return;
+                }
+                else
+                {
+                    double t0 = (lo[axis] - origin[axis]) / direction[axis], t1 = (hi[axis] - origin[axis]) / direction[axis];
+                    enter = Math.Max(enter, Math.Min(t0, t1)); leave = Math.Min(leave, Math.Max(t0, t1));
+                    if (enter > leave) return;
+                }
+            }
+            limit = Math.Min(limit, Math.Max(0, enter - 0.01 / Math.Max(0.01, Simd.length(delta))));
+        }
+        var middle = (a + b) / 2; double radius = Math.Max(0.1, Simd.length(delta) / 2 + 0.2);
+        var query = new RobotCollisions.Body(position: middle, profile: new RobotCollisions.Profile(mass: 1, halfWidth: radius, halfDepth: radius, height: 1));
+        foreach (var body in collisionWorld.nearby(query).Concat(InfieldLayout.obstacles))
+        {
+            if (body.profile.mass == 70) continue;
+            double c = Math.Cos(body.heading), s = Math.Sin(body.heading);
+            Double3 local(Double3 p) => new Double3(c * p.x - s * p.z, p.y, s * p.x + c * p.z);
+            var p = body.profile;
+            clip(local(a - body.position), local(delta), new Double3(-p.halfWidth, 0, -p.halfDepth), new Double3(p.halfWidth, p.height, p.halfDepth));
+        }
+        foreach (var (low, high) in cameraBounds) clip(a, delta, low, high);
+        int steps = Math.Max(1, (int)Math.Ceiling(Simd.length(delta) * limit / 0.20));
+        for (int i = 1; i <= steps; i++)
+        {
+            double t = limit * (double)i / (double)steps; var p = a + delta * t;
+            if (p.y < DirtCourse.height(p.x, p.z) + 0.18)
+            {
+                limit = limit * (double)(i - 1) / (double)steps; break;
+            }
+        }
+        var result = a + delta * limit;
+        return new SCNVector3(result.x, result.y, result.z);
+    }
 }
 
 /// <summary>STUB (town stream, TownWorld.swift): TownMesh without vertex reuse (same triangles, colours and UVs).</summary>

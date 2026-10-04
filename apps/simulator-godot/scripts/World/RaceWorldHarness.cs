@@ -54,6 +54,9 @@ public sealed class RaceWorldHarness
 
     public RaceWorldHarness(SceneTree tree, DirtWorld prebuilt = null)
     {
+        // applicationDidFinishLaunching: `if smokeDirectory != nil { weatherOverride=false }`. Every harness run is a
+        // smoke mode with an output directory, so races are clear unless a mode overrides the weather itself.
+        weatherOverride = false;
         view = new SCNView(new CGRect(0, 0, 1280, 820));
         tree.Root.AddChild(view);
         view.antialiasingMode = SCNAntialiasingMode.multisampling4X;
@@ -136,12 +139,22 @@ public sealed class RaceWorldHarness
         }
         updateCamera(snap: true);
     }
+    /// PORT: test pin. MARVIN_DAYLIGHT_FRACTION / MARVIN_DAYLIGHT_PHASE may hold comma-separated lists; each reset()
+    /// takes the next entry (the last one repeats), so a mode that resets several times (the dirt smoke test resets
+    /// for the full race) can reproduce each daylight of a macOS run.
+    private static int pinnedDaylightCount = 0;
     public static BinaryDaylight? pinnedDaylight()
     {
-        var f = System.Environment.GetEnvironmentVariable("MARVIN_DAYLIGHT_FRACTION");
+        string pick(string name)
+        {
+            var list = System.Environment.GetEnvironmentVariable(name)?.Split(',');
+            return list == null ? null : list[Math.Min(pinnedDaylightCount, list.Length - 1)].Trim();
+        }
+        var f = pick("MARVIN_DAYLIGHT_FRACTION");
         if (f == null || !double.TryParse(f, NumberStyles.Float, CultureInfo.InvariantCulture, out var fraction) || !double.IsFinite(fraction)) return null;
-        var p = System.Environment.GetEnvironmentVariable("MARVIN_DAYLIGHT_PHASE");
+        var p = pick("MARVIN_DAYLIGHT_PHASE");
         double phase = p != null && double.TryParse(p, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ? value : 1.2;
+        pinnedDaylightCount += 1;
         return new BinaryDaylight(fraction: fraction, phase: phase);
     }
 
@@ -168,8 +181,9 @@ public sealed class RaceWorldHarness
                          modelScale: modelScale, additional: new[] { canonical[2], canonical[3] });
     }
 
-    /// AppController.updateCamera(snap:dt:). PORT: the town's camera-boom clipping (TownWorld.cameraPivot, terrainCamera,
-    /// clearCamera, cameraRoom) belongs to the town stream and is not applied; the boom always has its full length.
+    /// AppController.updateCamera(snap:dt:), including the camera-boom clipping. PORT: the boom queries
+    /// (TownWorld.cameraPivot, terrainCamera, clearCamera, cameraRoom) come from the town stream; until it lands the
+    /// stub sees only InfieldLayout.obstacles and the terrain, not the buildings and grandstands.
     public void updateCamera(bool snap, double dt = 1.0 / 60)
     {
         if (isDirtTrack) { mapRegion = RaceMapRegion.at(new Double2(simulation.x, simulation.z), mapRegion); }
@@ -245,6 +259,32 @@ public sealed class RaceWorldHarness
         }
         if (isDirtTrack)
         {
+            if (cameraMode != 2 || camera.position.y < cameraAim.y + 12)
+            {
+                // Collision starts at the robot, never the look-ahead point which
+                // can already be through a wall during a narrow turn.
+                var pivot = dirtWorld.town.cameraPivot(new Double3(simulation.x, simulation.groundY, simulation.z), RobotCollisions.profiles[(int)lineup[0]].height);
+                SCNVector3 eye = dirtWorld.town.terrainCamera(pivot, camera.position), clear = dirtWorld.town.clearCamera(pivot, eye);
+                double distance(SCNVector3 p) => sqrt(pow(p.x - pivot.x, 2) + pow(p.y - pivot.y, 2) + pow(p.z - pivot.z, 2));
+                double allowed = min(1, min(distance(clear), dirtWorld.town.cameraRoom(pivot, distance(eye))) / max(0.001, distance(eye)));
+                if (snap || allowed < cameraBoomFraction) { cameraBoomFraction = allowed; }
+                else { cameraBoomFraction += (allowed - cameraBoomFraction) * (1 - exp(-3.5 * max(0, dt))); }
+                double f = cameraBoomFraction;
+                camera.position = new SCNVector3(pivot.x + (eye.x - pivot.x) * f, pivot.y + (eye.y - pivot.y) * f, pivot.z + (eye.z - pivot.z) * f);
+                // In a tight alley keep the route visible over the chassis rather
+                // than pointing the compressed camera down into its head.
+                double close = 1 - min(1, distance(camera.position) / 1.5);
+                double raised = min(pivot.y - 0.12, simulation.groundY + RobotCollisions.profiles[(int)lineup[0]].height + 0.45);
+                if (cameraMode == 0)
+                {
+                    cameraAim = new SCNVector3(target.x, target.y + (raised - target.y) * close, target.z);
+                }
+                else
+                {
+                    double dx = pivot.x - eye.x, dz = pivot.z - eye.z, length = max(0.001, sqrt(dx * dx + dz * dz));
+                    cameraAim = new SCNVector3(target.x + dx / length * close, target.y + (raised - target.y) * close, target.z + dz / length * close);
+                }
+            }
             if (cameraMode == 2) { camera.position.y = max(camera.position.y, DirtCourse.height(camera.position.x, camera.position.z) + 0.18); }
         }
         camera.look(cameraAim, up: new SCNVector3(0, 1, 0), localFront: new SCNVector3(0, 0, -1));

@@ -469,12 +469,28 @@ public partial class SCNNode : Node3D
         }
         while (meshes.Count > levels.Count) { var mi = meshes[^1]; meshes.RemoveAt(meshes.Count - 1); RemoveChild(mi); mi.QueueFree(); }
         while (meshes.Count < levels.Count) { var mi = new MeshInstance3D(); AddChild(mi, false, InternalMode.Front); meshes.Add(mi); }
+        // Measured (Swift probe): SceneKit measures a worldSpaceDistance LOD from the node's origin, Godot's visibility
+        // range from the instance's AABB centre. Centre the instances' culling box on the node origin (a symmetric box
+        // enclosing every level), so the switch happens where SceneKit's does (DesertWorld's dune tiles have their
+        // origin at a corner, 45 m from their centre). Screen-space LODs keep the geometric centre.
+        Aabb? lodBounds = null;
+        if (levels.Count > 1 && _geometry.levelsOfDetail.All(l => l?.geometry == null || l.screenSpaceRadius <= 0))
+        {
+            var extent = Vector3.Zero;
+            foreach (var (g, _, _) in levels)
+            {
+                var box = g.GodotMesh.GetAabb();
+                extent = extent.Max(box.Position.Abs()).Max(box.End.Abs());
+            }
+            lodBounds = new Aabb(-extent, extent * 2);
+        }
         for (int i = 0; i < levels.Count; i++)
         {
             var (g, from, to) = levels[i];
             var mi = meshes[i];
             var mesh = g.GodotMesh;
             if (mi.Mesh != mesh) mi.Mesh = mesh;
+            mi.CustomAabb = lodBounds ?? new Aabb();
             mi.VisibilityRangeBegin = (float)from;
             mi.VisibilityRangeEnd = (float)to;
             var mats = g.MaterialList;

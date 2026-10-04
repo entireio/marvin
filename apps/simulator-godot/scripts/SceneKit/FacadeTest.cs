@@ -283,6 +283,21 @@ public static class FacadeTest
             var cam = new SCNNode { camera = new SCNCamera() }; cam.position = new SCNVector3(0, 0, distance); scene.rootNode.addChildNode(cam);
             cal(tag, (scene, cam));
         }
+        // LOD distance is measured from the node origin, not the geometry's centre: the quad sits 8 m from its node.
+        foreach (var (offset, distance, tag) in new[] { (-8.0, 6.0, "D_lod_offset_near"), (8.0, 14.0, "D_lod_offset_far") })
+        {
+            var scene = new SCNScene(); scene.background.contents = NSColor.black;
+            SCNGeometry quad(NSColor c)
+            {
+                var v = new List<SCNVector3> { new(-1, -1, offset), new(1, -1, offset), new(1, 1, offset), new(-1, 1, offset) };
+                var g = new SCNGeometry(new[] { SCNGeometrySource.vertices(v) }, new[] { new SCNGeometryElement(new List<int> { 0, 1, 2, 0, 2, 3 }, SCNGeometryPrimitiveType.triangles) });
+                g.materials = new() { mat(SCNMaterial.LightingModel.constant, c) }; return g;
+            }
+            var near = quad(NSColor.red); near.levelsOfDetail = new[] { new SCNLevelOfDetail(quad(NSColor.green), worldSpaceDistance: 10) };
+            scene.rootNode.addChildNode(new SCNNode(near));
+            var cam = new SCNNode { camera = new SCNCamera() }; cam.position = new SCNVector3(0, 0, distance); scene.rootNode.addChildNode(cam);
+            cal(tag, (scene, cam));
+        }
         // Billboard: a plane rotated away from the camera still faces it.
         {
             var scene = new SCNScene(); scene.background.contents = NSColor.black;

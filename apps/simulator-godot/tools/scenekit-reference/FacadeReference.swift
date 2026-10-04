@@ -158,6 +158,19 @@ for (distance, tag) in [(6.0, "D_lod_near"), (14.0, "D_lod_far")] {
     let cam = SCNNode(); cam.camera = SCNCamera(); cam.position = SCNVector3(0, 0, distance); scene.rootNode.addChildNode(cam)
     cal(tag, (scene, cam))
 }
+// LOD distance is measured from the node origin, not the geometry's centre: the quad sits 8 m from its node.
+for (offset, distance, tag) in [(-8.0, 6.0, "D_lod_offset_near"), (8.0, 14.0, "D_lod_offset_far")] {
+    let scene = SCNScene(); scene.background.contents = NSColor.black
+    func quad(_ c: NSColor) -> SCNGeometry {
+        let v = [SCNVector3(-1, -1, offset), SCNVector3(1, -1, offset), SCNVector3(1, 1, offset), SCNVector3(-1, 1, offset)]
+        let g = SCNGeometry(sources: [SCNGeometrySource(vertices: v)], elements: [SCNGeometryElement(indices: [Int32(0), 1, 2, 0, 2, 3], primitiveType: .triangles)])
+        g.materials = [mat(.constant, c)]; return g
+    }
+    let near = quad(NSColor.red); near.levelsOfDetail = [SCNLevelOfDetail(geometry: quad(NSColor.green), worldSpaceDistance: 10)]
+    scene.rootNode.addChildNode(SCNNode(geometry: near))
+    let cam = SCNNode(); cam.camera = SCNCamera(); cam.position = SCNVector3(0, 0, distance); scene.rootNode.addChildNode(cam)
+    cal(tag, (scene, cam))
+}
 do {
     let scene = SCNScene(); scene.background.contents = NSColor.black
     let plane = SCNPlane(width: 1, height: 1); plane.materials = [mat(.constant, gray(0.5))]
