@@ -66,7 +66,7 @@ public partial class AppController
 /// daylight at random (as on macOS); these environment variables fix them:
 /// <list type="bullet">
 /// <item><c>MARVIN_GRID_SLOTS=i,j,k,l</c> (or <c>MARVIN_TOWN_GRID</c>): indices into DirtCourse.startingGrid for the
-/// player, R2-D2, BB-8 and WALL-E.</item>
+/// player, R2-D2, BB-8 and WALL-E; several grids separated by ";" pin one reset each (the last repeats).</item>
 /// <item><c>MARVIN_DAYLIGHT_FRACTION</c> / <c>MARVIN_DAYLIGHT_PHASE</c>: comma-separated lists, one entry per reset (the
 /// last repeats), so a mode that resets several times can reproduce each daylight of a run;
 /// <c>MARVIN_TOWN_DAYLIGHT=fraction,phase</c> pins one daylight for every reset.</item>
@@ -74,12 +74,18 @@ public partial class AppController
 /// </summary>
 public static class TestPins
 {
+    private static int gridCount = 0;
     public static (double phase, double offset)[] gridSlots()
     {
-        var order = Environment.GetEnvironmentVariable("MARVIN_GRID_SLOTS") ?? Environment.GetEnvironmentVariable("MARVIN_TOWN_GRID");
-        if (string.IsNullOrWhiteSpace(order)) { return null; }
+        var value = Environment.GetEnvironmentVariable("MARVIN_GRID_SLOTS") ?? Environment.GetEnvironmentVariable("MARVIN_TOWN_GRID");
+        if (string.IsNullOrWhiteSpace(value)) { return null; }
+        var grids = value.Split(';');
+        var order = grids[Math.Min(gridCount, grids.Length - 1)];
+        gridCount += 1;
         return order.Split(',').Select(s => DirtCourse.startingGrid[int.Parse(s.Trim(), CultureInfo.InvariantCulture)]).ToArray();
     }
+    /// <summary>Starts the per-reset lists again (fitting tools that reset many times).</summary>
+    public static void restart() { gridCount = 0; daylightCount = 0; }
 
     private static int daylightCount = 0;
     public static BinaryDaylight? daylight()
