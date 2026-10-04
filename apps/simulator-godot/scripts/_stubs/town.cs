@@ -1,13 +1,15 @@
-// STUBS (stream "town"): minimal stand-ins for types owned by other streams, with only the members
-// that TownWorld.cs / TownSigns.cs / TownAccessMap.cs call. The orchestrator deletes this file when
-// merging; the real ports replace every type here.
+// STUBS (stream "town"): minimal stand-ins for types owned by other streams or later stages, with
+// only the members that TownWorld.cs / TownGround.cs / TownShadowBatch.cs / TownSigns.cs /
+// TownAccessMap.cs call. The orchestrator deletes this file when merging; the real ports replace
+// every type here.
 using System;
 using System.Collections.Generic;
 using Marvin.Core;
+using static Marvin.Core.Swift;
 
 namespace Marvin;
 
-// TownResidents.swift
+// TownResidents.swift (next stage of this stream)
 public sealed class TownDoorway
 {
     public readonly Double2 center; public readonly double yaw;
@@ -19,11 +21,14 @@ public sealed class TownResidents
     public List<Walker> walkers { get; private set; } = new();
     public List<RobotCollisions.Body> bodies => new();
     public int visible => 0;
+    public int connections => 0;
     public TownResidents(List<TownDoorway> doors, CityCollisionWorld city, TownCrowd crowd, SCNNode root, int count) { }
     public void setStorm(bool value) { }
+    public void reset() { }
+    public void update(double dt, List<RobotCollisions.Body> robots, List<RobotCollisions.Body> pedestrians = null, Func<SCNNode, bool> visible = null) { }
 }
 
-// TownStreetResidents.swift
+// TownStreetResidents.swift (next stage of this stream)
 public sealed class TownStreetResidents
 {
     public sealed class Walker { }
@@ -32,33 +37,32 @@ public sealed class TownStreetResidents
     public int visible => 0;
     public TownStreetResidents(List<List<Double2>> paths, CityCollisionWorld city, TownCrowd crowd, SCNNode root) { }
     public void setStorm(bool value) { }
+    public void reset() { }
+    public void update(double dt, List<RobotCollisions.Body> obstacles, Func<SCNNode, bool> visible = null) { }
 }
 
-// TownCrowd.swift
+// TownCrowd.swift (next stage of this stream): CityMaterials and TownCrowd.
 public static class CityMaterials
 {
-    public static readonly SCNMaterial plaster = new SCNMaterial();
+    public static string asset(string name) => "res://assets/City/" + name;
+    public static readonly SCNMaterial plaster = new SCNMaterial(), adobe = new SCNMaterial(), metal = new SCNMaterial();
+    // Double-sided like the real CityMaterials.cloth (TownShadowBatch groups by it; canopies are seen from below).
+    public static readonly SCNMaterial cloth = new SCNMaterial { isDoubleSided = true };
 }
 public sealed class TownCrowd
 {
+    public enum Activity { ordinary = 0, conversation = -1, waiting = -2, trading = -3 }
     public int stormPopulation { get; private set; } = 0;
+    public int triangles { get; private set; } = 0;
+    public int farTriangles { get; private set; } = 0;
+    public int cellCount { get; private set; } = 0;
+    public bool valid => false;
+    // Verbatim copy of the Swift one-liner (it decides spectator sound zones and storm absences).
+    public static bool staysOutside(double x, double z, int index) => abs((long)index * 17 + (long)(x * 13) + (long)(z * 7)) % 31 == 0;
+    public void update(double time) { }
     public void setStorm(bool active) { }
+    public SCNNode add(double x, double y, double z, double yaw, int index, bool seated, bool animated, bool shelter = false, Activity activity = Activity.ordinary) => null;
     public void finish(SCNNode into) { }
-}
-
-// TownShadowBatch.swift
-public sealed class TownShadowBatch
-{
-    public sealed class Failure : Exception
-    {
-        private Failure(string message) : base(message) { }
-        public static Failure unsupportedGeometry => new("unsupportedGeometry");
-    }
-    public TownShadowBatch(SCNNode root, SCNCamera camera) { }
-    public void setEnabled(bool value) { }
-    public bool setCaster(SCNNode original, bool enabled) => false;
-    public Dictionary<string, int> telemetryStatistics => new();
-    public Dictionary<string, int> statistics => new();
 }
 
 // ShadowVolume.swift
@@ -76,6 +80,7 @@ public readonly struct ShadowBounds
 }
 public readonly struct ShadowFrustum
 {
+    public static List<ShadowFrustum> cameras(SCNNode node, double aspect) => new();
     public bool intersects(ShadowBounds bounds) => true;
 }
 
@@ -85,6 +90,7 @@ public struct SpectatorSoundZone
     public Double2 position;
     public int people;
     public int stormPeople;
+    public SpectatorSoundZone(Double2 position, int people, int stormPeople) { this.position = position; this.people = people; this.stormPeople = stormPeople; }
 }
 public struct TownSoundZone
 {
@@ -96,25 +102,4 @@ public struct TownSoundZone
     {
         this.position = position; this.kind = kind; this.activity = activity; this.infieldRepair = infieldRepair;
     }
-}
-
-// TownGround.swift
-public static class TownGround
-{
-    // Godot translation of TownGround.pigmentFunctions (same text as FacadeTest.PigmentFunctions).
-    public const string pigmentFunctions = @"
-float townNoise(vec2 p) {
-    vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-    vec4 h = fract(sin(vec4(dot(i, vec2(127.1, 311.7)), dot(i + vec2(1, 0), vec2(127.1, 311.7)), dot(i + vec2(0, 1), vec2(127.1, 311.7)), dot(i + 1.0, vec2(127.1, 311.7)))) * 43758.5453);
-    return mix(mix(h.x, h.y, f.x), mix(h.z, h.w, f.x), f.y);
-}
-vec3 townPigment(vec2 p) {
-    vec2 warp = vec2(townNoise(p / 31.0), townNoise(p / 37.0 + 19.0)) * 9.0;
-    float broad = townNoise((p + warp) / 22.0), fine = townNoise((p + warp) / 5.5);
-    float pale = smoothstep(0.28, 0.72, broad * 0.50 + fine * 0.50);
-    vec3 soil = mix(vec3(0.255, 0.208, 0.145), vec3(0.46, 0.36, 0.235), pale);
-    return soil * (0.89 + 0.22 * townNoise(p / 2.1 + 7.0));
-}
-";
-    public static SCNNode build(List<TownWorld.PedestrianAccess> access, List<Double2> yards) => new SCNNode();
 }

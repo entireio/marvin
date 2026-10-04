@@ -7,11 +7,8 @@ using static System.FormattableString;
 
 namespace Marvin;
 
-// PORT: TownWorld.swift is split. This file holds lines 1-1258 of the Swift file: the class
-// declarations, init, exploration/shadow detail, streets, grandstand, settlement planning and
-// compounds, repair pit, landmarks and district places (through buildDistrictPlaces). The rest of the
-// class (buildNeighborhoodUtilities ... validate), TownMesh, TownCollisionBuilder and TownPainter
-// are ported in the second part. Swift arrays are List<T>, dictionaries Dictionary, sets HashSet.
+// PORT: the whole of TownWorld.swift: TownWorld, TownMesh, TownCollisionBuilder and TownPainter.
+// Swift arrays are List<T>, dictionaries Dictionary, sets HashSet. Swift `defer` is try/finally.
 
 /// A compact, deterministic desert port. Static geometry is baked into spatial
 /// cells with two detail levels; matching collision proxies use a spatial index.
@@ -67,8 +64,7 @@ public sealed partial class TownWorld
     public Dictionary<string, int> shadowBatchTelemetry => shadowBatch?.telemetryStatistics ?? new();
     public Dictionary<string, int> shadowBatchDiagnostics => shadowBatch?.statistics ?? new();
     public List<Double3> shadowDirections = new();
-    // PORT: CommandLine.arguments -> the process arguments (Godot passes game arguments after "--").
-    public bool shadowCullingEnabled = Environment.GetCommandLineArgs().Contains("--benchmark-shadow-culling");
+    public bool shadowCullingEnabled = CommandLine.arguments.Contains("--benchmark-shadow-culling");
     private List<Double3> shadowProxyDirections = new();
     private List<ShadowFrustum> priorShadowFrusta = new();
     private Dictionary<SCNNode, List<ShadowBounds>> shadowVolumes = new(ReferenceEqualityComparer.Instance);
@@ -1500,5 +1496,1541 @@ ALPHA = alpha;
             }
             buildings += 1;
         }
+    }
+
+    private void buildNeighborhoodUtilities()
+    {
+        var courts = new[] { new Double2(-84.0, -20.0), new Double2(55, -67), new Double2(-20, 86), new Double2(-80, 37) };
+        foreach (var (index, center) in enumerated(courts))
+        {
+            var city = new CityCollisionWorld(collisionBuilder.bodies);
+            var candidates = Enumerable.Range(0, 24).Select(k =>
+            {
+                var angle = (double)k * 2 * Math.PI / 24;
+                return center + new Double2(cos(angle), sin(angle)) * 3.8;
+            }).ToList();
+            // PORT: `.first(where:)` over the 24 candidates.
+            Double2? found = null;
+            foreach (var candidate in candidates)
+            {
+                if (!(streetDistance(candidate.x, candidate.y) > 1.5 && !blocksEntrance(candidate))) { continue; }
+                var body = new RobotCollisions.Body(position: new Double3(candidate.x, 0, candidate.y), profile: new RobotCollisions.Profile(mass: 1, halfWidth: 1.5, halfDepth: 1.5, height: 3.8, round: true));
+                if (city.nearby(body).All(other => RobotCollisions.contact(body, other) == null)) { found = candidate; break; }
+            }
+            if (found is not Double2 p) { continue; }
+            var q = paint(p.x, p.y, yaw: (double)index * 0.8);
+            if (index % 2 == 0)
+            {
+                // Communal water condenser: tank, fin stack, pipe, stone seat.
+                q.cylinder(0, 0.45, 0, 0.68, 0.57, 0.9, 0xafa68c, sides: 16);
+                q.cylinder(0, 1.7, 0, 0.14, 0.12, 2.5, 0x8b9183, sides: 12);
+                for (var k = 0; k < 6; k++) { q.cylinder(0, 1.20 + (double)k * 0.28, 0, 0.38 - (double)k * 0.025, 0.38 - (double)k * 0.025, 0.08, 0xaca990, sides: 12); }
+                q.beam(new Double3(0.25, 0.68, 0), new Double3(0.9, 0.68, 0), 0.065, 0x696b5b);
+                q.adobe(0.9, 0.23, 0.75, 0.42, 0.46, 1.2, 0xb8a68a);
+            } else
+            {
+                // Freight handcart and accumulated deliveries at a shared court.
+                q.box(0, 0.38, 0, 1.55, 0.16, 0.95, 0x717a6c);
+                foreach (var x in new[] { -0.65, 0.65 }) { foreach (var z in new[] { -0.38, 0.38 }) { q.beam(new Double3(x - 0.07, 0.17, z), new Double3(x + 0.07, 0.17, z), 0.17, 0x484d44, sides: 12); } }
+                q.crate(-0.3, 0.47, 0, 0.62, 0x947c5a); q.crate(0.37, 0.47, 0.09, 0.47, 0xa38c65);
+                q.beam(new Double3(0.72, 0.45, -0.4), new Double3(1.3, 0.95, -0.4), 0.04, 0x6a7161);
+                q.beam(new Double3(0.72, 0.45, 0.4), new Double3(1.3, 0.95, 0.4), 0.04, 0x6a7161);
+            }
+            conversation(p + new Double2(2, 0), axis: new Double2(0, 1), index: 25000 + index * 10, count: 2);
+        }
+    }
+
+    private void buildDoorstepLife()
+    {
+        var city = new CityCollisionWorld(collisionBuilder.bodies);
+        foreach (var (i, e) in enumerated(entrances))
+        {
+            if (!(i % 3 == 1 && max(abs(e.center.x), abs(e.center.y)) > 40)) { continue; }
+            Double2 @out = new Double2(sin(e.yaw), cos(e.yaw)), side = new Double2(@out.y, -@out.x);
+            var sign = i % 2 == 0 ? 1.0 : -1.0;
+            var p = e.center + side * sign * (e.width / 2 + 0.85) + @out * 0.46;
+            var body = new RobotCollisions.Body(position: new Double3(p.x, 0, p.y), heading: e.yaw, profile: new RobotCollisions.Profile(mass: 1, halfWidth: 0.48, halfDepth: 0.35, height: 1.1));
+            if (!(!blocksEntrance(p) && streetDistance(p.x, p.y) > 0.8 &&
+                  city.nearby(body).All(other => RobotCollisions.contact(body, other) == null) &&
+                  pedestrianAccess.All(access => access.route.All(point => Simd.distance(point, p) > 0.82)))) { continue; }
+            var q = paint(p.x, p.y, yaw: e.yaw);
+            switch ((i / 3) % 5)
+            {
+            case 0:
+                q.vessel(-0.19, 0, 0, 0.48, 0xa98a65); q.vessel(0.23, 0.0, 0.08, 0.29, 0xb9a17e);
+                break;
+            case 1:
+                q.crate(-0.17, 0, 0, 0.47, 0x897356); q.crate(0.15, 0.47, -0.03, 0.28, 0x9f8b69);
+                break;
+            case 2:
+                q.box(0, 0.30, 0, 0.86, 0.10, 0.42, 0x8b765b);
+                foreach (var x in new[] { -0.33, 0.33 }) { q.adobe(x, 0.13, 0, 0.15, 0.26, 0.34, 0xbca98c); }
+                q.vessel(0.23, 0.36, 0, 0.16, 0xc2b199);
+                break;
+            case 3:
+                q.cylinder(0, 0.42, 0, 0.28, 0.25, 0.84, 0x92978a, sides: 16);
+                foreach (var y in new[] { 0.1, 0.68 }) { q.cylinder(0, y, 0, 0.295, 0.295, 0.05, 0x585e50, sides: 16); }
+                q.beam(new Double3(0, 0.88, 0), new Double3(0.27, 0.88, 0), 0.025, 0x646a5c);
+                break;
+            default:
+                q.box(0, 0.14, 0, 0.72, 0.28, 0.47, 0x655a4b);
+                for (var k = 0; k < 3; k++) { q.cylinder(-0.23 + (double)k * 0.23, 0.37, 0, 0.09, 0.07, 0.20, 0x8c9484, sides: 10); }
+                break;
+            }
+        }
+    }
+
+    private void buildHouseholdYards()
+    {
+        // Activity belongs against a facade, with the door-to-street route clear.
+        // Check the entire furnished footprint, not only each prop's centre.
+        foreach (var (i, e) in sorted(enumerated(entrances), (a, b) => (a.offset * 73) % 503 < (b.offset * 73) % 503))
+        {
+            if (!(max(abs(e.center.x), abs(e.center.y)) > 36)) { continue; }
+            if (householdYards.Count >= 130) { break; }
+            Double2 @out = new Double2(sin(e.yaw), cos(e.yaw)), side = new Double2(@out.y, -@out.x);
+            var city = new CityCollisionWorld(collisionBuilder.bodies);
+            var nearby = pedestrianAccess.Where(access => Simd.distance(access.door, e.center) < 8).SelectMany(access => access.route).ToList();
+            Double2? chosen = null;
+            foreach (var sign in new[] { i % 2 == 0 ? 1.0 : -1.0, i % 2 == 0 ? -1.0 : 1.0 })
+            {
+                foreach (var along in new[] { 1.8, 2.7 })
+                {
+                    var p = e.center + side * sign * along + @out * 0.88;
+                    var footprint = new RobotCollisions.Body(position: new Double3(p.x, 0, p.y), heading: e.yaw, profile: new RobotCollisions.Profile(mass: 1, halfWidth: 0.98, halfDepth: 0.70, height: 2.3));
+                    if (!(streetDistance(p.x, p.y) > 1.2 &&
+                          city.nearby(footprint).All(other => RobotCollisions.contact(footprint, other) == null) &&
+                          nearby.All(point =>
+                          {
+                              var walker = new RobotCollisions.Body(position: new Double3(point.x, 0, point.y), profile: new RobotCollisions.Profile(mass: 70, halfWidth: 0.26, halfDepth: 0.26, height: 1.45, round: true));
+                              return RobotCollisions.contact(footprint, walker) == null;
+                          }))) { continue; }
+                    chosen = p; break;
+                }
+                if (chosen != null) { break; }
+            }
+            if (chosen is not Double2 yard) { continue; }
+            var q = paint(yard.x, yard.y, yaw: e.yaw); var kind = i % 6;
+            householdYards.Add(yard);
+            switch (kind)
+            {
+            case 0: // Shaded household workbench, drawers and loose tools.
+                q.canopy(0, 0, 1.8, 1.25, 1.9, 0.12, new uint[] { 0x8e7756, 0x677c70, 0x936b50 }[(i / 6) % 3]);
+                q.box(0, 0.60, -0.15, 1.4, 0.10, 0.65, 0x7e6c52);
+                foreach (var x in new[] { -0.57, 0.57 }) { q.box(x, 0.28, -0.15, 0.09, 0.56, 0.56, 0x6f6550); }
+                q.crate(-0.35, 0.04, -0.1, 0.38, 0x8d775a);
+                for (var j = 0; j < 3; j++)
+                {
+                    double x = -0.35 + (double)j * 0.22, z = -0.34 + (double)((i / 6 + j) % 3) * 0.045;
+                    q.beam(new Double3(x, 0.68, z), new Double3(x + 0.07, 0.68, 0.05), 0.016, 0x737b71, sides: 6);
+                    q.ring(x, 0.68, z, 0.038, 0.021, 0.025, 0x919785, sides: 6);
+                }
+                break;
+            case 1: // Water storage and plumbing rather than a decorative barrel.
+                q.cylinder(-0.25, 0.55, -0.1, 0.34, 0.30, 1.1, 0x9a9b87, sides: 16);
+                foreach (var y in new[] { 0.14, 0.92 }) { q.cylinder(-0.25, y, -0.1, 0.355, 0.355, 0.05, 0x666d5c, sides: 16); }
+                q.beam(new Double3(-0.25, 0.28, 0.25), new Double3(0.24, 0.28, 0.25), 0.035, 0x777461);
+                q.vessel(0.48, 0, 0.24, 0.5, 0xab8257);
+                break;
+            case 2: // Uneven stacks of deliveries on a low pallet.
+                for (var k = 0; k < 5; k++) { q.box(0, 0.07, -0.43 + (double)k * 0.20, 1.48, 0.14, 0.14, 0x83704f); }
+                q.crate(-0.35, 0.14, 0, 0.55, 0x9c825d); q.crate(0.29, 0.14, -0.15, 0.43, 0x7b785f);
+                q.crate(-0.30, 0.69, -0.04, 0.36, 0x8b7556);
+                break;
+            case 3: // Seat, storage niche and a rolled shade mat.
+                q.adobe(0, 0.20, -0.17, 1.6, 0.40, 0.54, 0xb2a084);
+                q.box(0, 0.43, -0.17, 1.42, 0.06, 0.48, 0x806854);
+                q.vessel(0.49, 0.47, -0.18, 0.20, 0xbfa583);
+                q.beam(new Double3(-0.65, 0.15, 0.35), new Double3(0.35, 0.15, 0.35), 0.14, 0x9c7a54, sides: 12);
+                break;
+            case 4: // Repair work: open toolbox, gearing and a spare wheel.
+                q.box(-0.30, 0.16, 0, 0.65, 0.32, 0.48, 0x76634f);
+                for (var j = 0; j < 4; j++) { q.box(-0.53 + (double)j * 0.15, 0.34, 0, 0.075, 0.05, 0.36, 0x91947f); }
+                q.ring(0.43, 0.15, -0.11, 0.30, 0.16, 0.30, 0x695747, sides: 16);
+                q.cylinder(0.45, 0.35, -0.12, 0.12, 0.12, 0.1, 0x94826a, sides: 12);
+                break;
+            default: // Clay storage vessels with different profiles and sizes.
+                q.vessel(-0.4, 0, -0.12, 0.72, 0x9c7954);
+                q.vessel(0.13, 0, 0.14, 0.46, 0xbba17a);
+                q.crate(0.49, 0, -0.22, 0.34, 0x8f7c5c);
+                break;
+            }
+        }
+        Godot.GD.Print($"Household outdoor work/storage areas: {householdYards.Count}");
+    }
+
+    private void buildDomesticCourts()
+    {
+        var made = 0;
+        foreach (var (i, e) in enumerated(entrances))
+        {
+            if (!(i % 3 == 0 && max(abs(e.center.x), abs(e.center.y)) > 58)) { continue; }
+            if (made >= 24) { break; }
+            Double2 @out = new Double2(sin(e.yaw), cos(e.yaw)), side = new Double2(@out.y, -@out.x);
+            var origin = e.center + @out * 0.18;
+            var pieces = new List<(double, double, double, double)> { (-1.35, 1.25, 0.18, 2.5), (1.35, 1.25, 0.18, 2.5), (-1.04, 2.43, 0.8, 0.18), (1.04, 2.43, 0.8, 0.18) };
+            var city = new CityCollisionWorld(collisionBuilder.bodies);
+            var bodies = pieces.Select(piece =>
+            {
+                var (x, z, w, d) = piece;
+                var p = origin + side * x + @out * z;
+                return new RobotCollisions.Body(position: new Double3(p.x, 0, p.y), heading: e.yaw, profile: new RobotCollisions.Profile(mass: 1, halfWidth: w / 2 + 0.05, halfDepth: d / 2 + 0.05, height: 0.80));
+            }).ToList();
+            if (!bodies.All(body =>
+                streetDistance(body.position.x, body.position.z) > 0.7 && city.nearby(body).All(other => RobotCollisions.contact(body, other) == null))) { continue; }
+            var nearbyRoutes = pedestrianAccess.Where(access => Simd.distance(access.door, origin) < 9).SelectMany(access => access.route).ToList();
+            if (!nearbyRoutes.All(p =>
+            {
+                var person = new RobotCollisions.Body(position: new Double3(p.x, 0, p.y), profile: new RobotCollisions.Profile(mass: 70, halfWidth: 0.26, halfDepth: 0.26, height: 1.4, round: true));
+                return bodies.All(body => RobotCollisions.contact(person, body) == null);
+            })) { continue; }
+            var q = paint(origin.x, origin.y, yaw: e.yaw); uint ink = i % 2 == 0 ? 0xb8a58au : 0xc5b697u;
+            foreach (var (x, z, w, d) in pieces) { q.adobe(x, 0.40, z, w, 0.80, d, ink); }
+            // The open central gate is wider than the audited pedestrian body.
+            foreach (var x in new[] { -0.59, 0.59 }) { q.adobe(x, 0.53, 2.43, 0.16, 1.06, 0.23, ink); }
+            made += 1;
+        }
+        Godot.GD.Print($"Domestic outdoor courts: {made}");
+    }
+
+    private void refreshPedestrianAccess()
+    {
+        // Replan using all final architecture, stalls, steps and street props,
+        // so the audit cannot pass a path blocked by later set dressing.
+        var obstacles = collisionBuilder.bodies.Where(body => body.profile.mass != 70 && body.position.y < 1.45 && body.position.y + body.profile.height > 0.10).Select(body =>
+            new TownAccessMap.Footprint(center: new Double2(body.position.x, body.position.z), width: body.profile.halfWidth * 2, depth: body.profile.halfDepth * 2, yaw: body.heading)
+        ).ToList();
+        var access = new TownAccessMap(footprints: obstacles, streets: streets.Select(street => street.path).ToList());
+        var refreshed = new List<PedestrianAccess>();
+        foreach (var old in pedestrianAccess)
+        {
+            // PORT: compactMap; a missing entrance or route drops the record.
+            var found = entrances.FindIndex(entrance => Simd.distance(entrance.center, old.door) < 0.01);
+            if (found < 0) { continue; }
+            var e = entrances[found];
+            var @out = new Double2(sin(e.yaw), cos(e.yaw));
+            if (access.routeToStreet(from: e.center + @out * 0.65) is not List<Double2> route)
+            {
+                inaccessibleBuildings.Add(old.building); continue;
+            }
+            refreshed.Add(new PedestrianAccess(building: old.building, door: e.center, route: new List<Double2> { e.center + @out * 0.42, e.center + @out * 0.6 }.Concat(route).ToList()));
+        }
+        pedestrianAccess = refreshed;
+        foreach (var (i, site) in enumerated(venueSites))
+        {
+            var local = i == 0 ? new Double2(0, -4.1) : (i == 1 ? new Double2(1.4, -0.5) : new Double2(0, -4.3));
+            var door = site.center + new Double2(local.x * cos(site.yaw) + local.y * sin(site.yaw), -local.x * sin(site.yaw) + local.y * cos(site.yaw));
+            if (access.routeToStreet(from: door) is List<Double2> route) { venueAccess.Add(new PedestrianAccess(building: site.center, door: door, route: route)); }
+        }
+        Godot.GD.Print($"Final pedestrian access: {pedestrianAccess.Count}, inaccessible [{string.Join(", ", inaccessibleBuildings)}]");
+    }
+
+    private void buildStreetLife()
+    {
+        // Wait beside a real entrance, looking at its door, without occupying
+        // the approach used by visitors. Conversations occupy small forecourts.
+        foreach (var (i, e) in enumerated(entrances))
+        {
+            if (!(i % 5 == 0 && max(abs(e.center.x), abs(e.center.y)) < 47)) { continue; }
+            Double2 @out = new Double2(sin(e.yaw), cos(e.yaw)), side = new Double2(@out.y, -@out.x);
+            if (i % 10 == 0)
+            {
+                pendingActivities.Add(new List<StreetActivity> { new StreetActivity(position: e.center + @out * 0.75 + side * 0.95,
+                    target: e.center, role: "waiting at door", group: 10000 + i, index: 10000 + i) });
+            } else
+            {
+                conversation(e.center + @out * 1.2 + side * 1.6, axis: @out, index: 11000 + i, count: 2);
+            }
+        }
+        for (var group = 0; group < 12; group++)
+        {
+            conversation(new Double2(-8.3 + (double)(group % 6) * 3.2, finishZ - 8.0 - (double)(group / 6) * 1.25),
+                         axis: new Double2(cos((double)group * 0.6), sin((double)group * 0.6)), index: 12000 + group * 3, count: 3);
+        }
+        // Side terrace: civic spectators overlooking the northern sweeping turn.
+        var p = paint(3, 22);
+        p.box(0, 0.62, 0, 8, 1.24, 2.4, sand);
+        for (var i = 0; i < 18; i++)
+        {
+            double x = -0.7 + (double)(i % 9) * 0.65, z = 21.7 + (double)(i / 9) * 0.65;
+            citizen(x, z, y: 1.26, yaw: Math.PI, index: i + 500, seated: false);
+        }
+        foreach (var x in new[] { -3.8, 3.8 }) { p.box(x, 1.7, 0, 0.08, 1, 2.3, cream, detail: true); }
+    }
+
+    private void buildMarketDetails()
+    {
+        foreach (var (i, x) in enumerated(new[] { -7.5, -3.7, 3.7, 7.5 }))
+        {
+            var z = finishZ - 10.0; var p = paint(x, z);
+            p.canopy(0, 0, 2.8, 1.45, 1.65, 0.22, i % 2 == 0 ? 0x8b5c44u : 0x617875u);
+            p.box(0, 0.62, -0.1, 2.35, 0.16, 0.65, 0x766048);
+            foreach (var side in new[] { -1.0, 1 }) { p.box(side * 0.95, 0.3, -0.1, 0.14, 0.6, 0.5, 0x54483b, detail: true); }
+            for (var k = 0; k < 6; k++)
+            {
+                var xx = -0.9 + (double)k * 0.36;
+                if (i % 2 == 0) { p.vessel(xx, 0.73, -0.08, 0.38 + (double)(k % 3) * 0.05, k % 2 == 0 ? 0x97816au : 0xa8795cu); }
+                else { p.box(xx, 0.81, -0.08, 0.25, 0.22, 0.34, k % 2 == 0 ? 0x667771u : 0xad8f65u, detail: true); }
+            }
+            p.beam(new Double3(-1.4, 1.64, -0.77), new Double3(1.4, 1.64, -0.77), 0.022, dark, sides: 6);
+            foreach (var sx in new[] { -0.75, 0.75 }) { p.beam(new Double3(sx, 1.57, -0.77), new Double3(sx, 1.64, -0.77), 0.012, dark, sides: 5); }
+            signs.plate(new[] { "CERAMICS", "DROID EXCHANGE", "SPICE MERCHANT", "POWER CELLS" }[i], eyebrow: "ASTER BAZAAR", footer: "TRADE  /  REPAIR  /  SUPPLIES", badge: $"0{i + 1}",
+                        at: new SCNVector3(x, 1.37, z - 0.77), width: 2.15, height: 0.40, yaw: Math.PI, accent: i % 2 == 0 ? rust : teal, into: root);
+            pendingActivities.Add(new List<StreetActivity> {
+                new StreetActivity(position: new Double2(x, z + 0.65), target: new Double2(x, z - 0.85), role: "market vendor", group: 13000 + i, index: 1701 + i),
+                new StreetActivity(position: new Double2(x, z - 0.85), target: new Double2(x, z + 0.65), role: "market customer", group: 13000 + i, index: 1801 + i) });
+            p.box(1.12, 0.24, 0.45, 0.43, 0.48, 0.44, 0x665846, detail: true);
+        }
+        // Pedestrian groups follow roads and cluster at shops, never the course.
+        foreach (var (roadIndex, street) in enumerated(streets.Take(6)))
+        {
+            for (var i = 1; i < street.points.Count; i++)
+            {
+                Double2 a = street.points[i - 1], delta = street.points[i] - a; var length = Simd.length(delta);
+                var count = (int)(length / 3.5);
+                for (var k = 0; k < count; k++)
+                {
+                    var t = ((double)k + 0.5) / (double)max(1, count);
+                    var routePoint = a + delta * t;
+                    minBy(Enumerable.Range(0, street.path.Count), (j0, j1) => Simd.length_squared(street.path[j0] - routePoint) < Simd.length_squared(street.path[j1] - routePoint), out var nearest);
+                    var curvedTangent = Simd.normalize(street.path[min(nearest + 1, street.path.Count - 1)] - street.path[max(0, nearest - 1)]);
+                    var curvedNormal = new Double2(-curvedTangent.y, curvedTangent.x);
+                    var center = street.path[nearest] + curvedNormal * ((k % 2 == 0 ? 1.0 : -1.0) * (street.width / 2 - 0.32));
+                    if (!(max(abs(center.x), abs(center.y)) < 52)) { continue; }
+                    var index = 2000 + roadIndex * 100 + i * 13 + k;
+                    if (k % 2 == 0)
+                    {
+                        // Keep the actual street placement instead of discarding it
+                        // and spawning every pedestrian at the same few houses.
+                        var side = k % 4 == 0 ? 1.0 : -1.0;
+                        var route = new List<Double2>();
+                        for (var j = max(0, nearest - 24); j <= min(street.path.Count - 1, nearest + 24); j++)
+                        {
+                            var d = street.path[min(j + 1, street.path.Count - 1)] - street.path[max(0, j - 1)];
+                            var n = new Double2(-d.y, d.x) / max(0.001, Simd.length(d));
+                            route.Add(street.path[j] + n * (side * (street.width / 2 - 0.55)));
+                        }
+                        walkingStreets.Add(route);
+                    } else
+                    {
+                        // Outside the walking lane, leave a complete pair or nobody.
+                        conversation(center - curvedNormal * 0.65, axis: curvedTangent, index: 14000 + index * 3, count: 2);
+                    }
+                }
+            }
+        }
+        foreach (var (x, z, yaw, ink) in new[] { (31.0, -16.0, 0.40, 0x996551u), (-24.0, -27.7, 1.4, 0x7c8880u), (7.0, 34.0, -1.4, 0x9a855fu) })
+        {
+            var p = paint(x, z, yaw: yaw);
+            // Original low-slung utility speeders: rounded nose, cockpit, side pods.
+            p.box(0, 0.19, 0, 1.3, 0.04, 2.5, 0x726957);
+            p.adobe(0, 0.52, 0, 1.22, 0.36, 2.5, ink);
+            p.dome(0, 0.64, 0.82, 0.55, 0.23, 0.75, ink, sides: 12);
+            p.box(0, 0.77, -0.33, 0.86, 0.26, 0.85, 0x414b4b);
+            p.box(0, 0.80, -0.91, 0.88, 0.26, 0.14, ink);
+            foreach (var side in new[] { -1.0, 1 })
+            {
+                p.beam(new Double3(side * 0.75, 0.50, -0.95), new Double3(side * 0.75, 0.50, 0.95), 0.19, 0x605c51, sides: 8);
+                p.box(side * 0.4, 0.51, 1.26, 0.16, 0.12, 0.035, 0xd7c393, detail: true);
+            }
+        }
+        // Visible cables and hardware turn the repair pockets into a paddock.
+        foreach (var (i, origin) in enumerated(InfieldLayout.tentOrigins))
+        {
+            var z = origin.y; var center = InfieldLayout.tentPoint(i, new Double2(i == 0 ? -0.1 : 0, i == 0 ? 0.35 : 0)); var p = paint(center.x, center.y, yaw: InfieldLayout.tentYaws[i]);
+            for (var k = 0; k < 5; k++)
+            {
+                p.beam(new Double3(-1.25, 0.08, -0.35 + (double)k * 0.22), new Double3(-0.5, 0.08, -0.55 + (double)k * 0.2), 0.023, 0x554a3d, sides: 5);
+            }
+            p.box(z < 0 ? -1.5 : 1.5, 0.47, z < 0 ? 0.5 : 0.95, 0.32, 0.94, 0.40, 0x77766a);
+            p.box(z < 0 ? -1.5 : 1.5, 0.80, z < 0 ? 0.28 : 0.73, 0.22, 0.18, 0.025, 0x45656b);
+            p.box(z < 0 ? -1.5 : 1.5, 0.55, z < 0 ? 0.28 : 0.73, 0.13, 0.05, 0.03, 0xc5a56c);
+        }
+    }
+
+    private void conversation(Double2 center, Double2 axis, int index, int count)
+    {
+        var angle = atan2(axis.y, axis.x);
+        pendingActivities.Add(Enumerable.Range(0, count).Select(member =>
+        {
+            var a = angle + (double)member * 2 * Math.PI / (double)count;
+            return new StreetActivity(position: center + new Double2(cos(a), sin(a)) * 0.48,
+                                      target: center, role: "conversation", group: index, index: index + member);
+        }).ToList());
+    }
+
+    private bool blocksEntrance(Double2 point)
+    {
+        return entrances.Any(e =>
+        {
+            Double2 delta = point - e.center, @out = new Double2(sin(e.yaw), cos(e.yaw));
+            double forward = Simd.dot(delta, @out), side = Simd.dot(delta, new Double2(@out.y, -@out.x));
+            return Simd.length(delta) < 0.65 || (forward > -0.3 && forward < 1.7 && abs(side) < 0.58);
+        });
+    }
+
+    private void placeStreetActivities()
+    {
+        // Validate against finished scenery, before building navigation and the
+        // permanent collision cache. Admit groups atomically; no orphan talkers.
+        var scenery = new CityCollisionWorld(collisionBuilder.bodies);
+        foreach (var group in pendingActivities)
+        {
+            if (!group.All(person =>
+            {
+                var p = person.position; var course = DirtCourse.projection(x: p.x, z: p.y);
+                if (!(!blocksEntrance(p) && course.offset > 0 && course.distance > DirtCourse.fenceOffset + 0.3)) { return false; }
+                var body = new RobotCollisions.Body(position: new Double3(p.x, 0.02, p.y), profile: new RobotCollisions.Profile(mass: 70, halfWidth: 0.24, halfDepth: 0.24, height: 1.45, round: true));
+                return !scenery.nearby(body).Any(other => RobotCollisions.contact(body, other) != null)
+                    && !streetActivities.Any(activity => Simd.distance(activity.position, p) < 0.65);
+            })) { continue; }
+            foreach (var person in group)
+            {
+                citizen(person.position.x, person.position.y, y: 0.02, yaw: person.yaw, index: person.index, seated: false, shelter: true, activity: person.role == "conversation" ? TownCrowd.Activity.conversation : (person.role == "waiting at door" ? TownCrowd.Activity.waiting : TownCrowd.Activity.trading));
+                streetActivities.Add(person);
+            }
+        }
+        pendingActivities.Clear();
+    }
+
+    private void citizen(double x, double z, double y, double yaw, int index, bool seated, bool walking = false, bool shelter = false, TownCrowd.Activity activity = TownCrowd.Activity.ordinary)
+    {
+        if (!seated && blocksEntrance(new Double2(x, z))) { return; }
+        population += 1;
+        if (seated)
+        {
+            int ix = (int)floor(x / 8), iz = (int)floor(z / 8); var key = Invariant($"{ix},{iz}");
+            var zone = spectatorZones.TryGetValue(key, out var existing) ? existing : new SpectatorSoundZone(position: Double2.zero, people: 0, stormPeople: 0);
+            zone.position = (zone.position * (double)zone.people + new Double2(x, z)) / (double)(zone.people + 1);
+            zone.people += 1;
+            if (TownCrowd.staysOutside(x: x, z: z, index: index)) { zone.stormPeople += 1; }
+            spectatorZones[key] = zone;
+        }
+        if (walking && walkingCount < 18) { walkingCount += 1; return; }
+        var projection = DirtCourse.projection(x: x, z: z);
+        if (projection.offset > 0 && projection.distance > DirtCourse.fenceOffset)
+        {
+            if (shelter || !TownCrowd.staysOutside(x: x, z: z, index: index)) { absentPeople.Add(collisionBuilder.bodies.Count); }
+            collisionBuilder.bodies.Add(new RobotCollisions.Body(position: new Double3(x, y, z), heading: yaw, profile: new RobotCollisions.Profile(mass: 70, halfWidth: 0.20, halfDepth: 0.20, height: seated ? 0.8 : 1.45, round: true)));
+        }
+        _ = crowd.add(x: x, y: y, z: z, yaw: yaw, index: index, seated: seated, animated: false, shelter: shelter, activity: activity);
+    }
+    /// Authored reference block: construction, repairs and usable objects have
+    /// specific placements rather than scattering decoration over the whole city.
+    private void buildReferenceDetails()
+    {
+        var z = finishZ - 4.9; var p = paint(0, z);
+        foreach (var side in new[] { -1.0, 1 })
+        {
+            // Handrails follow the flights, with vertical posts and socket plates.
+            var x = side * 7.29;
+            p.beam(new Double3(x, 0.86, 1.30), new Double3(x, 3.31, -2.10), 0.026, 0x6d6555);
+            for (var i = 0; i < 5; i++)
+            {
+                double zz = 1.3 - (double)i * 0.85, y = 0.08 + (double)i * 0.60;
+                p.beam(new Double3(x, y, zz), new Double3(x, y + 0.81, zz), 0.02, 0x6d6555, sides: 6);
+            }
+            var q = paint(side * 8.5, finishZ - 5.5);
+            // Plaster repairs collect at the plinth, pipes and sill edges.
+            for (var k = 0; k < 7; k++)
+            {
+                q.plasterPatch(-0.94 + (double)k * 0.30, 0.18 + (double)(k % 3) * 0.12, 1.802, 0.23, 0.24, 0xa38e71, seed: k);
+            }
+            q.box(0, 3.28, 1.83, 2.24, 0.11, 0.20, 0xaa9676, detail: true);
+            q.box(0, 3.46, 1.84, 2.33, 0.12, 0.23, 0xd0ba95, detail: true);
+            // Copper service riser, elbows, straps and junction housing.
+            q.beam(new Double3(0.93, 0.18, 1.86), new Double3(0.93, 2.76, 1.86), 0.036, 0x897157);
+            q.beam(new Double3(0.93, 2.76, 1.86), new Double3(0.38, 2.76, 1.86), 0.036, 0x897157);
+            foreach (var y in new[] { 0.48, 1.35, 2.28 }) { q.box(0.93, y, 1.88, 0.14, 0.05, 0.09, 0x554c40, detail: true); }
+            q.box(0.65, 1.10, 1.94, 0.33, 0.48, 0.19, 0x6d7970, detail: true);
+            q.box(0.65, 1.10, 2.042, 0.26, 0.36, 0.012, 0x8d998a, detail: true);
+            for (var k = 0; k < 4; k++) { q.box(0.65, 1.20 - (double)k * 0.055, 2.052, 0.18, 0.014, 0.009, 0x3e4842, detail: true); }
+            q.cable(new Double3(-0.98, 2.91, 1.88), new Double3(0.9, 2.82, 1.88), 0.18, 0x594b3c);
+            q.vessel(-0.91, 0.02, 2.02, 0.44, 0x9f7154);
+            q.crate(0.5, 0.02, 2.12, 0.48, 0x8d7656);
+        }
+        // Riveted fascia and support brackets make the race sign a built object.
+        foreach (var x in new[] { -2.7, -1.35, 0, 1.35, 2.7 })
+        {
+            p.box(x, 1.54, 2.04, 0.06, 0.77, 0.08, 0x655d50, detail: true);
+            foreach (var y in new[] { 1.26, 1.83 }) { p.dome(x, y, 2.125, 0.023, 0.023, 0.014, 0x968b70, sides: 6, detail: true); }
+        }
+        // Market work surfaces: plank joints, stacked produce and hanging stock.
+        foreach (var (i, x) in enumerated(new[] { -7.5, -3.7, 3.7, 7.5 }))
+        {
+            var q = paint(x, finishZ - 10.0);
+            q.valance(0, -0.73, 2.8, 1.65, 0.16, 0xa58d67, rise: 0.22);
+            for (var k = 0; k < 8; k++) { q.box(-1.0 + (double)k * 0.29, 0.718, -0.1, 0.25, 0.022, 0.67, 0x9c8765, detail: true); }
+            q.crate(-1.05, 0.025, 0.77, 0.51, 0x817057);
+            q.crate(-1.01, 0.54, 0.76, 0.43, 0x9b835e);
+            q.vessel(0.7, 0.72, -0.12, 0.33, 0xba9470);
+            q.vessel(1.02, 0.02, 0.64, 0.48, 0x876653);
+            q.cable(new Double3(-1.4, 1.64, -0.75), new Double3(1.4, 1.64, -0.75), 0.10, 0x6c5c47);
+            for (var k = 0; k < 3; k++)
+            {
+                var xx = -0.86 + (double)k * 0.44;
+                q.beam(new Double3(xx, 1.60, -0.74), new Double3(xx, 1.28, -0.74), 0.008, 0x615a4c, sides: 5);
+                if (i % 2 == 0) { q.vessel(xx, 1.02, -0.74, 0.26, 0x987559); }
+                else { q.ring(xx, 1.24, -0.74, 0.10, 0.068, 0.10, 0x6b7167, sides: 12); }
+            }
+        }
+        // The hero pit is a functioning workshop: a workboard, drawers, hoist
+        // hardware, engine fins and a hose resting on the packed-earth apron.
+        {
+            var center = InfieldLayout.tentPoint(0, new Double2(-0.1, 0.35)); var q = paint(center.x, center.y, yaw: InfieldLayout.tentYaws[0]);
+            q.box(-1.54, 1.05, 0.15, 0.08, 0.77, 1.75, 0x586157, detail: true);
+            for (var j = 0; j < 9; j++)
+            {
+                var zz = -0.55 + (double)j * 0.17;
+                q.beam(new Double3(-1.48, 0.82, zz), new Double3(-1.48, 1.23 - (double)(j % 3) * 0.08, zz), 0.014, 0xb0a891, sides: 6);
+                q.box(-1.46, 1.22 - (double)(j % 3) * 0.08, zz, 0.025, 0.045, 0.07, 0x8a8d80, detail: true);
+            }
+            for (var row = 0; row < 3; row++)
+            {
+                var y = 0.18 + (double)row * 0.15;
+                q.box(-0.93, y, 0.93, 0.57, 0.13, 0.13, 0x6e8279, detail: true);
+                q.box(-0.93, y, 1.006, 0.19, 0.025, 0.02, 0xb3ad94, detail: true);
+            }
+            for (var k = 0; k < 7; k++) { q.cylinder(0.51, 0.80 + (double)k * 0.041, 0.91, 0.235, 0.235, 0.014, 0x7e8174, sides: 14, detail: true); }
+            q.cable(new Double3(1.4, 0.14, -1.1), new Double3(0.7, 0.10, 0.40), -0.035, 0x4c5148);
+            q.crate(-1.30, 0.08, -0.85, 0.50, 0x8a795a);
+            q.vessel(-1.42, 0.08, -1.43, 0.39, 0x988b69);
+        }
+    }
+
+    private void buildWayfinding()
+    {
+        // Signs face the approach and stand at street edges, not in the roadway.
+        var routes = new List<(double, double, double, string, string, string)> {
+            (-12.5, finishZ - 10.2, Math.PI, "←  BAZAAR", "GRANDSTAND  /  GATES 1–2", "M"),
+            (20.5, -29.0, Math.PI, "←  SPACEPORT", "DOCK 07  /  LANDING BAYS", "D"),
+            (27.0, -12.0, -Math.PI / 2, "GATES 1–2  ←", "GRANDSTAND  /  BAZAAR", "R") };
+        foreach (var (x, z, yaw, title, footer, badge) in routes)
+        {
+            var p = paint(x, z, yaw: yaw);
+            p.beam(new Double3(0, 0, 0), new Double3(0, 2.5, 0), 0.045, 0x55574f, sides: 8);
+            signs.plate(title, eyebrow: "MOS ASTER WAYFINDING", footer: footer, badge: badge,
+                        at: new SCNVector3(x, 2.14, z), width: 2.45, height: 0.55, yaw: (CGFloat)yaw, accent: teal, into: root);
+        }
+        signs.plate("NORTH CURVE", eyebrow: "MOS ASTER GRAND PRIX", footer: "SPECTATOR TERRACE", badge: "N",
+                    at: new SCNVector3(3, 0.82, 20.76), width: 3.6, height: 0.55, yaw: Math.PI, into: root);
+    }
+
+    public void update(double dt, SCNVector3 camera, Double2 player, List<RobotCollisions.Body> robots = null, Func<SCNNode, bool> visible = null, SCNNode shadowCamera = null, double viewportAspect = 1)
+    {
+        robots ??= new List<RobotCollisions.Body>();
+        var current = shadowCullingEnabled ? ShadowFrustum.cameras(shadowCamera, aspect: viewportAspect) : new List<ShadowFrustum>();
+        // Querying SceneKit presentation nodes synchronizes with rendering.
+        // Retain our own preceding camera poses instead, plus the current pose.
+        updateExplorationDetail(camera: camera, player: player, frusta: current.Concat(priorShadowFrusta).ToList());
+        priorShadowFrusta = current.Concat(priorShadowFrusta).Take(2).ToList();
+        if (!(dt > 0)) { return; }
+        clock += dt;
+        crowd.update(time: clock); residents?.update(dt: dt, robots: robots, pedestrians: streetResidents?.bodies ?? new List<RobotCollisions.Body>(), visible: visible);
+        streetResidents?.update(dt: dt, obstacles: robots.Concat((IEnumerable<RobotCollisions.Body>)residents?.bodies ?? Array.Empty<RobotCollisions.Body>()).ToList(), visible: visible);
+    }
+    public void reset()
+    {
+        clock = 0; crowd.update(time: 0); residents?.reset(); streetResidents?.reset();
+        foreach (var node in explorationNodes) { node.isHidden = true; }
+    }
+    /// Clip the chase/orbit boom against simple scenery bounds, with a small
+    /// near-plane margin, including buildings beyond the race-side district.
+    public SCNVector3 cameraPivot(Double3 position, double chassisHeight)
+    {
+        var head = new SCNVector3(position.x, position.y + chassisHeight + 0.18, position.z);
+        // The distance field anticipates walls and lintels before their edge
+        // crosses an upward ray; it also covers low beams intersecting head Y.
+        var rise = min(0.72, cameraRoom(at: head, range: 0.9));
+        var raised = new SCNVector3(position.x, (double)head.y + rise, position.z);
+        return clearCamera(from: head, to: raised);
+    }
+    /// Nearby wall clearance anticipates corner occlusion before the boom ray
+    /// suddenly crosses a facade. It varies continuously with player position.
+    public double cameraRoom(SCNVector3 at, double range = 9)
+    {
+        var point = at;
+        var a = new Double3((double)point.x, (double)point.y, (double)point.z);
+        var radius = max(0.1, (range + 0.2) / sqrt(2.0));
+        var query = new RobotCollisions.Body(position: a, profile: new RobotCollisions.Profile(mass: 1, halfWidth: radius, halfDepth: radius, height: 1));
+        var room = double.PositiveInfinity;
+        foreach (var body in collisionWorld.nearby(query).Concat(InfieldLayout.obstacles))
+        {
+            if (!(body.profile.mass != 70)) { continue; }
+            Double3 d = a - body.position; double c = cos(body.heading), s = sin(body.heading); var p = body.profile;
+            var q = new Double3(abs(c * d.x - s * d.z) - p.halfWidth, max(-d.y, d.y - p.height), abs(s * d.x + c * d.z) - p.halfDepth);
+            room = min(room, Simd.length(Simd.max(q, Double3.zero)));
+        }
+        foreach (var (low, high) in cameraBounds) { room = min(room, Simd.length(Simd.max(Simd.max(low - a, a - high), Double3.zero))); }
+        return max(0, room - 0.16);
+    }
+    /// Lift a long dune boom over ridges continuously, rather than collapsing
+    /// it several metres when a shallow ray first becomes tangent to a crest.
+    public SCNVector3 terrainCamera(SCNVector3 from, SCNVector3 to)
+    {
+        SCNVector3 pivot = from, desired = to;
+        if (!(max(abs((double)pivot.x), abs((double)pivot.z)) > DesertTerrain.townEdge)) { return desired; }
+        var result = desired;
+        for (var i = 1; i <= 64; i++)
+        {
+            double t = (double)i / 64, x = (double)pivot.x + ((double)desired.x - (double)pivot.x) * t, z = (double)pivot.z + ((double)desired.z - (double)pivot.z) * t;
+            var needed = (DirtCourse.height(x: x, z: z) + 0.25 - (double)pivot.y * (1 - t)) / t;
+            result.y = max(result.y, (CGFloat)needed);
+        }
+        return result;
+    }
+    public SCNVector3 clearCamera(SCNVector3 from, SCNVector3 to)
+    {
+        SCNVector3 target = from, desired = to;
+        var a = new Double3((double)target.x, (double)target.y, (double)target.z);
+        Double3 b = new Double3((double)desired.x, (double)desired.y, (double)desired.z), delta = b - a;
+        var limit = 1.0;
+        void clip(Double3 origin, Double3 direction, Double3 low, Double3 high)
+        {
+            Double3 lo = low - new Double3(0.14), hi = high + new Double3(0.14);
+            double enter = 0.0, leave = 1.0;
+            for (var axis = 0; axis < 3; axis++)
+            {
+                if (abs(direction[axis]) < 1e-8)
+                {
+                    if (origin[axis] < lo[axis] || origin[axis] > hi[axis]) { return; }
+                } else
+                {
+                    double t0 = (lo[axis] - origin[axis]) / direction[axis], t1 = (hi[axis] - origin[axis]) / direction[axis];
+                    enter = max(enter, min(t0, t1)); leave = min(leave, max(t0, t1));
+                    if (enter > leave) { return; }
+                }
+            }
+            limit = min(limit, max(0, enter - 0.01 / max(0.01, Simd.length(delta))));
+        }
+        // Use the actual individual, rotated walls. Compound envelopes cover
+        // empty courtyards and squeeze a camera even in a clear passage.
+        Double3 middle = (a + b) / 2; var radius = max(0.1, Simd.length(delta) / 2 + 0.2);
+        var query = new RobotCollisions.Body(position: middle, profile: new RobotCollisions.Profile(mass: 1, halfWidth: radius, halfDepth: radius, height: 1));
+        foreach (var body in collisionWorld.nearby(query).Concat(InfieldLayout.obstacles))
+        {
+            if (!(body.profile.mass != 70)) { continue; }
+            double c = cos(body.heading), s = sin(body.heading);
+            Double3 local(Double3 p) => new Double3(c * p.x - s * p.z, p.y, s * p.x + c * p.z);
+            var p = body.profile;
+            clip(local(a - body.position), local(delta), new Double3(-p.halfWidth, 0, -p.halfDepth), new Double3(p.halfWidth, p.height, p.halfDepth));
+        }
+        foreach (var (low, high) in cameraBounds) { clip(a, delta, low, high); }
+        // A camera boom can intersect a dune even if both endpoints are above
+        // ground. Stop at the first obstruction, leaving near-plane clearance.
+        var steps = max(1, (int)ceil(Simd.length(delta) * limit / 0.20));
+        for (var i = 1; i <= steps; i++)
+        {
+            var t = limit * (double)i / (double)steps; var p = a + delta * t;
+            if (p.y < DirtCourse.height(x: p.x, z: p.z) + 0.18)
+            {
+                limit = limit * (double)(i - 1) / (double)steps; break;
+            }
+        }
+        var result = a + delta * limit;
+        return new SCNVector3(result.x, result.y, result.z);
+    }
+    public Dictionary<string, int> statistics => new()
+    {
+        ["householdYards"] = householdYards.Count, ["accessibleCompounds"] = pedestrianAccess.Count, ["inaccessibleCompounds"] = inaccessibleBuildings.Count, ["explorationCells"] = explorationNodes.Count, ["explorationTriangles"] = explorationTriangles, ["streetRoutes"] = streets.Count, ["doorConnections"] = residents?.connections ?? 0, ["buildings"] = buildings, ["repairTents"] = repairLots.Count, ["infieldHouses"] = lots.Count(lot => infield(lot.x, lot.z)), ["people"] = population, ["animatedPeople"] = population,
+        ["signs"] = signs.count, ["signTextFits"] = signs.valid ? 1 : 0, ["walkingPeople"] = (residents?.walkers.Count ?? 0) + (streetResidents?.walkers.Count ?? 0), ["crowdCells"] = crowd.cellCount, ["crowdNearTriangles"] = crowd.triangles, ["crowdFarTriangles"] = crowd.farTriangles, ["cells"] = cells.Count, ["nearTriangles"] = triangleCount, ["farTriangles"] = coarseTriangles,
+    };
+    public bool cityCoveragePassed => Enumerable.Range(0, 8).All(sector =>
+        lots.Count(lot =>
+        {
+            var radius = hypot(lot.x, lot.z);
+            var angle = atan2(lot.z, lot.x) + Math.PI;
+            return radius > 55 && radius < 120 && min(7, (int)(angle / (2 * Math.PI) * 8)) == sector;
+        }) > 16);
+    public bool streetNetworkPassed
+    {
+        get
+        {
+            var reached = new HashSet<int> { 0 };
+            var changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (var i = 0; i < streets.Count; i++)
+                {
+                    if (reached.Contains(i)) { continue; }
+                    if (reached.Any(j => streets[i].points.Any(point => streets[j].points.Contains(point)))) { reached.Add(i); changed = true; }
+                }
+            }
+            return reached.Count == streets.Count;
+        }
+    }
+    public bool validate()
+    {
+        return buildings > 350 && population > 120 && (residents?.walkers.Count ?? 0) <= 18 && (residents?.connections ?? 0) >= 4 && triangleCount < 440_000 && coarseTriangles < 320_000 && cells.Count < 150
+            && inaccessibleBuildings.Count == 0 && pedestrianAccess.Count == lots.Count && venueAccess.Count == venueSites.Count
+            && signs.valid && signs.count >= 20 && crowd.valid && cityCoveragePassed && streetNetworkPassed
+            && repairLots.Count == 2
+            && lots.All(lot => !infield(lot.x, lot.z) && clearLot(lot.x, lot.z, lot.width, lot.depth))
+            && Enumerable.Range(0, InfieldLayout.tentOrigins.Length).All(i => repairFootprintClear(i));
+    }
+
+}
+
+/// Offline-style mesh batching performed once at scene preparation. No SceneKit
+/// primitive nodes survive for each window, brick or spectator body part.
+public sealed class TownMesh
+{
+    public static int inputVertices = 0, outputVertices = 0;
+    public static double maximumMergedBasisRadians = 0.0; public static int mergedBasisComparisons = 0;
+    public static List<(SCNGeometry, SCNGeometry)> validationPairs = new();
+    public static List<(SCNGeometry, SCNGeometry)> tangentProbePairs = new();
+    public int materialSlot = 0;
+    private List<int>[] groups = { new(), new(), new(), new() };
+    public List<CGPoint> wearUV = new();
+    public Func<Float3, CGPoint> wearProjector;
+    public List<SCNVector3> positions = new(), normals = new(); public List<CGPoint> uv = new(); public List<float> colors = new(); public List<int> indices = new();
+    public void triangle(Float3 a, Float3 b, Float3 c, uint color, IReadOnlyList<Float3> smooth = null)
+    {
+        var cross = Simd.cross(b - a, c - a);
+        if (!(Simd.length_squared(cross) > 1e-12f)) { return; }
+        var n = Simd.normalize(cross); var @base = positions.Count;
+        // Baked face tone supplies cheap architectural depth even outside sun shadows.
+        var vertices = new[] { a, b, c };
+        for (var i = 0; i < 3; i++)
+        {
+            var v = vertices[i];
+            var normal = smooth?[i] ?? n;
+            float contact = 0.83f + 0.17f * min(1f, max(0f, v.y) / 1.2f);
+            float shade = (0.94f + 0.06f * max(0f, normal.y)) * contact;
+            positions.Add(new SCNVector3(v.x, v.y, v.z)); normals.Add(new SCNVector3(normal.x, normal.y, normal.z));
+            var axis = Simd.abs(n);
+            Float2 tex = axis.y > max(axis.x, axis.z) ? new Float2(v.x, v.z) : (axis.x > axis.z ? new Float2(v.z, v.y) : new Float2(v.x, v.y));
+            uv.Add(new CGPoint((double)tex.x * 0.48, (double)tex.y * 0.48));
+            wearUV.Add(wearProjector?.Invoke(v) ?? new CGPoint(0.0625, 0.0625));
+            colors.Add((float)((color >> 16) & 255) / 255 * shade); colors.Add((float)((color >> 8) & 255) / 255 * shade); colors.Add((float)(color & 255) / 255 * shade); colors.Add(1);
+        }
+        indices.Add(@base); indices.Add(@base + 1); indices.Add(@base + 2);
+        groups[materialSlot].Add(@base); groups[materialSlot].Add(@base + 1); groups[materialSlot].Add(@base + 2);
+    }
+    // PORT: Swift's synthesized Hashable compares every lane with == (NaN is never equal,
+    // -0 equals +0); C# Equals would treat NaN as equal, so equality is written out.
+    private readonly struct VertexKey : IEquatable<VertexKey>
+    {
+        public readonly bool quantizedBasis;
+        public readonly Float3 position, normal, tangent, bitangent;
+        public readonly Double2 uv, wear; public readonly Float4 color;
+        public VertexKey(bool quantizedBasis, Float3 position, Float3 normal, Float3 tangent, Float3 bitangent, Double2 uv, Double2 wear, Float4 color)
+        {
+            this.quantizedBasis = quantizedBasis; this.position = position; this.normal = normal; this.tangent = tangent; this.bitangent = bitangent;
+            this.uv = uv; this.wear = wear; this.color = color;
+        }
+        public bool Equals(VertexKey o) => quantizedBasis == o.quantizedBasis && position == o.position && normal == o.normal && tangent == o.tangent
+            && bitangent == o.bitangent && uv == o.uv && wear == o.wear && color == o.color;
+        public override bool Equals(object obj) => obj is VertexKey o && Equals(o);
+        public override int GetHashCode()
+        {
+            var h = new HashCode();
+            h.Add(quantizedBasis);
+            foreach (var v in new[] { position, normal, tangent, bitangent }) { h.Add(v.x + 0f); h.Add(v.y + 0f); h.Add(v.z + 0f); }
+            h.Add(uv.x + 0.0); h.Add(uv.y + 0.0); h.Add(wear.x + 0.0); h.Add(wear.y + 0.0);
+            h.Add(color.x + 0f); h.Add(color.y + 0f); h.Add(color.z + 0f); h.Add(color.w + 0f);
+            return h.ToHashCode();
+        }
+    }
+    public SCNGeometry geometry(SCNMaterial material, Float3 relativeTo = default)
+    {
+        var origin = relativeTo;
+        // Reuse only identical complete vertex attributes. Keep every original
+        // triangle, material slot and index order, including normal/UV seams.
+        // Guard projected tangent directions too: unrestricted merging would
+        // change SceneKit-generated tangent averages for normal maps.
+        // This reduces repeated vertex work in both sun maps and the color pass.
+        var arguments = CommandLine.arguments;
+        var collectBasisComparisons = arguments.Contains("--mesh-reuse-test") || arguments.Contains("--benchmark-tangent-reuse");
+        SCNGeometry build(bool reuseNearbyTangents)
+        {
+            var lookup = new Dictionary<VertexKey, int>(positions.Count / 2); var remap = new List<int>(positions.Count);
+            List<SCNVector3> local = new(), outNormals = new(); List<CGPoint> outUV = new(), outWear = new(); var outColors = new List<float>();
+            var basisRepresentatives = new List<(Float3, Float3)>();
+            Float3 tangent = Float3.zero, bitangent = Float3.zero;
+            for (var i = 0; i < positions.Count; i++)
+            {
+                if (i % 3 == 0)
+                {
+                    Float3 point(int j) => new Float3((float)positions[j].x - origin.x, (float)positions[j].y - origin.y, (float)positions[j].z - origin.z);
+                    Float3 e1 = point(i + 1) - point(i), e2 = point(i + 2) - point(i);
+                    var u1 = new Float2((float)uv[i + 1].x - (float)uv[i].x, (float)uv[i + 1].y - (float)uv[i].y);
+                    var u2 = new Float2((float)uv[i + 2].x - (float)uv[i].x, (float)uv[i + 2].y - (float)uv[i].y);
+                    var determinant = u1.x * u2.y - u1.y * u2.x;
+                    tangent = Float3.zero; bitangent = Float3.zero;
+                    if (abs(determinant) > 1e-8f) { tangent = (e1 * u2.y - e2 * u1.y) / determinant; bitangent = (e2 * u1.x - e1 * u2.x) / determinant; }
+                }
+                var p = new Float3((float)positions[i].x - origin.x, (float)positions[i].y - origin.y, (float)positions[i].z - origin.z);
+                var n = new Float3((float)normals[i].x, (float)normals[i].y, (float)normals[i].z);
+                var c = new Float4(colors[i * 4], colors[i * 4 + 1], colors[i * 4 + 2], colors[i * 4 + 3]);
+                // Compare the basis after normal projection. Raw gradients can
+                // differ greatly in length yet generate the same tangent frame.
+                // Ill-conditioned or degenerate frames retain the exact key.
+                var unitNormal = Simd.normalize(n);
+                var projectedT = tangent - unitNormal * Simd.dot(unitNormal, tangent);
+                var projectedB = bitangent - unitNormal * Simd.dot(unitNormal, bitangent);
+                float tLength = Simd.length(projectedT), bLength = Simd.length(projectedB);
+                var stable = float.IsFinite(tLength) && float.IsFinite(bLength) && tLength > 0.1f && bLength > 0.1f
+                    && tLength >= 0.25f * Simd.length(tangent) && bLength >= 0.25f * Simd.length(bitangent)
+                    && abs(Simd.dot(Simd.cross(unitNormal, projectedT), projectedB)) > 0.25f * tLength * bLength;
+                Float3 basisKey(Float3 exact, Float3 projected, float length)
+                {
+                    if (!(reuseNearbyTangents && stable)) { return exact; }
+                    var scaled = projected / length * 65536;
+                    return new Float3(rounded(scaled.x), rounded(scaled.y), rounded(scaled.z)) / 65536;
+                }
+                var key = new VertexKey(quantizedBasis: reuseNearbyTangents && stable, position: p, normal: n, tangent: basisKey(tangent, projectedT, tLength), bitangent: basisKey(bitangent, projectedB, bLength), uv: new Double2(uv[i].x, uv[i].y), wear: new Double2(wearUV[i].x, wearUV[i].y), color: c);
+                if (lookup.TryGetValue(key, out var existing))
+                {
+                    if (reuseNearbyTangents && stable && collectBasisComparisons)
+                    {
+                        var previous = basisRepresentatives[existing];
+                        foreach (var (a, b) in new[] { (previous.Item1, projectedT), (previous.Item2, projectedB) })
+                        {
+                            Double3 x = Simd.normalize(new Double3(a.x, a.y, a.z)), y = Simd.normalize(new Double3(b.x, b.y, b.z));
+                            var angle = atan2(Simd.length(Simd.cross(x, y)), Simd.dot(x, y));
+                            TownMesh.maximumMergedBasisRadians = max(TownMesh.maximumMergedBasisRadians, angle);
+                            TownMesh.mergedBasisComparisons += 1;
+                        }
+                    }
+                    remap.Add(existing); continue;
+                }
+                if (reuseNearbyTangents && collectBasisComparisons) { basisRepresentatives.Add((projectedT, projectedB)); }
+                var index = local.Count; lookup[key] = index; remap.Add(index);
+                local.Add(new SCNVector3(p.x, p.y, p.z)); outNormals.Add(normals[i]); outUV.Add(uv[i]); outWear.Add(wearUV[i]); outColors.Add(c.x); outColors.Add(c.y); outColors.Add(c.z); outColors.Add(c.w);
+            }
+            var source = new SCNGeometrySource(SCNGeometrySource.Bytes(outColors), SCNGeometrySourceSemantic.color, local.Count, true, 4, 4, 0, 16);
+            var g = new SCNGeometry(new[] { SCNGeometrySource.vertices(local), SCNGeometrySource.normals(outNormals), SCNGeometrySource.textureCoordinates(outUV), SCNGeometrySource.textureCoordinates(outWear), source },
+                groups.Where(group => group.Count != 0).Select(group => new SCNGeometryElement(group.Select(old => remap[old]).ToList(), SCNGeometryPrimitiveType.triangles)).ToList());
+            var materials = new[] { material, CityMaterials.cloth, CityMaterials.metal, CityMaterials.adobe };
+            g.materials = Enumerable.Range(0, groups.Length).Where(slot => groups[slot].Count != 0).Select(slot => materials[slot]).ToList();
+            return g;
+        }
+        var reuseNearbyTangents = !arguments.Contains("--benchmark-exact-tangents");
+        var g = build(reuseNearbyTangents: reuseNearbyTangents);
+        if (arguments.Contains("--benchmark-tangent-reuse") && arguments.Contains("--benchmark-gpu-probe"))
+        {
+            TownMesh.tangentProbePairs.Add((build(reuseNearbyTangents: false), g));
+        }
+        TownMesh.inputVertices += positions.Count; TownMesh.outputVertices += g.sourcesFor(SCNGeometrySourceSemantic.vertex).First().vectorCount;
+        if (arguments.Contains("--mesh-reuse-test") || arguments.Contains("--benchmark-original-vertices"))
+        {
+            var rawColor = new SCNGeometrySource(SCNGeometrySource.Bytes(colors), SCNGeometrySourceSemantic.color, positions.Count, true, 4, 4, 0, 16);
+            var rawLocal = positions.Select(v => new SCNVector3((float)v.x - origin.x, (float)v.y - origin.y, (float)v.z - origin.z)).ToList();
+            var original = new SCNGeometry(new[] { SCNGeometrySource.vertices(rawLocal), SCNGeometrySource.normals(normals), SCNGeometrySource.textureCoordinates(uv), SCNGeometrySource.textureCoordinates(wearUV), rawColor },
+                groups.Where(group => group.Count != 0).Select(group => new SCNGeometryElement(group, SCNGeometryPrimitiveType.triangles)).ToList());
+            original.materials = Enumerable.Range(0, groups.Length).Where(slot => groups[slot].Count != 0).Select(slot => new[] { material, CityMaterials.cloth, CityMaterials.metal, CityMaterials.adobe }[slot]).ToList();
+            if (arguments.Contains("--benchmark-original-vertices")) { return original; }
+            TownMesh.validationPairs.Add((original, g));
+        }
+        return g;
+    }
+}
+public sealed class TownCollisionBuilder { public List<RobotCollisions.Body> bodies = new(); }
+
+// PORT: a Swift struct of immutable fields (the meshes and collision builder are shared
+// references in Swift too). A sealed class, because C# local functions and lambdas inside a
+// struct cannot use `this`; no painter is ever mutated after construction, so the
+// semantics are identical.
+internal sealed class TownPainter
+{
+    public readonly TownMesh near, far; public readonly Float3 origin; public readonly float yaw;
+    public readonly TownCollisionBuilder collisions = null;
+    public TownPainter(TownMesh near, TownMesh far, Float3 origin, float yaw, TownCollisionBuilder collisions = null)
+    {
+        this.near = near; this.far = far; this.origin = origin; this.yaw = yaw; this.collisions = collisions;
+    }
+    private void solid(double x, double y, double z, double w, double h, double d, bool round = false, double turn = 0)
+    {
+        if (!(h > 0.08 && w > 0.04 && d > 0.04 && y + h / 2 > 0.10)) { return; }
+        var p = point(x, y - h / 2, z);
+        // Infield fixtures already have their detailed shared collision layout.
+        var projection = DirtCourse.projection(x: (double)p.x, z: (double)p.z);
+        if (!(projection.offset > 0 && projection.distance > DirtCourse.fenceOffset)) { return; }
+        collisions?.bodies.Add(new RobotCollisions.Body(position: new Double3((double)p.x, (double)p.y, (double)p.z), heading: (double)yaw + turn, profile: new RobotCollisions.Profile(mass: 1, halfWidth: w / 2, halfDepth: d / 2, height: h, round: round)));
+    }
+    private Float3 point(double x, double y, double z)
+    {
+        float c = cos(yaw), s = sin(yaw);
+        return origin + new Float3((float)x * c + (float)z * s, (float)y, -(float)x * s + (float)z * c);
+    }
+    private void tri(Float3 a, Float3 b, Float3 c, uint ink, bool detail)
+    {
+        near.triangle(a, b, c, ink); if (!detail) { far.triangle(a, b, c, ink); }
+    }
+    private void quad(Float3 a, Float3 b, Float3 c, Float3 d, uint ink, bool detail)
+    {
+        tri(a, b, c, ink, detail); tri(a, c, d, ink, detail);
+    }
+    public void beam(Double3 from, Double3 to, double radius, uint ink, int sides = 8)
+    {
+        Double3 middle = (from + to) / 2, delta = to - from;
+        solid(middle.x, middle.y, middle.z, radius * 2, abs(delta.y) + radius * 2, hypot(delta.x, delta.z) + radius * 2, turn: atan2(delta.x, delta.z));
+        near.materialSlot = 2; far.materialSlot = 2;
+        try
+        {
+            var axis = Simd.normalize(to - from);
+            var seed = abs(axis.y) < 0.9 ? new Double3(0, 1, 0) : new Double3(1, 0, 0);
+            Double3 u = Simd.normalize(Simd.cross(axis, seed)) * radius, v = Simd.cross(axis, u);
+            Float3 world(Double3 p) => point(p.x, p.y, p.z);
+            for (var i = 0; i < sides; i++)
+            {
+                double a = (double)i * 2 * Math.PI / (double)sides, b = (double)(i + 1) * 2 * Math.PI / (double)sides;
+                Double3 aa = u * cos(a) + v * sin(a), bb = u * cos(b) + v * sin(b);
+                quad(world(from + aa), world(to + aa), world(to + bb), world(from + bb), ink, true);
+                tri(world(from), world(from + bb), world(from + aa), ink, true);
+                tri(world(to), world(to + aa), world(to + bb), ink, true);
+            }
+        }
+        finally { near.materialSlot = 0; far.materialSlot = 0; }
+    }
+    /// Replace the wall face itself with a jagged opening, inset reveals and a dark cavity.
+    private void damagedWall(Float3 v0, Float3 v1, Float3 v2, Float3 v3, uint ink, int seed)
+    {
+        var normal = Simd.normalize(Simd.cross(v3 - v0, v1 - v0));
+        Float3 sample(float u, float v) => (v0 * (1 - u) + v1 * u) * (1 - v) + (v3 * (1 - u) + v2 * u) * v;
+        var boundary = new[] { new Float2(0, 0), new Float2(0.5f, 0), new Float2(1, 0), new Float2(1, 0.5f), new Float2(1, 1), new Float2(0.5f, 1), new Float2(0, 1), new Float2(0, 0.5f) };
+        var center = new Float2(0.28f + (float)(seed % 41) * 0.01f, 0.30f + (float)((seed / 41) % 34) * 0.01f);
+        var holes = enumerated(boundary).Select(entry =>
+        {
+            var i = entry.offset;
+            float jitter = 0.73f + (float)((seed + i * 7) % 5) * 0.12f;
+            var angle = (float)i * floatPi / 4 - floatPi * 0.75f; // Swift Float.pi (rounded toward zero)
+            var uv = center + new Float2(cos(angle) * (0.10f + (float)(seed % 7) * 0.01f), sin(angle) * (0.11f + (float)((seed / 7) % 5) * 0.012f)) * jitter;
+            return sample(uv.x, uv.y);
+        }).ToArray();
+        float depth = 0.13f + (float)(seed % 4) * 0.025f;
+        var backing = sample(center.x, center.y) - normal * (depth + 0.035f);
+        for (var i = 0; i < 8; i++)
+        {
+            int j = (i + 1) % 8; Float2 a = boundary[i], b = boundary[j];
+            quad(sample(a.x, a.y), holes[i], holes[j], sample(b.x, b.y), ink, true);
+            Float3 innerA = holes[i] - normal * depth, innerB = holes[j] - normal * depth;
+            quad(holes[i], innerA, innerB, holes[j], TownPainter.tone(ink, i % 3 == 0 ? 0.58 : 0.76), true);
+            tri(backing, innerB, innerA, TownPainter.tone(ink, 0.48), true);
+        }
+        // The tiny cavity disappears at the existing architecture LOD distance.
+        far.triangle(v0, v3, v2, ink); far.triangle(v0, v2, v1, ink);
+    }
+
+    public void adobe(double x, double y, double z, double w, double h, double d, uint ink, bool simple = false)
+    {
+        int oldNear = near.materialSlot, oldFar = far.materialSlot;
+        // Two scanned plaster traditions, selected per compound, not a repeating stain.
+        if (max(abs(origin.x), abs(origin.z)) > 30 && abs((long)(origin.x * 17 + origin.z * 31)) % 5 != 0)
+        {
+            near.materialSlot = 3; far.materialSlot = 3;
+        }
+        try
+        {
+            if (simple) { box(x, y, z, w, h, d, ink); return; }
+            solid(x, y, z, w, h, d);
+            var bevel = min(0.18, min(w, d) * 0.12);
+            var outline = new List<(double, double, double)>();
+            foreach (var (cx, cz, start) in new[] { (w / 2 - bevel, -d / 2 + bevel, -Math.PI / 2), (w / 2 - bevel, d / 2 - bevel, 0), (-w / 2 + bevel, d / 2 - bevel, Math.PI / 2), (-w / 2 + bevel, -d / 2 + bevel, Math.PI) })
+            {
+                for (var k = 0; k <= 2; k++)
+                {
+                    var angle = start + (double)k * Math.PI / 4;
+                    outline.Add((cx + cos(angle) * bevel, cz + sin(angle) * bevel, angle));
+                }
+            }
+            Float3 normal(double angle, float rise)
+            {
+                var a = (float)angle - yaw;
+                return Simd.normalize(new Float3(cos(a), rise, sin(a)));
+            }
+            void smoothQuad(Float3[] v, Float3[] n)
+            {
+                foreach (var ids in new[] { new[] { 0, 1, 2 }, new[] { 0, 2, 3 } })
+                {
+                    var normals = ids.Select(id => n[id]).ToArray();
+                    near.triangle(v[ids[0]], v[ids[1]], v[ids[2]], ink, smooth: normals);
+                    far.triangle(v[ids[0]], v[ids[1]], v[ids[2]], ink, smooth: normals);
+                }
+            }
+            for (var i = 0; i < outline.Count; i++)
+            {
+                var a = outline[i]; var b = outline[(i + 1) % outline.Count];
+                Float3 v0 = point(x + a.Item1, y - h / 2, z + a.Item2), v1 = point(x + b.Item1, y - h / 2, z + b.Item2);
+                Float3 v2 = point(x + b.Item1 * 0.97, y + h / 2 - bevel, z + b.Item2 * 0.97), v3 = point(x + a.Item1 * 0.97, y + h / 2 - bevel, z + a.Item2 * 0.97);
+                Float3 v4 = point(x + b.Item1 * 0.92, y + h / 2, z + b.Item2 * 0.92), v5 = point(x + a.Item1 * 0.92, y + h / 2, z + a.Item2 * 0.92);
+                static long hash(long input)
+                {
+                    var n = unchecked((uint)input);
+                    n = unchecked((n ^ (n >> 16)) * 0x7feb352dU); n = unchecked((n ^ (n >> 15)) * 0x846ca68bU);
+                    return (long)((n ^ (n >> 16)) & 0x7fffffff);
+                }
+                var buildingSeed = hash((long)(origin.x * 17) * 73856093 ^ (long)(origin.z * 17) * 19349663);
+                var wearSeed = hash(buildingSeed ^ (long)(x * 53 + y * 101 + w * 71 + d * 97) ^ (long)i * 379);
+                var condition = buildingSeed % 100;
+                var history = condition < 30 ? 0 : (condition < 70 ? 1 : (condition < 92 ? 2 : 3));
+                var tile = history * 16 + (int)(wearSeed % 16);
+                Float3 along = v1 - v0, up = v3 - v0;
+                Func<Float3, CGPoint> mapper = vertex =>
+                {
+                    var relative = vertex - v0;
+                    var u = max(0f, min(1f, Simd.dot(relative, along) / Simd.length_squared(along)));
+                    var v = max(0f, min(1f, Simd.dot(relative, up) / Simd.length_squared(up)));
+                    return new CGPoint(((double)(tile % 8) + 0.05 + (double)u * 0.90) / 8,
+                                       ((double)(tile / 8) + 0.05 + (double)(1 - v) * 0.90) / 8);
+                };
+                // Broad wear belongs to walls; roofs, pavement and equipment retain their own surfaces.
+                near.wearProjector = mapper; far.wearProjector = mapper;
+                try
+                {
+                    var worn = w > 1.5 && h > 1.5 && history == 3 && wearSeed % 3 != 0;
+                    if (worn && i == (wearSeed % 3 == 0 ? 11 : 5))
+                    {
+                        damagedWall(v0, v1, v2, v3, ink, (int)wearSeed);
+                    } else
+                    {
+                        smoothQuad(new[] { v0, v3, v2, v1 }, new[] { normal(a.Item3, 0), normal(a.Item3, 0.18f), normal(b.Item3, 0.18f), normal(b.Item3, 0) });
+                    }
+                    near.wearProjector = null; far.wearProjector = null;
+                    smoothQuad(new[] { v3, v5, v4, v2 }, new[] { normal(a.Item3, 0.18f), normal(a.Item3, 1.3f), normal(b.Item3, 1.3f), normal(b.Item3, 0.18f) });
+                    tri(point(x, y + h / 2, z), v4, v5, ink, false);
+                }
+                finally { near.wearProjector = null; far.wearProjector = null; }
+            }
+        }
+        finally { near.materialSlot = oldNear; far.materialSlot = oldFar; }
+    }
+
+    public void ring(double x, double y, double z, double outer, double inner, double h, uint ink, int sides = 24, bool entry = false)
+    {
+        for (var i = 0; i < sides; i++)
+        {
+            double a = (double)i * 2 * Math.PI / (double)sides, b = (double)(i + 1) * 2 * Math.PI / (double)sides;
+            if (entry && abs((a + b) / 2 - Math.PI / 2) < Math.PI / 8) { continue; }
+            double mid = (a + b) / 2, r = (outer + inner) / 2;
+            solid(x + cos(mid) * r, y, z + sin(mid) * r, (b - a) * r + 0.02, h, outer - inner, turn: Math.PI / 2 - mid);
+            double lo = y - h / 2, hi = y + h / 2;
+            Float3 a0 = point(x + cos(a) * outer, lo, z + sin(a) * outer), b0 = point(x + cos(b) * outer, lo, z + sin(b) * outer);
+            Float3 a1 = point(x + cos(a) * outer, hi, z + sin(a) * outer), b1 = point(x + cos(b) * outer, hi, z + sin(b) * outer);
+            Float3 a2 = point(x + cos(a) * inner, hi, z + sin(a) * inner), b2 = point(x + cos(b) * inner, hi, z + sin(b) * inner);
+            Float3 a3 = point(x + cos(a) * inner, lo, z + sin(a) * inner), b3 = point(x + cos(b) * inner, lo, z + sin(b) * inner);
+            quad(a0, a1, b1, b0, ink, false); quad(a1, a2, b2, b1, ink, false); quad(a2, a3, b3, b2, ink, false);
+            if (entry && abs(a - Math.PI * 5 / 8) < 0.001) { quad(a0, a3, a2, a1, ink, false); }
+            if (entry && abs(b - Math.PI * 3 / 8) < 0.001) { quad(b0, b1, b2, b3, ink, false); }
+        }
+    }
+    /// Three solid wall pieces leave an actual walkable vestibule in the facade.
+    public void residentHouse(double w, double h, double d, uint ink, double doorX)
+    {
+        double x = doorX, opening = 0.92, depth = min(1.2, d * 0.45);
+        double left = x - opening / 2 + w / 2, right = w / 2 - x - opening / 2;
+        adobe(-w / 2 + left / 2, h / 2, 0, left, h, d, ink);
+        adobe(w / 2 - right / 2, h / 2, 0, right, h, d, ink);
+        adobe(x, (h + 1.3) / 2, d / 2 - depth / 2, opening, h - 1.3, depth, ink);
+        adobe(x, h / 2, -depth / 2, opening, h, d - depth, ink);
+        box(x, 0.005, d / 2 - depth / 2, opening, 0.01, depth, 0x71634e);
+    }
+    /// Five related building traditions: rounded adobe arch, clipped lintel,
+    /// pointed arch, broad workshop arch, and a plain metal service entrance.
+    public void cityDoor(double w, double h, uint ink, int variant, bool open)
+    {
+        var thickness = new[] { 0.11, 0.16, 0.09, 0.14, 0.085 }[variant];
+        var frameInk = TownPainter.tone(ink, new[] { 1.04, 0.90, 0.98, 1.08, 0.83 }[variant]);
+        if (open)
+        {
+            foreach (var side in new[] { -1.0, 1 }) { box(side * (w / 2 + thickness / 2), h / 2, 0.045, thickness, h, 0.18, frameInk); }
+            box(0, h + thickness / 2, 0.045, w + 2 * thickness, thickness, 0.18, frameInk);
+            if (variant == 0 || variant == 2) { box(0, h + 0.16, 0.025, w + 0.34, 0.07, 0.24, ink); }
+        } else
+        {
+            List<Double2> outline(double width, double height)
+            {
+                var r = width / 2;
+                var result = new List<Double2> { new Double2(-r, 0), new Double2(r, 0) };
+                if (variant == 1)
+                {
+                    result.AddRange(new[] { new Double2(r, height - 0.23), new Double2(r - 0.17, height), new Double2(-r + 0.17, height), new Double2(-r, height - 0.23) });
+                } else if (variant == 2)
+                {
+                    result.AddRange(new[] { new Double2(r, height * 0.66), new Double2(r * 0.65, height * 0.86), new Double2(0, height), new Double2(-r * 0.65, height * 0.86), new Double2(-r, height * 0.66) });
+                } else if (variant == 4) { result.AddRange(new[] { new Double2(r, height), new Double2(-r, height) }); }
+                else
+                {
+                    var rise = variant == 3 ? width * 0.22 : r;
+                    for (var i = 0; i <= 12; i++) { var a = (double)i * Math.PI / 12; result.Add(new Double2(cos(a) * r, height - rise + sin(a) * rise)); }
+                }
+                return result;
+            }
+            List<Double2> inside = outline(w, h), outside = outline(w + 2 * thickness, h + thickness);
+            var center = point(0, h * 0.4, 0.038);
+            for (var i = 0; i < inside.Count; i++)
+            {
+                var j = (i + 1) % inside.Count; Double2 a = inside[i], b = inside[j], c = outside[i], d = outside[j];
+                tri(center, point(a.x, a.y, 0.038), point(b.x, b.y, 0.038), 0x302b26, false);
+                if (i == 0) { continue; } // Sand meets the threshold without a step.
+                quad(point(a.x, a.y, 0.07), point(c.x, c.y, 0.15), point(d.x, d.y, 0.15), point(b.x, b.y, 0.07), frameInk, false);
+                quad(point(c.x, c.y, -0.035), point(d.x, d.y, -0.035), point(d.x, d.y, 0.15), point(c.x, c.y, 0.15), ink, false);
+            }
+            var colors = new uint[] { 0x72634f, 0x65716b, 0x846654, 0x574b40, 0x74716a };
+            near.materialSlot = 2; far.materialSlot = 2;
+            List<Double2> leaf = outline(w * 0.91, h - 0.045); var middle = point(0, h * 0.4, 0.052);
+            for (var i = 0; i < leaf.Count; i++)
+            {
+                Double2 a = leaf[i], b = leaf[(i + 1) % leaf.Count];
+                tri(middle, point(a.x, a.y, 0.052), point(b.x, b.y, 0.052), colors[variant], false);
+            }
+            double top(double x)
+            {
+                var result = 0.0;
+                for (var k = 0; k < leaf.Count; k++)
+                {
+                    Double2 a = leaf[k], b = leaf[(k + 1) % leaf.Count];
+                    if (!(abs(b.x - a.x) > 0.001)) { continue; }
+                    var t = (x - a.x) / (b.x - a.x);
+                    if (t >= 0 && t <= 1) { result = max(result, a.y + (b.y - a.y) * t); }
+                }
+                return result;
+            }
+            var divisions = variant == 3 ? 5 : (variant == 4 ? 3 : 2);
+            for (var k = 1; k < divisions; k++)
+            {
+                var x = -w * 0.44 + w * 0.88 * (double)k / (double)divisions;
+                var height = max(0.1, top(x) - 0.04);
+                box(x, height / 2, 0.061, 0.016, height, 0.012, 0x3d3730, detail: true);
+            }
+            if (variant == 1 || variant == 4)
+            {
+                foreach (var y in new[] { 0.20, 0.47 }) { box(0, h * y, 0.064, w * 0.81, 0.027, 0.018, 0x99917c, detail: true); }
+            }
+            box(w * 0.27, h * 0.42, 0.077, 0.04, 0.13, 0.038, 0xb3a18a, detail: true);
+            near.materialSlot = 0; far.materialSlot = 0;
+        }
+        // Wall-mounted access control varies sides and height with the family.
+        if (variant == 1 || variant == 4)
+        {
+            box(w / 2 + thickness + 0.10, h * 0.64, 0.045, 0.12, 0.20, 0.07, 0x545b57, detail: true);
+            box(w / 2 + thickness + 0.10, h * 0.68, 0.083, 0.055, 0.035, 0.01, 0x9fa990, detail: true);
+        }
+    }
+    public void door(double x, double z, double w, double h, uint ink, uint trim, double side)
+    {
+        box(x, h * 0.43, z, w, h * 0.86, 0.05, ink);
+        dome(x, h * 0.86, z, w / 2, w * 0.52, 0.055, ink, sides: 12);
+        foreach (var sx in new[] { -1.0, 1 }) { adobe(x + sx * (w / 2 + 0.07), h * 0.42, z - side * 0.015, 0.13, h * 0.84, 0.13, trim); }
+        for (var i = 0; i < 16; i++)
+        {
+            double a = (double)i * Math.PI / 16, b = (double)(i + 1) * Math.PI / 16;
+            double r = w / 2, outer = r + 0.12, cy = h * 0.86;
+            var a0 = point(x + cos(a) * r, cy + sin(a) * r, z + side * 0.06);
+            var a1 = point(x + cos(a) * outer, cy + sin(a) * outer, z + side * 0.10);
+            var b0 = point(x + cos(b) * r, cy + sin(b) * r, z + side * 0.06);
+            var b1 = point(x + cos(b) * outer, cy + sin(b) * outer, z + side * 0.10);
+            if (side > 0) { quad(a0, a1, b1, b0, trim, true); } else { quad(b0, b1, a1, a0, trim, true); }
+        }
+        near.materialSlot = 2;
+        box(x, h * 0.40, z + side * 0.035, w * 0.79, h * 0.72, 0.012, 0x86715b, detail: true);
+        foreach (var sx in new[] { -0.22, 0.22 }) { box(x + sx * w, h * 0.4, z + side * 0.047, 0.022, h * 0.70, 0.014, 0x493e34, detail: true); }
+        box(x + w * 0.22, h * 0.4, z + side * 0.068, 0.055, 0.14, 0.035, 0xb7a184, detail: true);
+        near.materialSlot = 0;
+        box(x, 0.04, z + side * 0.13, w + 0.18, 0.08, 0.31, trim, detail: true);
+    }
+    public void awning(double x, double z, double w, double d, double y, uint ink)
+    {
+        cloth(x, z, w, d, y, 0.12, ink, ridge: false);
+    }
+    private void cloth(double x, double z, double w, double d, double y, double rise, uint ink, bool ridge)
+    {
+        near.materialSlot = 1; far.materialSlot = 1;
+        try
+        {
+            int nx = w > 5 ? 24 : 12, nz = d > 3 ? 10 : 6;
+            Float3 v(int i, int j)
+            {
+                double u = (double)i / (double)nx, t = (double)j / (double)nz;
+                var roof = ridge ? rise * (1 - abs(u * 2 - 1)) : -t * 0.15;
+                var sag = min(0.38, d * 0.065) * sin(t * Math.PI) * (0.65 + 0.35 * sin(u * Math.PI)) + 0.045 * sin(u * 8 * Math.PI) * sin(t * Math.PI);
+                return point(x + (u - 0.5) * w, y + roof - sag, z + (t - 0.5) * d);
+            }
+            for (var i = 0; i < nx; i++) { for (var j = 0; j < nz; j++) {
+                Float3 a = v(i, j), b = v(i + 1, j), c = v(i + 1, j + 1), e = v(i, j + 1);
+                uint panelInk = (i + (int)abs(origin.x + origin.z)) % 5 == 0 ? TownPainter.tone(ink, 0.88) : ink;
+                quad(a, e, c, b, panelInk, true);
+            }}
+            // Distant cloth keeps the silhouette without folds.
+            {
+                Float3 a = v(0, 0), b = v(nx, 0), c = v(nx, nz), e = v(0, nz);
+                far.triangle(a, e, c, ink); far.triangle(a, c, b, ink);
+            }
+        }
+        finally { near.materialSlot = 0; far.materialSlot = 0; }
+    }
+    public void repairRug(double w, double d, int variation)
+    {
+        if (variation == 0) { triangularRug(); return; }
+        near.materialSlot = 1; far.materialSlot = 1;
+        try
+        {
+            uint @base = variation == 0 ? 0x8a7960u : 0x827568u;
+            void patch(double x, double z, double width, double depth, uint ink, double lift = 0)
+            {
+                var y = 0.004 + lift;
+                quad(point(x - width / 2, y, z - depth / 2), point(x - width / 2, y, z + depth / 2), point(x + width / 2, y, z + depth / 2), point(x + width / 2, y, z - depth / 2), ink, false);
+            }
+            patch(0, 0, w, d, @base);
+            foreach (var side in new[] { -1.0, 1.0 })
+            {
+                patch(side * (w / 2 - 0.16), 0, 0.19, d - 0.13, 0x545849, 0.002);
+                patch(0, side * (d / 2 - 0.17), w - 0.14, 0.21, 0x545849, 0.002);
+                patch(0, side * (d / 2 - 0.33), w - 0.31, 0.035, 0xb4a17d, 0.003);
+                for (var j = 0; j < 26; j++)
+                {
+                    var x = -w / 2 + 0.10 + (double)j * (w - 0.20) / 25;
+                    var length = 0.09 + (double)((j * 7 + variation) % 5) * 0.013;
+                    quad(point(x, 0.003, side * d / 2), point(x + 0.024, 0.003, side * d / 2), point(x + 0.02, 0.001, side * (d / 2 + length)), point(x - 0.005, 0.001, side * (d / 2 + length)), 0xa69574, true);
+                }
+            }
+            // Muted woven checks remain legible as a single textile, with no raised tile seams.
+            for (var row = 0; row < 5; row++) { for (var col = 0; col < 5; col++) {
+                double x = -1.20 + (double)col * 0.60, z = -1.20 + (double)row * 0.60;
+                if ((row + col + variation) % 2 == 0) { patch(x, z, 0.58, 0.58, 0x958b70, 0.001); }
+            }}
+            foreach (var side in new[] { -1.0, 1.0 }) { for (var j = 0; j < 7; j++) {
+                double x = -1.2 + (double)j * 0.4, z = side * (d / 2 - 0.17), y = 0.008;
+                quad(point(x - 0.085, y, z), point(x, y, z + 0.068), point(x + 0.085, y, z), point(x, y, z - 0.068), 0xb7a783, true);
+            }}
+        }
+        finally { near.materialSlot = 0; far.materialSlot = 0; }
+    }
+
+    private void triangularRug()
+    {
+        near.materialSlot = 1; far.materialSlot = 1;
+        try
+        {
+            var outline = InfieldLayout.orangeCorners.Select(corner => corner * 0.94).ToArray();
+            void patch(Double2[] polygon, uint ink, double y)
+            {
+                var clipped = polygon.ToList();
+                for (var i = 0; i < 3; i++)
+                {
+                    Double2 a = outline[i], b = outline[(i + 1) % 3], d = b - a;
+                    double distance(Double2 p) => d.x * (p.y - a.y) - d.y * (p.x - a.x);
+                    var output = new List<Double2>();
+                    if (clipped.Count == 0) { return; }
+                    for (var j = 0; j < clipped.Count; j++)
+                    {
+                        Double2 p = clipped[j], q = clipped[(j + 1) % clipped.Count]; double dp = distance(p), dq = distance(q);
+                        if (dp <= 0) { output.Add(p); }
+                        if ((dp <= 0) != (dq <= 0)) { output.Add(p + (q - p) * (dp / (dp - dq))); }
+                    }
+                    clipped = output;
+                }
+                if (!(clipped.Count >= 3)) { return; }
+                for (var i = 1; i < clipped.Count - 1; i++)
+                {
+                    Double2 a = clipped[0], b = clipped[i], c = clipped[i + 1];
+                    tri(point(a.x, y, a.y), point(b.x, y, b.y), point(c.x, y, c.y), ink, false);
+                }
+            }
+            patch(outline, 0x8a7960, 0.004);
+            for (var x = -3; x <= 2; x++) { for (var z = -3; z <= 2; z++) {
+                if (!((x + z) % 2 == 0)) { continue; }
+                double a = (double)x * 0.5, b = (double)z * 0.5;
+                patch(new[] { new Double2(a, b), new Double2(a, b + 0.49), new Double2(a + 0.49, b + 0.49), new Double2(a + 0.49, b) }, 0x958b70, 0.006);
+            }}
+            var center = outline.Aggregate(Double2.zero, (sum, corner) => sum + corner) / 3;
+            for (var i = 0; i < 3; i++)
+            {
+                Double2 a = outline[i], b = outline[(i + 1) % 3], ia = a + (center - a) * 0.14, ib = b + (center - b) * 0.14;
+                patch(new[] { a, b, ib, ia }, 0x545849, 0.009);
+                Double2 direction = b - a, n = Simd.normalize(new Double2(-direction.y, direction.x));
+                for (var j = 1; j < 17; j++)
+                {
+                    Double2 p = a + direction * (double)j / 17, q = p + Simd.normalize(direction) * 0.022;
+                    quad(point(p.x, 0.006, p.y), point(q.x, 0.006, q.y), point(q.x + n.x * 0.08, 0.003, q.y + n.y * 0.08), point(p.x + n.x * 0.08, 0.003, p.y + n.y * 0.08), 0xa69574, true);
+                }
+            }
+        }
+        finally { near.materialSlot = 0; far.materialSlot = 0; }
+    }
+
+    public void triangularRepairCanopy(uint ink)
+    {
+        var corners = InfieldLayout.orangeCorners.Select(corner => new Double3(corner.x, 2, corner.y)).ToArray();
+        near.materialSlot = 1; far.materialSlot = 1;
+        var center = point(-0.6, 2.3, 0.53);
+        for (var i = 0; i < 3; i++)
+        {
+            Double3 a = corners[i], b = corners[(i + 1) % 3];
+            tri(center, point(a.x, a.y, a.z), point(b.x, b.y, b.z), ink, false);
+        }
+        near.materialSlot = 0; far.materialSlot = 0;
+        foreach (var a in corners) { beam(new Double3(a.x, 0, a.z), a, 0.035, 0x625b50); }
+        for (var i = 0; i < 3; i++) { cable(corners[i], corners[(i + 1) % 3], 0.025, 0x625b50); }
+    }
+    public void engineAssembly(double x, double y, double z, double scale, int variant)
+    {
+        int oldNear = near.materialSlot, oldFar = far.materialSlot;
+        near.materialSlot = 2; far.materialSlot = 2;
+        try
+        {
+            uint ink = variant % 2 == 0 ? 0x7e725eu : 0x7b5540u;
+            box(x, y + 0.17 * scale, z, 0.88 * scale, 0.34 * scale, 0.64 * scale, ink);
+            foreach (var side in new[] { -1.0, 1 })
+            {
+                cylinder(x + side * 0.28 * scale, y + 0.45 * scale, z, 0.18 * scale, 0.16 * scale, 0.34 * scale, ink, sides: 20);
+                for (var fin = 0; fin < 5; fin++) { cylinder(x + side * 0.28 * scale, y + (0.31 + (double)fin * 0.065) * scale, z, 0.205 * scale, 0.205 * scale, 0.025 * scale, 0x9b9682, sides: 16); }
+                foreach (var dz in new[] { -0.20, 0.20 }) { box(x + side * 0.42 * scale, y + 0.355 * scale, z + dz * scale, 0.045 * scale, 0.035 * scale, 0.045 * scale, 0x403d32, detail: true); }
+            }
+            box(x, y + 0.21 * scale, z + 0.335 * scale, 0.44 * scale, 0.20 * scale, 0.055 * scale, 0x393f39);
+            for (var k = 0; k < 7; k++) { box(x + (double)(k - 3) * 0.05 * scale, y + 0.21 * scale, z + 0.37 * scale, 0.014 * scale, 0.15 * scale, 0.015 * scale, 0x96957f, detail: true); }
+        }
+        finally { near.materialSlot = oldNear; far.materialSlot = oldFar; }
+    }
+    public void droidSalvage(double x, double y, double z, int variant)
+    {
+        int oldNear = near.materialSlot, oldFar = far.materialSlot;
+        near.materialSlot = 2; far.materialSlot = 2;
+        try
+        {
+            uint ink = variant % 2 == 0 ? 0xaaa58eu : 0x8f7763u;
+            cylinder(x, y + 0.29, z, 0.26, 0.25, 0.58, ink, sides: 24);
+            for (var k = 0; k < 3; k++) { box(x, y + 0.13 + (double)k * 0.16, z + 0.247, 0.25, 0.10, 0.04, 0x485e5b); }
+            dome(x, y + 0.59, z, 0.29, 0.24, 0.29, 0xa8ada1, sides: 24);
+            cylinder(x, y + 0.585, z, 0.295, 0.295, 0.035, 0x4f5f59, sides: 24);
+            box(x - 0.08, y + 0.72, z + 0.25, 0.12, 0.10, 0.065, 0x283a37);
+            foreach (var side in new[] { -1.0, 1 })
+            {
+                box(x + side * 0.31, y + 0.21, z, 0.10, 0.42, 0.13, ink);
+                box(x + side * 0.31, y + 0.055, z + 0.065, 0.17, 0.11, 0.28, 0x8b8b76);
+            }
+        }
+        finally { near.materialSlot = oldNear; far.materialSlot = oldFar; }
+    }
+
+    public void salvage(double w, double d, double h, int kind, int seed)
+    {
+        near.materialSlot = 2; far.materialSlot = 2;
+        try
+        {
+            var rust = new uint[] { 0x80533b, 0x98603e, 0x694c39, 0x9c704a }[seed % 4];
+            if (kind == 0)
+            {
+                ring(0, h / 2, 0, w / 2, w * 0.29, h, rust, sides: 16);
+                for (var i = 0; i < 6; i++)
+                {
+                    var a = (double)i * Math.PI / 3;
+                    box(cos(a) * w * 0.39, h + 0.01, sin(a) * w * 0.39, 0.045, 0.025, 0.045, 0x51483d, detail: true);
+                }
+            } else if (kind == 1)
+            {
+                box(0, h * 0.46, 0, w * 0.78, h * 0.92, d * 0.80, rust);
+                for (var k = 0; k < 5; k++) { box(0, h * 0.95, -d * 0.32 + (double)k * d * 0.16, w, 0.035, 0.035, 0x564b3e, detail: true); }
+                cylinder(0, h, 0, w * 0.16, w * 0.16, 0.04, 0x6b6350, sides: 10, detail: true);
+            } else
+            {
+                box(0, h / 2, 0, w, h, d, rust);
+                for (var k = 0; k < 4; k++) { box(-w * 0.38 + (double)k * w * 0.25, h + 0.005, 0, 0.025, 0.015, d * 0.85, 0x514a3d, detail: true); }
+            }
+            for (var k = 0; k < 7; k++)
+            {
+                double xx = sin((double)(seed * 23 + k * 17)) * w * 0.32, zz = cos((double)(seed * 11 + k * 29)) * d * 0.29;
+                box(xx, h + 0.02, zz, 0.035 + (double)(k % 3) * 0.012, 0.005, 0.025, 0xb07a45, detail: true);
+            }
+        }
+        finally { near.materialSlot = 0; far.materialSlot = 0; }
+    }
+
+    public void canopy(double x, double z, double w, double d, double y, double rise, uint ink)
+    {
+        cloth(x, z, w, d, y, rise, ink, ridge: true);
+        foreach (var side in new[] { -1.0, 1.0 }) { foreach (var zz in new[] { -d / 2, d / 2 }) {
+            beam(new Double3(x + side * w / 2, 0, z + zz), new Double3(x + side * w / 2, y, z + zz), 0.035, 0x625b50);
+        }}
+        beam(new Double3(x, y + rise, z - d / 2), new Double3(x, y + rise, z + d / 2), 0.04, 0x625b50);
+    }
+    /// Open voussoir arch. Intrados, jambs and wall thickness are actual geometry.
+    public void arcade(double x, double y, double z, double w, double h, double depth, double thickness, uint ink, double? wallTop = null)
+    {
+        double r = w / 2, spring = y + h - r;
+        foreach (var side in new[] { -1.0, 1 })
+        {
+            adobe(x + side * (r + thickness / 2), (y + spring) / 2, z, thickness, spring - y, depth, ink);
+            box(x + side * (r + thickness / 2), y + 0.055, z, thickness + 0.06, 0.11, depth + 0.08, TownPainter.tone(ink, 0.85), detail: true);
+        }
+        for (var i = 0; i < 14; i++)
+        {
+            var joint = wallTop == null ? 0.005 : 0.0;
+            double a = (double)i * Math.PI / 14 + joint, b = (double)(i + 1) * Math.PI / 14 - joint;
+            var color = TownPainter.tone(ink, new[] { 0.97, 1.015, 0.94, 1.0 }[i % 4]);
+            Float3 v(double angle, double radius, double zz) => point(x + cos(angle) * radius, spring + sin(angle) * radius, zz);
+            double f = z + depth / 2, back = z - depth / 2;
+            Float3 a0 = v(a, r, f), b0 = v(b, r, f), a1 = v(a, r + thickness, f), b1 = v(b, r + thickness, f);
+            Float3 c0 = v(a, r, back), d0 = v(b, r, back), c1 = v(a, r + thickness, back), d1 = v(b, r + thickness, back);
+            quad(a0, a1, b1, b0, color, false); quad(d0, d1, c1, c0, color, false);
+            quad(a0, b0, d0, c0, TownPainter.tone(color, 0.72), false);
+            quad(b1, a1, c1, d1, color, false);
+            quad(c0, c1, a1, a0, color, true); quad(b0, b1, d1, d0, color, true);
+            if (wallTop is double top)
+            {
+                // Fill the spandrel to the horizontal roof course. Sharing the
+                // exact outer arc avoids slivers of daylight through masonry.
+                Float3 af = point(x + cos(a) * (r + thickness), top, f), bf = point(x + cos(b) * (r + thickness), top, f);
+                Float3 ab = point(x + cos(a) * (r + thickness), top, back), bb = point(x + cos(b) * (r + thickness), top, back);
+                quad(a1, af, bf, b1, ink, false); quad(d1, bb, ab, c1, ink, false);
+                quad(af, ab, bb, bf, ink, false);
+            }
+        }
+    }
+    /// Thin, irregular patches follow wall surfaces; no extra decal pass or transparency.
+    public void plasterPatch(double x, double y, double z, double rx, double ry, uint ink, int seed)
+    {
+        var n = 11;
+        for (var i = 0; i < n; i++)
+        {
+            Float3 edge(int k)
+            {
+                var a = (double)k * 2 * Math.PI / (double)n;
+                var r = 0.79 + 0.16 * sin((double)(k * 17 + seed * 23));
+                return point(x + cos(a) * rx * r, y + sin(a) * ry * r, z);
+            }
+            tri(point(x, y, z), edge(i), edge(i + 1), ink, true);
+        }
+    }
+    public void cable(Double3 from, Double3 to, double sag, uint ink)
+    {
+        var previous = from;
+        for (var i = 1; i <= 8; i++)
+        {
+            var t = (double)i / 8;
+            var p = from + (to - from) * t - new Double3(0, sin(t * Math.PI) * sag, 0);
+            beam(previous, p, 0.009, ink, sides: 5); previous = p;
+        }
+    }
+    public void valance(double x, double z, double width, double y, double drop, uint ink, double rise = 0)
+    {
+        near.materialSlot = 1;
+        try
+        {
+            for (var i = 0; i < 24; i++)
+            {
+                double a = (double)i / 24, b = (double)(i + 1) / 24;
+                Float3 top(double u) => point(x + (u - 0.5) * width, y + rise * (1 - abs(u * 2 - 1)), z);
+                Float3 bottom(double u) => point(x + (u - 0.5) * width, y + rise * (1 - abs(u * 2 - 1)) - drop * (0.78 + 0.22 * sin(u * 6 * Math.PI)), z + 0.025 * sin(u * 12 * Math.PI));
+                quad(top(a), bottom(a), bottom(b), top(b), ink, true);
+            }
+        }
+        finally { near.materialSlot = 0; }
+    }
+    public void crate(double x, double y, double z, double size, uint ink)
+    {
+        box(x, y + size / 2, z, size, size, size * 0.72, TownPainter.tone(ink, 0.72), detail: true);
+        for (var k = 0; k < 4; k++)
+        {
+            box(x, y + ((double)k + 0.5) * size / 4, z + size * 0.37, size * 0.94, size * 0.19, 0.026, ink, detail: true);
+        }
+        foreach (var side in new[] { -1.0, 1 }) { box(x + side * size * 0.38, y + size / 2, z + size * 0.39, 0.045, size, 0.025, TownPainter.tone(ink, 0.84), detail: true); }
+    }
+    /// Open slatted tray with individual produce, not a solid coloured cuboid.
+    public void produceTray(double x, double y, double z, int variant)
+    {
+        box(x, y + 0.015, z, 0.44, 0.03, 0.48, 0x776044, detail: true);
+        foreach (var side in new[] { -1.0, 1 })
+        {
+            box(x + side * 0.22, y + 0.09, z, 0.025, 0.15, 0.50, 0x96734d, detail: true);
+            foreach (var level in new[] { 0.035, 0.115 }) { box(x, y + level, z + side * 0.24, 0.44, 0.04, 0.025, 0x96734d, detail: true); }
+        }
+        var colors = new uint[] { 0x987342, 0x8a5637, 0x7b8152, 0xada069, 0x6a7450 };
+        for (var k = 0; k < 9; k++)
+        {
+            var xx = x + (double)(k % 3 - 1) * 0.135 + sin((double)(k * 7 + variant)) * 0.012;
+            var zz = z + (double)(k / 3 - 1) * 0.145 + cos((double)(k * 11 + variant)) * 0.013;
+            var r = 0.059 + (double)((k + variant) % 3) * 0.006;
+            dome(xx, y + 0.07, zz, r, r * (variant % 2 == 0 ? 1.4 : 0.9), r, colors[(k / 3 + variant) % colors.Length], sides: 12, detail: true);
+        }
+    }
+
+    public void vessel(double x, double y, double z, double size, uint ink)
+    {
+        // Lathed clay profile includes the lip and hollow interior, with smooth normals.
+        var profile = new[] { new Double2(0.24, 0), new Double2(0.43, 0.24), new Double2(0.40, 0.43), new Double2(0.22, 0.56), new Double2(0.25, 0.66), new Double2(0.17, 0.66), new Double2(0.17, 0.53), new Double2(0.26, 0.13), new Double2(0, 0.12) };
+        for (var j = 0; j < profile.Length - 1; j++)
+        {
+            Double2 lo = profile[j], hi = profile[j + 1], delta = hi - lo;
+            Float3 vertex(double a, Double2 v) => point(x + cos(a) * v.x * size, y + v.y * size, z + sin(a) * v.x * size);
+            Float3 normal(double a) => Simd.normalize(new Float3((float)(cos(a - (double)yaw) * delta.y), (float)(-delta.x), (float)(sin(a - (double)yaw) * delta.y)));
+            for (var k = 0; k < 16; k++)
+            {
+                double a = (double)k * 2 * Math.PI / 16, b = (double)(k + 1) * 2 * Math.PI / 16;
+                Float3 v0 = vertex(a, lo), v1 = vertex(a, hi), v2 = vertex(b, hi), v3 = vertex(b, lo);
+                var c = j > 4 ? TownPainter.tone(ink, 0.66) : ink;
+                near.triangle(v0, v1, v2, c, smooth: new[] { normal(a), normal(a), normal(b) });
+                near.triangle(v0, v2, v3, c, smooth: new[] { normal(a), normal(b), normal(b) });
+            }
+        }
+    }
+
+    public static uint tone(uint ink, double factor)
+    {
+        uint r = (uint)min(255, (double)((ink >> 16) & 255) * factor), g = (uint)min(255, (double)((ink >> 8) & 255) * factor), b = (uint)min(255, (double)(ink & 255) * factor);
+        return r << 16 | g << 8 | b;
+    }
+    public void box(double x, double y, double z, double w, double h, double d, uint ink, bool detail = false)
+    {
+        solid(x, y, z, w, h, d);
+        var v = new[] { point(x - w / 2, y - h / 2, z - d / 2), point(x + w / 2, y - h / 2, z - d / 2), point(x + w / 2, y + h / 2, z - d / 2), point(x - w / 2, y + h / 2, z - d / 2), point(x - w / 2, y - h / 2, z + d / 2), point(x + w / 2, y - h / 2, z + d / 2), point(x + w / 2, y + h / 2, z + d / 2), point(x - w / 2, y + h / 2, z + d / 2) };
+        foreach (var f in boxFaces) { quad(v[f[0]], v[f[1]], v[f[2]], v[f[3]], ink, detail); }
+    }
+    private static readonly int[][] boxFaces = { new[] { 0, 3, 2, 1 }, new[] { 4, 5, 6, 7 }, new[] { 0, 4, 7, 3 }, new[] { 1, 2, 6, 5 }, new[] { 3, 7, 6, 2 }, new[] { 0, 1, 5, 4 } };
+    public void cylinder(double x, double y, double z, double bottom, double top, double h, uint ink, int sides = 12, bool detail = false)
+    {
+        solid(x, y, z, max(bottom, top) * 2, h, max(bottom, top) * 2, round: true);
+        for (var i = 0; i < sides; i++)
+        {
+            double a = (double)i * 2 * Math.PI / (double)sides, b = (double)(i + 1) * 2 * Math.PI / (double)sides;
+            Float3 v0 = point(x + cos(a) * bottom, y - h / 2, z + sin(a) * bottom), v1 = point(x + cos(b) * bottom, y - h / 2, z + sin(b) * bottom);
+            Float3 v2 = point(x + cos(b) * top, y + h / 2, z + sin(b) * top), v3 = point(x + cos(a) * top, y + h / 2, z + sin(a) * top);
+            Float3 normal(double angle)
+            {
+                var an = (float)angle - yaw;
+                return Simd.normalize(new Float3(cos(an), (float)((bottom - top) / max(h, 0.001)), sin(an)));
+            }
+            foreach (var (v, n) in new[] { (new[] { v0, v3, v2 }, new[] { normal(a), normal(a), normal(b) }), (new[] { v0, v2, v1 }, new[] { normal(a), normal(b), normal(b) }) })
+            {
+                near.triangle(v[0], v[1], v[2], ink, smooth: n);
+                if (!detail) { far.triangle(v[0], v[1], v[2], ink, smooth: n); }
+            }
+            tri(point(x, y + h / 2, z), v2, v3, ink, detail);
+            tri(point(x, y - h / 2, z), v0, v1, ink, detail);
+        }
+    }
+    public void dome(double x, double y, double z, double rx, double ry, double rz, uint ink, int sides = 16, bool detail = false)
+    {
+        var rings = sides >= 16 ? 8 : 4;
+        for (var j = 0; j < rings; j++) { for (var i = 0; i < sides; i++) {
+            double a = (double)i * 2 * Math.PI / (double)sides, b = (double)(i + 1) * 2 * Math.PI / (double)sides;
+            double p = (double)j / (double)rings * Math.PI / 2, q = (double)(j + 1) / (double)rings * Math.PI / 2;
+            var v0 = point(x + cos(a) * cos(p) * rx, y + sin(p) * ry, z + sin(a) * cos(p) * rz);
+            var v1 = point(x + cos(b) * cos(p) * rx, y + sin(p) * ry, z + sin(b) * cos(p) * rz);
+            var v2 = point(x + cos(b) * cos(q) * rx, y + sin(q) * ry, z + sin(b) * cos(q) * rz);
+            var v3 = point(x + cos(a) * cos(q) * rx, y + sin(q) * ry, z + sin(a) * cos(q) * rz);
+            var center = point(x, y, z);
+            Float3 normal(Float3 v)
+            {
+                Float3 delta = v - center; float c = cos(yaw), s = sin(yaw);
+                var local = new Float3(delta.x * c - delta.z * s, delta.y, delta.x * s + delta.z * c);
+                var n = Simd.normalize(local / new Float3((float)(rx * rx), (float)(ry * ry), (float)(rz * rz)));
+                return new Float3(n.x * c + n.z * s, n.y, -n.x * s + n.z * c);
+            }
+            foreach (var vertices in new[] { new[] { v0, v3, v2 }, new[] { v0, v2, v1 } })
+            {
+                var normals = vertices.Select(vertex => normal(vertex)).ToArray();
+                near.triangle(vertices[0], vertices[1], vertices[2], ink, smooth: normals);
+                if (!detail) { far.triangle(vertices[0], vertices[1], vertices[2], ink, smooth: normals); }
+            }
+        }}
+    }
+    /// Swift `.enumerated()`.
+    private static IEnumerable<(int offset, T element)> enumerated<T>(IEnumerable<T> source)
+    {
+        var offset = 0;
+        foreach (var element in source) { yield return (offset, element); offset += 1; }
     }
 }
