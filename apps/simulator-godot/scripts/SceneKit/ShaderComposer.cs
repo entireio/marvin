@@ -161,6 +161,8 @@ internal static class ShaderComposer
         sb.AppendLine("global uniform vec4 scn_ibl;");
         for (int i = 0; i < 9; i++) sb.AppendLine($"global uniform vec4 scn_sh{i};");
         sb.AppendLine("global uniform vec4 scn_deferred;");
+        sb.AppendLine("global uniform mat4 scn_shadow_box0; // fixed shadow boxes (SceneKitRuntime.FitShadows; zero = none)");
+        sb.AppendLine("global uniform mat4 scn_shadow_box1;");
         sb.AppendLine("global uniform sampler2D scn_radiance : filter_linear, repeat_enable; // SCNScene.RadianceTexture bands");
         sb.AppendLine();
 
@@ -305,6 +307,7 @@ internal static class ShaderComposer
         sb.AppendLine();
         foreach (var ch in uvChannels.Where(c => c >= 2)) sb.AppendLine($"varying vec2 scn_tc{ch};");
         bool litSpecular = pbr || specularColor != null;
+        if (!depthOnly) sb.AppendLine("varying vec3 scn_wpos; // world position, read by light() for SceneKit's fixed shadow boxes");
         if (!constant)
         {
             sb.AppendLine("varying vec3 scn_unlit; // fragment colour without direct lights (deferred shadows darken it in light())");
@@ -344,6 +347,7 @@ internal static class ShaderComposer
             plan.code = sb.ToString();
             return plan;
         }
+        sb.AppendLine("    scn_wpos = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;");
         sb.AppendLine("    // _surface.diffuse = diffuse x vertex colour, premultiplied by alpha (measured in SceneKit).");
         sb.AppendLine($"    vec4 scn_d = {diffuse};");
         sb.AppendLine("    scn_d.rgb *= scn_diffuse_intensity;");
@@ -483,15 +487,17 @@ internal static class ShaderComposer
         {
             sb.AppendLine();
             sb.AppendLine("void light() {");
+            ShadowBoxTest(sb);
             sb.AppendLine("    // Deferred shadows darken the final colour of every material, constant ones included.");
-            sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL) { SPECULAR_LIGHT -= ALBEDO * scn_deferred.x * (1.0 - ATTENUATION); }");
+            sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL) { SPECULAR_LIGHT -= ALBEDO * scn_deferred.x * (1.0 - scn_atten); }");
             sb.AppendLine("}");
         }
         else
         {
             sb.AppendLine();
             sb.AppendLine("void light() {");
-            sb.AppendLine("    float scn_att = ATTENUATION;");
+            ShadowBoxTest(sb);
+            sb.AppendLine("    float scn_att = scn_atten;");
             sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL && scn_deferred.x > 0.0) {");
             sb.AppendLine("        // SceneKit deferred shadows (measured): the light itself stays unshadowed and the final colour");
             sb.AppendLine("        // (direct, ambient, IBL, emission, back faces too) is multiplied by 1 - alpha x shadow.");
@@ -500,7 +506,7 @@ internal static class ShaderComposer
             sb.AppendLine("        float scn_cos = dot(NORMAL, LIGHT);");
             sb.AppendLine("        float scn_face = clamp((0.04 - scn_cos) / 0.15, 0.0, 1.0);");
             sb.AppendLine("        float scn_self = scn_deferred.y * sqrt(clamp((degrees(acos(clamp(scn_cos, -1.0, 1.0))) - scn_deferred.z) / 28.0, 0.0, 1.0));");
-            sb.AppendLine("        float scn_s = max(1.0 - ATTENUATION, max(scn_face, scn_self));");
+            sb.AppendLine("        float scn_s = max(1.0 - scn_atten, max(scn_face, scn_self));");
             sb.AppendLine("        scn_att = 1.0 - scn_deferred.x * scn_s;");
             sb.AppendLine("        SPECULAR_LIGHT -= scn_unlit * (scn_deferred.x * scn_s);");
             sb.AppendLine("    }");
@@ -546,6 +552,30 @@ internal static class ShaderComposer
         }
         plan.code = sb.ToString();
         return plan;
+    }
+
+    /// <summary>
+    /// light() prologue: scn_atten = ATTENUATION, except that a directional light with a fixed shadow box
+    /// (automaticallyAdjustsShadowProjection = false) leaves receivers outside its box unshadowed, as SceneKit does
+    /// (measured: the shadow ends sharply at |x|, |y| = orthographicScale around the light node and outside
+    /// zNear..zFar along the light). Godot fits its map to the camera instead. scn_shadow_box0/1 map world positions
+    /// into the box (inside: all |coordinates| &lt;= 1); the light is recognised by its direction (the box's z row).
+    /// </summary>
+    private static void ShadowBoxTest(StringBuilder sb)
+    {
+        sb.AppendLine("    float scn_atten = ATTENUATION;");
+        sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL) {");
+        sb.AppendLine("        // SceneKit's fixed shadow box: receivers outside it are unshadowed (SceneKitRuntime.FitShadows).");
+        sb.AppendLine("        vec3 scn_lw = mat3(INV_VIEW_MATRIX) * LIGHT;");
+        sb.AppendLine("        for (int scn_i = 0; scn_i < 2; scn_i++) {");
+        sb.AppendLine("            mat4 scn_box = scn_i == 0 ? scn_shadow_box0 : scn_shadow_box1;");
+        sb.AppendLine("            vec3 scn_bz = vec3(scn_box[0][2], scn_box[1][2], scn_box[2][2]);");
+        sb.AppendLine("            if (dot(scn_lw, scn_bz) < -0.99995 * length(scn_bz)) {");
+        sb.AppendLine("                vec3 scn_q = abs((scn_box * vec4(scn_wpos, 1.0)).xyz);");
+        sb.AppendLine("                if (max(scn_q.x, max(scn_q.y, scn_q.z)) > 1.0) scn_atten = 1.0;");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
     }
 
     /// <summary>SceneKit PBR diffuse response to the lightingEnvironment, relative to Godot's IRRADIANCE (calibrated).</summary>

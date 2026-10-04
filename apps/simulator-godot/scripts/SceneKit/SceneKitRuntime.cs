@@ -303,6 +303,7 @@ public partial class SceneKitRuntime : Node
 
     // ---- Directional shadows fitted per camera
     private static readonly HashSet<SCNNode> shadowLights = new();
+    private static readonly Projection[] shadowBoxes = new Projection[2];
     internal static void RegisterShadowLight(SCNNode node, bool on) { if (on) shadowLights.Add(node); else shadowLights.Remove(node); }
 
     /// <summary>
@@ -314,11 +315,22 @@ public partial class SceneKitRuntime : Node
     /// </summary>
     internal static void FitShadows(SCNScene scene, Camera3D camera, Vector2I viewportSize)
     {
-        if (shadowLights.Count == 0) return;
         shadowLights.RemoveWhere(n => !GodotObject.IsInstanceValid(n));
         var lights = new List<SCNNode>();
         foreach (var n in shadowLights)
             if (GodotObject.IsInstanceValid(n) && n.sceneOwner == scene && n.GodotLight is DirectionalLight3D && n.IsVisibleInTree()) lights.Add(n);
+        // SceneKit's fixed shadow boxes (automaticallyAdjustsShadowProjection = false): the composer's light() leaves
+        // receivers outside them unshadowed. Up to two such lights (the game's binary suns); further ones use Godot's fit.
+        var boxes = new Projection[2];
+        int boxCount = 0;
+        foreach (var n in lights)
+            if (!n.light.automaticallyAdjustsShadowProjection && boxCount < boxes.Length) boxes[boxCount++] = n.light.ShadowBox(n.RenderWorld());
+        for (int i = 0; i < boxes.Length; i++)
+        {
+            if (shadowBoxes[i] == boxes[i]) continue;
+            shadowBoxes[i] = boxes[i];
+            RenderingServer.GlobalShaderParameterSet(i == 0 ? "scn_shadow_box0" : "scn_shadow_box1", boxes[i]);
+        }
         if (lights.Count == 0) return;
         int splitH = 1, splitV = 1;
         while (splitH * splitV < lights.Count) { if (splitH == splitV) splitH <<= 1; else splitV <<= 1; }
@@ -330,11 +342,40 @@ public partial class SceneKitRuntime : Node
             var light = n.GodotLight as DirectionalLight3D;
             double near = camera.Near, far = camera.Far;
             bool ortho = camera.Projection == Camera3D.ProjectionType.Orthogonal;
-            if (!ortho && light.DirectionalShadowMaxDistance > 0) far = Math.Min(far, light.DirectionalShadowMaxDistance);
+            bool keepWidth = camera.KeepAspect == Camera3D.KeepAspectEnum.Width;
+            double rW = regionW, rH = regionH, tSize = textureSize;
+            if (!n.light.automaticallyAdjustsShadowProjection && n.light.shadowCascadeCount <= 1)
+            {
+                // SceneKit's fixed box shadows everything inside it, however far from the camera; Godot's map ends at
+                // DirectionalShadowMaxDistance. Keep the calibrated fit (orthographicScale) as the first split and add a
+                // second one out to the farthest point of the box in view (the composer clips both to the box).
+                double first = n.light.FixedShadowDistance, need = 0;
+                if (!ortho)
+                {
+                    double tv = Math.Tan(camera.Fov * Math.PI / 360);
+                    double tx = keepWidth ? tv : tv * aspect, ty = keepWidth ? tv / aspect : tv;
+                    need = Math.Min(Math.Min(n.light.ShadowBoxFarDepth(n.RenderWorld(), camera.Transform, tx, ty, near, far), n.light.maximumShadowDistance), far);
+                }
+                if (need > first * 1.05)
+                {
+                    if (light.DirectionalShadowMode != DirectionalLight3D.ShadowMode.Parallel2Splits) light.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
+                    float split1 = (float)Math.Clamp((first - near) / (need - near), 0.01, 0.99);
+                    if (light.DirectionalShadowMaxDistance != (float)need) light.DirectionalShadowMaxDistance = (float)need;
+                    if (light.DirectionalShadowSplit1 != split1) light.DirectionalShadowSplit1 = split1;
+                    if (light.DirectionalShadowBlendSplits) light.DirectionalShadowBlendSplits = false;
+                    rH /= 2; tSize = Math.Max(rW, rH); // Godot halves the light's atlas region for two splits
+                }
+                else
+                {
+                    if (light.DirectionalShadowMode != DirectionalLight3D.ShadowMode.Orthogonal) light.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Orthogonal;
+                    if (light.DirectionalShadowMaxDistance != (float)first) light.DirectionalShadowMaxDistance = (float)first;
+                }
+                if (!ortho) far = Math.Min(far, first);
+            }
+            else if (!ortho && light.DirectionalShadowMaxDistance > 0) far = Math.Min(far, light.DirectionalShadowMaxDistance);
             far = Math.Max(far, near + 0.001);
             // Frustum slice endpoints in camera space, bounding sphere (RendererSceneCull::_light_instance_setup_directional_shadow).
             // Half extents along the kept axis (Camera3D.KeepAspect), the other axis follows the aspect ratio.
-            bool keepWidth = camera.KeepAspect == Camera3D.KeepAspectEnum.Width;
             double hn, hf;
             if (ortho) { hn = hf = camera.Size / 2; }
             else { double t = Math.Tan(camera.Fov * Math.PI / 360); hn = near * t; hf = far * t; }
@@ -346,12 +387,12 @@ public partial class SceneKitRuntime : Node
                         pts.Add(new Vector3((float)(sx * h * ax), (float)(sy * h * ay), (float)-z));
             var center = Vector3.Zero; foreach (var p in pts) center += p; center /= pts.Count;
             double radius = 0; foreach (var p in pts) radius = Math.Max(radius, center.DistanceTo(p));
-            radius *= textureSize / (textureSize - 2.0);
+            radius *= tSize / (tSize - 2.0);
             // Godot's PCF kernel is isotropic in atlas pixels; with two or more lights a region is not square
             // (e.g. 4096 x 8192), so size the kernel from the coarser axis, which is horizontal in light space and thus
             // runs across the shadows of thin vertical casters (legs, posts, robot parts).
-            double texel = 2 * radius / Math.Min(regionW, regionH);
-            n.light.FitShadow(light, texel, 2 * radius + light.DirectionalShadowPancakeSize);
+            double texel = 2 * radius / Math.Min(rW, rH);
+            n.light.FitShadow(light, texel, 2 * radius + light.DirectionalShadowPancakeSize, Math.Pow(tSize / textureSize, SceneKitCalibration.SplitNormalBiasExponent));
         }
     }
 

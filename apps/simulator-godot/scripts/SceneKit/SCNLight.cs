@@ -102,7 +102,7 @@ public sealed class SCNLight
     /// 2 x orthographicScale / shadowMapSize when the projection is fixed; an automatically fitted SceneKit map is assumed
     /// to have Godot's texel size.
     /// </summary>
-    internal void FitShadow(DirectionalLight3D light, double texel, double depthRange)
+    internal void FitShadow(DirectionalLight3D light, double texel, double depthRange, double normalBiasScale = 1)
     {
         double qr = SceneKitCalibration.ShadowQualityRadius;
         double skTexel = !_automaticallyAdjustsShadowProjection
@@ -117,8 +117,91 @@ public sealed class SCNLight
         if (Math.Abs(light.ShadowBias - bias) > 1e-6) light.ShadowBias = (float)bias;
         // Normal offset (Godot texels) grows with the kernel so Godot's PCF does not self-shadow lit slopes; SceneKit's
         // own large-kernel self-shadowing is reproduced analytically for deferred lights (ShaderComposer light()).
-        double normalBias = SceneKitCalibration.ShadowNormalBias + SceneKitCalibration.ShadowNormalBiasPerKernel * kernelTexels;
+        // normalBiasScale: Godot's normal-bias texel is 2 x radius / the light's shadow size, which halves for split maps
+        // (FitShadows passes the ratio so the world offset stays calibrated).
+        double normalBias = (SceneKitCalibration.ShadowNormalBias + SceneKitCalibration.ShadowNormalBiasPerKernel * kernelTexels) * normalBiasScale;
         if (Math.Abs(light.ShadowNormalBias - normalBias) > 1e-4) light.ShadowNormalBias = (float)normalBias;
+    }
+
+    /// <summary>
+    /// The fixed shadow box of a directional light that does not adjust its shadow projection (composer uniform
+    /// scn_shadow_boxN): maps world positions to (x, y) / orthographicScale around the light node and its depth
+    /// zNear..zFar along -Z to -1..1. world: the light node's world transform (SceneKit's box follows the node).
+    /// </summary>
+    internal Projection ShadowBox(in SCNMatrix4 world)
+    {
+        static Vector3 Axis(in SCNMatrix4 m, int c) => new Vector3((float)m[c, 0], (float)m[c, 1], (float)m[c, 2]).Normalized();
+        var right = Axis(world, 0); var up = Axis(world, 1); var back = Axis(world, 2);
+        var pos = new Vector3((float)world[3, 0], (float)world[3, 1], (float)world[3, 2]);
+        double s = Math.Max(_orthographicScale, 1e-6), c = (_zNear + _zFar) / 2, h = Math.Max((_zFar - _zNear) / 2, 1e-6);
+        var r0 = new Vector4(right.X, right.Y, right.Z, -pos.Dot(right)) / (float)s;
+        var r1 = new Vector4(up.X, up.Y, up.Z, -pos.Dot(up)) / (float)s;
+        var r2 = new Vector4(-back.X, -back.Y, -back.Z, (float)(pos.Dot(back) - c)) / (float)h;
+        return new Projection(new Vector4(r0.X, r1.X, r2.X, 0), new Vector4(r0.Y, r1.Y, r2.Y, 0), new Vector4(r0.Z, r1.Z, r2.Z, 0), new Vector4(r0.W, r1.W, r2.W, 1));
+    }
+
+    /// <summary>Godot's shadow distance for a fixed box (calibrated; the first split when the box reaches further).</summary>
+    internal double FixedShadowDistance => Math.Max(1, Math.Min(_maximumShadowDistance, _orthographicScale));
+
+    /// <summary>
+    /// Farthest view depth (camera -Z) of the part of this light's fixed shadow box inside a perspective camera's frustum
+    /// (0 when they do not overlap): the vertices of box ∩ frustum are box corners in the frustum, frustum corners in the
+    /// box and edge/face crossings of either. world: the light node's world transform; view: the camera's world transform.
+    /// </summary>
+    internal double ShadowBoxFarDepth(in SCNMatrix4 world, Transform3D view, double tanX, double tanY, double near, double far)
+    {
+        static Vector3 Axis(in SCNMatrix4 m, int c) => new Vector3((float)m[c, 0], (float)m[c, 1], (float)m[c, 2]).Normalized();
+        var right = Axis(world, 0); var up = Axis(world, 1); var back = Axis(world, 2);
+        var pos = new Vector3((float)world[3, 0], (float)world[3, 1], (float)world[3, 2]);
+        var toCamera = view.AffineInverse();
+        var box = new Vector3[8]; var frustum = new Vector3[8];
+        for (int i = 0; i < 8; i++)
+        {
+            double x = (i & 1) != 0 ? _orthographicScale : -_orthographicScale, y = (i & 2) != 0 ? _orthographicScale : -_orthographicScale;
+            double z = (i & 4) != 0 ? _zFar : _zNear;
+            box[i] = toCamera * (pos + right * (float)x + up * (float)y - back * (float)z);
+            double d = (i & 4) != 0 ? far : near;
+            frustum[i] = new Vector3((float)(((i & 1) != 0 ? 1 : -1) * d * tanX), (float)(((i & 2) != 0 ? 1 : -1) * d * tanY), (float)-d);
+        }
+        // Camera space -> box coordinates (inside: all |c| <= 1).
+        var boxCenter = (box[0] + box[7]) / 2;
+        var ex = (box[1] - box[0]) / 2; var ey = (box[2] - box[0]) / 2; var ez = (box[4] - box[0]) / 2;
+        Vector3 BoxCoords(Vector3 p) { var d = p - boxCenter; return new Vector3(d.Dot(ex) / ex.LengthSquared(), d.Dot(ey) / ey.LengthSquared(), d.Dot(ez) / ez.LengthSquared()); }
+        const float eps = 1e-3f;
+        bool InBox(Vector3 p) { var c = BoxCoords(p); return Math.Abs(c.X) <= 1 + eps && Math.Abs(c.Y) <= 1 + eps && Math.Abs(c.Z) <= 1 + eps; }
+        // Frustum planes as f(p) >= 0 inside.
+        var planes = new Func<Vector3, double>[]
+        {
+            p => -p.Z - near, p => far + p.Z,
+            p => -p.Z * tanX - p.X, p => -p.Z * tanX + p.X,
+            p => -p.Z * tanY - p.Y, p => -p.Z * tanY + p.Y,
+        };
+        bool InFrustum(Vector3 p) { foreach (var f in planes) if (f(p) < -eps * Math.Max(1, -p.Z)) return false; return true; }
+        double best = 0;
+        void Consider(Vector3 p) { if (-p.Z > best && InBox(p) && InFrustum(p)) best = -p.Z; }
+        foreach (var p in box) Consider(p);
+        foreach (var p in frustum) Consider(p);
+        for (int a = 0; a < 8; a++)
+            for (int bit = 1; bit < 8; bit <<= 1)
+            {
+                if ((a & bit) != 0) continue;
+                int b = a | bit;
+                // Box edges against frustum planes.
+                foreach (var f in planes)
+                {
+                    double fa = f(box[a]), fb = f(box[b]);
+                    if ((fa < 0) != (fb < 0)) Consider(box[a] + (box[b] - box[a]) * (float)(fa / (fa - fb)));
+                }
+                // Frustum edges against box faces.
+                Vector3 ca = BoxCoords(frustum[a]), cb = BoxCoords(frustum[b]);
+                for (int axis = 0; axis < 3; axis++)
+                    foreach (var side in new[] { -1f, 1f })
+                    {
+                        double ga = ca[axis] - side, gb = cb[axis] - side;
+                        if ((ga < 0) != (gb < 0)) Consider(frustum[a] + (frustum[b] - frustum[a]) * (float)(ga / (ga - gb)));
+                    }
+            }
+        return best;
     }
 
     /// <summary>Creates or updates the Godot light node for this light (null for ambient lights).</summary>
