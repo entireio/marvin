@@ -69,3 +69,6 @@ hardware/electronics/**/production/
 # The reduced, editable model remains tracked through Git LFS.
 hardware/mechanical/src/*.3dm
 !hardware/mechanical/src/marvin_design_v3_hq.3dm
+
+# Claude Code agent worktrees
+.claude/worktrees/
