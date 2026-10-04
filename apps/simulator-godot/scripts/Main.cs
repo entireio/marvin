@@ -18,6 +18,19 @@ public partial class Main : Node3D
             await Marvin.SceneKit.FacadeTest.Run(dir, GetTree());
             return;
         }
+        int calibration = System.Array.IndexOf(args, "--calibration");
+        if (calibration >= 0)
+        {
+            // Game-like calibration scenes (scripts/SceneKit/Calibration.cs), compared with SceneKit renders.
+            string dir = calibration + 1 < args.Length ? args[calibration + 1] : "user://calibration";
+            if (!dir.StartsWith("res://") && !dir.StartsWith("user://") && !System.IO.Path.IsPathRooted(dir))
+                dir = System.IO.Path.GetFullPath(dir, System.IO.Directory.GetCurrentDirectory());
+            Marvin.SceneKit.SceneKitRuntime.EnsureStarted();
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+            Marvin.SceneKit.Calibration.Run(dir, GetTree());
+            return;
+        }
         GD.Print($"Marvin Godot skeleton: {Engine.GetVersionInfo()["string"]}, renderer {RenderingServer.GetCurrentRenderingDriverName()}");
         GetTree().Quit();
     }

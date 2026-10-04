@@ -87,3 +87,8 @@ scn_deferred={
 "type": "vec4",
 "value": Vector4(0, 0, 0, 0)
 }
+
+scn_radiance={
+"type": "sampler2D",
+"value": ""
+}

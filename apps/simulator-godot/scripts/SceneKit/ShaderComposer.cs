@@ -19,14 +19,8 @@ namespace Marvin.SceneKit;
 /// </summary>
 internal static class ShaderComposer
 {
-    // ---- Calibration constants (SceneKit units -> Godot). See PORTING.md "Calibration".
-    /// <summary>Godot DirectionalLight3D.LightEnergy per SceneKit lumen (SceneKit 1000 = irradiance 1.0).</summary>
-    internal const double LightEnergyPerLumen = 1.0 / 1000.0;
-    /// <summary>SceneKit ambient light intensity 1000 adds albedo x 1.0 (all lit models, independent of metalness).</summary>
-    internal const double AmbientPerLumen = 1.0 / 1000.0;
+    // Calibration constants (SceneKit units -> Godot) live in SceneKitCalibration.
 
-    /// <summary>PBR materials use a light() without Godot's multi-scatter compensation (MARVIN_GODOT_GGX=1 restores Godot's).</summary>
-    internal static readonly bool SingleScatterLight = System.Environment.GetEnvironmentVariable("MARVIN_GODOT_GGX") != "1";
     private static readonly Dictionary<string, Shader> cache = new();
     internal static int CompiledShaders => cache.Count;
 
@@ -118,7 +112,7 @@ internal static class ShaderComposer
         string fragmentBody = string.Join("\n", mods[SCNShaderModifierEntryPoint.fragment].Select(x => x.body));
         bool fragmentWritesAlpha = Regex.IsMatch(fragmentBody, @"\bALPHA\s*[\*\+\-/]?=(?!=)");
         bool transparent = !depthOnly && (all.Any(x => x.transparent)
-            || m.transparency < 1
+            || (m.transparency < 1 && !IgnoresTransparency(m))
             || (m.diffuse.contents is NSColor dc && dc.alphaComponent < 1)
             || m.diffuse.TextureHasTranslucency
             || m.blendMode is SCNBlendMode.add or SCNBlendMode.subtract or SCNBlendMode.multiply or SCNBlendMode.screen or SCNBlendMode.max);
@@ -141,12 +135,17 @@ internal static class ShaderComposer
         else rm.Add(transparent ? "depth_draw_always" : "depth_draw_opaque");
         if (!m.readsFromDepthBuffer && !background) rm.Add("depth_test_disabled");
         rm.Add(m.isDoubleSided ? "cull_disabled" : m.cullMode == SCNCullMode.front ? "cull_front" : "cull_back");
+        // SceneKit casts shadows from transparent geometry as if opaque. Godot only puts alpha materials in the shadow pass
+        // with a depth prepass (shadow pass threshold: alpha 0.1); depth_draw_never materials cannot cast (the game turns
+        // castsShadow off for all of them).
+        if (transparent && !depthOnly && m.writesToDepthBuffer && m.readsFromDepthBuffer) rm.Add("depth_prepass_alpha");
         if (depthOnly) { rm.Add("unshaded"); rm.Add("fog_disabled"); }
         else
         {
             rm.Add("diffuse_lambert");
             bool specular = pbr || (model is SCNMaterial.LightingModel.blinn or SCNMaterial.LightingModel.phong && !IsBlack(m.specular));
             rm.Add(specular && !constant ? "specular_schlick_ggx" : "specular_disabled");
+            rm.Add("specular_occlusion_disabled"); // Godot 4.4+ dims IBL by ambient luminance; SceneKit does not
         }
         sb.AppendLine("render_mode " + string.Join(", ", rm) + ";");
         sb.AppendLine();
@@ -157,6 +156,7 @@ internal static class ShaderComposer
         sb.AppendLine("global uniform vec4 scn_ibl;");
         for (int i = 0; i < 9; i++) sb.AppendLine($"global uniform vec4 scn_sh{i};");
         sb.AppendLine("global uniform vec4 scn_deferred;");
+        sb.AppendLine("global uniform sampler2D scn_radiance : filter_linear, repeat_enable; // SCNScene.RadianceTexture bands");
         sb.AppendLine();
 
         // ---- Material property uniforms
@@ -282,6 +282,16 @@ internal static class ShaderComposer
         sb.AppendLine("        + scn_sh4.rgb * (n.x * n.y) + scn_sh5.rgb * (n.y * n.z) + scn_sh6.rgb * (3.0 * n.z * n.z - 1.0)");
         sb.AppendLine("        + scn_sh7.rgb * (n.x * n.z) + scn_sh8.rgb * (n.x * n.x - n.y * n.y));");
         sb.AppendLine("}");
+        sb.AppendLine("vec3 scn_env_radiance(vec3 d, float r) {");
+        sb.AppendLine("    // Pre-filtered lightingEnvironment: " + SCNScene.RadianceLevels + " GGX bands (roughness 0..1), Godot panorama mapping.");
+        sb.AppendLine("    const float L = " + SCNScene.RadianceLevels + ".0, H = " + SCNScene.RadianceHeight + ".0;");
+        sb.AppendLine("    float u = atan(d.x, -d.z) / (2.0 * PI) + 0.5;");
+        sb.AppendLine("    float v = clamp(acos(clamp(d.y, -1.0, 1.0)) / PI, 0.5 / H, 1.0 - 0.5 / H);");
+        sb.AppendLine("    float lv = clamp(r, 0.0, 1.0) * (L - 1.0), l0 = floor(lv), l1 = min(l0 + 1.0, L - 1.0);");
+        sb.AppendLine("    vec3 a = textureLod(scn_radiance, vec2(u, (l0 + v) / L), 0.0).rgb;");
+        sb.AppendLine("    vec3 b = textureLod(scn_radiance, vec2(u, (l1 + v) / L), 0.0).rgb;");
+        sb.AppendLine("    return mix(a, b, lv - l0);");
+        sb.AppendLine("}");
         sb.AppendLine("float scn_fog_factor(vec3 view_position) {");
         sb.AppendLine("    if (scn_fog_range.w < 0.5) return 0.0;");
         sb.AppendLine("    float f = clamp((length(view_position) - scn_fog_range.x) / max(scn_fog_range.y - scn_fog_range.x, 1e-6), 0.0, 1.0);");
@@ -289,7 +299,13 @@ internal static class ShaderComposer
         sb.AppendLine("}");
         sb.AppendLine();
         foreach (var ch in uvChannels.Where(c => c >= 2)) sb.AppendLine($"varying vec2 scn_tc{ch};");
-        if (pbr && SingleScatterLight) sb.AppendLine("varying vec3 scn_light_multiply;");
+        bool litSpecular = pbr || specularColor != null;
+        if (!constant)
+        {
+            sb.AppendLine("varying vec3 scn_unlit; // fragment colour without direct lights (deferred shadows darken it in light())");
+            if (litSpecular) sb.AppendLine("varying vec3 scn_dielectric_f0;");
+            if (pbr) sb.AppendLine("varying vec3 scn_albedo; varying float scn_metallic; // the material's; Godot sees a white dielectric (see fragment end)");
+        }
 
         // ---- vertex()
         sb.AppendLine("void vertex() {");
@@ -326,7 +342,9 @@ internal static class ShaderComposer
         sb.AppendLine("    // _surface.diffuse = diffuse x vertex colour, premultiplied by alpha (measured in SceneKit).");
         sb.AppendLine($"    vec4 scn_d = {diffuse};");
         sb.AppendLine("    scn_d.rgb *= scn_diffuse_intensity;");
-        bool colorAlpha = m.diffuse.contents is NSColor dca && dca.alphaComponent < 1;
+        // NSColor diffuse alpha premultiplies twice for .constant/.lambert/.blinn/.phong and once for .physicallyBased;
+        // texture and vertex-colour alpha premultiply once for every model (measured, PORTING.md).
+        bool colorAlpha = !pbr && m.diffuse.contents is NSColor dca && dca.alphaComponent < 1;
         sb.AppendLine("    float scn_color_alpha = " + (colorAlpha ? "scn_diffuse_color.a" : "1.0") + ";");
         if ((flags & VariantFlags.VertexColors) != 0) sb.AppendLine("    scn_d *= COLOR; // vertex colour (raw floats, no sRGB conversion)");
         sb.AppendLine("    float scn_alpha = scn_d.a;");
@@ -385,23 +403,22 @@ internal static class ShaderComposer
                 sb.AppendLine("    float scn_r = ROUGHNESS;");
                 sb.AppendLine("    // SceneKit's diffuse IBL falls with roughness (fit to SceneKit renders, see PORTING.md).");
                 sb.AppendLine("    float scn_ibl_k = " + IblDiffuseResponse + ";");
-                sb.AppendLine("    IRRADIANCE = vec4(scn_irradiance(scn_wn) * scn_ibl.x * scn_ibl_k + scn_ambient.rgb, 1.0);");
+                sb.AppendLine("    vec3 scn_amb_diffuse = scn_irradiance(scn_wn) * scn_ibl.x * scn_ibl_k;");
                 sb.AppendLine("    // Specular IBL from the same SH (exact for the game's smooth gradient probe), with SceneKit's");
                 sb.AppendLine("    // roughness response; replaces Godot's sky radiance and offsets its multi-scatter compensation.");
                 sb.AppendLine("    vec3 scn_refl = normalize((INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz);");
                 sb.AppendLine("    scn_refl = normalize(mix(scn_refl, scn_wn, scn_r * scn_r));");
                 sb.AppendLine("    float scn_spec_k = " + IblSpecularResponse + ";");
-                sb.AppendLine("    RADIANCE = vec4(scn_irradiance(scn_refl) * scn_ibl.x * scn_spec_k, 1.0);");
-                sb.AppendLine("    // SceneKit ambient lights ignore metalness; Godot scales ambient by (1 - METALLIC).");
-                sb.AppendLine("    EMISSION += ALBEDO * scn_ambient.rgb * METALLIC * AO;");
+                sb.AppendLine("    vec3 scn_amb_radiance = (scn_ibl.y > 0.5 ? scn_env_radiance(scn_refl, " + IblBlurLookup + ") : vec3(0.0)) * scn_ibl.x * scn_spec_k;");
                 sb.AppendLine("    SPECULAR *= clamp(dot(scn_multiply, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);");
-                if (SingleScatterLight) sb.AppendLine("    scn_light_multiply = scn_multiply;");
+                sb.AppendLine("    scn_dielectric_f0 = vec3(0.04) * scn_multiply; // .multiply scales the dielectric specular too");
             }
             else
             {
                 sb.AppendLine("    // Legacy models: lightingEnvironment and ambient lights both act as ambient (factor 1, measured).");
                 sb.AppendLine("    IRRADIANCE = vec4(scn_irradiance(scn_wn) * scn_ibl.x + scn_ambient.rgb, 1.0);");
                 sb.AppendLine("    RADIANCE = vec4(0.0, 0.0, 0.0, 1.0);");
+                if (specularColor != null) sb.AppendLine("    scn_dielectric_f0 = vec3(0.16 * SPECULAR * SPECULAR);");
             }
         }
         bool defaultAlpha = transparent && !fragmentWritesAlpha;
@@ -419,6 +436,36 @@ internal static class ShaderComposer
             sb.AppendLine("    ALBEDO /= max(ALPHA / max(scn_transparency, 1e-4), 1e-4);");
             sb.AppendLine("    EMISSION /= max(ALPHA / max(scn_transparency, 1e-4), 1e-4);");
         }
+        if (!constant)
+        {
+            sb.AppendLine("    // What Godot adds besides direct light (emission, ambient/IBL diffuse, IBL specular with its");
+            sb.AppendLine("    // environment BRDF), so light() can apply SceneKit's deferred shadow to the whole colour.");
+            if (pbr)
+            {
+                sb.AppendLine("    // All ambient light goes through IRRADIANCE, which Godot multiplies by AO and SSAO (SceneKit's SSAO darkens");
+                sb.AppendLine("    // image-based specular too, Godot's never does): sky diffuse x (1 - metalness), ambient lights (independent");
+                sb.AppendLine("    // of metalness, measured) and sky specular (pre-filtered radiance x analytic split-sum environment BRDF).");
+                sb.AppendLine("    // Godot then sees a white dielectric; light() uses the material's albedo and metalness.");
+                sb.AppendLine("    vec3 scn_f0u = mix(vec3(0.16 * SPECULAR * SPECULAR), ALBEDO, METALLIC);");
+                sb.AppendLine("    vec4 scn_r4 = ROUGHNESS * vec4(-1.0, -0.0275, -0.572, 0.022) + vec4(1.0, 0.0425, 1.04, -0.04);");
+                sb.AppendLine("    float scn_a004 = min(scn_r4.x * scn_r4.x, exp2(-9.28 * clamp(dot(NORMAL, VIEW), 0.0001, 1.0))) * scn_r4.x + scn_r4.y;");
+                sb.AppendLine("    vec2 scn_env = vec2(-1.04, 1.04) * scn_a004 + scn_r4.zw;");
+                sb.AppendLine("    vec2 scn_dfg = vec2(scn_env.y, scn_env.x + scn_env.y); // (f0 = 0, f0 = 1) responses, Godot's DFG convention");
+                sb.AppendLine("    float scn_f90 = clamp(50.0 * scn_f0u.g, METALLIC, 1.0);");
+                sb.AppendLine("    // No multi-scatter energy compensation (SceneKit's rough-metal reflection scales with f0, measured).");
+                sb.AppendLine("    vec3 scn_ibl_spec = scn_amb_radiance * ((scn_f90 - scn_f0u) * scn_dfg.x + scn_f0u * scn_dfg.y);");
+                sb.AppendLine("    // SceneKit's SSAO occludes rough reflections fully but leaves sharp ones nearly untouched (measured): the");
+                sb.AppendLine("    // occluded share goes through IRRADIANCE, the rest through RADIANCE, which Godot passes through unchanged for a");
+                sb.AppendLine("    // white dielectric with SPECULAR 2.5 (f0 = f90 = 1: energy compensation x DFG = 1).");
+                sb.AppendLine("    float scn_so = smoothstep(" + SceneKitCalibration.F(SceneKitCalibration.SpecularOcclusionFrom) + ", " + SceneKitCalibration.F(SceneKitCalibration.SpecularOcclusionTo) + ", scn_r);");
+                sb.AppendLine("    IRRADIANCE = vec4(ALBEDO * (scn_amb_diffuse * (1.0 - METALLIC) + scn_ambient.rgb) + scn_ibl_spec * scn_so, 1.0);");
+                sb.AppendLine("    RADIANCE = vec4(scn_ibl_spec * (1.0 - scn_so), 1.0);");
+                sb.AppendLine("    scn_albedo = ALBEDO; scn_metallic = METALLIC;");
+                sb.AppendLine("    ALBEDO = vec3(1.0); METALLIC = 0.0; SPECULAR = 2.5;");
+                sb.AppendLine("    scn_unlit = EMISSION + IRRADIANCE.rgb * AO + RADIANCE.rgb;");
+            }
+            else sb.AppendLine("    scn_unlit = EMISSION + IRRADIANCE.rgb * ALBEDO * AO;");
+        }
         sb.AppendLine("}");
 
         // ---- light()
@@ -430,37 +477,61 @@ internal static class ShaderComposer
             sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL) { SPECULAR_LIGHT -= ALBEDO * scn_deferred.x * (1.0 - ATTENUATION); }");
             sb.AppendLine("}");
         }
-        else if (pbr && SingleScatterLight)
+        else
         {
             sb.AppendLine();
             sb.AppendLine("void light() {");
-            sb.AppendLine("    // SceneKit's direct lighting (measured): Lambert + GGX with Godot's D and Fresnel, the exact");
-            sb.AppendLine("    // Smith visibility and no multi-scatter energy compensation (Godot's defaults differ there).");
-            sb.AppendLine("    float NdotL = min(dot(NORMAL, LIGHT), 1.0);");
-            sb.AppendLine("    float cNdotL = max(NdotL, 0.0);");
-            sb.AppendLine("    float cNdotV = max(dot(NORMAL, VIEW), 1e-4);");
-            sb.AppendLine("    vec3 H = normalize(VIEW + LIGHT);");
-            sb.AppendLine("    float cNdotH = clamp(dot(NORMAL, H), 0.0, 1.0);");
-            sb.AppendLine("    float cLdotH = clamp(dot(LIGHT, H), 0.0, 1.0);");
-            sb.AppendLine("    DIFFUSE_LIGHT += LIGHT_COLOR * (cNdotL * (1.0 / PI)) * ATTENUATION;");
-            sb.AppendLine("    float alpha_ggx = ROUGHNESS * ROUGHNESS;");
-            sb.AppendLine("    float a = cNdotH * alpha_ggx;");
-            sb.AppendLine("    float k = alpha_ggx / (1.0 - cNdotH * cNdotH + a * a);");
-            sb.AppendLine("    float D = clamp(k * k * (1.0 / PI), 0.0, 65504.0);");
-            sb.AppendLine("    float a2 = alpha_ggx * alpha_ggx; // exact height-correlated Smith visibility (SceneKit), not Godot's approximation");
-            sb.AppendLine("    float G = 0.5 / max(cNdotL * sqrt(cNdotV * cNdotV * (1.0 - a2) + a2) + cNdotV * sqrt(cNdotL * cNdotL * (1.0 - a2) + a2), 1e-5);");
-            sb.AppendLine("    vec3 f0 = mix(vec3(0.04) * scn_light_multiply, ALBEDO, METALLIC); // .multiply scales the dielectric specular too");
-            sb.AppendLine("    float f90 = clamp(dot(f0, vec3(50.0 * 0.33)), METALLIC, 1.0);");
-            sb.AppendLine("    float m = 1.0 - cLdotH; float m5 = m * m * m * m * m;");
-            sb.AppendLine("    vec3 F = f0 + (f90 - f0) * m5;");
-            sb.AppendLine("    SPECULAR_LIGHT += cNdotL * D * F * G * LIGHT_COLOR * ATTENUATION * SPECULAR_AMOUNT;");
-            sb.AppendLine("}");
-        }
-        else if (noNormals)
-        {
-            sb.AppendLine();
-            sb.AppendLine("void light() {");
-            sb.AppendLine("    // No normal source: SceneKit's normal is zero, so N.L = 0 (only ambient light remains).");
+            sb.AppendLine("    float scn_att = ATTENUATION;");
+            sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL && scn_deferred.x > 0.0) {");
+            sb.AppendLine("        // SceneKit deferred shadows (measured): the light itself stays unshadowed and the final colour");
+            sb.AppendLine("        // (direct, ambient, IBL, emission, back faces too) is multiplied by 1 - alpha x shadow.");
+            sb.AppendLine("        // Faces turned away from the light are in SceneKit's deferred shadow too, and a large shadowRadius");
+            sb.AppendLine("        // self-shadows sloped lit surfaces (scn_deferred.yz, SceneKitCalibration.DeferredSelfShadow).");
+            sb.AppendLine("        float scn_cos = dot(NORMAL, LIGHT);");
+            sb.AppendLine("        float scn_face = clamp((0.04 - scn_cos) / 0.15, 0.0, 1.0);");
+            sb.AppendLine("        float scn_self = scn_deferred.y * sqrt(clamp((degrees(acos(clamp(scn_cos, -1.0, 1.0))) - scn_deferred.z) / 28.0, 0.0, 1.0));");
+            sb.AppendLine("        float scn_s = max(1.0 - ATTENUATION, max(scn_face, scn_self));");
+            sb.AppendLine("        scn_att = 1.0 - scn_deferred.x * scn_s;");
+            sb.AppendLine("        SPECULAR_LIGHT -= scn_unlit * (scn_deferred.x * scn_s);");
+            sb.AppendLine("    }");
+            if (noNormals)
+            {
+                sb.AppendLine("    // No normal source: SceneKit's normal is zero, so N.L = 0 (only ambient light remains).");
+            }
+            else
+            {
+                sb.AppendLine("    float NdotL = min(dot(NORMAL, LIGHT), 1.0);");
+                sb.AppendLine("    float cNdotL = max(NdotL, 0.0);");
+                sb.AppendLine("    DIFFUSE_LIGHT += LIGHT_COLOR * (cNdotL * (1.0 / PI)) * scn_att" + (pbr ? " * scn_albedo * (1.0 - scn_metallic);" : ";"));
+                if (litSpecular)
+                {
+                    sb.AppendLine("    // SceneKit's direct specular (measured): GGX with Godot's D and Fresnel, the exact height-correlated");
+                    sb.AppendLine("    // Smith visibility and no multi-scatter energy compensation (Godot's defaults differ there).");
+                    sb.AppendLine("    float cNdotV = max(dot(NORMAL, VIEW), 1e-4);");
+                    sb.AppendLine("    vec3 H = normalize(VIEW + LIGHT);");
+                    sb.AppendLine("    float cNdotH = clamp(dot(NORMAL, H), 0.0, 1.0);");
+                    sb.AppendLine("    float cLdotH = clamp(dot(LIGHT, H), 0.0, 1.0);");
+                    sb.AppendLine("    float alpha_ggx = ROUGHNESS * ROUGHNESS;");
+                    sb.AppendLine("    float a = cNdotH * alpha_ggx;");
+                    sb.AppendLine("    float k = alpha_ggx / (1.0 - cNdotH * cNdotH + a * a);");
+                    sb.AppendLine("    float D = clamp(k * k * (1.0 / PI), 0.0, 65504.0);");
+                    sb.AppendLine("    float a2 = alpha_ggx * alpha_ggx;");
+                    sb.AppendLine("    float G = 0.5 / max(cNdotL * sqrt(cNdotV * cNdotV * (1.0 - a2) + a2) + cNdotV * sqrt(cNdotL * cNdotL * (1.0 - a2) + a2), 1e-5);");
+                    if (pbr)
+                    {
+                        sb.AppendLine("    vec3 f0 = mix(scn_dielectric_f0, scn_albedo, scn_metallic);");
+                        sb.AppendLine("    float f90 = clamp(dot(f0, vec3(50.0 * 0.33)), scn_metallic, 1.0);");
+                    }
+                    else
+                    {
+                        sb.AppendLine("    vec3 f0 = mix(scn_dielectric_f0, ALBEDO, METALLIC);");
+                        sb.AppendLine("    float f90 = clamp(dot(f0, vec3(50.0 * 0.33)), METALLIC, 1.0);");
+                    }
+                    sb.AppendLine("    float m = 1.0 - cLdotH; float m5 = m * m * m * m * m;");
+                    sb.AppendLine("    vec3 F = f0 + (f90 - f0) * m5;");
+                    sb.AppendLine("    SPECULAR_LIGHT += cNdotL * D * F * G * LIGHT_COLOR * scn_att * SPECULAR_AMOUNT" + (transparent && pbr && !fragmentWritesAlpha ? " / max(ALPHA, 1e-3); // SceneKit keeps the full highlight on transparent PBR surfaces" : ";"));
+                }
+            }
             sb.AppendLine("}");
         }
         plan.code = sb.ToString();
@@ -468,8 +539,14 @@ internal static class ShaderComposer
     }
 
     /// <summary>SceneKit PBR diffuse response to the lightingEnvironment, relative to Godot's IRRADIANCE (calibrated).</summary>
-    internal const string IblDiffuseResponse = "(1.0 - 0.1757 * scn_r + 0.3455 * scn_r * scn_r - 0.3623 * scn_r * scn_r * scn_r)";
-    internal const string IblSpecularResponse = "(1.0 + 0.1473 * scn_r - 1.3669 * scn_r * scn_r + 0.5496 * scn_r * scn_r * scn_r)";
+    internal static string IblDiffuseResponse => SceneKitCalibration.Poly(SceneKitCalibration.IblDiffuse1, SceneKitCalibration.IblDiffuse2, SceneKitCalibration.IblDiffuse3);
+    /// <summary>Radiance band lookup roughness as a function of roughness (SceneKit's reflection blur widens faster than GGX alpha = r^2).</summary>
+    internal static string IblBlurLookup => $"clamp({SceneKitCalibration.F(SceneKitCalibration.IblBlurScale)} * pow(scn_r, {SceneKitCalibration.F(SceneKitCalibration.IblBlurPower)}), 0.0, 1.0)";
+    internal static string IblSpecularResponse => SceneKitCalibration.Poly(SceneKitCalibration.IblSpecular1, SceneKitCalibration.IblSpecular2, SceneKitCalibration.IblSpecular3, SceneKitCalibration.IblSpecular0);
+
+    /// <summary>Measured: .physicallyBased materials ignore `transparency` in the default .aOne mode (opaque result).</summary>
+    internal static bool IgnoresTransparency(SCNMaterial m) =>
+        m.lightingModel == SCNMaterial.LightingModel.physicallyBased && m.transparencyMode == SCNTransparencyMode.aOne;
 
     private static string Fmt(double v) => v.ToString("0.0####", System.Globalization.CultureInfo.InvariantCulture);
     private static bool IsBlack(SCNMaterialProperty p) => p.contents is NSColor c ? c.LinearRGB is (0, 0, 0) : p.Kind == SCNMaterialProperty.ContentKind.None;
@@ -569,7 +646,7 @@ internal sealed class MaterialGpu
         sm.SetShaderParameter("scn_multiply_intensity", (float)m.multiply.intensity);
         sm.SetShaderParameter("scn_normal_intensity", (float)m.normal.intensity);
         sm.SetShaderParameter("scn_ao_intensity", (float)m.ambientOcclusion.intensity);
-        sm.SetShaderParameter("scn_transparency", (float)m.transparency);
+        sm.SetShaderParameter("scn_transparency", (float)(ShaderComposer.IgnoresTransparency(m) ? 1.0 : m.transparency));
         sm.SetShaderParameter("scn_shininess", (float)m.shininess);
         foreach (var name in plan.arguments)
         {

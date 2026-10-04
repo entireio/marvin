@@ -96,6 +96,31 @@ public sealed class SCNLight
         return new Vector3(c.X / w.X, c.Y / w.Y, c.Z / w.Z);
     }
 
+    /// <summary>
+    /// Per-camera shadow parameters (see SceneKitRuntime.FitShadows). texel: Godot's shadow texel for this camera (world);
+    /// depthRange: Godot's light-space depth range (bias scale). SceneKit's kernel is shadowRadius texels of its own map:
+    /// 2 x orthographicScale / shadowMapSize when the projection is fixed; an automatically fitted SceneKit map is assumed
+    /// to have Godot's texel size.
+    /// </summary>
+    internal void FitShadow(DirectionalLight3D light, double texel, double depthRange)
+    {
+        double qr = SceneKitCalibration.ShadowQualityRadius;
+        double skTexel = !_automaticallyAdjustsShadowProjection
+            ? 2 * _orthographicScale / (_shadowMapSize.width > 0 ? _shadowMapSize.width : SceneKitCalibration.DefaultShadowMapSize)
+            : texel;
+        double kernel = _shadowRadius * skTexel * SceneKitCalibration.ShadowKernelScale;
+        double blur = Math.Clamp(kernel / (qr * texel), SceneKitCalibration.ShadowBlurMin, SceneKitCalibration.ShadowBlurMax);
+        double kernelTexels = blur * qr;
+        double biasWorld = (SceneKitCalibration.ShadowBiasTexels + SceneKitCalibration.ShadowBiasPerKernel * kernelTexels) * texel;
+        double bias = biasWorld * 100 / Math.Max(1e-6, depthRange * blur * qr);
+        if (Math.Abs(light.ShadowBlur - blur) > 1e-4) light.ShadowBlur = (float)blur;
+        if (Math.Abs(light.ShadowBias - bias) > 1e-6) light.ShadowBias = (float)bias;
+        // Normal offset (Godot texels) grows with the kernel so Godot's PCF does not self-shadow lit slopes; SceneKit's
+        // own large-kernel self-shadowing is reproduced analytically for deferred lights (ShaderComposer light()).
+        double normalBias = SceneKitCalibration.ShadowNormalBias + SceneKitCalibration.ShadowNormalBiasPerKernel * kernelTexels;
+        if (Math.Abs(light.ShadowNormalBias - normalBias) > 1e-4) light.ShadowNormalBias = (float)normalBias;
+    }
+
     /// <summary>Creates or updates the Godot light node for this light (null for ambient lights).</summary>
     internal Light3D Sync(Light3D existing, double sceneAmbientIntensity)
     {
@@ -111,24 +136,20 @@ public sealed class SCNLight
         float energy = Math.Max(rad.X, Math.Max(rad.Y, rad.Z));
         var lin = energy > 0 ? rad / energy : Vector3.One;
         light.LightColor = new Color((float)NSColor.LinearToSrgb(lin.X), (float)NSColor.LinearToSrgb(lin.Y), (float)NSColor.LinearToSrgb(lin.Z));
-        light.LightEnergy = (float)(energy * 1000 * ShaderComposer.LightEnergyPerLumen);
+        light.LightEnergy = (float)(energy * 1000 * SceneKitCalibration.LightEnergyPerLumen);
         light.LightSpecular = 1.0f;
         light.LightCullMask = SceneKitRuntime.GodotLayers(_categoryBitMask);
         light.ShadowCasterMask = SceneKitRuntime.GodotLayers(_categoryBitMask);
         light.ShadowEnabled = _castsShadow;
         var shadow = ShadowColor;
         double alpha = Math.Clamp(shadow.alphaComponent, 0, 1);
-        if (_shadowMode == SCNShadowMode.deferred)
-        {
-            // Deferred SceneKit shadows darken the final colour by alpha. Godot only
-            // attenuates this light: raise the opacity so a surface lit by this light
-            // plus the scene's ambient lights darkens by the same fraction (approximation).
-            double direct = Math.Max(_intensity, 1e-3);
-            alpha = Math.Min(1, alpha * (direct + sceneAmbientIntensity) / direct);
-        }
+        // Deferred SceneKit shadows multiply the final colour by 1 - alpha x shadow. The composer's light()
+        // does that from ATTENUATION (scn_deferred.x = alpha), so Godot must report the full shadow.
+        if (_shadowMode == SCNShadowMode.deferred) alpha = 1;
         light.ShadowOpacity = (float)alpha;
-        light.ShadowBias = (float)Math.Max(0.02, 0.1 * _shadowBias);
-        light.ShadowBlur = (float)Math.Clamp(_shadowRadius / 3.0, 0.25, 6.0);
+        light.ShadowBias = (float)Math.Max(SceneKitCalibration.ShadowBiasMin, SceneKitCalibration.ShadowBiasPerUnit * _shadowBias);
+        light.ShadowNormalBias = (float)SceneKitCalibration.ShadowNormalBias;
+        light.ShadowBlur = (float)Math.Clamp(_shadowRadius * SceneKitCalibration.ShadowBlurPerRadius, SceneKitCalibration.ShadowBlurMin, SceneKitCalibration.ShadowBlurMax);
         if (light is DirectionalLight3D d)
         {
             d.DirectionalShadowMode = _shadowCascadeCount >= 4 ? DirectionalLight3D.ShadowMode.Parallel4Splits
