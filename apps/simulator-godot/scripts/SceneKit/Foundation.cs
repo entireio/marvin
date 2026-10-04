@@ -26,6 +26,140 @@ public static class Foundation
         if (Engine.GetMainLoop() is SceneTree tree) tree.Quit(code);
         else System.Environment.Exit(code);
     }
+    /// <summary>NSLog(_:): the message on stderr (Godot's error log), as Foundation logs it.</summary>
+    public static void NSLog(string message) => GD.PrintErr(message);
+}
+
+/// <summary>
+/// JSONSerialization.data(withJSONObject:options:[.prettyPrinted, .sortedKeys]), as macOS writes the smoke reports:
+/// two-space indentation, <c>"key" : value</c>, no trailing newline, empty containers as <c>{\n\n}</c> / <c>[\n\n]</c>;
+/// numbers as NSNumber prints them (integers and integral doubles without a fraction, other doubles %.17g); strings
+/// with <c>/</c> escaped; keys in <c>.sortedKeys</c> order, which compares [.numeric, .caseInsensitive, .forcedOrdering]
+/// (measured: "signs" sorts before "signTextFits"). Values: dictionaries (IDictionary), sequences, strings, bools,
+/// numbers and null.
+/// </summary>
+public static class JSONSerialization
+{
+    [Flags] public enum WritingOptions { prettyPrinted = 1, sortedKeys = 2 }
+    /// <summary>The report text. PORT: only [.prettyPrinted, .sortedKeys] (the options every smoke report uses).</summary>
+    public static string prettyPrintedSortedKeys(object withJSONObject)
+    {
+        var sb = new System.Text.StringBuilder(); write(sb, withJSONObject, 0); return sb.ToString();
+    }
+    /// <summary>JSONSerialization.data(withJSONObject:options:) (UTF-8); write it with <c>.write(to: url)</c>.</summary>
+    public static byte[] data(object withJSONObject, WritingOptions options = WritingOptions.prettyPrinted | WritingOptions.sortedKeys) =>
+        System.Text.Encoding.UTF8.GetBytes(prettyPrintedSortedKeys(withJSONObject));
+
+    private static void write(System.Text.StringBuilder sb, object value, int depth)
+    {
+        string pad(int d) => new string(' ', d * 2);
+        switch (value)
+        {
+            case null: sb.Append("null"); break;
+            case bool b: sb.Append(b ? "true" : "false"); break;
+            case string s: quote(sb, s); break;
+            case int or long or uint or short or ulong or ushort or byte: sb.Append(Convert.ToString(value, CultureInfo.InvariantCulture)); break;
+            case float f: sb.Append(number(f)); break;
+            case double d: sb.Append(number(d)); break;
+            case Godot.Variant v: write(sb, v.Obj, depth); break;
+            case System.Collections.IDictionary dictionary:
+            {
+                var keys = dictionary.Keys.Cast<object>().Select(k => Convert.ToString(k, CultureInfo.InvariantCulture)).OrderBy(k => k, keyOrder).ToList();
+                var byName = dictionary.Keys.Cast<object>().ToDictionary(k => Convert.ToString(k, CultureInfo.InvariantCulture), k => dictionary[k]);
+                if (keys.Count == 0) { sb.Append("{\n\n").Append(pad(depth)).Append('}'); break; }
+                sb.Append("{\n");
+                for (var i = 0; i < keys.Count; i++)
+                {
+                    sb.Append(pad(depth + 1)); quote(sb, keys[i]); sb.Append(" : ");
+                    write(sb, byName[keys[i]], depth + 1);
+                    sb.Append(i + 1 < keys.Count ? ",\n" : "\n");
+                }
+                sb.Append(pad(depth)).Append('}');
+                break;
+            }
+            case System.Collections.IEnumerable sequence:
+            {
+                var items = sequence.Cast<object>().ToList();
+                if (items.Count == 0) { sb.Append("[\n\n").Append(pad(depth)).Append(']'); break; }
+                sb.Append("[\n");
+                for (var i = 0; i < items.Count; i++)
+                {
+                    sb.Append(pad(depth + 1)); write(sb, items[i], depth + 1);
+                    sb.Append(i + 1 < items.Count ? ",\n" : "\n");
+                }
+                sb.Append(pad(depth)).Append(']');
+                break;
+            }
+            default: quote(sb, Convert.ToString(value, CultureInfo.InvariantCulture)); break;
+        }
+    }
+    private static void quote(System.Text.StringBuilder sb, string s)
+    {
+        sb.Append('"');
+        foreach (var c in s)
+        {
+            switch (c)
+            {
+                case '"': sb.Append("\\\""); break;
+                case '\\': sb.Append("\\\\"); break;
+                case '/': sb.Append("\\/"); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\t': sb.Append("\\t"); break;
+                default:
+                    if (c < 0x20) sb.Append("\\u").Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                    else sb.Append(c);
+                    break;
+            }
+        }
+        sb.Append('"');
+    }
+    /// <summary>printf("%.17g"), as NSNumber's JSON description; integral values print without a fraction.</summary>
+    private static string number(double d)
+    {
+        if (double.IsNaN(d) || double.IsInfinity(d)) throw new System.IO.InvalidDataException("JSON cannot encode a non-finite number");
+        if (d == Math.Floor(d) && Math.Abs(d) < 1e15) return ((long)d).ToString(CultureInfo.InvariantCulture);
+        // 17 significant digits, then %g's choice between fixed and exponential notation, trailing zeros removed.
+        string e = d.ToString("E16", CultureInfo.InvariantCulture);
+        int ePos = e.IndexOf('E');
+        int exponent = int.Parse(e.Substring(ePos + 1), CultureInfo.InvariantCulture);
+        bool negative = e[0] == '-';
+        string digits = e.Substring(negative ? 1 : 0, ePos - (negative ? 1 : 0)).Replace(".", "");
+        string result;
+        if (exponent < -4 || exponent >= 17)
+        {
+            string mantissa = (digits.Substring(0, 1) + "." + digits.Substring(1)).TrimEnd('0').TrimEnd('.');
+            result = mantissa + "e" + (exponent < 0 ? "-" : "+") + Math.Abs(exponent).ToString("00", CultureInfo.InvariantCulture);
+        }
+        else if (exponent < 0) { result = ("0." + new string('0', -exponent - 1) + digits).TrimEnd('0').TrimEnd('.'); }
+        else
+        {
+            string integer = digits.Substring(0, exponent + 1), fraction = digits.Substring(exponent + 1);
+            result = (integer + "." + fraction).TrimEnd('0').TrimEnd('.');
+        }
+        return negative ? "-" + result : result;
+    }
+    private static readonly Comparer<string> keyOrder = Comparer<string>.Create((a, b) =>
+    {
+        int i = 0, j = 0;
+        while (i < a.Length && j < b.Length)
+        {
+            if (char.IsAsciiDigit(a[i]) && char.IsAsciiDigit(b[j]))
+            {
+                int si = i, sj = j;
+                while (i < a.Length && char.IsAsciiDigit(a[i])) { i++; }
+                while (j < b.Length && char.IsAsciiDigit(b[j])) { j++; }
+                var order = decimal.Parse(a[si..i], CultureInfo.InvariantCulture).CompareTo(decimal.Parse(b[sj..j], CultureInfo.InvariantCulture));
+                if (order != 0) { return order; }
+                continue;
+            }
+            var c = char.ToLowerInvariant(a[i]).CompareTo(char.ToLowerInvariant(b[j]));
+            if (c != 0) { return c; }
+            i++; j++;
+        }
+        var length = (a.Length - i).CompareTo(b.Length - j);
+        return length != 0 ? length : string.CompareOrdinal(a, b);
+    });
 }
 
 /// <summary>ProcessInfo.processInfo: systemUptime (seconds, monotonic), arguments (CommandLine.cs), environment.</summary>
@@ -43,6 +177,18 @@ public sealed class ProcessInfo
             return result;
         }
     }
+}
+
+/// <summary>
+/// Foundation Timer, for the app's 1/60 s tick. PORT (PORTING.md: Timer -> _Process): the owner calls its tick from
+/// Godot's per-frame <c>_Process</c> while <c>isValid</c>; <c>invalidate()</c> stops it, as in Foundation.
+/// </summary>
+public sealed class Timer
+{
+    public readonly double timeInterval;
+    public bool isValid { get; private set; } = true;
+    public Timer(double timeInterval) { this.timeInterval = timeInterval; }
+    public void invalidate() => isValid = false;
 }
 
 /// <summary>NSLock (lock/unlock). <c>lock</c> is a C# keyword: <c>sampleLock.@lock()</c>.</summary>
