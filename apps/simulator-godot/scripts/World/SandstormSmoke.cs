@@ -12,11 +12,86 @@ namespace Marvin;
 /// <summary>
 /// `--sandstorm-smoke-test DIR` (SandstormSmoke.swift, AppController.checkSandstorm). Same storm race, capture frame,
 /// cameras, files (storm-overview.png, storm-driving.png, storm-drifts.png, storm-spectators.png, optional
-/// MARVIN_STORM_MOVIE frames) and sandstorm.json keys. PORT: checkWeatherReset (--weather-reset-test, the Command-R
-/// menu dispatch) needs the menu bar of the App port and is not ported.
+/// MARVIN_STORM_MOVIE frames) and sandstorm.json keys. `--weather-reset-test DIR` is checkWeatherReset: 102 resets
+/// through the menu bar's Command-R key equivalent (reset-storm/reset-clear town frames, overlay-*.png, weather-reset.json).
 /// </summary>
 public partial class AppController
 {
+    [GameMode("--weather-reset-test")]
+    public static async Task RunWeatherResetTest(string dir, SceneTree tree)
+    {
+        var app = await launchSmoke(tree, dir);
+        var passed = app.checkWeatherReset(at: dir);
+        exit(passed ? 0 : 1);
+    }
+
+    /// Exercise the real Command-R menu dispatch, not a direct reset call.
+    public bool checkWeatherReset(string at)
+    {
+        var directory = at;
+        try
+        {
+            Directory.CreateDirectory(directory);
+            weatherOverride = null;
+            try
+            {
+                startDirtTrack(); dirtIntro = null;
+                var draws = new List<bool>(); bool handled = true, synchronized = true;
+                for (int i = 0; i < 102; i++)
+                {
+                    // First verify both outcomes deterministically, then use the
+                    // production system RNG for 100 independent race restarts.
+                    weatherOverride = i < 2 ? i == 0 : null;
+                    var @event = NSEvent.keyEvent(NSEvent.EventType.keyDown, NSPoint.zero, NSEvent.ModifierFlags.command,
+                        ProcessInfo.processInfo.systemUptime, window.windowNumber,
+                        null, "r", "r", false, 15);
+                    handled = (NSApp.mainMenu?.performKeyEquivalent(with: @event) ?? false) && handled;
+                    var storm = racePhysics.storm.enabled;
+                    synchronized = synchronized && dirtWorld.storm.enabled == storm
+                        && window.title.Contains("Sandstorm") == storm
+                        && (storm ? dirtWorld.town.visiblePopulation < 20 : dirtWorld.town.visiblePopulation > 20);
+                    if (i < 2) { synchronized = synchronized && storm == (i == 0); }
+                    else { draws.Add(storm); }
+                    if (i == 0 || i == 1)
+                    {
+                        updateOpponents(); updateRaceWorld(dt: 1.0 / 60); updateCamera(snap: true);
+                        saveTownFrame(i == 0 ? "reset-storm" : "reset-clear", directory);
+                        raceHUD.race = race; raceHUD.paused = false;
+                        foreach (var intro in new[] { true, false })
+                        {
+                            raceHUD.introducing = intro;
+                            var image = new NSImage(raceHUD.bounds.size);
+                            image.lockFocus(); view.snapshot().draw(raceHUD.bounds);
+                            // PORT: AppKit draws raceHUD.draw(_:) through a flipped context; the facade caches the
+                            // HUD over a transparent base and draws it over the snapshot (same pixels, RaceFinishSmoke).
+                            var overlay = raceHUD.bitmapImageRepForCachingDisplay(raceHUD.bounds);
+                            raceHUD.cacheDisplay(raceHUD.bounds, overlay);
+                            overlay.draw(raceHUD.bounds);
+                            image.unlockFocus();
+                            if (NSBitmapImageRep.data(image.tiffRepresentation)?.representation(NSBitmapImageFileType.png) is byte[] png)
+                            {
+                                File.WriteAllBytes(Path.Combine(directory, $"overlay-{(storm ? "storm" : "clear")}-{(intro ? "intro" : "countdown")}.png"), png);
+                            }
+                            synchronized = synchronized && raceHUD.stormWarningVisible == storm;
+                        }
+                        raceHUD.race.countDown(dt: 3);
+                        synchronized = synchronized && !raceHUD.stormWarningVisible;
+                    }
+                }
+                var report = new Dictionary<string, object>
+                {
+                    ["passed"] = handled && synchronized, ["commandRHandled"] = handled,
+                    ["weatherSynchronized"] = synchronized, ["randomResets"] = draws.Count,
+                    ["storms"] = draws.Count(d => d), ["draws"] = draws,
+                };
+                File.WriteAllText(Path.Combine(directory, "weather-reset.json"), JSONSerialization.prettyPrintedSortedKeys(report));
+                print(JSONSerialization.prettyPrintedSortedKeys(report)); return handled && synchronized;
+            }
+            finally { weatherOverride = null; }
+        }
+        catch (Exception error) { print(error.ToString()); return false; }
+    }
+
     [GameMode("--sandstorm-smoke-test")]
     public static async Task RunSandstormSmokeTest(string dir, SceneTree tree)
     {
