@@ -209,3 +209,8 @@ Raw roots: the historical `phase-2-attribution-2026-10-04` and resumed
 artifacts.json, resumed-artifacts.json and reproduction.md. Historical locked
 failure is preserved separately. Current session:
 `01a106c0-a5a6-7511-8367-44d0128b05a6`. Git/Entire delivery is verified at handoff.
+
+Supported `entire session attach --agent codex --force` reused this session's
+checkpoint `01M43CTKV3S66VSB9SARDJ6NKK`, created at 12:04:41 UTC. It correctly
+links the current session but does **not** capture the resumed 15:21 UTC work.
+The checkpoint snapshot remains historical; no fresh-transcript claim is made.

@@ -742,5 +742,13 @@
     "upload volume",
     "GPU frequency",
     "exclusive hardware GPU busy time"
-  ]
+  ],
+  "entireProvenance": {
+    "checkpointID": "01M43CTKV3S66VSB9SARDJ6NKK",
+    "sessionID": "01a106c0-a5a6-7511-8367-44d0128b05a6",
+    "createdAtUTC": "2026-10-04T12:04:41.297713Z",
+    "attachOutcome": "Reused current session existing checkpoint",
+    "resumedTranscriptCaptured": false,
+    "limitation": "Correct session attachment, but snapshot precedes resumed work."
+  }
 }
