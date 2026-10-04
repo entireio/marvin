@@ -21,6 +21,9 @@ public sealed class NSBezierPath
     public LineCapStyle lineCapStyle;
     public LineJoinStyle lineJoinStyle;
     public double miterLimit = 10;
+    /// <summary>setLineDash(_:count:phase:) state (null: solid).</summary>
+    internal double[] lineDash;
+    internal double lineDashPhase;
     private CGPoint current, subpathStart;
 
     public NSBezierPath() { }
@@ -95,7 +98,13 @@ public sealed class NSBezierPath
     }
     public void append(NSBezierPath path) { foreach (var e in path.elements) elements.Add(e); current = path.current; subpathStart = path.subpathStart; }
     public void removeAllPoints() => elements.Clear();
-    public void setLineDash(double[] pattern, int count, double phase) { }
+    /// <summary>setLineDash(_:count:phase:): on/off lengths in user space; count 0 or a null pattern makes the line solid.</summary>
+    public void setLineDash(double[] pattern, int count, double phase)
+    {
+        lineDash = pattern == null || count <= 0 ? null : pattern.Take(Math.Min(count, pattern.Length)).ToArray();
+        if (lineDash != null && lineDash.Sum() <= 0) lineDash = null;
+        lineDashPhase = phase;
+    }
     public int elementCount => elements.Count;
     public bool isEmpty => elements.Count == 0;
     public CGPoint currentPoint => current;
@@ -155,6 +164,37 @@ public sealed class NSBezierPath
         foreach (var c in result) if (c.Count > 2 && c[0] == c[^1]) c.RemoveAt(c.Count - 1);
         return result;
     }
+    /// <summary>Flattened subpaths with their closure (stroking needs to know which subpaths close).</summary>
+    internal List<(List<CGPoint> points, bool closed)> SubpathsForStroke(double tolerance)
+    {
+        var result = new List<(List<CGPoint>, bool)>();
+        List<CGPoint> cur = null;
+        CGPoint last = default;
+        foreach (var (type, p, c1, c2) in elements)
+        {
+            switch (type)
+            {
+                case ElementType.moveTo:
+                    if (cur != null && cur.Count > 1) result.Add((cur, false));
+                    cur = new List<CGPoint> { p }; last = p; break;
+                case ElementType.lineTo:
+                    cur ??= new List<CGPoint> { last };
+                    cur.Add(p); last = p; break;
+                case ElementType.curveTo:
+                    cur ??= new List<CGPoint> { last };
+                    Flatten(last, c1, c2, p, tolerance, cur, 0); last = p; break;
+                case ElementType.closePath:
+                    if (cur != null && cur.Count > 1)
+                    {
+                        if (cur.Count > 2 && cur[0] == cur[^1]) cur.RemoveAt(cur.Count - 1);
+                        result.Add((cur, true));
+                    }
+                    cur = null; last = p; break;
+            }
+        }
+        if (cur != null && cur.Count > 1) result.Add((cur, false));
+        return result;
+    }
     private static void Flatten(CGPoint p0, CGPoint p1, CGPoint p2, CGPoint p3, double tol, List<CGPoint> output, int depth)
     {
         double d1 = DistToLine(p1, p0, p3), d2 = DistToLine(p2, p0, p3);
@@ -173,8 +213,8 @@ public sealed class NSBezierPath
     }
 
     // ---- drawing into the current NSGraphicsContext (bitmap)
-    /// <summary>addClip(): the facade clips to the path's bounding rectangle.</summary>
-    public void addClip() { if (NSGraphicsContext.current != null) NSGraphicsContext.current.clip = bounds; }
+    /// <summary>addClip(): the facade clips to the path's bounding rectangle (in device space, intersected with the current clip).</summary>
+    public void addClip() => NSGraphicsContext.current?.AddClip(this);
     public void fill() => NSGraphicsContext.current?.FillPath(this, NSGraphicsContext.FillColor);
     public void stroke() => NSGraphicsContext.current?.StrokePath(this, NSGraphicsContext.StrokeColor, lineWidth);
     public static void fillRect(CGRect r) => new NSBezierPath(r).fill();
@@ -189,34 +229,91 @@ public static class AppKitDrawing
 }
 
 /// <summary>
-/// NSGraphicsContext over an NSBitmapImageRep: anti-aliased polygon fill and stroke
-/// with source-over blending, AppKit coordinates (origin bottom-left).
-/// Text drawing (NSAttributedString.draw) is not implemented. PORT: see PORTING.md.
+/// NSGraphicsContext: the current drawing destination plus AppKit's graphics state (fill and stroke colour,
+/// current transformation matrix, clip). Two backends:
+/// - bitmap (NSBitmapImageRep, NSImage.lockFocus): CPU scanline rasteriser with 4x4 anti-aliasing and
+///   source-over blending, AppKit coordinates (origin bottom-left unless flipped);
+/// - canvas (NSView drawing, cacheDisplay): Godot canvas items, see NSGraphicsCanvas.
+/// Paths are flattened in user space and mapped to device space by the CTM (NSAffineTransform.concat).
+/// Strokes are outlined with AppKit's joins (miter up to miterLimit, round, bevel), caps and dashes.
+/// Clipping is rectangular: the clip path's device-space bounds, intersected with the current clip.
+/// Text: see NSAttributedString.
 /// </summary>
 public sealed class NSGraphicsContext
 {
     // Per thread, as in AppKit (images may be drawn on a builder thread).
     [ThreadStatic] public static NSGraphicsContext current;
-    [ThreadStatic] private static Stack<(NSGraphicsContext ctx, NSColor fill, NSColor stroke)> stackStorage;
+    [ThreadStatic] private static Stack<GState> stackStorage;
     [ThreadStatic] private static NSColor fillColor, strokeColor;
-    private static Stack<(NSGraphicsContext ctx, NSColor fill, NSColor stroke)> stack => stackStorage ??= new();
+    private readonly record struct GState(NSGraphicsContext ctx, NSColor fill, NSColor stroke, AffineTransform ctm, CGRect? clip);
+    private static Stack<GState> stack => stackStorage ??= new();
     internal static NSColor FillColor { get => fillColor ?? NSColor.black; set => fillColor = value; }
     internal static NSColor StrokeColor { get => strokeColor ?? NSColor.black; set => strokeColor = value; }
     internal readonly NSBitmapImageRep rep;
+    /// <summary>Canvas backend (view drawing); null for bitmap contexts.</summary>
+    internal readonly NSGraphicsCanvas canvas;
     public bool shouldAntialias = true;
-    /// <summary>isFlipped: y grows downwards (NSImage.lockFocusFlipped(true)).</summary>
+    /// <summary>isFlipped: user-space y grows downwards (flipped views, NSImage.lockFocusFlipped(true)).</summary>
     public readonly bool isFlipped;
+    /// <summary>Clip rectangle in device space (bitmap: AppKit bitmap coordinates; canvas: Godot pixels).</summary>
     internal CGRect? clip;
+    /// <summary>Current transformation matrix: user space to device space.</summary>
+    internal AffineTransform ctm = AffineTransform.identity;
+    private readonly AffineTransform baseCtm = AffineTransform.identity;
     internal NSGraphicsContext(NSBitmapImageRep rep, bool flipped = false) { this.rep = rep; isFlipped = flipped; }
+    /// <summary>Canvas context: baseTransform maps the view's user space to the canvas item's pixels (y down).</summary>
+    internal NSGraphicsContext(NSGraphicsCanvas canvas, bool flipped, AffineTransform baseTransform)
+    {
+        this.canvas = canvas; isFlipped = flipped; ctm = baseCtm = baseTransform;
+    }
     /// <summary>NSGraphicsContext(bitmapImageRep:).</summary>
     public static NSGraphicsContext bitmapImageRep(NSBitmapImageRep rep) => new(rep);
-    public static void saveGraphicsState() => stack.Push((current, FillColor, StrokeColor));
-    public static void restoreGraphicsState() { if (stack.Count > 0) (current, FillColor, StrokeColor) = stack.Pop(); }
+    public static void saveGraphicsState() => stack.Push(new GState(current, FillColor, StrokeColor, current?.ctm ?? AffineTransform.identity, current?.clip));
+    public static void restoreGraphicsState()
+    {
+        if (stack.Count == 0) return;
+        var s = stack.Pop();
+        current = s.ctx; FillColor = s.fill; StrokeColor = s.stroke;
+        if (current != null) { current.ctm = s.ctm; current.clip = s.clip; }
+    }
+    /// <summary>CGContextConcatCTM: t is applied to user coordinates before the current CTM.</summary>
+    internal void Concat(AffineTransform t) => ctm = AffineTransform.Multiply(t, ctm);
+    /// <summary>NSAffineTransform.set(): the CTM becomes t (relative to the context's default space).</summary>
+    internal void SetCTM(AffineTransform t) => ctm = AffineTransform.Multiply(t, baseCtm);
+    internal CGPoint ToDevice(CGPoint p) => ctm.transform(p);
+    private List<List<CGPoint>> ToDevice(List<List<CGPoint>> contours)
+    {
+        if (ctm.isIdentity) return contours;
+        return contours.Select(c => c.Select(ctm.transform).ToList()).ToList();
+    }
+    private List<CGPoint> ToDevice(List<CGPoint> points) => ctm.isIdentity ? points : points.Select(ctm.transform).ToList();
+    /// <summary>Device-space bounding box of a user-space rectangle.</summary>
+    internal CGRect ToDevice(CGRect r)
+    {
+        if (ctm.isIdentity) return r;
+        var a = ctm.transform(new CGPoint(r.minX, r.minY)); var b = ctm.transform(new CGPoint(r.maxX, r.minY));
+        var c = ctm.transform(new CGPoint(r.maxX, r.maxY)); var d = ctm.transform(new CGPoint(r.minX, r.maxY));
+        double x0 = Math.Min(Math.Min(a.x, b.x), Math.Min(c.x, d.x)), x1 = Math.Max(Math.Max(a.x, b.x), Math.Max(c.x, d.x));
+        double y0 = Math.Min(Math.Min(a.y, b.y), Math.Min(c.y, d.y)), y1 = Math.Max(Math.Max(a.y, b.y), Math.Max(c.y, d.y));
+        return new CGRect(x0, y0, x1 - x0, y1 - y0);
+    }
+    /// <summary>Uniform scale of the CTM (line widths).</summary>
+    internal double CtmScale => Math.Sqrt(Math.Abs(ctm.m11 * ctm.m22 - ctm.m12 * ctm.m21));
 
-    /// <summary>Draws an image into rect (source-over, bilinear), honouring the clip rect.</summary>
+    internal void AddClip(NSBezierPath path)
+    {
+        var pts = ToDevice(path.Contours(Math.Min(path.flatness, 0.25))).SelectMany(c => c).ToList();
+        var b = pts.Count == 0 ? CGRect.zero : new CGRect(pts.Min(p => p.x), pts.Min(p => p.y), pts.Max(p => p.x) - pts.Min(p => p.x), pts.Max(p => p.y) - pts.Min(p => p.y));
+        clip = clip is CGRect existing ? existing.intersection(b) : b;
+    }
+
+    /// <summary>Draws an image into rect (source-over, bilinear), honouring the clip rect. Images are drawn upright.</summary>
     internal void DrawImage(NSImage image, CGRect rect, double fraction)
     {
+        var device = ToDevice(rect);
+        if (canvas != null) { canvas.Image(image, device, fraction, clip, isFlipped); return; }
         var src = image.GodotImage;
+        rect = device;
         if (src == null || rect.width <= 0 || rect.height <= 0) return;
         if (src.IsCompressed()) { src = (Image)src.Duplicate(); src.Decompress(); }
         int w = rep.pixelsWide, h = rep.pixelsHigh, sw = src.GetWidth(), sh = src.GetHeight();
@@ -238,41 +335,155 @@ public sealed class NSGraphicsContext
 
     internal void FillPath(NSBezierPath path, NSColor color)
     {
-        var contours = path.Contours(Math.Min(path.flatness, 0.25));
+        var contours = ToDevice(path.Contours(Math.Min(path.flatness, 0.25)));
+        if (canvas != null) { canvas.Fill(contours, path.windingRule == NSBezierPath.WindingRule.evenOdd, color, clip); return; }
         Rasterize(contours, path.windingRule == NSBezierPath.WindingRule.evenOdd, color);
     }
     internal void StrokePath(NSBezierPath path, NSColor color, double width)
     {
-        var quads = new List<List<CGPoint>>();
-        double h = Math.Max(width, 0.01) / 2;
-        foreach (var c in path.Contours(0.25))
+        // lineWidth 0 is AppKit's thinnest line: one device pixel.
+        if (width <= 0) width = 1 / Math.Max(1e-9, CtmScale);
+        var subpaths = path.SubpathsForStroke(0.25);
+        if (path.lineDash != null) subpaths = Dash(subpaths, path.lineDash, path.lineDashPhase);
+        if (canvas != null)
         {
-            bool closed = path.elements.Any(e => e.type == NSBezierPath.ElementType.closePath);
-            int n = c.Count, segs = closed ? n : n - 1;
+            foreach (var (points, closed) in subpaths)
+                canvas.Stroke(ToDevice(points), closed, width * CtmScale, path.lineJoinStyle, path.lineCapStyle, path.miterLimit, color, clip);
+            return;
+        }
+        var polys = StrokeOutline(subpaths, width, path.lineJoinStyle, path.lineCapStyle, path.miterLimit);
+        Rasterize(ToDevice(polys), false, color);
+    }
+
+    /// <summary>Splits subpaths into the "on" intervals of a dash pattern (user-space lengths, phase offset).</summary>
+    internal static List<(List<CGPoint> points, bool closed)> Dash(List<(List<CGPoint> points, bool closed)> subpaths, double[] pattern, double phase)
+    {
+        var result = new List<(List<CGPoint>, bool)>();
+        double period = pattern.Sum();
+        foreach (var (points, closed) in subpaths)
+        {
+            var pts = closed ? points.Append(points[0]).ToList() : points;
+            int index = 0; double left = pattern[0], offset = ((phase % period) + period) % period;
+            while (offset > 0) { if (offset >= left) { offset -= left; index = (index + 1) % pattern.Length; left = pattern[index]; } else { left -= offset; offset = 0; } }
+            List<CGPoint> dash = index % 2 == 0 ? new List<CGPoint> { pts[0] } : null;
+            for (int i = 0; i + 1 < pts.Count; i++)
+            {
+                CGPoint a = pts[i], b = pts[i + 1];
+                double len = Math.Sqrt((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y)), t = 0;
+                while (len - t > left)
+                {
+                    t += left;
+                    var p = new CGPoint(a.x + (b.x - a.x) * t / len, a.y + (b.y - a.y) * t / len);
+                    if (dash != null) { dash.Add(p); if (dash.Count > 1) result.Add((dash, false)); dash = null; }
+                    else dash = new List<CGPoint> { p };
+                    index = (index + 1) % pattern.Length; left = pattern[index];
+                }
+                left -= len - t;
+                dash?.Add(b);
+            }
+            if (dash != null && dash.Count > 1) result.Add((dash, false));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Stroke outline as polygons whose nonzero union is the stroked area: one quad per segment, join
+    /// pieces (round: disc, miter: wedge up to miterLimit else bevel, bevel: triangle) and caps.
+    /// Every polygon is oriented counter-clockwise so overlaps never cancel.
+    /// </summary>
+    internal static List<List<CGPoint>> StrokeOutline(List<(List<CGPoint> points, bool closed)> subpaths, double width,
+        NSBezierPath.LineJoinStyle join, NSBezierPath.LineCapStyle cap, double miterLimit)
+    {
+        var polys = new List<List<CGPoint>>();
+        double h = width / 2;
+        void Add(List<CGPoint> poly)
+        {
+            double area = 0;
+            for (int i = 0; i < poly.Count; i++) { var a = poly[i]; var b = poly[(i + 1) % poly.Count]; area += a.x * b.y - b.x * a.y; }
+            if (Math.Abs(area) < 1e-12) return;
+            if (area < 0) poly.Reverse();
+            polys.Add(poly);
+        }
+        List<CGPoint> Disc(CGPoint c)
+        {
+            int n = Math.Max(12, (int)Math.Ceiling(2 * Math.PI * h / 0.5));
+            return Enumerable.Range(0, n).Select(i => new CGPoint(c.x + h * Math.Cos(2 * Math.PI * i / n), c.y + h * Math.Sin(2 * Math.PI * i / n))).ToList();
+        }
+        foreach (var (raw, closed) in subpaths)
+        {
+            var pts = new List<CGPoint>();
+            foreach (var p in raw) if (pts.Count == 0 || Math.Abs(pts[^1].x - p.x) + Math.Abs(pts[^1].y - p.y) > 1e-9) pts.Add(p);
+            if (closed && pts.Count > 2 && Math.Abs(pts[0].x - pts[^1].x) + Math.Abs(pts[0].y - pts[^1].y) <= 1e-9) pts.RemoveAt(pts.Count - 1);
+            int n = pts.Count;
+            if (n < 2)
+            {
+                if (n == 1 && cap == NSBezierPath.LineCapStyle.round) Add(Disc(pts[0]));
+                if (n == 1 && cap == NSBezierPath.LineCapStyle.square) Add(new List<CGPoint> { new(pts[0].x - h, pts[0].y - h), new(pts[0].x + h, pts[0].y - h), new(pts[0].x + h, pts[0].y + h), new(pts[0].x - h, pts[0].y + h) });
+                continue;
+            }
+            int segs = closed ? n : n - 1;
+            (double x, double y) Dir(int i) { var a = pts[i]; var b = pts[(i + 1) % n]; double dx = b.x - a.x, dy = b.y - a.y, l = Math.Sqrt(dx * dx + dy * dy); return (dx / l, dy / l); }
             for (int i = 0; i < segs; i++)
             {
-                var a = c[i]; var b = c[(i + 1) % n];
-                double dx = b.x - a.x, dy = b.y - a.y, l = Math.Sqrt(dx * dx + dy * dy);
-                if (l < 1e-9) continue;
-                double nx = -dy / l * h, ny = dx / l * h, ex = dx / l * h, ey = dy / l * h;
-                quads.Add(new List<CGPoint> { new(a.x - ex + nx, a.y - ey + ny), new(b.x + ex + nx, b.y + ey + ny), new(b.x + ex - nx, b.y + ey - ny), new(a.x - ex - nx, a.y - ey - ny) });
+                var a = pts[i]; var b = pts[(i + 1) % n];
+                var (dx, dy) = Dir(i);
+                double nx = -dy * h, ny = dx * h;
+                double ex0 = 0, ey0 = 0, ex1 = 0, ey1 = 0;
+                if (!closed && cap == NSBezierPath.LineCapStyle.square)
+                {
+                    if (i == 0) { ex0 = -dx * h; ey0 = -dy * h; }
+                    if (i == segs - 1) { ex1 = dx * h; ey1 = dy * h; }
+                }
+                Add(new List<CGPoint> { new(a.x + ex0 + nx, a.y + ey0 + ny), new(b.x + ex1 + nx, b.y + ey1 + ny), new(b.x + ex1 - nx, b.y + ey1 - ny), new(a.x + ex0 - nx, a.y + ey0 - ny) });
+            }
+            if (!closed && cap == NSBezierPath.LineCapStyle.round) { Add(Disc(pts[0])); Add(Disc(pts[^1])); }
+            for (int k = closed ? 0 : 1; k < (closed ? n : n - 1); k++)
+            {
+                var v = pts[k];
+                var d0 = Dir((k - 1 + n) % n); var d1 = Dir(k);
+                double cross = d0.x * d1.y - d0.y * d1.x, dot = d0.x * d1.x + d0.y * d1.y;
+                if (Math.Abs(cross) < 1e-12 && dot > 0) continue;
+                if (join == NSBezierPath.LineJoinStyle.round) { Add(Disc(v)); continue; }
+                // Outer side of the turn: right of the path for a left (counter-clockwise) turn.
+                double s = cross > 0 ? -1 : 1;
+                var o0 = new CGPoint(v.x - d0.y * h * s, v.y + d0.x * h * s);
+                var o1 = new CGPoint(v.x - d1.y * h * s, v.y + d1.x * h * s);
+                // Miter length / line width = 1 / sin(phi / 2), phi = angle between the segments.
+                double phi = Math.Acos(Math.Clamp(-dot, -1, 1));
+                double ratio = 1 / Math.Max(1e-9, Math.Sin(phi / 2));
+                if (join == NSBezierPath.LineJoinStyle.miter && ratio <= miterLimit)
+                {
+                    double bx = (o0.x - v.x) + (o1.x - v.x), by = (o0.y - v.y) + (o1.y - v.y), bl = Math.Sqrt(bx * bx + by * by);
+                    if (bl > 1e-12)
+                    {
+                        double reach = h * ratio;
+                        var tip = new CGPoint(v.x + bx / bl * reach, v.y + by / bl * reach);
+                        Add(new List<CGPoint> { v, o0, tip, o1 });
+                        continue;
+                    }
+                }
+                Add(new List<CGPoint> { v, o0, o1 });
             }
         }
-        Rasterize(quads, false, color);
+        return polys;
     }
+
     private void Rasterize(List<List<CGPoint>> polys, bool evenOdd, NSColor color)
     {
-        if (polys.Count == 0) return;
+        if (polys.Count == 0 || rep == null) return;
         int w = rep.pixelsWide, h = rep.pixelsHigh, ss = shouldAntialias ? 4 : 1;
         var c = color.usingColorSpace(NSColorSpace.sRGB);
         double alpha = color.alphaComponent;
         double minY = polys.SelectMany(p => p).Min(p => p.y), maxY = polys.SelectMany(p => p).Max(p => p.y);
+        double minX = polys.SelectMany(p => p).Min(p => p.x), maxX = polys.SelectMany(p => p).Max(p => p.x);
         int y0 = Math.Max(0, (int)Math.Floor(minY)), y1 = Math.Min(h - 1, (int)Math.Ceiling(maxY));
+        int x0 = Math.Max(0, (int)Math.Floor(minX) - 1), x1 = Math.Min(w - 1, (int)Math.Ceiling(maxX) + 1);
+        if (x1 < x0) return;
         var coverage = new double[w];
         var crossings = new List<(double x, int dir)>();
         for (int py = y0; py <= y1; py++)
         {
-            Array.Clear(coverage);
+            Array.Clear(coverage, x0, x1 - x0 + 1);
             for (int sy = 0; sy < ss; sy++)
             {
                 double y = py + (sy + 0.5) / ss;
@@ -297,12 +508,12 @@ public sealed class NSGraphicsContext
                     {
                         double off = (sx + 0.5) / ss;
                         int ia = (int)Math.Ceiling(xa - off), ib = (int)Math.Floor(xb - off);
-                        for (int px = Math.Max(0, ia); px <= Math.Min(w - 1, ib); px++) coverage[px] += 1.0 / (ss * ss);
+                        for (int px = Math.Max(x0, ia); px <= Math.Min(x1, ib); px++) coverage[px] += 1.0 / (ss * ss);
                     }
                 }
             }
             int row = isFlipped ? py : h - 1 - py;
-            for (int px = 0; px < w; px++)
+            for (int px = x0; px <= x1; px++)
             {
                 double a = Math.Min(1, coverage[px]) * alpha;
                 if (a <= 0) continue;
@@ -311,6 +522,21 @@ public sealed class NSGraphicsContext
             }
         }
         rep.version++;
+    }
+    /// <summary>
+    /// CPU rasterisation of device-space polygons (y down) into a straight-alpha image covering their bounds
+    /// (the canvas backend's fallback for multi-contour and self-intersecting fills).
+    /// </summary>
+    internal static Image RasterizeImage(List<List<CGPoint>> polys, bool evenOdd, NSColor color, out Rect2I rect)
+    {
+        var pts = polys.SelectMany(p => p).ToList();
+        int x0 = (int)Math.Floor(pts.Min(p => p.x)) - 1, y0 = (int)Math.Floor(pts.Min(p => p.y)) - 1;
+        int x1 = (int)Math.Ceiling(pts.Max(p => p.x)) + 1, y1 = (int)Math.Ceiling(pts.Max(p => p.y)) + 1;
+        rect = new Rect2I(x0, y0, Math.Max(1, x1 - x0), Math.Max(1, y1 - y0));
+        var rep = new NSBitmapImageRep(null, rect.Size.X, rect.Size.Y, 8, 4, true, false, NSColorSpaceName.deviceRGB, rect.Size.X * 4, 32);
+        var ctx = new NSGraphicsContext(rep, flipped: true);
+        ctx.Rasterize(polys.Select(p => p.Select(q => new CGPoint(q.x - x0, q.y - y0)).ToList()).ToList(), evenOdd, color);
+        return rep.ToGodotImage(straightAlpha: true);
     }
     internal void BlendPixel(int x, int y, double r, double g, double b, double a) => Blend(x, y, r, g, b, a);
     private void Blend(int x, int y, double r, double g, double b, double a)
@@ -331,42 +557,228 @@ public sealed class NSGraphicsContext
     }
 }
 
-/// <summary>NSFont: system fonts map to Godot SystemFont (SF Pro / SF Mono, falling back to Segoe UI / Consolas).</summary>
+/// <summary>
+/// NSFont. System fonts resolve to the platform font through Godot SystemFont: SF Pro (".AppleSystemUIFont")
+/// and SF Mono (".SF NS Mono"; plain "SF Mono" is not a resolvable family name) on macOS, Segoe UI /
+/// Consolas on Windows. AppKit behaviour reproduced (measured against the game's captures):
+/// - weights select the fonts' named instances: SF Pro wght 400/510/590/700/860/1000 (regular, medium,
+///   semibold, bold, heavy, black), SF Mono wght + YAXS pairs (e.g. bold 683.3/335.8);
+/// - SF Pro's optical size follows the point size (opsz = size, clamped to the axis' 17...96);
+/// - CoreText adds the font's 'trak' tracking (track 0, interpolated over its size table) after every
+///   glyph (Apple HIG: 17 pt -> -0.43 pt);
+/// - monospacedDigitSystemFont enables tabular figures ('tnum');
+/// - ascender/descender are the font's exact hhea values (FreeType's pixel metrics are rounded);
+/// - 2D text is rasterised with CoreText's font-smoothing dilation (renderFont, SceneKitCalibration.FontDilation);
+///   godotFont keeps the plain outlines for shaping and SCNText geometry.
+/// Glyphs are rendered unhinted with quarter-pixel horizontal positioning, like CoreText.
+/// Godot fonts are cached per family, weight, optical size and features, so creating NSFonts per draw is cheap.
+/// </summary>
 public sealed class NSFont
 {
     public enum Weight { ultraLight = 100, thin = 200, light = 300, regular = 400, medium = 500, semibold = 600, bold = 700, heavy = 800, black = 900 }
+    public const double systemFontSize = 13, smallSystemFontSize = 11, labelFontSize = 10;
     public readonly double pointSize;
     public readonly string fontName;
-    internal readonly SystemFont godotFont;
+    /// <summary>The font's outlines and metrics (shaping, SCNText geometry).</summary>
+    internal readonly Font godotFont;
+    /// <summary>The font 2D text is rasterised with: godotFont plus CoreText's font-smoothing dilation.</summary>
+    internal readonly Font renderFont;
     internal readonly int weight;
-    private NSFont(string name, double size, int weight, bool monospaced)
+    /// <summary>Tracking CoreText adds after every glyph at this size, in points.</summary>
+    internal readonly double tracking;
+    /// <summary>
+    /// System fonts use AppKit's measured line metrics (exact ascender/descender, baseline on a device pixel).
+    /// Named fonts (the town signs' Avenir Next Condensed) keep FreeType's pixel metrics, which their textures
+    /// were calibrated with (V_sign).
+    /// </summary>
+    internal readonly bool appKitMetrics;
+    private readonly double ascenderEm, descenderEm;
+
+    private enum Family { System, Monospaced, Named }
+    private sealed class Face { public Font font, renderFont; public double ascenderEm, descenderEm; public TrakTable trak; }
+    private static readonly Dictionary<string, Face> faces = new();
+    private static readonly Dictionary<string, SystemFont> bases = new();
+    private static readonly Dictionary<string, TrakTable> trakTables = new();
+    private static readonly object gate = new();
+    private static readonly string[] SystemNames = { ".AppleSystemUIFont", "SF Pro Text", "SF Pro", "Segoe UI", "sans-serif" };
+    private static readonly string[] MonospacedNames = { ".SF NS Mono", "SF Mono", "Menlo", "Consolas", "monospace" };
+
+    private NSFont(string name, double size, int weight, Family family, bool tabularDigits)
     {
         pointSize = size; fontName = name; this.weight = weight;
-        godotFont = new SystemFont
-        {
-            FontNames = monospaced ? new[] { "SF Mono", "Menlo", "Consolas", "monospace" }
-                : name != null && !name.StartsWith(".") ? new[] { name, "Avenir Next Condensed", "SF Pro Text", "Segoe UI", "sans-serif" }
-                : new[] { "SF Pro Text", "SF Pro", ".AppleSystemUIFont", "Segoe UI", "sans-serif" },
-            FontWeight = weight,
-            Antialiasing = TextServer.FontAntialiasing.Gray,
-        };
+        var face = Resolve(name, size, weight, family, tabularDigits);
+        godotFont = face.font; renderFont = face.renderFont; ascenderEm = face.ascenderEm; descenderEm = face.descenderEm;
+        appKitMetrics = family != Family.Named;
+        tracking = face.trak?.Tracking(size) ?? 0;
     }
-    public static NSFont systemFont(double ofSize, Weight weight = Weight.regular) => new(".SFNS", ofSize, (int)weight, false);
-    public static NSFont boldSystemFont(double ofSize) => new(".SFNS", ofSize, 700, false);
-    public static NSFont monospacedSystemFont(double ofSize, Weight weight) => new(".SFNSMono", ofSize, (int)weight, true);
-    public static NSFont monospacedDigitSystemFont(double ofSize, Weight weight) => new(".SFNS", ofSize, (int)weight, false);
+    public static NSFont systemFont(double ofSize, Weight weight = Weight.regular) => new(".SFNS", ofSize, (int)weight, Family.System, false);
+    public static NSFont boldSystemFont(double ofSize) => new(".SFNS", ofSize, 700, Family.System, false);
+    public static NSFont monospacedSystemFont(double ofSize, Weight weight) => new(".SFNSMono", ofSize, (int)weight, Family.Monospaced, false);
+    public static NSFont monospacedDigitSystemFont(double ofSize, Weight weight) => new(".SFNS", ofSize, (int)weight, Family.System, true);
     /// <summary>NSFont(name:size:) - returns a SystemFont lookup (never nil in the facade).</summary>
     public static NSFont named(string name, double size)
     {
         int weight = name.Contains("Bold") || name.Contains("DemiBold") ? 600 : name.Contains("Medium") ? 500 : 400;
-        string family = name.Split('-')[0];
-        if (family == "AvenirNextCondensed") family = "Avenir Next Condensed";
-        return new NSFont(family, size, weight, false);
+        return new NSFont(name, size, weight, Family.Named, false);
     }
-    public double ascender => godotFont.GetAscent(64) / 64.0 * pointSize;
-    public double descender => -godotFont.GetDescent(64) / 64.0 * pointSize;
+    public double ascender => ascenderEm * pointSize;
+    public double descender => -descenderEm * pointSize;
     public double leading => 0;
     public double capHeight => ascender * 0.75;
-    /// <summary>Godot Font for UI text.</summary>
-    public Font GodotFont => godotFont;
+    /// <summary>Godot Font for UI text (with CoreText's font-smoothing dilation).</summary>
+    public Font GodotFont => renderFont;
+
+    // SF named instances (fvar of SFNS.ttf / SFNSMono.ttf on macOS 27).
+    private static double SystemWeight(int w) => w switch
+    {
+        <= 100 => 30.925, <= 200 => 110.725, <= 300 => 274.315, <= 400 => 400, <= 500 => 510, <= 600 => 590, <= 700 => 700, <= 800 => 860, _ => 1000,
+    };
+    private static (double wght, double yaxs) MonospacedWeight(int w) => w switch
+    {
+        <= 300 => (294.673, 294.673), <= 400 => (400, 324.334), <= 500 => (483.535, 320.702), <= 600 => (571.307, 324.939), <= 700 => (683.293, 335.835), _ => (900, 294.673),
+    };
+
+    private static Face Resolve(string name, double size, int weight, Family family, bool tabularDigits)
+    {
+        int opsz = family == Family.System ? (int)Math.Clamp(Math.Round(size), 17, 96) : 0;
+        // CoreText's font smoothing dilation depends on the rendered pixel size.
+        int pixels = family == Family.Named ? 0 : Math.Max(1, (int)Math.Round(size));
+        string key = $"{family}|{name}|{weight}|{opsz}|{tabularDigits}|{pixels}";
+        lock (gate)
+        {
+            if (faces.TryGetValue(key, out var cached)) return cached;
+            string[] names = family switch
+            {
+                Family.System => SystemNames,
+                Family.Monospaced => MonospacedNames,
+                _ => new[] { name.Split('-')[0] == "AvenirNextCondensed" ? "Avenir Next Condensed" : name.Split('-')[0], "Avenir Next Condensed", "SF Pro Text", "Segoe UI", "sans-serif" },
+            };
+            string baseKey = string.Join(",", names) + "|" + weight;
+            if (!bases.TryGetValue(baseKey, out var systemFont))
+            {
+                systemFont = new SystemFont
+                {
+                    FontNames = names, FontWeight = weight,
+                    Antialiasing = TextServer.FontAntialiasing.Gray,
+                    Hinting = family == Family.Named ? TextServer.Hinting.Light : TextServer.Hinting.None,
+                    SubpixelPositioning = family == Family.Named ? TextServer.SubpixelPositioning.Auto : TextServer.SubpixelPositioning.OneQuarter,
+                };
+                bases[baseKey] = systemFont;
+            }
+            Font font = systemFont, renderFont = systemFont;
+            if (family != Family.Named)
+            {
+                var ts = TextServerManager.GetPrimaryInterface();
+                var rids = systemFont.GetRids();
+                var supported = rids.Count > 0 ? ts.FontSupportedVariationList(rids[0]) : new Godot.Collections.Dictionary();
+                var coords = new Godot.Collections.Dictionary();
+                void Axis(string tag, double value) { long t = ts.NameToTag(tag); if (supported.ContainsKey(t)) coords[t] = value; }
+                if (family == Family.System) { Axis("wght", SystemWeight(weight)); Axis("opsz", opsz); }
+                else { var (wght, yaxs) = MonospacedWeight(weight); Axis("wght", wght); Axis("YAXS", yaxs); }
+                var features = tabularDigits ? new Godot.Collections.Dictionary { [ts.NameToTag("tnum")] = 1 } : new Godot.Collections.Dictionary();
+                var variation = new FontVariation { BaseFont = systemFont, VariationOpentype = coords, OpentypeFeatures = features };
+                font = renderFont = variation;
+                // CoreText font smoothing (SceneKitCalibration.FontDilation): Godot's embolden widens outlines by
+                // embolden x size / 16 pixels (horizontally); the cap top rises through a vertical outline scale.
+                double dilation = SceneKitCalibration.FontDilation * Math.Sqrt(pixels);
+                if (dilation > 0)
+                {
+                    var dilated = new FontVariation { BaseFont = systemFont, VariationOpentype = coords, OpentypeFeatures = features };
+                    dilated.VariationEmbolden = (float)(dilation * 16 / pixels);
+                    double capHeight = CapHeightEm(variation) * pixels;
+                    if (capHeight > 1) dilated.VariationTransform = new Transform2D(new Vector2(1, 0), new Vector2(0, (float)(1 + SceneKitCalibration.FontDilationRise * dilation / capHeight)), Vector2.Zero);
+                    renderFont = dilated;
+                }
+            }
+            var face = new Face
+            {
+                font = font, renderFont = renderFont,
+                // Exact em metrics: FreeType rounds pixel metrics up, so read them at 2048 px (= units for 2048-unit fonts).
+                ascenderEm = font.GetAscent(2048) / 2048.0,
+                descenderEm = font.GetDescent(2048) / 2048.0,
+                trak = family == Family.System ? Trak(names) : null,
+            };
+            faces[key] = face;
+            return face;
+        }
+    }
+    /// <summary>Height of 'H' in em (outline top at 1000 px), before any outline transform.</summary>
+    private static double CapHeightEm(Font font)
+    {
+        var ts = TextServerManager.GetPrimaryInterface();
+        var rids = font.GetRids();
+        if (rids.Count == 0) return 0.7;
+        long glyph = ts.FontGetGlyphIndex(rids[0], 1000, 'H', 0);
+        var points = ts.FontGetGlyphContours(rids[0], 1000, glyph)["points"].AsVector3Array();
+        if (points.Length == 0) return 0.7;
+        float top = 0; foreach (var p in points) top = Math.Min(top, p.Y);
+        return -top / 1000.0;
+    }
+    private static TrakTable Trak(string[] names)
+    {
+        foreach (var n in names)
+        {
+            string path = OS.GetSystemFontPath(n, 400);
+            if (string.IsNullOrEmpty(path)) continue;
+            if (!trakTables.TryGetValue(path, out var table)) trakTables[path] = table = TrakTable.Load(path);
+            return table;
+        }
+        return null;
+    }
+
+    /// <summary>The 'trak' table's normal track (font units per glyph by point size).</summary>
+    private sealed class TrakTable
+    {
+        private double[] sizes, values;
+        private double unitsPerEm = 1000;
+        internal double Tracking(double size)
+        {
+            if (sizes == null || sizes.Length == 0) return 0;
+            double v;
+            if (size <= sizes[0]) v = values[0];
+            else if (size >= sizes[^1]) v = values[^1];
+            else
+            {
+                int i = 1; while (sizes[i] < size) i++;
+                double t = (size - sizes[i - 1]) / (sizes[i] - sizes[i - 1]);
+                v = values[i - 1] + (values[i] - values[i - 1]) * t;
+            }
+            return v / unitsPerEm * size;
+        }
+        internal static TrakTable Load(string path)
+        {
+            var table = new TrakTable();
+            try
+            {
+                using var f = System.IO.File.OpenRead(path);
+                using var r = new System.IO.BinaryReader(f);
+                uint U32() { var b = r.ReadBytes(4); return (uint)(b[0] << 24 | b[1] << 16 | b[2] << 8 | b[3]); }
+                ushort U16() { var b = r.ReadBytes(2); return (ushort)(b[0] << 8 | b[1]); }
+                f.Position = 4; int numTables = U16();
+                long trak = -1, head = -1;
+                for (int i = 0; i < numTables; i++)
+                {
+                    f.Position = 12 + i * 16;
+                    string tag = System.Text.Encoding.ASCII.GetString(r.ReadBytes(4)); U32(); long offset = U32();
+                    if (tag == "trak") trak = offset; else if (tag == "head") head = offset;
+                }
+                if (head >= 0) { f.Position = head + 18; table.unitsPerEm = U16(); }
+                if (trak < 0) return table;
+                f.Position = trak + 6; long horiz = U16();
+                if (horiz == 0) return table;
+                f.Position = trak + horiz; int nTracks = U16(), nSizes = U16(); long sizeTable = U32();
+                for (int t = 0; t < nTracks; t++)
+                {
+                    f.Position = trak + horiz + 8 + t * 8;
+                    int track = (int)U32(); U16(); long valueOffset = U16();
+                    if (track != 0) continue;
+                    table.sizes = new double[nSizes]; table.values = new double[nSizes];
+                    for (int s = 0; s < nSizes; s++) { f.Position = trak + sizeTable + s * 4; table.sizes[s] = (int)U32() / 65536.0; }
+                    for (int s = 0; s < nSizes; s++) { f.Position = trak + valueOffset + s * 2; table.values[s] = (short)U16(); }
+                }
+            }
+            catch (Exception e) { GD.PushWarning($"NSFont: could not read 'trak' from {path}: {e.Message}"); }
+            return table;
+        }
+    }
 }

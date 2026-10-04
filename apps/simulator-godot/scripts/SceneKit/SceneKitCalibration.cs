@@ -75,6 +75,18 @@ internal static class SceneKitCalibration
     /// <summary>Pre-filtered radiance band used for roughness r: clamp(IblBlurScale x r^IblBlurPower, 0, 1) (bands are GGX alpha = band^2).</summary>
     public static double IblBlurScale = 1.0, IblBlurPower = 1.0;
 
+    // ---- Text (CoreText vs FreeType), measured on the game's AppKit captures (menu, HUD, loading screen).
+    /// <summary>
+    /// CoreText's font smoothing dilates system-font glyphs: stems gain about FontDilation x sqrt(point size)
+    /// pixels (0.45 px at 12 pt, 0.6 at 18-21 pt, 1.0 at 58 pt) and cap tops rise by about the same amount while
+    /// the baseline stays. Godot's FreeType emboldening (VariationEmbolden) widens stems and raises tops by
+    /// roughly that much already; FontDilationRise x dilation adjusts the top through a vertical outline scale
+    /// (-0.15: measured tops 0.1-0.3 px high at 13-21 pt without it). Stems after calibration: 3.80 vs 3.80 px
+    /// (SF Mono bold 23), 1.89 vs 1.80 (SF Mono 16), 8.6 vs 8.5 (SF Pro bold 58), 2.9 vs 2.9 (SF Pro medium 21).
+    /// White text on the menu's opaque dark buttons stays about 0.5 px lighter than CoreText's.
+    /// </summary>
+    public static double FontDilation = 0.13, FontDilationRise = -0.15;
+
     internal static string Poly(double c1, double c2, double c3, double c0 = 1.0) =>
         $"({F(c0)} + {F(c1)} * scn_r + {F(c2)} * scn_r * scn_r + {F(c3)} * scn_r * scn_r * scn_r)";
     internal static string F(double v) => v.ToString("0.0#######", CultureInfo.InvariantCulture);
