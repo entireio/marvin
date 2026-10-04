@@ -292,8 +292,17 @@ public sealed class SCNShape : SCNGeometry
 
     protected override void Build()
     {
+        var (s, el) = Tessellate(_path, _depth);
+        SetData(s, el);
+    }
+    /// <summary>
+    /// The shape tessellation (shared with SCNText, whose glyph outlines SceneKit tessellates the same way): the path
+    /// flattened with its flatness, decimated, solid/hole by nesting depth, front (+Z), back and side faces.
+    /// </summary>
+    internal static (SCNGeometrySource[], SCNGeometryElement[]) Tessellate(NSBezierPath _path, double _depth)
+    {
         var b = new PrimitiveBuilder();
-        if (_path == null) { var (s0, e0) = b.Build(); SetData(s0, e0); return; }
+        if (_path == null) { return b.Build(); }
         double flat = _path.flatness > 0 ? _path.flatness : 0.6;
         var contours = _path.Contours(flat).Select(Decimate).Where(c => c.Count >= 3).ToList();
         // Nesting depth decides solid vs hole.
@@ -351,8 +360,7 @@ public sealed class SCNShape : SCNGeometry
                 }
             }
         }
-        var (s, el) = b.Build();
-        SetData(s, el);
+        return b.Build();
     }
     /// <summary>Minimum distance between the points SceneKit keeps on a flattened contour (path units).</summary>
     internal const double MinimumSpacing = 0.01;
@@ -391,8 +399,11 @@ public sealed class SCNShape : SCNGeometry
 }
 
 /// <summary>
-/// SCNText: glyph outlines from Godot's TextMesh, placed like SceneKit (measured with
-/// monospacedSystemFont: pen starts at x = 0, baseline at y = 1.0).
+/// SCNText: the font's glyph outlines as a path, tessellated like SCNShape with the text's flatness (SceneKit builds
+/// text geometry from the glyph paths). Placed like SceneKit (measured with monospacedSystemFont: pen starts at
+/// x = 0, baseline at y = 1.0); glyphs advance by their horizontal advances (no kerning).
+/// PORT: Godot's TextMesh is not used: it cannot triangulate the overlapping contours of variable fonts (SF Mono,
+/// SF Pro), which left labels empty; overlapping contours are unioned like SCNShape's.
 /// </summary>
 public sealed class SCNText : SCNGeometry
 {
@@ -413,36 +424,83 @@ public sealed class SCNText : SCNGeometry
     public CGRect containerFrame;
     protected override void Build()
     {
-        var b = new PrimitiveBuilder();
-        var front = b.Element();
-        if (!string.IsNullOrEmpty(_string))
-        {
-            const int px = 64;
-            double size = _font.pointSize;
-            var tm = new TextMesh
-            {
-                Text = _string, Font = _font.godotFont, FontSize = px, PixelSize = (float)(size / px), Depth = (float)_depth,
-                HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top,
-                CurveStep = (float)Math.Clamp(_flatness * 2, 0.1, 10),
-            };
-            var arrays = tm.GetMeshArrays();
-            if (arrays.Count > 0 && arrays[(int)Mesh.ArrayType.Vertex].VariantType != Variant.Type.Nil)
-            {
-                var verts = arrays[(int)Mesh.ArrayType.Vertex].AsVector3Array();
-                var norms = arrays[(int)Mesh.ArrayType.Normal].AsVector3Array();
-                var uvs = arrays[(int)Mesh.ArrayType.TexUV].VariantType != Variant.Type.Nil ? arrays[(int)Mesh.ArrayType.TexUV].AsVector2Array() : new Vector2[verts.Length];
-                var idx = arrays[(int)Mesh.ArrayType.Index].VariantType != Variant.Type.Nil ? arrays[(int)Mesh.ArrayType.Index].AsInt32Array() : Enumerable.Range(0, verts.Length).ToArray();
-                // Godot places the top of the line at y = 0; SceneKit's baseline is at y = 1.0.
-                double ascent = _font.godotFont.GetAscent(px) * size / px;
-                double dy = 1.0 + ascent;
-                double dz = _depth / 2;
-                for (int i = 0; i < verts.Length; i++)
-                    b.Vertex(new SCNVector3(verts[i].X, verts[i].Y + dy, verts[i].Z + (_depth > 0 ? 0 : 0) + (_depth > 0 ? dz - _depth / 2 : 0)), new SCNVector3(norms[i].X, norms[i].Y, norms[i].Z), uvs[i].X, uvs[i].Y);
-                // Godot triangles are clockwise: swap to SceneKit's counter-clockwise order.
-                for (int i = 0; i + 2 < idx.Length; i += 3) { front.Add(idx[i]); front.Add(idx[i + 2]); front.Add(idx[i + 1]); }
-            }
-        }
-        var (s, el) = b.Build();
+        var (s, el) = SCNShape.Tessellate(GlyphPath(), _depth);
         SetData(s, el);
+    }
+    /// <summary>The string's glyph outlines in font units scaled to the point size (y up, baseline at y = 1.0).</summary>
+    private NSBezierPath GlyphPath()
+    {
+        var path = new NSBezierPath { flatness = _flatness };
+        if (string.IsNullOrEmpty(_string)) { return path; }
+        const int px = 1000;
+        double scale = _font.pointSize / px, pen = 0;
+        var ts = TextServerManager.GetPrimaryInterface();
+        var rids = _font.godotFont.GetRids();
+        foreach (var rune in _string.EnumerateRunes())
+        {
+            long code = rune.Value;
+            var rid = rids.FirstOrDefault(r => ts.FontHasChar(r, code));
+            if (!rid.IsValid) { continue; }
+            long glyph = ts.FontGetGlyphIndex(rid, px, code, 0);
+            var outline = ts.FontGetGlyphContours(rid, px, glyph);
+            if (outline.Count > 0)
+            {
+                var points = outline["points"].AsVector3Array();
+                var ends = outline["contours"].AsInt32Array();
+                CGPoint at(int i) => new CGPoint(pen + points[i].X * scale, 1.0 - points[i].Y * scale);
+                int start = 0;
+                foreach (var end in ends) { AppendContour(path, start, end, at, i => (int)points[i].Z); start = end + 1; }
+            }
+            pen += ts.FontGetGlyphAdvance(rid, px, glyph).X * scale;
+        }
+        return path;
+    }
+    /// <summary>One TrueType/CFF contour (FreeType tags: 1 on-curve, 0 quadratic control, 2 cubic control) as a closed subpath.</summary>
+    private static void AppendContour(NSBezierPath path, int first, int last, Func<int, CGPoint> at, Func<int, int> tag)
+    {
+        int count = last - first + 1;
+        if (count < 2) { return; }
+        CGPoint mid(CGPoint a, CGPoint b) => new CGPoint((a.x + b.x) / 2, (a.y + b.y) / 2);
+        // Start on an on-curve point (or between two quadratic controls when there is none).
+        int startIndex = Enumerable.Range(0, count).FirstOrDefault(i => tag(first + i) == 1, -1);
+        CGPoint startPoint = startIndex >= 0 ? at(first + startIndex) : mid(at(first), at(first + 1));
+        if (startIndex < 0) { startIndex = 0; }
+        path.move(startPoint);
+        var current = startPoint;
+        var pending = new List<(CGPoint point, int tag)>();
+        void quad(CGPoint control, CGPoint to)
+        {
+            // A quadratic segment as the equivalent cubic.
+            var c1 = new CGPoint(current.x + 2.0 / 3 * (control.x - current.x), current.y + 2.0 / 3 * (control.y - current.y));
+            var c2 = new CGPoint(to.x + 2.0 / 3 * (control.x - to.x), to.y + 2.0 / 3 * (control.y - to.y));
+            path.curve(to, controlPoint1: c1, controlPoint2: c2); current = to;
+        }
+        void flush(CGPoint onCurve)
+        {
+            if (pending.Count == 0) { path.line(onCurve); current = onCurve; }
+            else if (pending[0].tag == 2)
+            {
+                var c1 = pending[0].point; var c2 = pending.Count > 1 ? pending[1].point : pending[0].point;
+                path.curve(onCurve, controlPoint1: c1, controlPoint2: c2); current = onCurve;
+            }
+            else
+            {
+                for (int k = 0; k < pending.Count; k++)
+                {
+                    var to = k + 1 < pending.Count ? mid(pending[k].point, pending[k + 1].point) : onCurve;
+                    quad(pending[k].point, to);
+                }
+            }
+            pending.Clear();
+        }
+        bool startsOnCurve = tag(first + startIndex) == 1;
+        for (int step = 1; step <= count; step++)
+        {
+            int i = first + (startIndex + step) % count;
+            if (tag(i) == 1) { flush(at(i)); }
+            else { pending.Add((at(i), tag(i))); }
+        }
+        if (!startsOnCurve) { flush(startPoint); }
+        path.close();
     }
 }
