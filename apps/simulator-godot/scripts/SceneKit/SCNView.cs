@@ -110,6 +110,7 @@ internal sealed class ViewRig
         env.AmbientLightSource = Godot.Environment.AmbientSource.Disabled;
         SceneKitRuntime.ActiveScene = scene;
         SceneKitRuntime.ActiveCamera = pov;
+        SceneKitRuntime.SetActiveLdr(!pov.camera.wantsHDR);
         int mask = pov.camera.categoryBitMask;
         if (SceneKitRuntime.CameraMask != mask) { SceneKitRuntime.CameraMask = mask; SceneKitRuntime.MasksChanged(); }
     }

@@ -135,7 +135,9 @@ public sealed class SCNSphere : SCNGeometry
             }
         }
         int Id(int i, int j) => i * (n + 1) + j;
-        for (int i = 0; i < n; i++)
+        // Triangles are emitted meridian by meridian from -Z through -X, +Z and +X (decreasing u), as SceneKit draws them
+        // (measured: a double-sided transparent sphere shows its far side through the near side on the -X half only).
+        for (int i = n - 1; i >= 0; i--)
             for (int j = 0; j < n; j++)
             {
                 var mid = (b.p[Id(i, j)] + b.p[Id(i + 1, j + 1)]) * 0.5;
@@ -271,9 +273,10 @@ public sealed class SCNFloor : SCNGeometry
 /// SCNShape: an NSBezierPath filled (extrusionDepth 0: one front face, normal +Z) or
 /// extruded (front, back, sides). Tessellation follows measured SceneKit behaviour:
 /// curves are flattened with the path's flatness (default 0.6, so small curves become
-/// chords), points closer than flatness/1000 are merged, contours smaller than
-/// (flatness/50)² in area are dropped, contained contours become holes by nesting
-/// depth and overlapping contours are unioned (independent of winding rule direction).
+/// chords), then each contour keeps only points at least 0.01 path units from the last point
+/// it kept (see <see cref="Decimate"/>; contours left with fewer than three points vanish),
+/// contained contours become holes by nesting depth and overlapping contours are unioned
+/// (independent of winding rule direction).
 /// </summary>
 public sealed class SCNShape : SCNGeometry
 {
@@ -292,7 +295,7 @@ public sealed class SCNShape : SCNGeometry
         var b = new PrimitiveBuilder();
         if (_path == null) { var (s0, e0) = b.Build(); SetData(s0, e0); return; }
         double flat = _path.flatness > 0 ? _path.flatness : 0.6;
-        var contours = _path.Contours(flat).Select(c => Simplify(c, flat * 0.001)).Where(c => c.Count >= 3 && Math.Abs(Area(c)) >= Math.Pow(flat / 50, 2)).ToList();
+        var contours = _path.Contours(flat).Select(Decimate).Where(c => c.Count >= 3).ToList();
         // Nesting depth decides solid vs hole.
         var depth = contours.Select(c => contours.Count(o => o != c && c.All(p => Inside(o, p)))).ToList();
         var outers = new List<(List<CGPoint> outer, List<List<CGPoint>> holes)>();
@@ -351,21 +354,23 @@ public sealed class SCNShape : SCNGeometry
         var (s, el) = b.Build();
         SetData(s, el);
     }
-    private static List<CGPoint> Simplify(List<CGPoint> pts, double tol)
+    /// <summary>Minimum distance between the points SceneKit keeps on a flattened contour (path units).</summary>
+    internal const double MinimumSpacing = 0.01;
+    /// <summary>
+    /// Measured (tools/scenekit-reference/robots/ShapeTessellation.swift, macOS 27): SceneKit walks each flattened
+    /// contour and drops every point closer than 0.01 path units to the last point it kept, independent of flatness
+    /// and of the path's size (a 64-gon of radius 0.1 keeps every second point, of radius 0.02 every sixth), then
+    /// drops trailing points closer than 0.01 to the contour's first point. Contours left with fewer than three
+    /// points vanish (an oval of diameter 0.013 flattens to a diamond with 0.0092 sides: the robot eyes' end caps).
+    /// Collinear points and thin or tiny contours with sides of at least 0.01 are kept. Marvin's eye arcs lose their
+    /// last outer and inner points this way, which gives their ends SceneKit's slanted cut.
+    /// </summary>
+    private static List<CGPoint> Decimate(List<CGPoint> pts)
     {
-        var r = new List<CGPoint>(pts);
-        bool changed = true;
-        while (changed && r.Count > 3)
-        {
-            changed = false;
-            for (int i = 0; i < r.Count && r.Count > 3; i++)
-            {
-                var a = r[(i + r.Count - 1) % r.Count]; var p = r[i]; var c = r[(i + 1) % r.Count];
-                double dx = c.x - a.x, dy = c.y - a.y, len = Math.Sqrt(dx * dx + dy * dy);
-                double d = len < 1e-15 ? Math.Sqrt((p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y)) : Math.Abs((p.x - a.x) * dy - (p.y - a.y) * dx) / len;
-                if (d < tol) { r.RemoveAt(i); changed = true; i--; }
-            }
-        }
+        static double Distance(CGPoint a, CGPoint b) => Math.Sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y));
+        var r = new List<CGPoint>();
+        foreach (var p in pts) if (r.Count == 0 || Distance(p, r[^1]) >= MinimumSpacing) r.Add(p);
+        while (r.Count > 1 && Distance(r[^1], r[0]) < MinimumSpacing) r.RemoveAt(r.Count - 1);
         return r;
     }
     private static double Area(List<CGPoint> c)

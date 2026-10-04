@@ -266,6 +266,7 @@ public partial class SCNNode : Node3D
         if (sceneOwner == scene) return;
         sceneOwner = scene;
         if (_light != null) SceneKitRuntime.SceneStateDirty();
+        if (scene != null) _geometry?.SceneChanged();
         foreach (var c in _children) c.SetSceneOwner(scene);
     }
     public SCNNode childNode(string withName, bool recursively)

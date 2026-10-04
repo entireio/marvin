@@ -258,15 +258,27 @@ public class SCNGeometry : IPropertyOwner
     /// <summary>setValue(_:forKey:) on a geometry: a shader argument for this geometry only (overrides the material's value).</summary>
     public void setValue(object value, string forKey)
     {
-        if (value is SCNMaterialProperty p) p.AddOwner(this);
+        if (value is SCNMaterialProperty p) { p.AddOwner(this); p.ArgumentOwner(this); }
         bool had = arguments.ContainsKey(forKey);
         arguments[forKey] = value is float f ? (double)f : value;
-        if (!had) Changed(); else foreach (var v in argumentVariants) MaterialGpu.ApplyArgument(v, forKey, arguments[forKey]);
+        if (!had) Changed(); else foreach (var v in argumentVariants) MaterialGpu.ApplyArgument(v, forKey, arguments[forKey], DrawnScene);
     }
     public object value(string forKey) => arguments.TryGetValue(forKey, out var v) ? v : null;
     void IPropertyOwner.PropertyChanged(SCNMaterialProperty property)
     {
-        foreach (var kv in arguments) if (ReferenceEquals(kv.Value, property)) foreach (var v in argumentVariants) MaterialGpu.ApplyArgument(v, kv.Key, property);
+        foreach (var kv in arguments) if (ReferenceEquals(kv.Value, property)) foreach (var v in argumentVariants) MaterialGpu.ApplyArgument(v, kv.Key, property, DrawnScene);
+    }
+    /// <summary>The scene this geometry is drawn in (its first user node's scene; null when detached).</summary>
+    internal SCNScene DrawnScene
+    {
+        get { foreach (var n in users) if (n.sceneOwner != null) return n.sceneOwner; return null; }
+    }
+    /// <summary>A user node moved to another scene: SceneKit draws it with another program there, which resolves
+    /// SCNMaterialProperty arguments again (see SCNMaterialProperty.ArgumentContents); rebind at the next flush.</summary>
+    internal void SceneChanged()
+    {
+        foreach (var v in arguments.Values)
+            if (v is SCNMaterialProperty) { foreach (var m in _materials) m.gpu.MarkDirty(false); return; }
     }
     internal IReadOnlyList<SCNMaterial> MaterialList => _materials;
     internal bool HasOwnShading => (_shaderModifiers != null && _shaderModifiers.Count > 0) || arguments.Count > 0;
