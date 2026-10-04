@@ -186,7 +186,9 @@ public partial class SCNNode : Node3D
     public SCNFloat4x4 simdConvertTransformFrom(SCNFloat4x4 transform, SCNNode from) => SimdBridge.M(convertTransformFrom(SimdBridge.M(transform), from));
 
     // ---- look(at:)
-    public void look(SCNVector3 at) => look(at, new SCNVector3(0, 1, 0), new SCNVector3(0, 0, -1));
+    /// <summary>look(at:): SceneKit uses the node's current worldUp as the up vector (and localFront -Z), so a
+    /// camera that was pitched keeps a rolled horizon after a second look(at:) (measured: BB8MotionSmoke captures).</summary>
+    public void look(SCNVector3 at) => look(at, worldUp, new SCNVector3(0, 0, -1));
     /// <summary>look(at:up:localFront:): rotates the node so localFront points at the world-space target.</summary>
     public void look(SCNVector3 at, SCNVector3 up, SCNVector3 localFront)
     {

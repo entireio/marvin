@@ -203,18 +203,20 @@ public class SCNGeometry : IPropertyOwner
         _sources = sources.ToArray(); _elements = elements?.ToArray() ?? Array.Empty<SCNGeometryElement>();
         _materials.Add(new SCNMaterial());
     }
-    /// <summary>copy(): shares sources and elements; copies the material list, LODs and shader modifiers.</summary>
+    /// <summary>copy(): shares sources and elements; copies the material list, LODs and shader modifiers.
+    /// A primitive (SCNBox, SCNCylinder, ...) copies to the same class with the same parameters, as in
+    /// SceneKit (`box.copy() as? SCNBox` succeeds).</summary>
     public virtual SCNGeometry copy()
     {
         EnsureBuilt();
-        var g = new SCNGeometry(_sources, _elements)
-        {
-            name = name, _materials = new List<SCNMaterial>(_materials), _levelsOfDetail = _levelsOfDetail, _customBounds = _customBounds,
-            _shaderModifiers = _shaderModifiers == null ? null : new Dictionary<SCNShaderModifierEntryPoint, string>(_shaderModifiers),
-        };
+        var g = CopyShape() ?? new SCNGeometry(_sources, _elements);
+        g.name = name; g._materials = new List<SCNMaterial>(_materials); g._levelsOfDetail = _levelsOfDetail; g._customBounds = _customBounds;
+        g._shaderModifiers = _shaderModifiers == null ? null : new Dictionary<SCNShaderModifierEntryPoint, string>(_shaderModifiers);
         foreach (var kv in arguments) g.arguments[kv.Key] = kv.Value;
         return g;
     }
+    /// <summary>A new instance of a primitive subclass with this one's shape parameters (null: plain geometry).</summary>
+    protected virtual SCNGeometry CopyShape() => null;
 
     /// <summary>Primitive geometries (SCNBox, ...) build their sources on demand.</summary>
     protected virtual void Build() { }
