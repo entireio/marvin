@@ -19,6 +19,7 @@ public static class FacadeTest
     private static readonly Dictionary<string, double[]> measurements = new();
     private static string dir;
 
+    [Marvin.GameMode("--facade-test")]
     public static async System.Threading.Tasks.Task Run(string outputDirectory, SceneTree tree)
     {
         dir = outputDirectory;
