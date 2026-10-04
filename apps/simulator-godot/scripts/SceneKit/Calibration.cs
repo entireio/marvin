@@ -31,6 +31,7 @@ public static class Calibration
     private static string dir;
     private static readonly string only = System.Environment.GetEnvironmentVariable("CAL_ONLY");
 
+    [Marvin.GameMode("--calibration")]
     public static void Run(string outputDirectory, SceneTree tree)
     {
         dir = outputDirectory;
