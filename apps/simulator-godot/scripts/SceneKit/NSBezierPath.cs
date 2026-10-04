@@ -337,7 +337,7 @@ public sealed class NSFont
     public enum Weight { ultraLight = 100, thin = 200, light = 300, regular = 400, medium = 500, semibold = 600, bold = 700, heavy = 800, black = 900 }
     public readonly double pointSize;
     public readonly string fontName;
-    internal readonly SystemFont godotFont;
+    internal readonly Font godotFont;
     internal readonly int weight;
     private NSFont(string name, double size, int weight, bool monospaced)
     {
@@ -351,6 +351,43 @@ public sealed class NSFont
             Antialiasing = TextServer.FontAntialiasing.Gray,
         };
     }
+    private NSFont(string name, double size, int weight, Font face) { pointSize = size; fontName = name; this.weight = weight; godotFont = face; }
+    /// <summary>
+    /// The face of a system font collection whose style name matches a PostScript style suffix
+    /// ("DemiBold" -> "Demi Bold", "Medium"), or null. Measured: Godot's SystemFont returns face 0 of a
+    /// .ttc for every weight ("Avenir Next Condensed.ttc" face 0 is Bold), while NSFont(name:size:) names
+    /// one exact face. The face falls back to the family's SystemFont for missing glyphs (CoreText does too).
+    /// </summary>
+    private static Font CollectionFace(string family, string style, int weight)
+    {
+        string key = family + "|" + style;
+        lock (collectionFaces)
+        {
+            if (collectionFaces.TryGetValue(key, out var cached)) return cached;
+            Font result = null;
+            string path = OS.GetSystemFontPath(family, weight, 100, false);
+            byte[] bytes = string.IsNullOrEmpty(path) ? null : Godot.FileAccess.GetFileAsBytes(path);
+            if (bytes != null && bytes.Length > 0)
+            {
+                var probe = new FontFile { Data = bytes };
+                for (int i = 0; i < (int)probe.GetFaceCount() && result == null; i++)
+                {
+                    var face = new FontFile();
+                    face.SetFaceIndex(0, i); // before Data: a face index set afterwards is ignored (measured)
+                    face.Data = bytes;
+                    if (string.Equals(face.GetFontStyleName().Replace(" ", ""), style, StringComparison.OrdinalIgnoreCase))
+                    {
+                        face.Antialiasing = TextServer.FontAntialiasing.Gray;
+                        face.Fallbacks = new Godot.Collections.Array<Font> { new SystemFont { FontNames = new[] { family, "SF Pro Text", "Segoe UI", "sans-serif" }, FontWeight = weight, Antialiasing = TextServer.FontAntialiasing.Gray } };
+                        result = face;
+                    }
+                }
+            }
+            collectionFaces[key] = result;
+            return result;
+        }
+    }
+    private static readonly Dictionary<string, Font> collectionFaces = new();
     public static NSFont systemFont(double ofSize, Weight weight = Weight.regular) => new(".SFNS", ofSize, (int)weight, false);
     public static NSFont boldSystemFont(double ofSize) => new(".SFNS", ofSize, 700, false);
     public static NSFont monospacedSystemFont(double ofSize, Weight weight) => new(".SFNSMono", ofSize, (int)weight, true);
@@ -361,6 +398,7 @@ public sealed class NSFont
         int weight = name.Contains("Bold") || name.Contains("DemiBold") ? 600 : name.Contains("Medium") ? 500 : 400;
         string family = name.Split('-')[0];
         if (family == "AvenirNextCondensed") family = "Avenir Next Condensed";
+        if (name.Contains('-') && CollectionFace(family, name.Substring(name.IndexOf('-') + 1), weight) is Font face) return new NSFont(family, size, weight, face);
         return new NSFont(family, size, weight, false);
     }
     public double ascender => godotFont.GetAscent(64) / 64.0 * pointSize;
