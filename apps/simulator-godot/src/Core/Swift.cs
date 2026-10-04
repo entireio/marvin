@@ -27,6 +27,12 @@ namespace Marvin.Core;
 public static class Swift
 {
     public const double pi = Math.PI;
+    /// <summary>
+    /// Swift <c>Float.pi</c>: pi rounded toward zero, 0x40490FDA = 3.1415925 (measured). <c>MathF.PI</c> is the
+    /// nearest float, 0x40490FDB, one ulp larger, so <c>Float.pi</c> arithmetic must use this constant.
+    /// (<c>Double.pi</c> equals <c>Math.PI</c>: the nearest double is already below pi.)
+    /// </summary>
+    public static readonly float floatPi = BitConverter.Int32BitsToSingle(0x40490FDA);
 
     // MARK: Comparable max/min (Swift.max / Swift.min)
 

@@ -1,27 +1,26 @@
+using System;
 using System.Collections.Generic;
 using Godot;
 
 namespace Marvin.SceneKit;
 
 /// <summary>
-/// Swift's `CommandLine.arguments`: the executable followed by every argument. The macOS game
-/// tests flags with `CommandLine.arguments.contains("--flag")` (C#: `.Contains("--flag")`).
-/// Godot splits its own arguments from the game's ("--" separator); both are included here, so
-/// a game flag such as `--benchmark-no-deformation` is found wherever it was passed.
+/// Swift's <c>CommandLine.arguments</c>: the executable followed by every argument. The macOS game
+/// tests flags with <c>CommandLine.arguments.contains("--flag")</c> (C#: <c>.Contains("--flag")</c>).
+/// Godot game arguments follow "--" (<c>tools/godot -- --town-smoke-test DIR</c>); Godot's own
+/// arguments are included before them, so a game flag such as <c>--benchmark-no-deformation</c> is
+/// found wherever it was passed, and a flag's value still follows the flag. Measured:
+/// <c>Environment.GetCommandLineArgs()</c> is empty inside Godot .NET, so it cannot stand in for
+/// Swift's arguments.
 /// </summary>
 public static class CommandLine
 {
-    private static string[] cached;
-    public static IReadOnlyList<string> arguments
+    private static readonly Lazy<string[]> _arguments = new(() =>
     {
-        get
-        {
-            if (cached != null) return cached;
-            var list = new List<string> { OS.GetExecutablePath() };
-            list.AddRange(OS.GetCmdlineArgs());
-            list.AddRange(OS.GetCmdlineUserArgs());
-            cached = list.ToArray();
-            return cached;
-        }
-    }
+        var list = new List<string> { OS.GetExecutablePath() };
+        list.AddRange(OS.GetCmdlineArgs());
+        list.AddRange(OS.GetCmdlineUserArgs());
+        return list.ToArray();
+    });
+    public static string[] arguments => _arguments.Value;
 }
