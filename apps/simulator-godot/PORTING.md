@@ -381,6 +381,20 @@ What changed, and the measurement behind each change:
 - Global scene uniforms (fog, ambient, IBL) come from the last view rendered in a frame; two visible views showing different scenes at once would share them.
 - Text uses the platform fonts Godot finds; glyph metrics differ slightly from CoreText.
 
+### Audio (AVFoundation facade)
+
+`scripts/SceneKit/AVAudioFile.cs` and `AVAudioEngine.cs` re-create the AVFoundation audio API the game uses (`AVAudioEngine`, `AVAudioPlayerNode`, `AVAudioUnitVarispeed`, `AVAudioUnitEQ`, `AVAudioUnitEffect` with `kAudioUnitSubType_PeakLimiter`, `AVAudioMixerNode`, `AVAudioPCMBuffer`, `AVAudioFile`, `AVAudioFormat`) as a sample-accurate C# mixer. Port audio code against it like SceneKit code (`scripts/Audio/RaceAudio.cs`):
+
+| Swift | Facade C# |
+|---|---|
+| `AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)!` | `new AVAudioFormat(standardFormatWithSampleRate: 48000, channels: 2)` |
+| `AVAudioFile(forReading: url)`, `AVAudioFile(forWriting: url, settings: format.settings)`, `file.read(into: b)`, `file.write(from: b)` | Same names; paths are strings (`res://`, `user://` or file system); errors are .NET exceptions |
+| `AVAudioFrameCount(x)`, `buffer.floatChannelData![c][i]`, `.update(from:count:)` | `(AVAudioFrameCount)x` (global alias of `uint`), `buffer.floatChannelData[c][i]`, `floatChannelData[c].update(from: ..., count: n)` |
+| `player.scheduleBuffer(b, at: nil, options: .loops)`, `engine.connect(a, to: b, format: f)`, `try engine.renderOffline(800, to: buffer)` | `scheduleBuffer(b, at: null, options: AVAudioPlayerNodeBufferOptions.loops)`, `connect(a, to: b, format: f)`, `renderOffline(800, to: buffer)` |
+| `AudioComponentDescription(componentType: kAudioUnitType_Effect, ...)` | Same (constants via `global using static Marvin.SceneKit.AudioToolbox`) |
+
+Measured on macOS 27 with offline AVAudioEngine renders and reproduced (`tools/godot -- --audio-facade-test DIR` checks 66 values against the macOS numbers): source volume/pan apply at the downstream mixer input even through effects; pan is a balance law; mixer gains slew per channel at 1/1200 per frame (first render snaps, a stopped direct player freezes its ramp); `outputVolume` ramps over one render; varispeed rate applies per render with a 48-frame input delay; `.lowPass` is a bilinear Butterworth whose frequency glides log-linearly over 1440 frames; AUPeakLimiter (lookahead 96 frames, ramp slope `(-peak dB - gain dB)/86` per frame, ramps restarted by louder peaks, hold while a peak is in the window, release half-life 5 ms) matches Apple's output within 1e-5 on tones, spikes and noise; `play()` starts at the engine's sample time on the player's own render timeline, so offline a restarted loop behind a slowed varispeed stays silent until it catches up (as in the macOS evidence WAVs), while a real-time engine restarts its timeline. A running real-time engine renders on its own thread into a 48 kHz `AudioStreamGenerator` (`AVAudioEngineOutput` under the root, about 32 ms queued; 100 ms on the headless Dummy driver). `--audio-smoke-test` renders the same evidence WAVs and `audio.json` as macOS: per-stage levels match within 0.2 dB (Marvin, city and storm within 0.04 dB), whole-file levels within 0.06 dB. Deviations: the resampler is a 24-tap windowed sinc rather than Apple's converter (residual interpolation differences, about 0.1 dB per second of motor sound); the residual burst after an offline restart is about 1 dB weaker; raw `.wav` files are read from `res://assets/Audio` (exports fall back to Godot's imported 16-bit PCM).
+
 ## Validation
 
 - **Logic:** `tools/checks` must print the same values as `reference/simulation-checks-swift.txt`, the macOS SimulationChecks output at the same commit. On macOS the numbers should match exactly.
