@@ -46,6 +46,12 @@ internal static class SceneKitCalibration
     /// <summary>PCF kernel: Godot blur x quality radius x Godot texel = ShadowKernelScale x shadowRadius x SceneKit texel (world).
     /// Static fallback before the first fit: blur = shadowRadius x ShadowBlurPerRadius.</summary>
     public static double ShadowKernelScale = 0.88, ShadowBlurPerRadius = 1.0 / 3.0, ShadowBlurMin = 0.25, ShadowBlurMax = 16.0;
+    /// <summary>
+    /// Fixed shadow boxes that reach beyond orthographicScale from the camera get a second Godot split (SceneKitRuntime.FitShadows).
+    /// Godot's normal-bias texel doubles there (2 x radius / the halved region); the normal bias is scaled by
+    /// (split shadow size / orthogonal shadow size) ^ SplitNormalBiasExponent (1 keeps the world offset of the calibrated fit).
+    /// </summary>
+    public static double SplitNormalBiasExponent = 1.0;
     /// <summary>SceneKit's shadow map size when shadowMapSize is zero.</summary>
     public static double DefaultShadowMapSize = 2048;
     /// <summary>Directional shadow atlas (one atlas shared by all directional lights) and its filter quality (0 hard .. 5 ultra).</summary>
