@@ -128,6 +128,27 @@ do {
     m.shaderModifiers = [.fragment: "#pragma transparent\n#pragma body\n_output.color.rgb *= 0.25;\n_output.color.a = 0.25;"]
     cal("Y_fragment_alpha_idiom", flatScene(m) { $0.background.contents = NSColor(srgbRed: 0.5, green: 0, blue: 0, alpha: 1) })
 }
+for tilt in [60.0, 75.0, 85.0] {
+    for (rough, metal) in [(1.0, 0.0), (0.6, 0.0), (0.98, 0.0), (0.6, 1.0)] {
+        for lightTilt in [0.0, 45.0] {
+            let m = mat(.physicallyBased, gray(0.7), rough: CGFloat(rough), metal: CGFloat(metal))
+            func f(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : "\(v)" }
+            cal("R_view\(f(tilt))_light\(f(lightTilt))_rough\(f(rough))_metal\(f(metal))", flatScene(m) { s in
+                let plane = s.rootNode.childNodes[0]; plane.eulerAngles.x = CGFloat(-tilt * Double.pi / 180)
+                light(s, .directional, 1000, euler: SCNVector3(-(tilt + lightTilt) * Double.pi / 180, 0, 0))
+            })
+        }
+    }
+}
+for tilt in [60.0, 80.0] {
+    for (rough, metal) in [(0.3, 1.0), (0.6, 1.0), (0.6, 0.0), (1.0, 0.0)] {
+        func f(_ v: Double) -> String { v == v.rounded() ? String(Int(v)) : "\(v)" }
+        cal("J_view\(f(tilt))_rough\(f(rough))_metal\(f(metal))_env128", flatScene(mat(.physicallyBased, gray(0.7), rough: CGFloat(rough), metal: CGFloat(metal))) { s in
+            s.rootNode.childNodes[0].eulerAngles.x = CGFloat(-tilt * Double.pi / 180)
+            s.lightingEnvironment.contents = uniformImage(128)
+        })
+    }
+}
 for (distance, tag) in [(6.0, "D_lod_near"), (14.0, "D_lod_far")] {
     let scene = SCNScene(); scene.background.contents = NSColor.black
     let near = SCNBox(width: 2, height: 2, length: 2, chamferRadius: 0); near.materials = [mat(.constant, NSColor.red)]

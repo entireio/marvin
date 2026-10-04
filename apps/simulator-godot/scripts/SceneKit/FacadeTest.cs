@@ -170,6 +170,25 @@ public static class FacadeTest
             m.shaderModifiers = new() { [SCNShaderModifierEntryPoint.fragment] = "#pragma transparent\n#pragma body\nALPHA = 0.25;" };
             cal("Y_fragment_alpha_idiom", flatScene(m, configure: s => s.background.contents = NSColor.srgbRed(0.5, 0, 0, 1)));
         }
+        // Grazing views: the plane is tilted away from the camera by `tilt`; the light shines along the plane normal or at 45 degrees.
+        foreach (var tilt in new[] { 60.0, 75.0, 85.0 })
+            foreach (var (rough, metal) in new[] { (1.0, 0.0), (0.6, 0.0), (0.98, 0.0), (0.6, 1.0) })
+                foreach (var lightTilt in new[] { 0.0, 45.0 })
+                {
+                    var m = mat(SCNMaterial.LightingModel.physicallyBased, gray(0.7), rough, metal);
+                    cal($"R_view{tilt}_light{lightTilt}_rough{rough}_metal{metal}", flatScene(m, configure: s =>
+                    {
+                        var plane = s.rootNode.childNodes[0]; plane.eulerAngles.x = -tilt * Math.PI / 180;
+                        light(s, SCNLight.LightType.directional, 1000, new SCNVector3(-(tilt + lightTilt) * Math.PI / 180, 0, 0));
+                    }));
+                }
+        foreach (var tilt in new[] { 60.0, 80.0 })
+            foreach (var (rough, metal) in new[] { (0.3, 1.0), (0.6, 1.0), (0.6, 0.0), (1.0, 0.0) })
+                cal($"J_view{tilt}_rough{rough}_metal{metal}_env128", flatScene(mat(SCNMaterial.LightingModel.physicallyBased, gray(0.7), rough, metal), configure: s =>
+                {
+                    s.rootNode.childNodes[0].eulerAngles.x = -tilt * Math.PI / 180;
+                    s.lightingEnvironment.contents = uniformImage(128);
+                }));
         // Level of detail: red near geometry, green LOD from 10 m.
         foreach (var (distance, tag) in new[] { (6.0, "D_lod_near"), (14.0, "D_lod_far") })
         {
