@@ -15,3 +15,75 @@ project/assembly_name="MarvinGodot"
 
 [rendering]
 renderer/rendering_method="forward_plus"
+
+[shader_globals]
+
+scn_fog_color={
+"type": "vec4",
+"value": Vector4(1, 1, 1, 1)
+}
+
+scn_fog_range={
+"type": "vec4",
+"value": Vector4(0, 0, 1, 0)
+}
+
+scn_ambient={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_ibl={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh0={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh1={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh2={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh3={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh4={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh5={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh6={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh7={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh8={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_deferred={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
