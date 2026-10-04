@@ -122,7 +122,8 @@ public partial class HUDView : NSView
             var columns = new[]
             {
                 new[] { ("DRIVE", "W A S D / ↑ ↓ ← →"), ("HEAD", "Q / E · R / F"), ("PAUSE", "P / Esc") },
-                new[] { ("BRAKE", "Space"), ("CENTER", "H"), ("RESET", "⌘R") },
+                // PORT: "⌘R" with the platform's command key (KeyEquivalent.command: ⌘ on macOS, Ctrl+ elsewhere).
+                new[] { ("BRAKE", "Space"), ("CENTER", "H"), ("RESET", $"{KeyEquivalent.command}R") },
                 new[] { ("BOOST", "Shift"), ("CAMERA", "C · drag / scroll"), ("HELP", "?") },
             };
             var font = NSFont.monospacedSystemFont(11, NSFont.Weight.regular);

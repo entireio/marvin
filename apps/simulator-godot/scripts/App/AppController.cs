@@ -6,12 +6,15 @@
 // BinarySkySmoke.cs, SandstormSmoke.cs, DuneContactSmoke.cs, DustVisibilitySmoke.cs, TrailMaterialSmoke.cs,
 // TownSmoke.cs, EntranceSmoke.cs, PeopleSmoke.cs, CharacterSmoke.cs, RaceAudioSmoke.cs, MenuSmoke.cs).
 //
-// PORT: AppController is a Godot Node. `launch(tree:smokeDirectory:)` (AppModes.cs) plays main.swift and
-// applicationDidFinishLaunching; tick() runs from _Process while `timer` is valid (PORTING.md: Timer -> _Process).
-// Game modes are dispatched by GameModes (each flag once) instead of tick's smoke branch; their entry points run
-// the same 20 main-menu frames first. Still for the App port (marked "PORT (App port)" below): the window chrome
-// (NSWindow creation, toolbar items, menu bar, light/dark app icon), the display link, BenchmarkGPUCapture,
-// TownFrameMeter and the town benchmark, the renderer study and the display-link lifecycle check.
+// PORT: AppController is a Godot Node and the NSApplication's delegate. `launch(tree:smokeDirectory:)` (AppModes.cs)
+// is main.swift: NSApp.run() adds it to the scene tree and calls applicationDidFinishLaunching. The window, its
+// toolbar and the menu bar are the facade's (NSWindow.cs, NSToolbar.cs, NSMenu.cs): the Godot window is the
+// NSWindow, the title bar and toolbar are drawn over the full-size content view, the menu bar is the macOS global
+// menu (in the title bar elsewhere), and Command shortcuts are Control shortcuts outside macOS. tick() runs from
+// _Process while `timer` is valid (PORTING.md: Timer -> _Process). Game modes are dispatched by GameModes (each flag
+// once) instead of tick's smoke branch; their entry points run the same 20 main-menu frames first. Not ported (marked
+// "PORT"): the display link, BenchmarkGPUCapture, TownFrameMeter and the town benchmark, the renderer study and the
+// display-link lifecycle check.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,7 +23,7 @@ using static Marvin.Core.Swift;
 
 namespace Marvin;
 
-public partial class AppController : Godot.Node
+public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindowDelegate, NSToolbarDelegate
 {
     public NSWindow window;
     public readonly SimulatorView view = new SimulatorView(); public readonly HUDView hud = new HUDView(); public readonly World world = new World();
@@ -43,7 +46,7 @@ public partial class AppController : Godot.Node
     public readonly LevelLoadingView loadingView = new LevelLoadingView();
     public readonly RaceHUD raceHUD = new RaceHUD();
     public readonly FrameRateHUD frameRateHUD = new FrameRateHUD();
-    // PORT (App port): `let benchmarkGPUCapture = BenchmarkGPUCapture()` (Metal GPU capture) is not ported.
+    // PORT: `let benchmarkGPUCapture = BenchmarkGPUCapture()` (Metal GPU capture for the town benchmark) is not ported.
     public DirtRace race = new DirtRace();
     public DirtRacePhysics racePhysics = new DirtRacePhysics();
     public DirtOpponent opponent = new DirtOpponent();
@@ -74,15 +77,18 @@ public partial class AppController : Godot.Node
     public DirtScore[] scores = Array.Empty<DirtScore>();
     public bool scoreSaved = false;
     public bool scoreLoadFailed = false;
-    /// PORT: Application Support is Godot's user:// (PORTING.md), globalized to a file path.
+    /// PORT: Application Support/Marvin Simulator is Godot's user:// (the app's own data directory, PORTING.md),
+    /// globalized to a file path. The file keeps the Swift JSONEncoder format ([{"date":..,"laps":[..]}], DirtScores).
+    /// `scoreDirectory` is a test hook (the --playthrough mode) for a run that must not touch the player's scores.
     public URL scoreURL
     {
         get
         {
-            if (smokeDirectory is string directory) { return URL.fileURLWithPath(directory).appendingPathComponent("test-scores.json"); }
-            return URL.fileURLWithPath("user://").appendingPathComponent("Marvin Simulator/motocross-v4-scores.json");
+            if ((smokeDirectory ?? scoreDirectory) is string directory) { return URL.fileURLWithPath(directory).appendingPathComponent("test-scores.json"); }
+            return URL.fileURLWithPath("user://").appendingPathComponent("motocross-v4-scores.json");
         }
     }
+    public string scoreDirectory;
     public bool menuSmokePassed = false;
     public int menuSmokeFrames = 0;
     public Robot robot;
@@ -95,11 +101,11 @@ public partial class AppController : Godot.Node
     public SCNVector3 cameraAim = SCNVector3Zero;
     public int cameraMode = 1; public double orbitYaw = 0.65, orbitPitch = 0.5, cameraDistance = 3.5;
     public bool active = true;
-    // PORT (App port): `var pauseItem: NSToolbarItem?` and `var appearanceObservation: NSKeyValueObservation?`
-    // (toolbar and app-icon observation) have no facade types yet.
+    public NSToolbarItem pauseItem;
+    public NSKeyValueObservation appearanceObservation;
     public string appliedIconName = "";
-    // PORT (App port): `let townMeter = TownFrameMeter()` (TownSmoke.swift, town benchmark) is not ported; the frame
-    // rate HUD is the view's renderer delegate directly.
+    // PORT: `let townMeter = TownFrameMeter()` (TownSmoke.swift: the town benchmark's frame meter, which also feeds the
+    // FPS HUD) is not ported; the frame rate HUD is the view's renderer delegate directly.
     public object rendererStudy;
     public double? townBenchmarkStart;
     public string townBenchmarkRunID = Guid.NewGuid().ToString().ToUpperInvariant();
@@ -134,10 +140,13 @@ public partial class AppController : Godot.Node
         this.smokeDirectory = i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
     }
 
-    public void applicationDidFinishLaunching()
+    public void applicationDidFinishLaunching(Notification notification)
     {
         if (smokeDirectory != null) { weatherOverride = false; }
-        // PORT (App port): appearanceObservation -> updateApplicationIcon(for:) (light/dark Dock icon).
+        appearanceObservation = NSApp.observe("effectiveAppearance", NSKeyValueObservingOptions.initial | NSKeyValueObservingOptions.@new, (app, _) =>
+        {
+            updateApplicationIcon(app.effectiveAppearance);
+        });
         try
         {
             robot = new Robot(resources);
@@ -152,17 +161,21 @@ public partial class AppController : Godot.Node
             alert.runModal(); NSApp.terminate(null); return;
         }
         world.scene.rootNode.addChildNode(robot.root);
-        // PORT (App port): NSWindow(contentRect: 1280 x 820, titled/closable/miniaturizable/resizable/fullSizeContentView),
-        // minSize 900 x 640, the toolbar items and the window delegate. The Godot window is the NSWindow; the view
-        // is its content view at the macOS window's 1280 x 820 content size.
-        view.frame = new NSRect(0, 0, 1280, 820);
-        AddChild(view);
-        window = view.window;
+        window = new NSWindow(new NSRect(0, 0, 1280, 820),
+            NSWindow.StyleMask.titled | NSWindow.StyleMask.closable | NSWindow.StyleMask.miniaturizable | NSWindow.StyleMask.resizable | NSWindow.StyleMask.fullSizeContentView, NSWindow.BackingStoreType.buffered, false);
         window.title = "Marvin · Playground";
-        window.toolbar = new NSToolbar("SimulatorToolbar");
+        window.minSize = new NSSize(900, 640);
+        window.backgroundColor = NSColor.windowBackgroundColor;
+        window.@delegate = this;
+        var toolbar = new NSToolbar("SimulatorToolbar");
+        toolbar.@delegate = this; toolbar.displayMode = NSToolbar.DisplayMode.iconAndLabel;
+        window.toolbar = toolbar;
         view.scene = world.scene; view.pointOfView = world.camera;
         view.antialiasingMode = SCNAntialiasingMode.multisampling4X;
         view.preferredFramesPerSecond = 60; view.rendersContinuously = true;
+        // Keep the renderer independent of toolbar visibility; only overlays use the safe content area.
+        // PORT: `view.autoresizingMask = [.width, .height]`: the facade's content view always fills the window.
+        window.contentView = view;
         installContentOverlay(hud);
         raceHUD.isHidden = true; installContentOverlay(raceHUD);
         view.onCommand = code =>
@@ -199,20 +212,31 @@ public partial class AppController : Godot.Node
         frameRateHUD.isHidden = true; installContentOverlay(frameRateHUD);
         // Keep the delegate's optional callback capabilities stable while
         // SceneKit renders on its background queue.
-        // PORT (App port): townMeter.fpsHUD = frameRateHUD; view.delegate = townMeter.
+        // PORT: townMeter.fpsHUD = frameRateHUD; view.delegate = townMeter (TownFrameMeter is not ported).
         view.@delegate = frameRateHUD;
         mainMenu.onSandbox = () => startSandbox();
         mainMenu.onDirtTrack = () => loadDirtTrack();
         makeMenu();
-        window.makeFirstResponder(view);
+        window.center(); window.makeKeyAndOrderFront(null);
+        window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true);
         robot.update(simulation); showMainMenu(null);
-        // PORT (App port): the display-link variant (--display-link-updates, --benchmark-display-link) and
-        // --display-link-lifecycle-check. The 1/60 s timer is Godot's frame loop.
+        // Retain display-synchronised updates as an explicit diagnostic option:
+        // native comparisons have not established a repeatable stutter reduction.
+        // PORT: the display-link variant (--display-link-updates, --benchmark-display-link) and
+        // --display-link-lifecycle-check are not ported: the 1/60 s timer ticks from Godot's frame loop, which is
+        // display-synchronised (vsync) and capped at the view's preferredFramesPerSecond.
         timer = new Marvin.SceneKit.Timer(1.0 / 60);
     }
 
-    /// PORT (App port): the light/dark Dock icon (AppIconDark/AppIconLight.icns) is not ported.
-    public void updateApplicationIcon(bool dark) { }
+    public void updateApplicationIcon(NSAppearance appearance)
+    {
+        var dark = appearance.bestMatch(new[] { NSAppearance.Name.aqua, NSAppearance.Name.darkAqua }) == NSAppearance.Name.darkAqua;
+        var name = dark ? "AppIconDark" : "AppIconLight";
+        // PORT: Bundle.main.url(forResource: name, withExtension: "icns"): the icon's PNG in the synced assets.
+        if (!(NSImage.contentsOf($"{resources}/Icons/{name}.png") is NSImage icon)) { return; }
+        NSApp.applicationIconImage = icon;
+        appliedIconName = name;
+    }
 
     /// Shared lifecycle gate for all racers (also exercised by native smoke).
     public void advanceRaceFrame(double step, double raceDelta, bool advancing)
@@ -261,7 +285,7 @@ public partial class AppController : Godot.Node
         var wallDelta = max(0, now - lastTime);
         var dt = min(wallDelta, 0.1); lastTime = now;
         if (isLoadingDirt) { loadingHeartbeats += 1; return; }
-        // PORT (App port): if townBenchmarkStart != nil { tickTownBenchmark(now:dt:) } (town benchmark).
+        // PORT: if townBenchmarkStart != nil { tickTownBenchmark(now:dt:) } (the town benchmark is not ported).
         if (!inSandbox)
         {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt);
@@ -278,7 +302,7 @@ public partial class AppController : Godot.Node
         // on another app taking focus. Interactive play still pauses on blur.
         var step = smokeDirectory == null ? dt : 1.0 / 60;
         var raceDelta = smokeDirectory == null ? wallDelta : step;
-        var advancing = ((active && windowVisible) || smokeDirectory != null) && !simulation.paused;
+        var advancing = ((active && window.occlusionState.contains(NSWindow.OcclusionState.visible)) || smokeDirectory != null) && !simulation.paused;
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing);
         if (isDirtTrack)
         {
@@ -311,8 +335,6 @@ public partial class AppController : Godot.Node
     public List<RobotCollisions.Body> robotBodies() =>
         new[] { simulation }.Concat(opponents.Select(o => o.simulation)).Select((s, i) =>
             new RobotCollisions.Body(position: new Double3(s.x, s.groundY, s.z), heading: s.heading, profile: RobotCollisions.profiles[(int)lineup[i]])).ToList();
-    /// PORT: `window.occlusionState.contains(.visible)`: the Godot window is visible unless minimized.
-    private bool windowVisible => Godot.DisplayServer.WindowGetMode() != Godot.DisplayServer.WindowMode.Minimized;
 
     public void showMainMenu(object sender)
     {
@@ -548,7 +570,8 @@ public partial class AppController : Godot.Node
         if (!inSandbox) { return; }
         simulation.paused = !simulation.paused; view.clearInput();
         if (simulation.paused) { raceAudio?.stop(); }
-        // PORT (App port): pauseItem?.label = "Resume"/"Pause" and its play.fill/pause.fill symbol.
+        if (pauseItem != null) { pauseItem.label = simulation.paused ? "Resume" : "Pause"; }
+        if (pauseItem != null) { pauseItem.image = NSImage.systemSymbolName(simulation.paused ? "play.fill" : "pause.fill", accessibilityDescription: null); }
         window.makeFirstResponder(view);
     }
     public void reset(object sender)
@@ -580,7 +603,8 @@ public partial class AppController : Godot.Node
             dirtWorld.configureStorm(racePhysics.storm);
             cameraMode = 0; cameraDistance = 4.5; raceHUD.mapRegion = RaceMapRegion.course; cameraAim = SCNVector3Zero;
         }
-        view.clearInput(); // PORT (App port): pauseItem?.label = "Pause", pause.fill.
+        view.clearInput(); if (pauseItem != null) { pauseItem.label = "Pause"; }
+        if (pauseItem != null) { pauseItem.image = NSImage.systemSymbolName("pause.fill", accessibilityDescription: null); }
         updateCamera(snap: true); window.makeFirstResponder(view);
     }
     public void cycleCamera(object sender)
@@ -603,75 +627,97 @@ public partial class AppController : Godot.Node
         {
             // AppKit can grow a smaller window when restoring its toolbar. Keep chrome
             // transitions from changing either the window or the renderer's dimensions.
-            // PORT: the toolbar is not part of the Godot window, so its frame never changes.
+            var frame = window.frame;
             window.toolbar.isVisible = !hidden;
+            if (window.frame != frame) { window.setFrame(frame, display: false); }
         }
     }
-    /// The height of the macOS window's title bar: the content layout area (1280 x 792) lies below it, while the
-    /// SceneKit view fills the full-size content view (1280 x 820).
-    public const double titleBarHeight = 28;
     /// Overlay layout can follow native chrome; the SceneKit viewport must not.
-    /// PORT: no Auto Layout in the facade; the overlay gets the content layout guide's frame (the view's bounds less
-    /// the title bar, AppKit coordinates).
     public void installContentOverlay(NSView overlay)
     {
+        if (!(window.contentLayoutGuide is NSLayoutGuide guide)) { return; }
+        overlay.translatesAutoresizingMaskIntoConstraints = false;
         view.addSubview(overlay);
-        overlay.frame = new NSRect(0, 0, view.bounds.width, view.bounds.height - titleBarHeight);
+        NSLayoutConstraint.activate(new[] { NSLayoutConstraint.Attribute.leading, NSLayoutConstraint.Attribute.trailing, NSLayoutConstraint.Attribute.top, NSLayoutConstraint.Attribute.bottom }.Select(edge =>
+            new NSLayoutConstraint(item: overlay, attribute: edge, relatedBy: NSLayoutConstraint.Relation.equal, toItem: guide, attribute2: edge, multiplier: 1, constant: 0)));
     }
     public void toggleHelp(object sender) { if (isDirtTrack) { raceHUD.helpVisible = !raceHUD.helpVisible; } else { hud.helpVisible = !hud.helpVisible; } }
-    public void applicationWillResignActive()
+    public void applicationWillResignActive(Notification notification)
     {
         active = false; view.clearInput(); raceAudio?.stop();
     }
-    public void applicationDidBecomeActive()
+    public void applicationDidBecomeActive(Notification notification)
     {
         active = true; lastTime = ProcessInfo.processInfo.systemUptime;
     }
-    public void windowDidResignKey() { view.clearInput(); }
-    public void windowDidChangeOcclusionState()
+    public void windowDidResignKey(Notification notification) { view.clearInput(); }
+    public void windowDidChangeOcclusionState(Notification notification)
     {
         frameRateHUD.resetSamples();
         // NSView display links suspend while hidden. Never count that suspended
         // interval as race time when the window becomes visible again.
         lastTime = ProcessInfo.processInfo.systemUptime;
-        if (!windowVisible) { view.clearInput(); raceAudio?.stop(); }
+        if (!window.occlusionState.contains(NSWindow.OcclusionState.visible)) { view.clearInput(); raceAudio?.stop(); }
     }
-    public void windowDidMiniaturize()
+    public void windowDidMiniaturize(Notification notification)
     {
         frameRateHUD.resetSamples();
         lastTime = ProcessInfo.processInfo.systemUptime; view.clearInput(); raceAudio?.stop();
     }
-    public void windowDidDeminiaturize()
+    public void windowDidDeminiaturize(Notification notification)
     {
         frameRateHUD.resetSamples();
         lastTime = ProcessInfo.processInfo.systemUptime;
     }
-    public bool applicationShouldTerminateAfterLastWindowClosed() => true;
-    public void applicationWillTerminate()
+    public bool applicationShouldTerminateAfterLastWindowClosed(NSApplication sender) => true;
+    public void applicationWillTerminate(Notification notification)
     {
         timer?.invalidate();
+        // PORT: (frameDisplayLink as? CADisplayLink)?.invalidate(): no display link (see applicationDidFinishLaunching).
         raceAudio?.stop();
     }
-    /// The NSApplicationDelegate/NSWindowDelegate notifications, from Godot's window notifications.
-    public override void _Notification(int what)
+    public string[] toolbarAllowedItemIdentifiers(NSToolbar toolbar) =>
+        new[] { "menu", NSToolbarItem.Identifier.flexibleSpace, "camera", "pause", "reset", "help" };
+    public string[] toolbarDefaultItemIdentifiers(NSToolbar toolbar) => toolbarAllowedItemIdentifiers(toolbar);
+    public NSToolbarItem toolbar(NSToolbar toolbar, string itemForItemIdentifier, bool willBeInsertedIntoToolbar)
     {
-        switch ((long)what)
+        var id = itemForItemIdentifier;
+        var item = new NSToolbarItem(itemIdentifier: id);
+        (string, string, Action<object>) config;
+        switch (id)
         {
-            case Godot.Node.NotificationApplicationFocusOut: applicationWillResignActive(); break;
-            case Godot.Node.NotificationApplicationFocusIn: applicationDidBecomeActive(); break;
-            case Godot.Node.NotificationWMWindowFocusOut: windowDidResignKey(); break;
-            case Godot.Node.NotificationWMCloseRequest: applicationWillTerminate(); break;
+            case "menu": config = ("Main Menu", "house", showMainMenu); break;
+            case "camera": config = ("Camera", "video", cycleCamera); break;
+            case "pause": config = ("Pause", "pause.fill", togglePause); pauseItem = item; break;
+            case "reset": config = ("Reset", "arrow.counterclockwise", reset); break;
+            case "help": config = ("Controls", "keyboard", toggleHelp); break;
+            default: return null;
         }
+        item.label = config.Item1; item.toolTip = config.Item1;
+        item.image = NSImage.systemSymbolName(config.Item2, accessibilityDescription: config.Item1);
+        item.target = this; item.action = config.Item3;
+        return item;
     }
-    // PORT (App port): the NSToolbarDelegate (toolbarAllowedItemIdentifiers, toolbarDefaultItemIdentifiers,
-    // toolbar(_:itemForItemIdentifier:willBeInsertedIntoToolbar:): Main Menu, Camera, Pause, Reset, Controls).
-    public void toggleRaceSound(object sender)
+    public void toggleRaceSound(NSMenuItem sender)
     {
         raceSoundMuted = !raceSoundMuted; UserDefaults.standard.set(raceSoundMuted, "raceSoundMuted");
-        // PORT (App port): sender.state = raceSoundMuted ? .on : .off (the menu item).
+        sender.state = raceSoundMuted ? NSControl.StateValue.on : NSControl.StateValue.off;
         if (raceSoundMuted) { raceAudio?.stop(); }
     }
-    /// PORT (App port): the menu bar (About, Quit; Simulation: Main Menu m, Reset playground r, Pause / resume p,
-    /// Change camera 1, Mute race sound) is not ported.
-    public void makeMenu() { }
+    public void makeMenu()
+    {
+        NSMenu bar = new NSMenu(), appMenu = new NSMenu(); var appItem = new NSMenuItem();
+        appMenu.addItem(withTitle: "About Marvin Simulator", action: NSApp.orderFrontStandardAboutPanel, keyEquivalent: "");
+        appMenu.addItem(NSMenuItem.separator());
+        appMenu.addItem(withTitle: "Quit Marvin Simulator", action: NSApp.terminate, keyEquivalent: "q");
+        appItem.submenu = appMenu; bar.addItem(appItem);
+        NSMenuItem simItem = new NSMenuItem(); var simMenu = new NSMenu(title: "Simulation");
+        foreach (var (title, selector, key) in new (string, Action<object>, string)[] { ("Main Menu", showMainMenu, "m"), ("Reset playground", reset, "r"), ("Pause / resume", togglePause, "p"), ("Change camera", cycleCamera, "1") })
+        {
+            var item = simMenu.addItem(withTitle: title, action: selector, keyEquivalent: key); item.target = this;
+        }
+        var sound = simMenu.addItem(withTitle: "Mute race sound", action: sender => toggleRaceSound((NSMenuItem)sender), keyEquivalent: "");
+        sound.target = this; sound.state = raceSoundMuted ? NSControl.StateValue.on : NSControl.StateValue.off;
+        simItem.submenu = simMenu; bar.addItem(simItem); NSApp.mainMenu = bar;
+    }
 }

@@ -3,8 +3,6 @@
 // The composite native smoke test: the main-menu check at menu frame 20 (MenuSmoke.cs), then the sandbox drive
 // (frames 30-120) and at smoke frame 150 every sandbox, robot, race-track, HUD, score and mode check of App.swift in
 // its order, with the same captures and smoke.json keys as reference/mac/smoke.
-// PORT: the light/dark app-icon checks (lightIconPassed, darkIconPassed) need the App port's Dock icon handling and
-// the OS appearance; they are not run, not reported and not part of `passed`.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -114,7 +112,12 @@ public partial class AppController
                 }
             }
             reset(null);
-            // PORT: the light/dark app-icon checks are not ported (see the file header).
+            var originalAppearance = NSApp.appearance;
+            NSApp.appearance = NSAppearance.named(NSAppearance.Name.aqua);
+            var lightIconPassed = appliedIconName == "AppIconLight" && NSApp.applicationIconImage != null;
+            NSApp.appearance = NSAppearance.named(NSAppearance.Name.darkAqua);
+            var darkIconPassed = appliedIconName == "AppIconDark" && NSApp.applicationIconImage != null;
+            NSApp.appearance = originalAppearance;
             var tracksPassed = robot.tracks.Count == 2;
             foreach (var (throttle, turn) in new[] { (1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0) })
             {
@@ -392,12 +395,12 @@ public partial class AppController
             var sandboxContactPassed = checkSandboxContact(at: url);
             var passed = sandboxContactPassed && fullRaceTrailsPassed && raceFinishPassed && robotContactsPassed && actingPassed && newModelsPassed && coatingPassed && boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
                 && traveled > 0.3 && abs(heading) > 0.3
-                && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed;
+                && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed;
             var report = new Dictionary<string, object> { ["passed"] = passed, ["sandboxContactPassed"] = sandboxContactPassed, ["fullRaceTrailsPassed"] = fullRaceTrailsPassed, ["raceFinishPassed"] = raceFinishPassed, ["robotContactsPassed"] = robotContactsPassed, ["raceContactCount"] = raceContactCount, ["actingPassed"] = actingPassed, ["bb8MotionPassed"] = bb8MotionPassed, ["wallEMotionPassed"] = wallEMotionPassed, ["newModelsPassed"] = newModelsPassed, ["coatingPassed"] = coatingPassed, ["bodyDirtAmounts"] = dirtAmounts, ["dirtEffectsPassed"] = dirtEffectsPassed, ["racerTrailMarks"] = trailCounts, ["racerDirtParticles"] = racerEmissions, ["boostSteeringPassed"] = boostInputPassed, ["modelScalePassed"] = modelScalePassed, ["marvinToR2D2HeightRatio"] = modelHeightRatio, ["opponentPassed"] = opponentPassed, ["wallPassed"] = wallPassed, ["trackWalls"] = wallReport, ["r2d2WheelsPassed"] = wheelsPassed, ["introPassed"] = introPassed && introMidPassed, ["scoresPassed"] = scoresPassed, ["dirtPassed"] = dirtPassed, ["dirtResetPassed"] = dirtResetPassed, ["modeReturnPassed"] = modeReturnPassed, ["menuPassed"] = menuSmokePassed, ["parts"] = robot.partCount,
                 ["triangles"] = robot.triangleCount, ["distance"] = traveled,
                 ["heading"] = heading, ["pausePassed"] = pausePassed, ["brakePassed"] = brakePassed,
                 ["focusPassed"] = focusPassed, ["headPassed"] = headPassed, ["resetPassed"] = resetPassed,
-                ["cameraPassed"] = cameraPassed,
+                ["cameraPassed"] = cameraPassed, ["lightIconPassed"] = lightIconPassed, ["darkIconPassed"] = darkIconPassed,
                 ["labelsPassed"] = labelsPassed, ["groovesPassed"] = groovesPassed, ["coursePassed"] = coursePassed, ["neckPassed"] = neckPassed, ["tracksPassed"] = tracksPassed, ["groundContactPassed"] = groundContactPassed,
                 ["renderer"] = "Godot / SceneKit facade", ["width"] = bitmap.pixelsWide,
                 ["height"] = bitmap.pixelsHigh };

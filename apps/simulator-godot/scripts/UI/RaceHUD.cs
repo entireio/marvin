@@ -104,12 +104,13 @@ public partial class RaceHUD : NSView
         drawNavigationMap(@in: new NSRect(x + 18, 330, 234, mapHeight));
         if (helpVisible)
         {
-            var help = new[] { "DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", "CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R" };
+            // PORT: "⌘R" is spelled with the platform's command key (KeyEquivalent.command: ⌘ on macOS, Ctrl+ elsewhere).
+            var help = new[] { "DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", $"CAMERA C / drag / scroll   PAUSE P / Esc   RESTART {KeyEquivalent.command}R" };
             var font = NSFont.monospacedSystemFont(12, NSFont.Weight.regular);
             var width = min(bounds.width - 44, help.Select(line => line.size(new() { [NSAttributedString.Key.font] = font }).width).Max() + 36);
             panel(22, bounds.height - 84, width, 62);
             text("DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", 40, bounds.height - 71, 12);
-            text("CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R", 40, bounds.height - 46, 12);
+            text($"CAMERA C / drag / scroll   PAUSE P / Esc   RESTART {KeyEquivalent.command}R", 40, bounds.height - 46, 12);
         }
         if (paused) { drawModal(paused: true); }
         else if (!introducing && race.countdown > 0) { drawModal(paused: false); }
@@ -134,7 +135,7 @@ public partial class RaceHUD : NSView
         label(paused ? "Paused" : $"{(long)ceil(race.countdown)}", @in: new NSRect(x + 24, y + 58, w - 48, 100), size: paused ? 44 : 80, weight: NSFont.Weight.bold, alignment: NSTextAlignment.center);
         label(paused ? "The race is waiting for you." : (stormWarningVisible ? "A storm is coming..." : "Get ready to race"), @in: new NSRect(x + 24, y + h - 106, w - 48, 25), size: 17, alignment: NSTextAlignment.center);
         rule(new NSRect(x + 28, y + h - 68, w - 56, 1));
-        label(paused ? "P / Esc  Resume    ·    ⌘R  Restart" : "WASD / ↑↓←→  Drive    ·    Shift  Boost", @in: new NSRect(x + 16, y + h - 46, w - 32, 24), size: 13, weight: NSFont.Weight.medium, tint: 0xffd78d, alignment: NSTextAlignment.center);
+        label(paused ? $"P / Esc  Resume    ·    {KeyEquivalent.command}R  Restart" : "WASD / ↑↓←→  Drive    ·    Shift  Boost", @in: new NSRect(x + 16, y + h - 46, w - 32, 24), size: 13, weight: NSFont.Weight.medium, tint: 0xffd78d, alignment: NSTextAlignment.center);
     }
     private void drawTownDeparture()
     {
@@ -150,7 +151,7 @@ public partial class RaceHUD : NSView
             label($"{rank + 1}.  {names[index]}", @in: new NSRect(40, y, w - 125, 20), size: 13, weight: NSFont.Weight.medium);
             label(time(races[index].elapsed), @in: new NSRect(w - 60, y, 70, 20), size: 12, weight: NSFont.Weight.medium);
         }
-        label(escapeComplete ? "Drive to explore · ⌘R to race again" : "Autopilot · Separate routes through town", @in: new NSRect(40, 169, w - 36, 20), size: 11, tint: 0xb8c2b6);
+        label(escapeComplete ? $"Drive to explore · {KeyEquivalent.command}R to race again" : "Autopilot · Separate routes through town", @in: new NSRect(40, 169, w - 36, 20), size: 11, tint: 0xb8c2b6);
     }
     private void drawResults()
     {
@@ -178,7 +179,7 @@ public partial class RaceHUD : NSView
             text(minElement(result.laps) is double fastest ? time(fastest) : "—", lapX, rowY, 14);
         }
         label(saveError ?? (complete ? "Autopilot · Enjoy the cooldown lap" : "Autopilot · Waiting for the remaining finishers"), @in: new NSRect(x + 24, y + 282, w - 48, 22), size: 12, tint: 0xb8c2b6);
-        label("⌘R  Race again    ·    Main Menu to leave", @in: new NSRect(x + 24, y + 309, w - 48, 22), size: 12, weight: NSFont.Weight.medium, tint: 0xffd78d);
+        label($"{KeyEquivalent.command}R  Race again    ·    Main Menu to leave", @in: new NSRect(x + 24, y + 309, w - 48, 22), size: 12, weight: NSFont.Weight.medium, tint: 0xffd78d);
     }
 
     // extension RaceHUD

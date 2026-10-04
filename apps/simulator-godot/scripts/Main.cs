@@ -1,7 +1,12 @@
 using System.Globalization;
 using Godot;
 
-public partial class Main : Node3D
+/// <summary>
+/// The entry scene (scenes/Main.tscn). Without a game-mode flag this is main.swift: the app with AppController as
+/// the NSApplication's delegate, opening on the main menu (`tools/godot`). A flag after "--" runs that game mode
+/// instead (GameModes, e.g. `tools/godot -- --smoke-test DIR`).
+/// </summary>
+public partial class Main : Node
 {
     public override async void _Ready()
     {
@@ -13,7 +18,6 @@ public partial class Main : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (await Marvin.GameModes.TryRun(OS.GetCmdlineUserArgs(), GetTree())) return;
         GD.Print($"Marvin Godot: {Engine.GetVersionInfo()["string"]}, renderer {RenderingServer.GetCurrentRenderingDriverName()}");
-        // main.swift: the app with AppController as its delegate (PORT: the window chrome is not ported yet).
         Marvin.AppController.launch(GetTree());
     }
 }

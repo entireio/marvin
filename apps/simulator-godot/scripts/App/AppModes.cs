@@ -14,14 +14,17 @@ namespace Marvin;
 
 public partial class AppController
 {
-    /// main.swift (NSApplication with this delegate) and applicationDidFinishLaunching: the app with its robots,
-    /// window content view (1280 x 820), overlays and main menu, ticking from Godot's frame loop.
+    /// main.swift: NSApplication with this delegate; run() adds the controller to the scene tree and calls
+    /// applicationDidFinishLaunching (robots, window, toolbar, content view, overlays, menu bar, main menu), after which
+    /// the app ticks from Godot's frame loop.
     public static AppController launch(Godot.SceneTree tree, string smokeDirectory = null)
     {
-        var app = new AppController(smokeDirectory) { Name = "AppController" };
-        tree.Root.AddChild(app);
-        app.applicationDidFinishLaunching();
-        return app;
+        var app = NSApplication.shared;
+        app.setActivationPolicy(NSApplication.ActivationPolicy.regular);
+        var controller = new AppController(smokeDirectory) { Name = "AppController" };
+        app.@delegate = controller;
+        app.run();
+        return controller;
     }
 
     /// `launch`, then App.swift's 20 main-menu ticks before a smoke check, after which tick() stops
