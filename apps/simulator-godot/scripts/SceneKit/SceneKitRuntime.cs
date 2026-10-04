@@ -38,8 +38,9 @@ public partial class SceneKitRuntime : Node
         // The composer's global uniforms (scn_fog_color, scn_ambient, scn_sh0..8, ...) are declared in
         // project.godot [shader_globals]; adding them at runtime is editor-only in Godot.
         // SceneKit uses 4096 shadow maps for the race sun; give Godot's shared atlas room for two such lights.
-        RenderingServer.DirectionalShadowAtlasSetSize(8192, true);
-        RenderingServer.DirectionalSoftShadowFilterSetQuality(RenderingServer.ShadowQuality.SoftHigh);
+        RenderingServer.DirectionalShadowAtlasSetSize(SceneKitCalibration.DirectionalShadowAtlas, true);
+        RenderingServer.DirectionalSoftShadowFilterSetQuality((RenderingServer.ShadowQuality)SceneKitCalibration.ShadowFilterQuality);
+        RenderingServer.PositionalSoftShadowFilterSetQuality((RenderingServer.ShadowQuality)SceneKitCalibration.ShadowFilterQuality);
         RenderingServer.FramePreDraw += Flush;
         RenderingServer.FramePostDraw += PostDraw;
         if (Engine.GetMainLoop() is SceneTree tree)
@@ -251,31 +252,25 @@ public partial class SceneKitRuntime : Node
         RenderingServer.GlobalShaderParameterSet("scn_fog_range", new Vector4((float)scene.fogStartDistance, (float)scene.fogEndDistance, (float)Math.Max(1e-3, scene.fogDensityExponent), fogOn ? 1 : 0));
         var ambient = Vector3.Zero;
         int shadowMask = 0;
-        double deferredAlpha = 0, deferredOpacity = 1;
+        double deferredAlpha = 0, deferredRadius = 0;
         double ambientIntensity = 0;
         scene.rootNode.enumerateHierarchy((n, _) =>
         {
             if (n.light is not SCNLight l || n.isHidden) return;
-            if (l.type == SCNLight.LightType.ambient) { ambient += l.LinearRadiance * (float)(ShaderComposer.AmbientPerLumen * 1000); ambientIntensity += l.intensity; }
+            if (l.type == SCNLight.LightType.ambient) { ambient += l.LinearRadiance * (float)(SceneKitCalibration.AmbientPerLumen * 1000); ambientIntensity += l.intensity; }
             else if (l.castsShadow)
             {
                 shadowMask |= l.categoryBitMask;
-                if (l.shadowMode == SCNShadowMode.deferred && deferredAlpha == 0) deferredAlpha = Math.Clamp(l.ShadowColor.alphaComponent, 0, 1);
-            }
-        });
-        scene.rootNode.enumerateHierarchy((n, _) =>
-        {
-            if (n.light is { castsShadow: true, shadowMode: SCNShadowMode.deferred } l && deferredOpacity == 1)
-            {
-                double direct = Math.Max(l.intensity, 1e-3);
-                deferredOpacity = Math.Min(1, deferredAlpha * (direct + ambientIntensity) / direct);
+                if (l.shadowMode == SCNShadowMode.deferred && deferredAlpha == 0) { deferredAlpha = Math.Clamp(l.ShadowColor.alphaComponent, 0, 1); deferredRadius = l.shadowRadius; }
             }
         });
         if (ShadowLightMask != (shadowMask == 0 ? -1 : shadowMask)) { ShadowLightMask = shadowMask == 0 ? -1 : shadowMask; masksDirty = true; }
         RenderingServer.GlobalShaderParameterSet("scn_ambient", new Vector4(ambient.X, ambient.Y, ambient.Z, 1));
-        RenderingServer.GlobalShaderParameterSet("scn_deferred", new Vector4((float)(deferredOpacity > 0 ? deferredAlpha / deferredOpacity : 0), 0, 0, 0));
+        var (selfPlateau, selfOnset) = SceneKitCalibration.DeferredSelfShadow(deferredRadius);
+        RenderingServer.GlobalShaderParameterSet("scn_deferred", new Vector4((float)deferredAlpha, (float)selfPlateau, (float)selfOnset, 0));
         bool ibl = scene.HasLightingEnvironment;
         RenderingServer.GlobalShaderParameterSet("scn_ibl", new Vector4(ibl ? (float)scene.lightingEnvironment.intensity : 0, ibl ? 1 : 0, 0, 0));
+        if (ibl) RenderingServer.GlobalShaderParameterSet("scn_radiance", scene.RadianceTexture());
         var sh = scene.IrradianceSH();
         for (int i = 0; i < 9; i++) RenderingServer.GlobalShaderParameterSet($"scn_sh{i}", new Vector4((float)sh[i * 3], (float)sh[i * 3 + 1], (float)sh[i * 3 + 2], 0));
     }
@@ -304,6 +299,60 @@ public partial class SceneKitRuntime : Node
     {
         if (node is Node3D spatial) spatial.ForceUpdateTransform();
         foreach (var child in node.GetChildren(true)) ForceTransforms(child);
+    }
+
+    // ---- Directional shadows fitted per camera
+    private static readonly HashSet<SCNNode> shadowLights = new();
+    internal static void RegisterShadowLight(SCNNode node, bool on) { if (on) shadowLights.Add(node); else shadowLights.Remove(node); }
+
+    /// <summary>
+    /// Godot fits a directional shadow map to the camera frustum (up to DirectionalShadowMaxDistance), and both its
+    /// PCF kernel (blur x quality radius x texel) and its depth bias (bias x blur x quality radius x depth range) scale
+    /// with that fit. SceneKit's kernel is shadowRadius texels of its own map. Called after a view's camera is synced:
+    /// recomputes Godot's fit like RendererSceneCull and sets ShadowBlur/ShadowBias so the penumbra and the bias
+    /// have SceneKit's world size for this camera.
+    /// </summary>
+    internal static void FitShadows(SCNScene scene, Camera3D camera, Vector2I viewportSize)
+    {
+        if (shadowLights.Count == 0) return;
+        shadowLights.RemoveWhere(n => !GodotObject.IsInstanceValid(n));
+        var lights = new List<SCNNode>();
+        foreach (var n in shadowLights)
+            if (GodotObject.IsInstanceValid(n) && n.sceneOwner == scene && n.GodotLight is DirectionalLight3D && n.IsVisibleInTree()) lights.Add(n);
+        if (lights.Count == 0) return;
+        int splitH = 1, splitV = 1;
+        while (splitH * splitV < lights.Count) { if (splitH == splitV) splitH <<= 1; else splitV <<= 1; }
+        int atlas = SceneKitCalibration.DirectionalShadowAtlas;
+        double regionW = atlas / splitH, regionH = atlas / splitV, textureSize = Math.Max(regionW, regionH);
+        double aspect = viewportSize.Y > 0 ? (double)viewportSize.X / viewportSize.Y : 1;
+        foreach (var n in lights)
+        {
+            var light = n.GodotLight as DirectionalLight3D;
+            double near = camera.Near, far = camera.Far;
+            bool ortho = camera.Projection == Camera3D.ProjectionType.Orthogonal;
+            if (!ortho && light.DirectionalShadowMaxDistance > 0) far = Math.Min(far, light.DirectionalShadowMaxDistance);
+            far = Math.Max(far, near + 0.001);
+            // Frustum slice endpoints in camera space, bounding sphere (RendererSceneCull::_light_instance_setup_directional_shadow).
+            // Half extents along the kept axis (Camera3D.KeepAspect), the other axis follows the aspect ratio.
+            bool keepWidth = camera.KeepAspect == Camera3D.KeepAspectEnum.Width;
+            double hn, hf;
+            if (ortho) { hn = hf = camera.Size / 2; }
+            else { double t = Math.Tan(camera.Fov * Math.PI / 360); hn = near * t; hf = far * t; }
+            double ax = keepWidth ? 1 : aspect, ay = keepWidth ? 1 / aspect : 1;
+            var pts = new List<Vector3>();
+            foreach (var (h, z) in new[] { (hn, near), (hf, far) })
+                foreach (var sx in new[] { -1, 1 })
+                    foreach (var sy in new[] { -1, 1 })
+                        pts.Add(new Vector3((float)(sx * h * ax), (float)(sy * h * ay), (float)-z));
+            var center = Vector3.Zero; foreach (var p in pts) center += p; center /= pts.Count;
+            double radius = 0; foreach (var p in pts) radius = Math.Max(radius, center.DistanceTo(p));
+            radius *= textureSize / (textureSize - 2.0);
+            // Godot's PCF kernel is isotropic in atlas pixels; with two or more lights a region is not square
+            // (e.g. 4096 x 8192), so size the kernel from the coarser axis, which is horizontal in light space and thus
+            // runs across the shadows of thin vertical casters (legs, posts, robot parts).
+            double texel = 2 * radius / Math.Min(regionW, regionH);
+            n.light.FitShadow(light, texel, 2 * radius + light.DirectionalShadowPancakeSize);
+        }
     }
 
     internal static Node Host => instance;

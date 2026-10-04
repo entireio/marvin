@@ -428,6 +428,7 @@ public partial class SCNNode : Node3D
     internal int dirtyFlags;
     private readonly List<MeshInstance3D> meshes = new();
     private Light3D godotLight;
+    internal Light3D GodotLight => godotLight;
 
     internal void MarkGeometryDirty() => SceneKitRuntime.NodeDirty(this, DirtyGeometry);
     internal void MarkLightDirty() => SceneKitRuntime.NodeDirty(this, DirtyLight);
@@ -512,10 +513,12 @@ public partial class SCNNode : Node3D
     private void SyncLight()
     {
         var updated = _light?.Sync(godotLight, SceneKitRuntime.AmbientIntensityFor(sceneOwner));
+        SceneKitRuntime.RegisterShadowLight(this, updated is DirectionalLight3D && _light.castsShadow);
         if (updated != godotLight)
         {
             if (godotLight != null) { RemoveChild(godotLight); godotLight.QueueFree(); }
             godotLight = updated;
+            SceneKitRuntime.RegisterShadowLight(this, godotLight is DirectionalLight3D && _light.castsShadow);
             if (godotLight != null) AddChild(godotLight, false, InternalMode.Front);
         }
     }

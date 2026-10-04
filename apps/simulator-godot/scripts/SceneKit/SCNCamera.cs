@@ -74,17 +74,6 @@ public sealed class SCNCamera
         return new SCNMatrix4(sx, 0, 0, 0, 0, sy, 0, 0, 0, 0, -(f + n) / (f - n), -1, 0, 0, -2 * f * n / (f - n), 0);
     }
 
-    // Bloom calibration (SceneKit bloom vs Godot glow, see PORTING.md). MARVIN_BLOOM="scale,hdrScale,levelOffset,levelWeight" overrides.
-    internal static double BloomIntensityScale = 0.4, BloomHdrScale = 1.0, BloomLevelOffset = -1.6, BloomLevelWeight = 1.0;
-    static SCNCamera()
-    {
-        var o = System.Environment.GetEnvironmentVariable("MARVIN_BLOOM");
-        if (string.IsNullOrEmpty(o)) return;
-        var p = o.Split(',');
-        double D(int i, double d) => i < p.Length && double.TryParse(p[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var v) ? v : d;
-        BloomIntensityScale = D(0, BloomIntensityScale); BloomHdrScale = D(1, BloomHdrScale); BloomLevelOffset = D(2, BloomLevelOffset); BloomLevelWeight = D(3, BloomLevelWeight);
-    }
-
     /// <summary>Copies the lens into a Godot camera.</summary>
     internal void ApplyLens(Camera3D cam)
     {
@@ -112,37 +101,37 @@ public sealed class SCNCamera
     internal void ApplyEnvironment(Godot.Environment env, CameraAttributesPractical attributes, double viewportHeight = 400)
     {
         env.TonemapMode = Godot.Environment.ToneMapper.Linear;
-        env.TonemapExposure = 1.0f;
-        env.TonemapWhite = 1.0f;
+        env.TonemapExposure = (float)SceneKitCalibration.TonemapExposure;
+        env.TonemapWhite = (float)SceneKitCalibration.TonemapWhite;
         attributes.ExposureMultiplier = (float)(wantsHDR ? Math.Pow(2, exposureOffset) : 1.0);
         attributes.AutoExposureEnabled = false; // PORT: SceneKit exposure adaptation is not emulated (the game disables it).
         bool bloom = wantsHDR && bloomIntensity > 0;
         env.GlowEnabled = bloom;
         if (bloom)
         {
-            env.GlowIntensity = (float)(bloomIntensity * BloomIntensityScale);
+            env.GlowIntensity = (float)(bloomIntensity * SceneKitCalibration.BloomIntensityScale);
             env.GlowStrength = 1.0f;
             env.GlowBloom = 0.0f;
             env.GlowHdrThreshold = (float)bloomThreshold;
-            env.GlowHdrScale = (float)BloomHdrScale;
+            env.GlowHdrScale = (float)SceneKitCalibration.BloomHdrScale;
             env.GlowBlendMode = Godot.Environment.GlowBlendModeEnum.Additive;
             // Blur radius -> Godot glow levels (each level doubles the blur footprint).
             // SceneKit's bloom blur is a fixed pixel radius (measured at 400 and 800 px heights); Godot's glow
             // levels scale with the viewport, so fewer levels are used for taller viewports.
-            double heightScale = Math.Log2(Math.Max(1, viewportHeight) / 400.0);
-            int top = Math.Clamp((int)Math.Round(Math.Log2(Math.Max(1, bloomBlurRadius)) + BloomLevelOffset - heightScale), 1, 7);
-            for (int i = 1; i <= 7; i++) env.SetGlowLevel(i - 1, i <= top ? (float)BloomLevelWeight : 0.0f);
+            double heightScale = SceneKitCalibration.BloomHeightScaling * Math.Log2(Math.Max(1, viewportHeight) / 400.0);
+            int top = Math.Clamp((int)Math.Round(Math.Log2(Math.Max(1, bloomBlurRadius)) + SceneKitCalibration.BloomLevelOffset - heightScale), 1, 7);
+            for (int i = 1; i <= 7; i++) env.SetGlowLevel(i - 1, i <= top ? (float)SceneKitCalibration.BloomLevelWeight : 0.0f);
         }
         bool ssao = screenSpaceAmbientOcclusionIntensity > 0;
         env.SsaoEnabled = ssao;
         if (ssao)
         {
-            env.SsaoRadius = (float)screenSpaceAmbientOcclusionRadius;
-            env.SsaoIntensity = (float)(screenSpaceAmbientOcclusionIntensity * 2.0);
-            env.SsaoPower = 1.5f;
-            env.SsaoDetail = 0.5f;
-            env.SsaoHorizon = 0.06f;
-            env.SsaoSharpness = 0.98f;
+            env.SsaoRadius = (float)(screenSpaceAmbientOcclusionRadius * SceneKitCalibration.SsaoRadiusScale);
+            env.SsaoIntensity = (float)(screenSpaceAmbientOcclusionIntensity * SceneKitCalibration.SsaoIntensityScale);
+            env.SsaoPower = (float)SceneKitCalibration.SsaoPower;
+            env.SsaoDetail = (float)SceneKitCalibration.SsaoDetail;
+            env.SsaoHorizon = (float)SceneKitCalibration.SsaoHorizon;
+            env.SsaoSharpness = (float)SceneKitCalibration.SsaoSharpness;
             env.SsaoLightAffect = 0.0f; // SceneKit SSAO attenuates ambient and IBL only
             env.SsaoAOChannelAffect = 0.0f;
         }

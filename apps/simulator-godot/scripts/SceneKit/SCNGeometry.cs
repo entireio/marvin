@@ -325,7 +325,9 @@ public class SCNGeometry : IPropertyOwner
         get
         {
             EnsureBuilt();
-            if (mesh != null && meshVersion == meshDataVersion) return mesh;
+            var runs = MaterialRuns();
+            if (mesh != null && meshVersion == meshDataVersion && runs.SequenceEqual(meshRuns)) return mesh;
+            meshRuns = runs;
             mesh = BuildMesh();
             meshVersion = meshDataVersion;
             return mesh;
@@ -334,8 +336,23 @@ public class SCNGeometry : IPropertyOwner
     internal bool HasNormals => sources.Any(s => s.semantic == SCNGeometrySourceSemantic.normal);
     internal bool HasColors => sources.Any(s => s.semantic == SCNGeometrySourceSemantic.color);
     internal int SurfaceCount => mesh?.GetSurfaceCount() ?? 0;
-    /// <summary>For each Godot surface, the index of the SceneKit element it came from.</summary>
+    /// <summary>For each Godot surface, the index of the first SceneKit element it came from.</summary>
     internal readonly List<int> surfaceElements = new();
+    private int[] meshRuns = Array.Empty<int>();
+    /// <summary>
+    /// First element of each run of consecutive elements that draw with the same material (materials[e % count]).
+    /// A run becomes one Godot surface with the elements' triangles in SceneKit's order: SceneKit draws a geometry's
+    /// elements in order (so a double-sided transparent box shows its front face, which then depth-rejects the back
+    /// face), while Godot's order among one instance's transparent surfaces is undefined. Also fewer draw calls.
+    /// </summary>
+    private int[] MaterialRuns()
+    {
+        var runs = new List<int>();
+        int count = _materials.Count;
+        for (int e = 0; e < _elements.Length; e++)
+            if (e == 0 || count == 0 || !ReferenceEquals(_materials[e % count], _materials[(e - 1) % count])) runs.Add(e);
+        return runs.ToArray();
+    }
 
     private ArrayMesh BuildMesh()
     {
@@ -366,14 +383,24 @@ public class SCNGeometry : IPropertyOwner
         for (int t = 0; t < tcs.Length; t++) { UV[t] = new Vector2[n]; for (int i = 0; i < Math.Min(n, tcs[t].vectorCount); i++) UV[t][i] = tcs[t].V2(i); }
 
         // All triangle lists (SceneKit CCW order) per element.
-        var lists = elements.Select(e => e.TriangleList()).ToArray();
+        var elementLists = elements.Select(e => e.TriangleList()).ToArray();
         float[] T = null;
         if (tan != null)
         {
             T = new float[n * 4];
             for (int i = 0; i < n; i++) { var v = tan.V3(i); T[i * 4] = v.X; T[i * 4 + 1] = v.Y; T[i * 4 + 2] = v.Z; T[i * 4 + 3] = tan.componentsPerVector > 3 ? (float)tan.Component(i, 3) : 1; }
         }
-        else if (N != null && UV.Length > 0) T = GenerateTangents(P, N, UV[0], lists);
+        else if (N != null && UV.Length > 0) T = GenerateTangents(P, N, UV[0], elementLists);
+        // One surface per run of elements sharing a material (see MaterialRuns), triangles in element order.
+        var runStarts = meshRuns.Length > 0 ? meshRuns : MaterialRuns();
+        var lists = new int[runStarts.Length][];
+        for (int r = 0; r < runStarts.Length; r++)
+        {
+            int end = r + 1 < runStarts.Length ? runStarts[r + 1] : elementLists.Length;
+            var merged = new List<int>();
+            for (int e = runStarts[r]; e < end; e++) { var t = elementLists[e]; merged.AddRange(t.AsSpan(0, t.Length - t.Length % 3).ToArray()); }
+            lists[r] = merged.ToArray();
+        }
 
         Aabb aabb = default;
         bool first = true;
@@ -431,7 +458,7 @@ public class SCNGeometry : IPropertyOwner
                 flags |= (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << ((int)Mesh.ArrayFormat.FormatCustom0Shift + 3 * (int)Mesh.ArrayFormat.FormatCustomBits));
             arrays[(int)Mesh.ArrayType.Index] = idx;
             result.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays, null, null, flags);
-            surfaceElements.Add(e);
+            surfaceElements.Add(runStarts[e]);
         }
         if (_customBounds.HasValue)
         {

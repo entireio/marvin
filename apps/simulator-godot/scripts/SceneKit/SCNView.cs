@@ -91,6 +91,7 @@ internal sealed class ViewRig
         camera.Transform = world;
         pov.camera.ApplyLens(camera);
         pov.camera.ApplyEnvironment(env, attributes, viewport.Size.Y);
+        SceneKitRuntime.FitShadows(scene, camera, viewport.Size);
         // Background.
         var bg = scene.background.contents;
         if (bg is NSImage or string)
