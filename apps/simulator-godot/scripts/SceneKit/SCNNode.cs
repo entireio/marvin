@@ -483,6 +483,7 @@ public partial class SCNNode : Node3D
                 var material = mats.Count == 0 ? SceneKitRuntime.DefaultMaterial : mats[g.surfaceElements[s] % mats.Count];
                 var flags = ShaderComposer.VariantFlags.None;
                 if (g.HasColors) flags |= ShaderComposer.VariantFlags.VertexColors;
+                if (!g.HasNormals) flags |= ShaderComposer.VariantFlags.NoNormals;
                 if (!material.readsFromDepthBuffer && _renderingOrder < 0) flags |= ShaderComposer.VariantFlags.Background;
                 mi.SetSurfaceOverrideMaterial(s, material.gpu.Variant(g, _renderingOrder, flags));
             }
