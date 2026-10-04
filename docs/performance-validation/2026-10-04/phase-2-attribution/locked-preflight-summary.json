@@ -1,0 +1,135 @@
+{
+  "status": "PARTIAL",
+  "baseCommit": "e9fcc184dfbe9c425bf8f1b9714d5637c2301a13",
+  "branch": "codex/mos-aster-perf-phase-2-attribution",
+  "sessionID": "01a106c0-a5a6-7511-8367-44d0128b05a6",
+  "startUTC": "2026-10-04T11:51:11Z",
+  "collectionStoppedUTC": "2026-10-04T12:00:08Z",
+  "maximumDeadlineUTC": "2026-10-04T13:51:11Z",
+  "collectionDeadlineUTC": "2026-10-04T13:31:11Z",
+  "rawRoot": "/Users/thomi/Projects/marvin-town-planning/phase-2-attribution-2026-10-04",
+  "hardware": {
+    "model": "Mac16,12 MacBook Air",
+    "chip": "Apple M4",
+    "memoryGB": 32
+  },
+  "power": {
+    "source": "AC Power",
+    "lowPowerMode": false,
+    "idleAssertion": "caffeinate -di -t 7000; scoped to task and stopped at handoff"
+  },
+  "audioOutput": {
+    "device": "MacBook Air Speakers",
+    "channels": 2,
+    "sampleRate": 48000,
+    "listeningVerified": false
+  },
+  "resourceInventoryMatchesPhase1": true,
+  "resourceFileCount": 217,
+  "resourceBytes": 178247127,
+  "visibilityBinarySHA256": "7c37b88c7116bc64681b7a8440f15178a5491e12dd4a772a99694f5b690750c8",
+  "originalPreflightBinarySHA256": "b981024e9986167a573b8cc6baef98bf547bd84df0125f7cf76a7b5672fe2e20",
+  "preflight": {
+    "status": "FAILED",
+    "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
+    "events": [
+      {
+        "name": "TownBenchmarkStart",
+        "traceSeconds": 12.292954166,
+        "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
+        "markerUptime": 181959.644325458,
+        "boundaryUptime": 181959.644311166,
+        "pid": 69785,
+        "origin": 181947.351371292
+      },
+      {
+        "name": "TownBenchmarkStart",
+        "traceSeconds": 22.295110708,
+        "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
+        "markerUptime": 181969.646514833,
+        "boundaryUptime": 181959.644311166,
+        "pid": 69785,
+        "origin": 181947.35140412502
+      },
+      {
+        "name": "TownBenchmarkEnd",
+        "traceSeconds": 37.299558791,
+        "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
+        "markerUptime": 181984.650958083,
+        "boundaryUptime": 181984.646209125,
+        "pid": 69785,
+        "origin": 181947.35139929198
+      }
+    ],
+    "checks": {
+      "bothMarkersRetained": true,
+      "uuidMatched": true,
+      "pidMatched": true,
+      "clockOriginSpreadMicroseconds": 32.83302066847682,
+      "perFrameIntervalRows": 0,
+      "visibleGameplayVerified": false,
+      "usableGPUReplayVerified": false,
+      "nativeBoundariesMatched": true
+    },
+    "reason": "UI tool reports locked Mac; per-frame interval export has zero rows. Native visibility smoke independently confirms lock and occlusion. Dependent collection stopped.",
+    "quality": {
+      "explorationDetail": true,
+      "msaaSamples": 2,
+      "shadowMapWidths": [
+        2048,
+        4096
+      ]
+    },
+    "ambientOcclusion": {
+      "bias": 0.02500000037252903,
+      "intensity": 0.699999988079071,
+      "radius": 1.600000023841858
+    },
+    "nativeDrawable": [
+      1920,
+      1080
+    ]
+  },
+  "visibilitySmoke": {
+    "runID": "2254C38C-D54B-40A4-B863-44F9946E41C1",
+    "durationSeconds": 10.00995654167491,
+    "initialThermalState": 0,
+    "samples": 11,
+    "firstVisibility": {
+      "appActive": false,
+      "backingScale": 2,
+      "screenFrame": "{{0, 0}, {2048, 1152}}",
+      "screenName": "Studio Display",
+      "sessionLockFlag": true,
+      "uptime": 182170.44589991667,
+      "windowFrame": "{{384, 527}, {960, 540}}",
+      "windowMiniaturized": false,
+      "windowOcclusionVisible": false,
+      "windowVisible": true
+    },
+    "allLocked": true,
+    "allInactive": true,
+    "allOccluded": true,
+    "quality": {
+      "explorationDetail": true,
+      "msaaSamples": 2,
+      "shadowMapWidths": [
+        2048,
+        4096
+      ]
+    },
+    "ambientOcclusion": {
+      "bias": 0.02500000037252903,
+      "intensity": 0.699999988079071,
+      "radius": 1.600000023841858
+    },
+    "audioActive": true
+  },
+  "newPresentationStatistics": null,
+  "newGPUCaptures": [],
+  "unknownCounters": [
+    "upload volume",
+    "GPU frequency",
+    "exclusive hardware GPU busy time"
+  ]
+}

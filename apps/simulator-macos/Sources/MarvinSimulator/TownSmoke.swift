@@ -24,13 +24,17 @@ final class TownFrameMeter: NSObject, SCNSceneRendererDelegate {
         lock.lock();constraintsEnd=ProcessInfo.processInfo.systemUptime;lock.unlock()
     }
     func renderer(_ renderer:SCNSceneRenderer,updateAtTime time:TimeInterval) {
+        capture?.beginFrame(renderer,time:time)
         lock.lock();cycleStart=ProcessInfo.processInfo.systemUptime;lock.unlock()
     }
+    var capture: BenchmarkGPUCapture?
     private var frames:[[Double]]=[]
     func renderer(_ renderer:SCNSceneRenderer,willRenderScene scene:SCNScene,atTime time:TimeInterval) {
+        capture?.willRender(renderer,time:time)
         lock.lock();frameStart=ProcessInfo.processInfo.systemUptime;lock.unlock()
     }
     func renderer(_ renderer: SCNSceneRenderer, didRenderScene scene: SCNScene, atTime time: TimeInterval) {
+        capture?.didRender()
         fpsHUD?.renderer(renderer,didRenderScene:scene,atTime:time)
         let now=ProcessInfo.processInfo.systemUptime
         lock.lock(); defer { lock.unlock() }
@@ -196,12 +200,18 @@ extension AppController {
                 }
             }
         }
+        benchmarkSessionState.start(window:window)
         view.delegate=townMeter
         townBenchmarkStart=ProcessInfo.processInfo.systemUptime
         os_signpost(.event,log:townBenchmarkTraceLog,name:"TownBenchmarkStart","run=%{public}@ markerUptime=%.9f benchmarkBoundaryUptime=%.9f",townBenchmarkRunID as NSString,ProcessInfo.processInfo.systemUptime,townBenchmarkStart!)
         let identity:[String:Any]=["runID":townBenchmarkRunID,"startUptime":townBenchmarkStart!,"gpuDevice":view.device?.name ?? "Unavailable","resolution":[view.convertToBacking(view.bounds).width,view.convertToBacking(view.bounds).height]]
         if let data=try? JSONSerialization.data(withJSONObject:identity,options:[.sortedKeys]),let line=String(data:data,encoding:.utf8) {
             FileHandle.standardOutput.write(Data(("MARVIN_BENCHMARK_ID "+line+"\n").utf8))
+        }
+        if CommandLine.arguments.contains("--benchmark-gpu-capture") {
+            benchmarkGPUCapture.configure(start:townBenchmarkStart!,runID:townBenchmarkRunID,
+                player:modelRoot(playerCharacter),viewport:view.bounds.size,directory:directory)
+            townMeter.capture = benchmarkGPUCapture
         }
         frameRateHUD.resetSamples();frameRateHUD.isHidden=false
         townMeter.fpsHUD=frameRateHUD;townBenchmarkHUDSamples=[]
@@ -220,19 +230,19 @@ extension AppController {
     func tickTownBenchmark(now:Double,dt:Double) {
         guard let start=townBenchmarkStart,let directory=townBenchmarkDirectory else { return }
         let elapsed=now-start
-        benchmarkGPUCapture.update(elapsed:elapsed,device:view.device,directory:directory)
         if elapsed<3 { townMeter.reset();townBenchmarkCPU=[];townBenchmarkTimeline=[] }
         let begin=ProcessInfo.processInfo.systemUptime
         let isolateTrails=CommandLine.arguments.contains("--benchmark-isolate-trails")
         let trailsHidden=isolateTrails && ((elapsed>=300 && elapsed<330) || (elapsed>=480 && elapsed<510))
         if isolateTrails { dirtWorld.setBenchmarkTrailsHidden(trailsHidden) }
         if Int(elapsed)>=(townBenchmarkResourceSamples.last?["second"] as? Int ?? -1)+1 {
-            // Instruments can miss the launch-time event while enabling its
-            // process logging. Refresh the clock anchor only in an explicitly
-            // instrumented benchmark; retain the original benchmark boundary.
+            // Instruments can miss launch-time events or retain only late POIs.
+            // Refresh every 30 seconds in instrumented runs, preserving the
+            // original benchmark boundary while recording each emission uptime.
             if ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_POI_REFRESH"] == "1",
                elapsed >= 10,
-               (townBenchmarkResourceSamples.last?["second"] as? Int ?? -1) < 10 {
+               ((townBenchmarkResourceSamples.last?["second"] as? Int ?? -1) < 10 ||
+                Int(elapsed)/30 > (townBenchmarkResourceSamples.last?["second"] as? Int ?? -1)/30) {
                 os_signpost(.event,log:townBenchmarkTraceLog,name:"TownBenchmarkStart","run=%{public}@ markerUptime=%.9f benchmarkBoundaryUptime=%.9f",townBenchmarkRunID as NSString,ProcessInfo.processInfo.systemUptime,start)
             }
             townBenchmarkResourceSamples.append(["second":Int(elapsed),"uptime":now,"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"trailsHidden":trailsHidden,"shadowCasters":dirtWorld.town.shadowCasterCount,"trails":dirtWorld.trailDiagnostics(),"shadowBatch":dirtWorld.town.shadowBatchTelemetry])
@@ -293,6 +303,7 @@ extension AppController {
         // townMS includes this main-thread audio update as well as town work.
         // physicsMS starts before benchmark/input setup: both are wall spans.
         updateRaceAudio(dt:dt,advancing:true)
+        benchmarkGPUCapture.update(waypoint:townBenchmarkWaypoint)
         let finish=ProcessInfo.processInfo.systemUptime
         townBenchmarkCPU.append(finish-begin)
         townBenchmarkTimeline.append([now,elapsed,dt*1000,(physicsEnd-begin)*1000,(modelsEnd-physicsEnd)*1000,(effectsEnd-modelsEnd)*1000,(cameraEnd-effectsEnd)*1000,(finish-cameraEnd)*1000,(finish-begin)*1000,simulation.x,simulation.z,aerial ? 1:0])
@@ -328,6 +339,7 @@ extension AppController {
             report["quality"]=["msaaSamples":view.antialiasingMode == .none ? 1:(1 << view.antialiasingMode.rawValue),"shadowMapWidths":shadowWidths.sorted(),"explorationDetail":dirtWorld.town.explorationDetailEnabled]
             report["ambientOcclusion"]=["intensity":world.camera.camera?.screenSpaceAmbientOcclusionIntensity ?? 0,"radius":world.camera.camera?.screenSpaceAmbientOcclusionRadius ?? 0,"bias":world.camera.camera?.screenSpaceAmbientOcclusionBias ?? 0]
             report["startSignpostRefreshEnabled"]=ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_POI_REFRESH"] == "1"
+            report["startSignpostRefreshPeriodSeconds"]=30
             report["shadowBatch"]=dirtWorld.town.shadowBatchTelemetry
             report["thermalState"]=ProcessInfo.processInfo.thermalState.rawValue
             report["benchmarkArguments"]=CommandLine.arguments
@@ -339,6 +351,10 @@ extension AppController {
                 try JSONSerialization.data(withJSONObject:timeline).write(to:directory.appendingPathComponent("timeline.json"))
                 try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("benchmark.json"))
                 try JSONSerialization.data(withJSONObject:townBenchmarkResourceSamples,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("resources.json"))
+                if ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_VISIBILITY"] == "1" {
+                    try JSONSerialization.data(withJSONObject:benchmarkSessionState.report(),options:[.prettyPrinted,.sortedKeys])
+                        .write(to:directory.appendingPathComponent("session-events.json"))
+                }
                 try JSONSerialization.data(withJSONObject:townBenchmarkHUDSamples,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("displayed-fps.json"))
                 // SCNView snapshots omit AppKit overlays; draw the actual live
                 // counter over the native scene at its unchanged view position.

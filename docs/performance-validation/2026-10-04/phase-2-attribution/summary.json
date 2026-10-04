@@ -3,20 +3,22 @@
   "baseCommit": "e9fcc184dfbe9c425bf8f1b9714d5637c2301a13",
   "branch": "codex/mos-aster-perf-phase-2-attribution",
   "sessionID": "01a106c0-a5a6-7511-8367-44d0128b05a6",
-  "startUTC": "2026-10-04T11:51:11Z",
-  "collectionStoppedUTC": "2026-10-04T12:00:08Z",
-  "maximumDeadlineUTC": "2026-10-04T13:51:11Z",
-  "collectionDeadlineUTC": "2026-10-04T13:31:11Z",
-  "rawRoot": "/Users/thomi/Projects/marvin-town-planning/phase-2-attribution-2026-10-04",
+  "resumedStartUTC": "2026-10-04T15:21:36Z",
+  "collectionDeadlineUTC": "2026-10-04T17:01:36Z",
+  "maximumDeadlineUTC": "2026-10-04T17:21:36Z",
+  "lastCollectionCompletedUTC": "2026-10-04T16:10:11Z",
+  "rawRoot": "/Users/thomi/Projects/marvin-town-planning/phase-2-attribution-resumed-2026-10-04",
+  "historicalFailure": "locked-preflight-summary.json",
   "hardware": {
     "model": "Mac16,12 MacBook Air",
     "chip": "Apple M4",
-    "memoryGB": 32
+    "memoryGB": 32,
+    "macOS": "27.0 (26A428)",
+    "Xcode": "27.0 (27A266a)"
   },
   "power": {
     "source": "AC Power",
-    "lowPowerMode": false,
-    "idleAssertion": "caffeinate -di -t 7000; scoped to task and stopped at handoff"
+    "lowPowerMode": false
   },
   "audioOutput": {
     "device": "MacBook Air Speakers",
@@ -24,109 +26,718 @@
     "sampleRate": 48000,
     "listeningVerified": false
   },
-  "resourceInventoryMatchesPhase1": true,
-  "resourceFileCount": 217,
-  "resourceBytes": 178247127,
-  "visibilityBinarySHA256": "7c37b88c7116bc64681b7a8440f15178a5491e12dd4a772a99694f5b690750c8",
-  "originalPreflightBinarySHA256": "b981024e9986167a573b8cc6baef98bf547bd84df0125f7cf76a7b5672fe2e20",
-  "preflight": {
-    "status": "FAILED",
-    "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
-    "events": [
-      {
-        "name": "TownBenchmarkStart",
-        "traceSeconds": 12.292954166,
-        "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
-        "markerUptime": 181959.644325458,
-        "boundaryUptime": 181959.644311166,
-        "pid": 69785,
-        "origin": 181947.351371292
-      },
-      {
-        "name": "TownBenchmarkStart",
-        "traceSeconds": 22.295110708,
-        "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
-        "markerUptime": 181969.646514833,
-        "boundaryUptime": 181959.644311166,
-        "pid": 69785,
-        "origin": 181947.35140412502
-      },
-      {
-        "name": "TownBenchmarkEnd",
-        "traceSeconds": 37.299558791,
-        "runID": "5904EF09-57F5-4943-A92C-3BAA61D54A6F",
-        "markerUptime": 181984.650958083,
-        "boundaryUptime": 181984.646209125,
-        "pid": 69785,
-        "origin": 181947.35139929198
-      }
-    ],
-    "checks": {
-      "bothMarkersRetained": true,
-      "uuidMatched": true,
-      "pidMatched": true,
-      "clockOriginSpreadMicroseconds": 32.83302066847682,
-      "perFrameIntervalRows": 0,
-      "visibleGameplayVerified": false,
-      "usableGPUReplayVerified": false,
-      "nativeBoundariesMatched": true
-    },
-    "reason": "UI tool reports locked Mac; per-frame interval export has zero rows. Native visibility smoke independently confirms lock and occlusion. Dependent collection stopped.",
-    "quality": {
-      "explorationDetail": true,
-      "msaaSamples": 2,
-      "shadowMapWidths": [
-        2048,
-        4096
-      ]
-    },
-    "ambientOcclusion": {
-      "bias": 0.02500000037252903,
-      "intensity": 0.699999988079071,
-      "radius": 1.600000023841858
-    },
-    "nativeDrawable": [
-      1920,
-      1080
+  "assets": {
+    "files": 217,
+    "bytes": 178247127,
+    "matchPhase1": true
+  },
+  "periodicBinarySHA256": "769f4fbb701c9136d7de5fea50829f7f90719b296a7907bb7d997021d2e00acb",
+  "quality": {
+    "explorationDetail": true,
+    "msaaSamples": 2,
+    "shadowMapWidths": [
+      2048,
+      4096
     ]
   },
-  "visibilitySmoke": {
-    "runID": "2254C38C-D54B-40A4-B863-44F9946E41C1",
-    "durationSeconds": 10.00995654167491,
-    "initialThermalState": 0,
-    "samples": 11,
+  "ambientOcclusion": {
+    "bias": 0.02500000037252903,
+    "intensity": 0.699999988079071,
+    "radius": 1.600000023841858
+  },
+  "drawable": [
+    1920,
+    1080
+  ],
+  "audioActive": true,
+  "presentationPreflight": {
+    "verified": true,
+    "clockSpreadMicroseconds": 20.458013750612736,
+    "intervals": 1920
+  },
+  "sustainedPresentationAttempts": [
+    {
+      "prefix": "overview-visible",
+      "validation": {
+        "runID": "B4909AE7-5EA1-494F-9128-4DE7EC96E49A",
+        "pid": 92801,
+        "layerID": "520812389824",
+        "layerName": "SCNMetalBackingLayer: MarvinSimulator.SimulatorView",
+        "events": [
+          {
+            "name": "TownBenchmarkEnd",
+            "traceSeconds": 611.233092375,
+            "runID": "B4909AE7-5EA1-494F-9128-4DE7EC96E49A",
+            "markerUptime": 196313.629175958,
+            "benchmarkBoundaryUptime": 196313.625613416,
+            "clockOriginUptime": 195702.39608358298,
+            "pid": 92801
+          }
+        ],
+        "clockOffsetSpreadMicroseconds": null,
+        "bothMarkersRetained": false,
+        "clockAlignmentMethod": "single retained end POI anchor; no independent whole-window offset consistency check",
+        "measuredTraceWindowSeconds": [
+          11.22822300036205,
+          611.228223000362
+        ],
+        "measuredSeconds": 600,
+        "drawableDimensions": [
+          1920,
+          1080
+        ],
+        "runtimeAO": {
+          "bias": 0.02500000037252903,
+          "intensity": 0.699999988079071,
+          "radius": 1.600000023841858
+        },
+        "quality": {
+          "explorationDetail": true,
+          "msaaSamples": 2,
+          "shadowMapWidths": [
+            2048,
+            4096
+          ]
+        },
+        "firstDisplayStartSeconds": 9.42560575,
+        "lastDisplayStartSeconds": 612.441101166,
+        "frameIDsContiguous": true,
+        "displayStartsBracketWindow": true,
+        "distribution": {
+          "count": 35691,
+          "meanMS": 16.81139503656384,
+          "p50MS": 16.666625,
+          "p95MS": 16.666708,
+          "p99MS": 16.66675,
+          "maxMS": 66.666542,
+          "over25MS": 295
+        },
+        "minutes": [
+          {
+            "minute": 1,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666643333333333,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.66675,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 2,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.66664025472222,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.666791,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 3,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666636863333334,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.666792,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 4,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666634895833333,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.666792,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 5,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666633379722224,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.667042,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 6,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666632349444445,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.666792,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 7,
+            "displayStartsPerSecond": 59.983333333333334,
+            "intervals": {
+              "count": 3599,
+              "meanMS": 16.67126193609336,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 33.333292,
+              "over25MS": 1
+            }
+          },
+          {
+            "minute": 8,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.66663017361111,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.666875,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 9,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666629756944445,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.666833,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 10,
+            "displayStartsPerSecond": 54.86666666666667,
+            "intervals": {
+              "count": 3292,
+              "meanMS": 18.231025794957475,
+              "p50MS": 16.666625,
+              "p95MS": 33.33325,
+              "p99MS": 33.333333,
+              "maxMS": 66.666542,
+              "over25MS": 294
+            }
+          }
+        ],
+        "worstRolling10Seconds": {
+          "startMeasuredSecond": 569,
+          "displayStartsPerSecond": 49.4
+        },
+        "envelopes": [
+          {
+            "pid": "92801",
+            "process": "MarvinSimulator",
+            "layer": "520812389824",
+            "metric": "0.CPU Begin to Present",
+            "distribution": {
+              "count": 35689,
+              "meanMS": 13.920338083330998,
+              "p50MS": 16.489334,
+              "p95MS": 18.520875,
+              "p99MS": 26.159625,
+              "maxMS": 67.72,
+              "over25MS": 463
+            }
+          },
+          {
+            "pid": "92801",
+            "process": "MarvinSimulator",
+            "layer": "520812389824",
+            "metric": "1.GPU Begin to End",
+            "distribution": {
+              "count": 35689,
+              "meanMS": 16.506896528286028,
+              "p50MS": 16.797375,
+              "p95MS": 18.411625,
+              "p99MS": 18.753,
+              "maxMS": 35.446375,
+              "over25MS": 7
+            }
+          }
+        ],
+        "limitations": [
+          "Instrumented run only; not clean-run presentation.",
+          "GPU Begin to End and CPU Begin to Present are elapsed envelopes, not exclusive GPU busy or CPU execution.",
+          "No independent lost-event detector; contiguous layer frame IDs and full bracketing provide continuity checks. Missing-event detection independent of Instruments is unavailable.",
+          "Quantiles use the existing diagnostic parser; rolling windows step one second."
+        ],
+        "identityAndCoverageVerified": false
+      }
+    },
+    {
+      "prefix": "overview-periodic",
+      "validation": {
+        "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+        "pid": 94717,
+        "layerID": "529775797888",
+        "layerName": "SCNMetalBackingLayer: MarvinSimulator.SimulatorView",
+        "events": [
+          {
+            "name": "TownBenchmarkStart",
+            "traceSeconds": 427.716877875,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197114.648721208,
+            "benchmarkBoundaryUptime": 196694.638697208,
+            "clockOriginUptime": 196686.931843333,
+            "pid": 94717
+          },
+          {
+            "name": "TownBenchmarkStart",
+            "traceSeconds": 457.7137865,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197144.645634,
+            "benchmarkBoundaryUptime": 196694.638697208,
+            "clockOriginUptime": 196686.93184749997,
+            "pid": 94717
+          },
+          {
+            "name": "TownBenchmarkStart",
+            "traceSeconds": 487.713452916,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197174.645303541,
+            "benchmarkBoundaryUptime": 196694.638697208,
+            "clockOriginUptime": 196686.931850625,
+            "pid": 94717
+          },
+          {
+            "name": "TownBenchmarkStart",
+            "traceSeconds": 517.707426416,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197204.639271416,
+            "benchmarkBoundaryUptime": 196694.638697208,
+            "clockOriginUptime": 196686.931845,
+            "pid": 94717
+          },
+          {
+            "name": "TownBenchmarkStart",
+            "traceSeconds": 547.708731125,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197234.6405795,
+            "benchmarkBoundaryUptime": 196694.638697208,
+            "clockOriginUptime": 196686.931848375,
+            "pid": 94717
+          },
+          {
+            "name": "TownBenchmarkStart",
+            "traceSeconds": 577.707184958,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197264.63903175,
+            "benchmarkBoundaryUptime": 196694.638697208,
+            "clockOriginUptime": 196686.931846792,
+            "pid": 94717
+          },
+          {
+            "name": "TownBenchmarkStart",
+            "traceSeconds": 607.711151416,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197294.642997333,
+            "benchmarkBoundaryUptime": 196694.638697208,
+            "clockOriginUptime": 196686.931845917,
+            "pid": 94717
+          },
+          {
+            "name": "TownBenchmarkEnd",
+            "traceSeconds": 610.722101291,
+            "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+            "markerUptime": 197297.65394525,
+            "benchmarkBoundaryUptime": 197297.650323333,
+            "clockOriginUptime": 196686.931843959,
+            "pid": 94717
+          }
+        ],
+        "clockOffsetSpreadMicroseconds": 7.291993824765086,
+        "bothMarkersRetained": true,
+        "clockAlignmentMethod": "multiple retained POI anchors",
+        "measuredTraceWindowSeconds": [
+          10.706850853835931,
+          610.7068508538359
+        ],
+        "measuredSeconds": 600,
+        "drawableDimensions": [
+          1920,
+          1080
+        ],
+        "runtimeAO": {
+          "bias": 0.02500000037252903,
+          "intensity": 0.699999988079071,
+          "radius": 1.600000023841858
+        },
+        "quality": {
+          "explorationDetail": true,
+          "msaaSamples": 2,
+          "shadowMapWidths": [
+            2048,
+            4096
+          ]
+        },
+        "firstDisplayStartSeconds": 8.887967041,
+        "lastDisplayStartSeconds": 611.886744541,
+        "frameIDsContiguous": true,
+        "displayStartsBracketWindow": true,
+        "distribution": {
+          "count": 35357,
+          "meanMS": 16.969731102271123,
+          "p50MS": 16.666625,
+          "p95MS": 16.666709,
+          "p99MS": 33.33325,
+          "maxMS": 66.666625,
+          "over25MS": 629
+        },
+        "minutes": [
+          {
+            "minute": 1,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666640497777777,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.667208,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 2,
+            "displayStartsPerSecond": 59.95,
+            "intervals": {
+              "count": 3597,
+              "meanMS": 16.68053622212955,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 33.333292,
+              "over25MS": 3
+            }
+          },
+          {
+            "minute": 3,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666632916666668,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.667917,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 4,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.66663142361111,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.666792,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 5,
+            "displayStartsPerSecond": 60.0,
+            "intervals": {
+              "count": 3600,
+              "meanMS": 16.666630972222222,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 16.666709,
+              "maxMS": 16.66675,
+              "over25MS": 0
+            }
+          },
+          {
+            "minute": 6,
+            "displayStartsPerSecond": 59.233333333333334,
+            "intervals": {
+              "count": 3554,
+              "meanMS": 16.882349442037142,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 33.333209,
+              "maxMS": 33.333334,
+              "over25MS": 46
+            }
+          },
+          {
+            "minute": 7,
+            "displayStartsPerSecond": 56.516666666666666,
+            "intervals": {
+              "count": 3391,
+              "meanMS": 17.693858301386022,
+              "p50MS": 16.666625,
+              "p95MS": 33.333209,
+              "p99MS": 33.333292,
+              "maxMS": 66.666625,
+              "over25MS": 202
+            }
+          },
+          {
+            "minute": 8,
+            "displayStartsPerSecond": 58.13333333333333,
+            "intervals": {
+              "count": 3488,
+              "meanMS": 17.20179869065367,
+              "p50MS": 16.666625,
+              "p95MS": 16.666709,
+              "p99MS": 33.333291,
+              "maxMS": 49.999875,
+              "over25MS": 109
+            }
+          },
+          {
+            "minute": 9,
+            "displayStartsPerSecond": 59.15,
+            "intervals": {
+              "count": 3549,
+              "meanMS": 16.90613519075796,
+              "p50MS": 16.666625,
+              "p95MS": 16.666708,
+              "p99MS": 33.33325,
+              "maxMS": 33.333334,
+              "over25MS": 51
+            }
+          },
+          {
+            "minute": 10,
+            "displayStartsPerSecond": 56.3,
+            "intervals": {
+              "count": 3378,
+              "meanMS": 17.76195199319124,
+              "p50MS": 16.666625,
+              "p95MS": 33.33325,
+              "p99MS": 33.333292,
+              "maxMS": 49.999917,
+              "over25MS": 218
+            }
+          }
+        ],
+        "worstRolling10Seconds": {
+          "startMeasuredSecond": 569,
+          "displayStartsPerSecond": 47.0
+        },
+        "envelopes": [
+          {
+            "pid": "94717",
+            "process": "MarvinSimulator",
+            "layer": "529775797888",
+            "metric": "0.CPU Begin to Present",
+            "distribution": {
+              "count": 35355,
+              "meanMS": 16.749134473964077,
+              "p50MS": 17.424875,
+              "p95MS": 20.752084,
+              "p99MS": 30.614583,
+              "maxMS": 67.90075,
+              "over25MS": 869
+            }
+          },
+          {
+            "pid": "94717",
+            "process": "MarvinSimulator",
+            "layer": "529775797888",
+            "metric": "1.GPU Begin to End",
+            "distribution": {
+              "count": 35355,
+              "meanMS": 15.334129078913874,
+              "p50MS": 16.52475,
+              "p95MS": 18.483792,
+              "p99MS": 18.894625,
+              "maxMS": 36.18175,
+              "over25MS": 68
+            }
+          }
+        ],
+        "limitations": [
+          "Instrumented run only; not clean-run presentation.",
+          "GPU Begin to End and CPU Begin to Present are elapsed envelopes, not exclusive GPU busy or CPU execution.",
+          "No independent lost-event detector; contiguous layer frame IDs and full bracketing provide continuity checks. Missing-event detection independent of Instruments is unavailable.",
+          "Quantiles use the existing diagnostic parser; rolling windows step one second."
+        ],
+        "startAnchorEmissionElapsedSeconds": [
+          420.0100239996682,
+          450.00693679164397,
+          480.0066063326667,
+          510.000574207661,
+          540.0018822916609,
+          570.0003345416626,
+          600.0043001246522
+        ],
+        "earlyStartAnchorRetained": false,
+        "identityAndCoverageVerified": false
+      }
+    }
+  ],
+  "visibility": {
+    "samples": 604,
+    "secondsContiguous": true,
+    "allActive": true,
+    "allUnoccluded": true,
+    "allVisible": true,
+    "allNonminimized": true,
+    "lockFlagValues": [
+      null
+    ],
+    "maxSampleGapSeconds": 1.033432083320804,
     "firstVisibility": {
-      "appActive": false,
+      "appActive": true,
       "backingScale": 2,
       "screenFrame": "{{0, 0}, {2048, 1152}}",
       "screenName": "Studio Display",
-      "sessionLockFlag": true,
-      "uptime": 182170.44589991667,
+      "sessionLockFlag": null,
+      "uptime": 196694.68329083335,
       "windowFrame": "{{384, 527}, {960, 540}}",
       "windowMiniaturized": false,
-      "windowOcclusionVisible": false,
+      "windowOcclusionVisible": true,
       "windowVisible": true
     },
-    "allLocked": true,
-    "allInactive": true,
-    "allOccluded": true,
-    "quality": {
-      "explorationDetail": true,
-      "msaaSamples": 2,
-      "shadowMapWidths": [
-        2048,
-        4096
-      ]
+    "thermalStates": [
+      0,
+      1
+    ],
+    "initialThermalState": 0,
+    "endThermalState": 1,
+    "sessionEvents": {
+      "events": [
+        {
+          "appActive": true,
+          "event": "observerStart",
+          "receiptUptime": 196694.63867491667,
+          "windowOcclusionVisible": true
+        },
+        {
+          "appActive": true,
+          "event": "observerEnd",
+          "receiptUptime": 197298.341744875,
+          "windowOcclusionVisible": true
+        }
+      ],
+      "method": "Notification receipt uptime; delivered on main queue. Combine with one-second samples and independent UI observation."
     },
-    "ambientOcclusion": {
-      "bias": 0.02500000037252903,
-      "intensity": 0.699999988079071,
-      "radius": 1.600000023841858
-    },
-    "audioActive": true
+    "limitations": [
+      "Absent CGSession lock key is UNKNOWN, not false.",
+      "Notifications record receipt time on main queue, not independent hardware event time.",
+      "Sparse UI observations plus samples and transition observers support visibility; an independent continuous lock recorder is unavailable."
+    ]
   },
-  "newPresentationStatistics": null,
-  "newGPUCaptures": [],
+  "gpuPreflight": {
+    "first": {
+      "status": "FAILED",
+      "capture": "gpu-preflight/native-frame.gputrace",
+      "observedXcodeAlert": "Unexpected Replayer Termination: Segmentation fault: 11; Buffer creation failed; Additionally - 44 other errors were found.",
+      "observedSummary": {
+        "commandBuffers": 3,
+        "renderEncoders": 8,
+        "computeEncoders": 4,
+        "blitEncoders": 139,
+        "drawCalls": 2085,
+        "dispatchCalls": 6,
+        "texturesMiB": 704.95,
+        "buffersGiB": 1.09,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "pixelFormat": "BGRA8Unorm_sRGB"
+      },
+      "limitation": "Command/resource payload is real, but replay failed. Counts cover the whole short capture and cannot be used as a matched per-frame inventory."
+    },
+    "deviceRetry": {
+      "status": "UNVERIFIED_REPLAY",
+      "capture": "gpu-preflight-device/native-frame.gputrace",
+      "repair": "Capture renderer.device from updateAtTime, before willRenderScene, and keep three renderer callbacks; official MetalToolchain 27A266a installed.",
+      "replayModeObserved": "Debug Workload",
+      "observedSummary": {
+        "commandBuffers": 4,
+        "renderEncoders": 8,
+        "computeEncoders": 4,
+        "blitEncoders": 208,
+        "drawCalls": 2085,
+        "dispatchCalls": 6,
+        "texturesMiB": 704.95,
+        "buffersGiB": 1.09,
+        "resolution": [
+          1920,
+          1080
+        ],
+        "pixelFormat": "BGRA8Unorm_sRGB"
+      },
+      "selectedCommand": {
+        "commandBuffer": 3,
+        "renderEncoder": 1,
+        "encoderCreationAPICall": 778,
+        "viewport": [
+          1,
+          1,
+          4094,
+          4094,
+          0,
+          1
+        ],
+        "scissorDimensions": [
+          4094,
+          4094
+        ],
+        "depthAttachment": "Texture 5, Clear/Store, 64.50 MiB",
+        "drawAPICall": 790,
+        "primitive": "triangle",
+        "indexCount": 4356,
+        "indexType": "UInt16",
+        "indexBuffer": "Buffer 885",
+        "indexBufferOffset": 0,
+        "submittedTriangles": 1452,
+        "pipeline": "MTLRenderPipelineState 1; commonprofile_vert/commonprofile_frag",
+        "depthState": "MTLDepthStencilState 2; GreaterEqual; Write Yes"
+      },
+      "selectedDepthViewerWarning": "The image contains invalid data",
+      "laterDrawObservation": "Shared Buffer 887 used by repeated triangle draws with indexCount 36 and different offsets.",
+      "limitation": "UI observations are diagnostics from one failed preflight, not a corresponding pass inventory, full attachment validation or native GPU cost. No matched pair was collected after failed preflight.",
+      "finalReadonlyReplayCheck": {
+        "commandBuffers3And4": "RuntimeIssue",
+        "initialBufferCreationCalls": "RuntimeIssue, including newBufferWithBytes length 256 CPUCacheModeWriteCombined",
+        "finalCommitAPICall": 13782,
+        "finalCommitStatus": "RuntimeIssue",
+        "presentFilterMatches": 0,
+        "profileAfterReplay": false,
+        "limitation": "No present API filter match is not proof of absent native presentation. Whole-capture resource/runtime issues prevent usable replay certification."
+      }
+    }
+  },
+  "matchedPairCollected": false,
+  "definitionOfDone": {
+    "validated600SecondExport": "MISSING: early START anchors absent in both sustained exports",
+    "twoReplayableMatchedGPUCaptures": "MISSING: replay preflight fails",
+    "passDrawInventorySupportingAttribution": "MISSING: selected commands are diagnostic only",
+    "cpuCorrectionAndHashedEvidence": "VERIFIED"
+  },
   "unknownCounters": [
     "upload volume",
     "GPU frequency",

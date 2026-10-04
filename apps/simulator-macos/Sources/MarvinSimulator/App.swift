@@ -24,6 +24,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     let raceHUD = RaceHUD()
     let frameRateHUD = FrameRateHUD()
     let benchmarkGPUCapture = BenchmarkGPUCapture()
+    let benchmarkSessionState = BenchmarkSessionState()
     var race = DirtRace()
     var racePhysics = DirtRacePhysics()
     var opponent = DirtOpponent()

@@ -1,0 +1,303 @@
+{
+  "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+  "pid": 94717,
+  "layerID": "529775797888",
+  "layerName": "SCNMetalBackingLayer: MarvinSimulator.SimulatorView",
+  "events": [
+    {
+      "name": "TownBenchmarkStart",
+      "traceSeconds": 427.716877875,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197114.648721208,
+      "benchmarkBoundaryUptime": 196694.638697208,
+      "clockOriginUptime": 196686.931843333,
+      "pid": 94717
+    },
+    {
+      "name": "TownBenchmarkStart",
+      "traceSeconds": 457.7137865,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197144.645634,
+      "benchmarkBoundaryUptime": 196694.638697208,
+      "clockOriginUptime": 196686.93184749997,
+      "pid": 94717
+    },
+    {
+      "name": "TownBenchmarkStart",
+      "traceSeconds": 487.713452916,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197174.645303541,
+      "benchmarkBoundaryUptime": 196694.638697208,
+      "clockOriginUptime": 196686.931850625,
+      "pid": 94717
+    },
+    {
+      "name": "TownBenchmarkStart",
+      "traceSeconds": 517.707426416,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197204.639271416,
+      "benchmarkBoundaryUptime": 196694.638697208,
+      "clockOriginUptime": 196686.931845,
+      "pid": 94717
+    },
+    {
+      "name": "TownBenchmarkStart",
+      "traceSeconds": 547.708731125,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197234.6405795,
+      "benchmarkBoundaryUptime": 196694.638697208,
+      "clockOriginUptime": 196686.931848375,
+      "pid": 94717
+    },
+    {
+      "name": "TownBenchmarkStart",
+      "traceSeconds": 577.707184958,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197264.63903175,
+      "benchmarkBoundaryUptime": 196694.638697208,
+      "clockOriginUptime": 196686.931846792,
+      "pid": 94717
+    },
+    {
+      "name": "TownBenchmarkStart",
+      "traceSeconds": 607.711151416,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197294.642997333,
+      "benchmarkBoundaryUptime": 196694.638697208,
+      "clockOriginUptime": 196686.931845917,
+      "pid": 94717
+    },
+    {
+      "name": "TownBenchmarkEnd",
+      "traceSeconds": 610.722101291,
+      "runID": "474025AE-E908-4B58-84B3-990837481DA2",
+      "markerUptime": 197297.65394525,
+      "benchmarkBoundaryUptime": 197297.650323333,
+      "clockOriginUptime": 196686.931843959,
+      "pid": 94717
+    }
+  ],
+  "clockOffsetSpreadMicroseconds": 7.291993824765086,
+  "bothMarkersRetained": true,
+  "clockAlignmentMethod": "multiple retained POI anchors",
+  "measuredTraceWindowSeconds": [
+    10.706850853835931,
+    610.7068508538359
+  ],
+  "measuredSeconds": 600,
+  "drawableDimensions": [
+    1920,
+    1080
+  ],
+  "runtimeAO": {
+    "bias": 0.02500000037252903,
+    "intensity": 0.699999988079071,
+    "radius": 1.600000023841858
+  },
+  "quality": {
+    "explorationDetail": true,
+    "msaaSamples": 2,
+    "shadowMapWidths": [
+      2048,
+      4096
+    ]
+  },
+  "firstDisplayStartSeconds": 8.887967041,
+  "lastDisplayStartSeconds": 611.886744541,
+  "frameIDsContiguous": true,
+  "displayStartsBracketWindow": true,
+  "distribution": {
+    "count": 35357,
+    "meanMS": 16.969731102271123,
+    "p50MS": 16.666625,
+    "p95MS": 16.666709,
+    "p99MS": 33.33325,
+    "maxMS": 66.666625,
+    "over25MS": 629
+  },
+  "minutes": [
+    {
+      "minute": 1,
+      "displayStartsPerSecond": 60.0,
+      "intervals": {
+        "count": 3600,
+        "meanMS": 16.666640497777777,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 16.667208,
+        "over25MS": 0
+      }
+    },
+    {
+      "minute": 2,
+      "displayStartsPerSecond": 59.95,
+      "intervals": {
+        "count": 3597,
+        "meanMS": 16.68053622212955,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 33.333292,
+        "over25MS": 3
+      }
+    },
+    {
+      "minute": 3,
+      "displayStartsPerSecond": 60.0,
+      "intervals": {
+        "count": 3600,
+        "meanMS": 16.666632916666668,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 16.667917,
+        "over25MS": 0
+      }
+    },
+    {
+      "minute": 4,
+      "displayStartsPerSecond": 60.0,
+      "intervals": {
+        "count": 3600,
+        "meanMS": 16.66663142361111,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 16.666792,
+        "over25MS": 0
+      }
+    },
+    {
+      "minute": 5,
+      "displayStartsPerSecond": 60.0,
+      "intervals": {
+        "count": 3600,
+        "meanMS": 16.666630972222222,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 16.666709,
+        "maxMS": 16.66675,
+        "over25MS": 0
+      }
+    },
+    {
+      "minute": 6,
+      "displayStartsPerSecond": 59.233333333333334,
+      "intervals": {
+        "count": 3554,
+        "meanMS": 16.882349442037142,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 33.333209,
+        "maxMS": 33.333334,
+        "over25MS": 46
+      }
+    },
+    {
+      "minute": 7,
+      "displayStartsPerSecond": 56.516666666666666,
+      "intervals": {
+        "count": 3391,
+        "meanMS": 17.693858301386022,
+        "p50MS": 16.666625,
+        "p95MS": 33.333209,
+        "p99MS": 33.333292,
+        "maxMS": 66.666625,
+        "over25MS": 202
+      }
+    },
+    {
+      "minute": 8,
+      "displayStartsPerSecond": 58.13333333333333,
+      "intervals": {
+        "count": 3488,
+        "meanMS": 17.20179869065367,
+        "p50MS": 16.666625,
+        "p95MS": 16.666709,
+        "p99MS": 33.333291,
+        "maxMS": 49.999875,
+        "over25MS": 109
+      }
+    },
+    {
+      "minute": 9,
+      "displayStartsPerSecond": 59.15,
+      "intervals": {
+        "count": 3549,
+        "meanMS": 16.90613519075796,
+        "p50MS": 16.666625,
+        "p95MS": 16.666708,
+        "p99MS": 33.33325,
+        "maxMS": 33.333334,
+        "over25MS": 51
+      }
+    },
+    {
+      "minute": 10,
+      "displayStartsPerSecond": 56.3,
+      "intervals": {
+        "count": 3378,
+        "meanMS": 17.76195199319124,
+        "p50MS": 16.666625,
+        "p95MS": 33.33325,
+        "p99MS": 33.333292,
+        "maxMS": 49.999917,
+        "over25MS": 218
+      }
+    }
+  ],
+  "worstRolling10Seconds": {
+    "startMeasuredSecond": 569,
+    "displayStartsPerSecond": 47.0
+  },
+  "envelopes": [
+    {
+      "pid": "94717",
+      "process": "MarvinSimulator",
+      "layer": "529775797888",
+      "metric": "0.CPU Begin to Present",
+      "distribution": {
+        "count": 35355,
+        "meanMS": 16.749134473964077,
+        "p50MS": 17.424875,
+        "p95MS": 20.752084,
+        "p99MS": 30.614583,
+        "maxMS": 67.90075,
+        "over25MS": 869
+      }
+    },
+    {
+      "pid": "94717",
+      "process": "MarvinSimulator",
+      "layer": "529775797888",
+      "metric": "1.GPU Begin to End",
+      "distribution": {
+        "count": 35355,
+        "meanMS": 15.334129078913874,
+        "p50MS": 16.52475,
+        "p95MS": 18.483792,
+        "p99MS": 18.894625,
+        "maxMS": 36.18175,
+        "over25MS": 68
+      }
+    }
+  ],
+  "limitations": [
+    "Instrumented run only; not clean-run presentation.",
+    "GPU Begin to End and CPU Begin to Present are elapsed envelopes, not exclusive GPU busy or CPU execution.",
+    "No independent lost-event detector; contiguous layer frame IDs and full bracketing provide continuity checks. Missing-event detection independent of Instruments is unavailable.",
+    "Quantiles use the existing diagnostic parser; rolling windows step one second."
+  ],
+  "startAnchorEmissionElapsedSeconds": [
+    420.0100239996682,
+    450.00693679164397,
+    480.0066063326667,
+    510.000574207661,
+    540.0018822916609,
+    570.0003345416626,
+    600.0043001246522
+  ],
+  "earlyStartAnchorRetained": false,
+  "identityAndCoverageVerified": false
+}
