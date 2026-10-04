@@ -41,6 +41,7 @@ public sealed class SCNBox : SCNGeometry
     public int heightSegmentCount { get => _hs; set { _hs = value; Rebuild(); } }
     public int lengthSegmentCount { get => _ls; set { _ls = value; Rebuild(); } }
     public int chamferSegmentCount { get => _cs; set { _cs = value; Rebuild(); } }
+    protected override SCNGeometry CopyShape() => new SCNBox(_w, _h, _l, _r) { _ws = _ws, _hs = _hs, _ls = _ls, _cs = _cs };
 
     protected override void Build()
     {
@@ -116,6 +117,7 @@ public sealed class SCNSphere : SCNGeometry
     public double radius { get => _r; set { _r = value; Rebuild(); } }
     public int segmentCount { get => _seg; set { _seg = value; Rebuild(); } }
     public bool isGeodesic { get => _geodesic; set { _geodesic = value; Rebuild(); } }
+    protected override SCNGeometry CopyShape() => new SCNSphere(_r) { _seg = _seg, _geodesic = _geodesic };
     protected override void Build()
     {
         int n = Math.Max(3, _seg);
@@ -156,6 +158,7 @@ public sealed class SCNCylinder : SCNGeometry
     public double height { get => _h; set { _h = value; Rebuild(); } }
     public int radialSegmentCount { get => _radial; set { _radial = value; Rebuild(); } }
     public int heightSegmentCount { get => _hseg; set { _hseg = value; Rebuild(); } }
+    protected override SCNGeometry CopyShape() => new SCNCylinder(_r, _h) { _radial = _radial, _hseg = _hseg };
     protected override void Build()
     {
         int n = Math.Max(3, _radial), m = Math.Max(1, _hseg);
@@ -213,6 +216,7 @@ public sealed class SCNPlane : SCNGeometry
     public int widthSegmentCount { get => _ws; set { _ws = value; Rebuild(); } }
     public int heightSegmentCount { get => _hs; set { _hs = value; Rebuild(); } }
     public int cornerSegmentCount { get => _cs; set { _cs = value; Rebuild(); } }
+    protected override SCNGeometry CopyShape() => new SCNPlane(_w, _h) { _corner = _corner, _ws = _ws, _hs = _hs, _cs = _cs };
     protected override void Build()
     {
         int nx = Math.Max(1, _ws), ny = Math.Max(1, _hs);
@@ -246,6 +250,7 @@ public sealed class SCNFloor : SCNGeometry
     public SCNFloor() { }
     public double width { get => _width; set { _width = value; Rebuild(); } }
     public double length { get => _length; set { _length = value; Rebuild(); } }
+    protected override SCNGeometry CopyShape() => new SCNFloor { _width = _width, _length = _length, reflectivity = reflectivity, reflectionFalloffStart = reflectionFalloffStart, reflectionFalloffEnd = reflectionFalloffEnd, reflectionResolutionScaleFactor = reflectionResolutionScaleFactor, reflectionCategoryBitMask = reflectionCategoryBitMask };
     protected override void Build()
     {
         double w = _width > 0 ? _width : 8192, l = _length > 0 ? _length : 8192;
@@ -280,6 +285,7 @@ public sealed class SCNShape : SCNGeometry
     public SCNShape(NSBezierPath path, double extrusionDepth) { _path = path; _depth = extrusionDepth; }
     public NSBezierPath path { get => _path; set { _path = value; Rebuild(); } }
     public double extrusionDepth { get => _depth; set { _depth = value; Rebuild(); } }
+    protected override SCNGeometry CopyShape() => new SCNShape(_path, _depth) { chamferRadius = chamferRadius };
 
     protected override void Build()
     {
@@ -396,6 +402,7 @@ public sealed class SCNText : SCNGeometry
     public double extrusionDepth { get => _depth; set { _depth = value; Rebuild(); } }
     public NSFont font { get => _font; set { _font = value; Rebuild(); } }
     public double flatness { get => _flatness; set { _flatness = value; Rebuild(); } }
+    protected override SCNGeometry CopyShape() => new SCNText(_string, _depth) { _font = _font, _flatness = _flatness, chamferRadius = chamferRadius, isWrapped = isWrapped, containerFrame = containerFrame };
     public double chamferRadius;
     public bool isWrapped;
     public CGRect containerFrame;
