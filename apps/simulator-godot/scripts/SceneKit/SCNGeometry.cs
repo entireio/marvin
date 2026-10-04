@@ -368,8 +368,8 @@ public class SCNGeometry : IPropertyOwner
 
         var P = new Vector3[n];
         for (int i = 0; i < n; i++) P[i] = pos.V3(i);
-        // Without a normal source SceneKit lights the surface as if its normal were +Z
-        // in model space (measured: full N.L for a light shining along -Z).
+        // Without a normal source SceneKit shades flat face normals (measured); the composer derives them per pixel
+        // (VariantFlags.NoNormals). The +Z placeholder only feeds tangent generation and .geometry modifiers.
         var N = new Vector3[n];
         if (nrm != null) { for (int i = 0; i < Math.Min(n, nrm.vectorCount); i++) N[i] = nrm.V3(i); }
         else for (int i = 0; i < n; i++) N[i] = new Vector3(0, 0, 1);

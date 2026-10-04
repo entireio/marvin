@@ -339,6 +339,13 @@ internal static class ShaderComposer
             plan.code = sb.ToString();
             return plan;
         }
+        if (noNormals)
+        {
+            sb.AppendLine("    // No normal source: SceneKit shades flat face normals facing the viewer (measured: a horizontal quad without");
+            sb.AppendLine("    // normals lights exactly like one with +Y normals, either winding; a shared-vertex ridge shades per face).");
+            sb.AppendLine("    NORMAL = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));");
+            sb.AppendLine("    if (dot(NORMAL, VIEW) < 0.0) { NORMAL = -NORMAL; }");
+        }
         sb.AppendLine("    // _surface.diffuse = diffuse x vertex colour, premultiplied by alpha (measured in SceneKit).");
         sb.AppendLine($"    vec4 scn_d = {diffuse};");
         sb.AppendLine("    scn_d.rgb *= scn_diffuse_intensity;");
@@ -396,7 +403,7 @@ internal static class ShaderComposer
         {
             sb.AppendLine("    ALBEDO *= scn_multiply;");
             sb.AppendLine("    EMISSION *= scn_multiply;");
-            sb.AppendLine("    vec3 scn_wn = noNormals_placeholder;".Replace("noNormals_placeholder", noNormals ? "vec3(0.0)" : "normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz)"));
+            sb.AppendLine("    vec3 scn_wn = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);");
             if (pbr)
             {
                 sb.AppendLine("    // Ambient = SH(lightingEnvironment) x intensity x roughness response + ambient lights.");
@@ -494,11 +501,6 @@ internal static class ShaderComposer
             sb.AppendLine("        scn_att = 1.0 - scn_deferred.x * scn_s;");
             sb.AppendLine("        SPECULAR_LIGHT -= scn_unlit * (scn_deferred.x * scn_s);");
             sb.AppendLine("    }");
-            if (noNormals)
-            {
-                sb.AppendLine("    // No normal source: SceneKit's normal is zero, so N.L = 0 (only ambient light remains).");
-            }
-            else
             {
                 sb.AppendLine("    float NdotL = min(dot(NORMAL, LIGHT), 1.0);");
                 sb.AppendLine("    float cNdotL = max(NdotL, 0.0);");
