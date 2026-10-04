@@ -500,7 +500,7 @@ internal sealed class MaterialGpu
     }
     internal void ArgumentChanged(string key)
     {
-        dirtyArguments.Add(key);
+        lock (dirtyArguments) dirtyArguments.Add(key);
         SceneKitRuntime.MaterialDirty(this);
     }
 
@@ -542,13 +542,15 @@ internal sealed class MaterialGpu
         }
         else if (dirtyArguments.Count > 0)
         {
+            string[] changed;
+            lock (dirtyArguments) changed = dirtyArguments.ToArray();
             foreach (var (key, (sm, plan)) in variants)
-                foreach (var a in dirtyArguments)
+                foreach (var a in changed)
                     if (key.geometry == null || !key.geometry.arguments.ContainsKey(a))
                         if (m.arguments.TryGetValue(a, out var value)) ApplyArgument(sm, a, value);
         }
         structuralDirty = valuesDirty = false;
-        dirtyArguments.Clear();
+        lock (dirtyArguments) dirtyArguments.Clear();
     }
 
     private void ApplyValues(ShaderMaterial sm, ShaderComposer.Plan plan, SCNGeometry g)

@@ -229,6 +229,7 @@ public partial class SCNNode : Node3D
         AddChild(child);
         child.SetSceneOwner(sceneOwner);
         child.Touch();
+        SceneKitRuntime.Adopt(child); // a subtree built on another thread is handed over here
     }
     public void insertChildNode(SCNNode child, int at)
     {

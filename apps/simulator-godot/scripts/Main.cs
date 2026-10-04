@@ -15,7 +15,7 @@ public partial class Main : Node3D
             Marvin.SceneKit.SceneKitRuntime.EnsureStarted();
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
             await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-            Marvin.SceneKit.FacadeTest.Run(dir, GetTree());
+            await Marvin.SceneKit.FacadeTest.Run(dir, GetTree());
             return;
         }
         GD.Print($"Marvin Godot skeleton: {Engine.GetVersionInfo()["string"]}, renderer {RenderingServer.GetCurrentRenderingDriverName()}");
