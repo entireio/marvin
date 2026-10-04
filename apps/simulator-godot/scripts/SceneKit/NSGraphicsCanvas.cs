@@ -39,7 +39,15 @@ internal sealed class NSGraphicsCanvas : IDisposable
         segments.Clear(); keepAlive.Clear();
         current = root; currentClip = null; usingRoot = true;
     }
-    public void Dispose() => Reset();
+    /// <summary>
+    /// Frees the drawing's items. At engine shutdown Godot disposes views that are no longer in the tree (a removed
+    /// overlay such as the loading view) after the RenderingServer, which has freed every item already.
+    /// </summary>
+    public void Dispose()
+    {
+        try { Reset(); }
+        catch (ObjectDisposedException) { segments.Clear(); keepAlive.Clear(); }
+    }
 
     private Rid Target(CGRect? clip)
     {
