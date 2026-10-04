@@ -253,6 +253,12 @@ public sealed class NSGraphicsContext
     /// <summary>Canvas backend (view drawing); null for bitmap contexts.</summary>
     internal readonly NSGraphicsCanvas canvas;
     public bool shouldAntialias = true;
+    /// <summary>CGContext.setShouldSmoothFonts: CoreText's font smoothing (glyph dilation, FontSmoothing). On by default, as in AppKit.</summary>
+    public bool shouldSmoothFonts = true;
+    /// <summary>Text drawn by a control cell (NSTextField, NSButton title) over its own transparent background (FontSmoothing).</summary>
+    internal bool cellText;
+    /// <summary>Calibration only: a fixed stem gain in pixels instead of FontSmoothing's model.</summary>
+    internal double? stemGainOverride;
     /// <summary>isFlipped: user-space y grows downwards (flipped views, NSImage.lockFocusFlipped(true)).</summary>
     public readonly bool isFlipped;
     /// <summary>Clip rectangle in device space (bitmap: AppKit bitmap coordinates; canvas: Godot pixels).</summary>
@@ -568,9 +574,10 @@ public sealed class NSGraphicsContext
 ///   glyph (Apple HIG: 17 pt -> -0.43 pt);
 /// - monospacedDigitSystemFont enables tabular figures ('tnum');
 /// - ascender/descender are the font's exact hhea values (FreeType's pixel metrics are rounded);
-/// - 2D text is rasterised with CoreText's font-smoothing dilation (renderFont, SceneKitCalibration.FontDilation);
-///   godotFont keeps the plain outlines for shaping and SCNText geometry.
-/// Glyphs are rendered unhinted with quarter-pixel horizontal positioning, like CoreText.
+/// - 2D text is rasterised with CoreText's font-smoothing dilation (RenderFont(stem gain), chosen per draw by
+///   FontSmoothing from the size, weight, text colour and drawing path); godotFont keeps the plain outlines for
+///   shaping and SCNText geometry.
+/// Glyphs are rendered unhinted; view drawing places them on CoreText's subpixel grid (FontSmoothing.GlyphX), then Godot's quarter pixels.
 /// Godot fonts are cached per family, weight, optical size and features, so creating NSFonts per draw is cheap.
 /// </summary>
 public sealed class NSFont
@@ -581,9 +588,11 @@ public sealed class NSFont
     public readonly string fontName;
     /// <summary>The font's outlines and metrics (shaping, SCNText geometry).</summary>
     internal readonly Font godotFont;
-    /// <summary>The font 2D text is rasterised with: godotFont plus CoreText's font-smoothing dilation.</summary>
+    /// <summary>The font 2D text is rasterised with by default: godotFont plus CoreText's font smoothing for black text.</summary>
     internal readonly Font renderFont;
     internal readonly int weight;
+    /// <summary>True for SF Mono (monospacedSystemFont).</summary>
+    internal readonly bool monospaced;
     /// <summary>Tracking CoreText adds after every glyph at this size, in points.</summary>
     internal readonly double tracking;
     /// <summary>
@@ -595,7 +604,33 @@ public sealed class NSFont
     private readonly double ascenderEm, descenderEm;
 
     private enum Family { System, Monospaced, Named }
-    private sealed class Face { public Font font, renderFont; public double ascenderEm, descenderEm; public TrakTable trak; }
+    private sealed class Face
+    {
+        public Font font; public double ascenderEm, descenderEm; public TrakTable trak;
+        // Dilated twins (CoreText font smoothing), by stem gain in 1/32 px.
+        public SystemFont systemFont; public Godot.Collections.Dictionary coords, features; public int pixels; public double capHeight;
+        private readonly Dictionary<int, Font> dilated = new();
+        /// <summary>
+        /// The font widened by stemGain pixels: Godot's embolden widens outlines by embolden x size / 16 pixels
+        /// (horizontally); the cap top rises through a vertical outline scale (SceneKitCalibration.FontDilationRise).
+        /// </summary>
+        public Font Dilated(double stemGain)
+        {
+            int key = (int)Math.Round(stemGain * 32);
+            if (key <= 0 || systemFont == null || pixels <= 0) return font;
+            lock (dilated)
+            {
+                if (dilated.TryGetValue(key, out var cached)) return cached;
+                double gain = key / 32.0;
+                var variation = new FontVariation { BaseFont = systemFont, VariationOpentype = coords, OpentypeFeatures = features };
+                variation.VariationEmbolden = (float)(gain * 16 / pixels);
+                if (capHeight > 1) variation.VariationTransform = new Transform2D(new Vector2(1, 0), new Vector2(0, (float)(1 + SceneKitCalibration.FontDilationRise * gain / capHeight)), Vector2.Zero);
+                dilated[key] = variation;
+                return variation;
+            }
+        }
+    }
+    private readonly Face face;
     private static readonly Dictionary<string, Face> faces = new();
     private static readonly Dictionary<string, SystemFont> bases = new();
     private static readonly Dictionary<string, TrakTable> trakTables = new();
@@ -606,9 +641,11 @@ public sealed class NSFont
     private NSFont(string name, double size, int weight, Family family, bool tabularDigits)
     {
         pointSize = size; fontName = name; this.weight = weight;
-        var face = Resolve(name, size, weight, family, tabularDigits);
-        godotFont = face.font; renderFont = face.renderFont; ascenderEm = face.ascenderEm; descenderEm = face.descenderEm;
+        face = Resolve(name, size, weight, family, tabularDigits);
+        godotFont = face.font; ascenderEm = face.ascenderEm; descenderEm = face.descenderEm;
         appKitMetrics = family != Family.Named;
+        monospaced = family == Family.Monospaced;
+        renderFont = RenderFont(FontSmoothing.StemGain(this, 0, cell: false));
         tracking = face.trak?.Tracking(size) ?? 0;
     }
     public static NSFont systemFont(double ofSize, Weight weight = Weight.regular) => new(".SFNS", ofSize, (int)weight, Family.System, false);
@@ -625,8 +662,10 @@ public sealed class NSFont
     public double descender => -descenderEm * pointSize;
     public double leading => 0;
     public double capHeight => ascender * 0.75;
-    /// <summary>Godot Font for UI text (with CoreText's font-smoothing dilation).</summary>
+    /// <summary>Godot Font for UI text (with CoreText's font-smoothing dilation for black text).</summary>
     public Font GodotFont => renderFont;
+    /// <summary>The font rasterised with CoreText's font-smoothing dilation of stemGain pixels (system fonts only).</summary>
+    internal Font RenderFont(double stemGain) => appKitMetrics ? face.Dilated(stemGain) : godotFont;
 
     // SF named instances (fvar of SFNS.ttf / SFNSMono.ttf on macOS 27).
     private static double SystemWeight(int w) => w switch
@@ -641,7 +680,7 @@ public sealed class NSFont
     private static Face Resolve(string name, double size, int weight, Family family, bool tabularDigits)
     {
         int opsz = family == Family.System ? (int)Math.Clamp(Math.Round(size), 17, 96) : 0;
-        // CoreText's font smoothing dilation depends on the rendered pixel size.
+        // The dilated twins depend on the rendered pixel size.
         int pixels = family == Family.Named ? 0 : Math.Max(1, (int)Math.Round(size));
         string key = $"{family}|{name}|{weight}|{opsz}|{tabularDigits}|{pixels}";
         lock (gate)
@@ -665,7 +704,9 @@ public sealed class NSFont
                 };
                 bases[baseKey] = systemFont;
             }
-            Font font = systemFont, renderFont = systemFont;
+            Font font = systemFont;
+            Godot.Collections.Dictionary dilationCoords = null, dilationFeatures = null;
+            double capHeight = 0;
             if (family != Family.Named)
             {
                 var ts = TextServerManager.GetPrimaryInterface();
@@ -677,22 +718,14 @@ public sealed class NSFont
                 else { var (wght, yaxs) = MonospacedWeight(weight); Axis("wght", wght); Axis("YAXS", yaxs); }
                 var features = tabularDigits ? new Godot.Collections.Dictionary { [ts.NameToTag("tnum")] = 1 } : new Godot.Collections.Dictionary();
                 var variation = new FontVariation { BaseFont = systemFont, VariationOpentype = coords, OpentypeFeatures = features };
-                font = renderFont = variation;
-                // CoreText font smoothing (SceneKitCalibration.FontDilation): Godot's embolden widens outlines by
-                // embolden x size / 16 pixels (horizontally); the cap top rises through a vertical outline scale.
-                double dilation = SceneKitCalibration.FontDilation * Math.Sqrt(pixels);
-                if (dilation > 0)
-                {
-                    var dilated = new FontVariation { BaseFont = systemFont, VariationOpentype = coords, OpentypeFeatures = features };
-                    dilated.VariationEmbolden = (float)(dilation * 16 / pixels);
-                    double capHeight = CapHeightEm(variation) * pixels;
-                    if (capHeight > 1) dilated.VariationTransform = new Transform2D(new Vector2(1, 0), new Vector2(0, (float)(1 + SceneKitCalibration.FontDilationRise * dilation / capHeight)), Vector2.Zero);
-                    renderFont = dilated;
-                }
+                font = variation;
+                dilationCoords = coords; dilationFeatures = features;
+                capHeight = CapHeightEm(variation) * pixels;
             }
             var face = new Face
             {
-                font = font, renderFont = renderFont,
+                font = font,
+                systemFont = family != Family.Named ? systemFont : null, coords = dilationCoords, features = dilationFeatures, pixels = pixels, capHeight = capHeight,
                 // Exact em metrics: FreeType rounds pixel metrics up, so read them at 2048 px (= units for 2048-unit fonts).
                 ascenderEm = font.GetAscent(2048) / 2048.0,
                 descenderEm = font.GetDescent(2048) / 2048.0,

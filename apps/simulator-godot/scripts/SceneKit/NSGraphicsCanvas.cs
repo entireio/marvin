@@ -267,9 +267,9 @@ internal sealed class NSGraphicsCanvas : IDisposable
     }
 
     // ---- Text and images
-    internal void Text(NSAttributedString.Line line, CGPoint deviceBaseline, AffineTransform ctm, bool flipped, Color color, CGRect? clip)
+    internal void Text(NSAttributedString.Line line, List<(Rid font, long index, Vector2 offset, double x)> glyphs, CGPoint deviceBaseline, AffineTransform ctm, bool flipped, Color color, CGRect? clip)
     {
-        if (color.A <= 0 || line.glyphs.Count == 0) return;
+        if (color.A <= 0 || glyphs.Count == 0) return;
         var item = Target(clip);
         var ts = TextServerManager.GetPrimaryInterface();
         bool upright = Math.Abs(ctm.m12) < 1e-9 && Math.Abs(ctm.m21) < 1e-9 && Math.Abs(ctm.m11 - 1) < 1e-9 && Math.Abs(Math.Abs(ctm.m22) - 1) < 1e-9;
@@ -282,7 +282,7 @@ internal sealed class NSGraphicsCanvas : IDisposable
             RenderingServer.CanvasItemAddSetTransform(item, new Transform2D(xAxis, down, origin));
             origin = Vector2.Zero;
         }
-        foreach (var (font, index, offset, x) in line.glyphs)
+        foreach (var (font, index, offset, x) in glyphs)
             ts.FontDrawGlyph(font, item, line.size, origin + new Vector2((float)x + offset.X, offset.Y), index, color);
         if (!upright) RenderingServer.CanvasItemAddSetTransform(item, Transform2D.Identity);
     }
@@ -292,6 +292,9 @@ internal sealed class NSGraphicsCanvas : IDisposable
         if (texture == null || deviceRect.width <= 0 || deviceRect.height <= 0 || fraction <= 0) return;
         var item = Target(clip);
         keepAlive.Add(texture);
+        // Quartz resamples images with area-averaging interpolation; mipmapped sampling keeps minified images
+        // (the HUD's town and terrain maps at a third of their size) from aliasing. Glyph textures have no mipmaps.
+        RenderingServer.CanvasItemSetDefaultTextureFilter(item, RenderingServer.CanvasItemTextureFilter.LinearWithMipmaps);
         RenderingServer.CanvasItemAddTextureRect(item, new Rect2((float)deviceRect.minX, (float)deviceRect.minY, (float)deviceRect.width, (float)deviceRect.height), texture.GetRid(), false, new Color(1, 1, 1, (float)fraction));
     }
 }

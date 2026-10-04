@@ -75,17 +75,28 @@ internal static class SceneKitCalibration
     /// <summary>Pre-filtered radiance band used for roughness r: clamp(IblBlurScale x r^IblBlurPower, 0, 1) (bands are GGX alpha = band^2).</summary>
     public static double IblBlurScale = 1.0, IblBlurPower = 1.0;
 
-    // ---- Text (CoreText vs FreeType), measured on the game's AppKit captures (menu, HUD, loading screen).
+    // ---- Text (CoreText vs FreeType), measured with tools/scenekit-reference/TextCalibration.swift against
+    // `tools/godot -- --text-calibration DIR` (28 system/monospaced fonts x 5 greys x plain/cell; FontSmoothing).
     /// <summary>
-    /// CoreText's font smoothing dilates system-font glyphs: stems gain about FontDilation x sqrt(point size)
-    /// pixels (0.45 px at 12 pt, 0.6 at 18-21 pt, 1.0 at 58 pt) and cap tops rise by about the same amount while
-    /// the baseline stays. Godot's FreeType emboldening (VariationEmbolden) widens stems and raises tops by
-    /// roughly that much already; FontDilationRise x dilation adjusts the top through a vertical outline scale
-    /// (-0.15: measured tops 0.1-0.3 px high at 13-21 pt without it). Stems after calibration: 3.80 vs 3.80 px
-    /// (SF Mono bold 23), 1.89 vs 1.80 (SF Mono 16), 8.6 vs 8.5 (SF Pro bold 58), 2.9 vs 2.9 (SF Pro medium 21).
-    /// White text on the menu's opaque dark buttons stays about 0.5 px lighter than CoreText's.
+    /// CoreText's font smoothing dilates glyphs; as a FreeType stem gain (pixels) it is
+    /// min(FontSmoothingCap, point size x (Black + (White - Black) x f(L))) + FontSmoothingCell for control cells
+    /// (NSTextField/NSButton text over a transparent background), with f(L) = clamp((L - Floor) / (1 - Floor), 0, 1)^Power
+    /// of the text colour's linear luminance L. Measured: black 0.14 px at 10 pt, 0.29 at 21 pt, 0.62 at 44 pt;
+    /// white 0.37 px at 10 pt, 0.71 from about 21 pt; the cap 0.71 px holds for every colour from 58 pt; cells add
+    /// 0.31 px at every size and colour. Fit: mean ink error 1.3 % (max 5 %) over the 280 cases.
+    /// FontDilationRise x stem gain adjusts the cap top through a vertical outline scale (fitted on the rows' vertical
+    /// ink profiles: error 0.0320 at -0.25, 0.0331 at -0.15, 0.0375 at 0).
     /// </summary>
-    public static double FontDilation = 0.13, FontDilationRise = -0.15;
+    public static double FontSmoothingBlack = 0.014, FontSmoothingWhite = 0.034, FontSmoothingCap = 0.71, FontSmoothingCell = 0.31;
+    public static double FontSmoothingLuminanceFloor = 0.06, FontSmoothingLuminancePower = 0.7;
+    public static double FontDilationRise = -0.25;
+    /// <summary>
+    /// Glyphs are drawn this much further left per pixel of stem gain: FreeType's emboldening keeps left edges and
+    /// widens to the right (ink centroid +0.25 x gain), CoreText dilates about symmetrically. 0.125 fits CoreText's
+    /// smoothed glyph positions best after Godot's quarter-pixel rounding (mean |offset| 0.07 px over 4 fonts x 20
+    /// positions; 0.08 with 0, 0.15 with 0.25).
+    /// </summary>
+    public static double FontEmboldenShift = 0.125;
 
     internal static string Poly(double c1, double c2, double c3, double c0 = 1.0) =>
         $"({F(c0)} + {F(c1)} * scn_r + {F(c2)} * scn_r * scn_r + {F(c3)} * scn_r * scn_r * scn_r)";

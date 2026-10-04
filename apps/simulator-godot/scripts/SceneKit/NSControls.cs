@@ -44,12 +44,17 @@ public partial class NSTextField : NSControl
         var style = new NSMutableParagraphStyle { alignment = alignment, lineBreakMode = lineBreakMode };
         NSGraphicsContext.saveGraphicsState();
         new NSBezierPath(bounds).addClip();
+        // A cell drawing its text over a transparent background gets CoreText's heavier cell smoothing (FontSmoothing).
+        var context = NSGraphicsContext.current;
+        bool cellText = context?.cellText ?? false;
+        if (context != null) context.cellText = !(drawsBackground && backgroundColor != null && backgroundColor.alphaComponent >= 1);
         stringValue.draw(bounds.insetBy(2, 0), new Dictionary<NSAttributedString.Key, object>
         {
             [NSAttributedString.Key.font] = font ?? NSFont.systemFont(NSFont.systemFontSize),
             [NSAttributedString.Key.foregroundColor] = textColor,
             [NSAttributedString.Key.paragraphStyle] = style,
         });
+        if (context != null) context.cellText = cellText;
         NSGraphicsContext.restoreGraphicsState();
     }
 }
@@ -108,7 +113,12 @@ public partial class NSButton : NSControl
             NSTextAlignment.right => bounds.width - size.width,
             _ => (bounds.width - size.width) / 2,
         };
+        // A borderless button's cell draws its title over a transparent background (FontSmoothing cell text).
+        var context = NSGraphicsContext.current;
+        bool cellText = context?.cellText ?? false;
+        if (context != null) context.cellText = !_isBordered;
         text.draw(new CGPoint(x, y));
+        if (context != null) context.cellText = cellText;
     }
     public override void mouseDown(NSEvent @event)
     {

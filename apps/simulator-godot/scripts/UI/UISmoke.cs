@@ -20,6 +20,7 @@ namespace Marvin;
 ///   (dirt-hud.png, race-finish-live.png, race-results.png, race-start.png, race-pause.png), the loading
 ///   screen of --loading-smoke-test (loading.png), plus views the Mac never captures (sandbox HUD, FPS HUD,
 ///   storm warning, town departure, TOWN/DUNES maps) and SimulatorView input checks (hud-smoke.json).
+///   tools/scenekit-reference/ui-reference/build.sh renders the same states with the macOS game's own AppKit files.
 /// Window content is 1280x792 points, the macOS window's content layout area below the title bar.
 /// </summary>
 public static class UISmoke
@@ -348,12 +349,20 @@ public static class UISmoke
         raceHUD.frame = new NSRect(0, 0, ContentWidth, ContentHeight);
         raceHUD.helpVisible = true;
 
-        // dirt-hud.png: 240 frames after the start (elapsed 4.00 s), everyone on lap 1, the player in front.
+        // dirt-hud.png: the smoke test's 240-frame autopilot drive after the countdown (elapsed 4.00 s), everyone on
+        // lap 1, the player in front. reset(nil) shuffles the grid with SystemRandomNumberGenerator; the slots below
+        // (player, R2-D2, BB-8, WALL-E) are the draw of the Mac reference run, identified from where its race-start
+        // map shows the player (this drive's end): of the 24 orders only this one puts the marker and its heading
+        // line on the Mac's pixels (IoU 0.79; the next best 0.51).
         {
-            var slots = DirtCourse.startingGrid;
+            var slots = new[] { DirtCourse.startingGrid[0], DirtCourse.startingGrid[3], DirtCourse.startingGrid[1], DirtCourse.startingGrid[2] };
             var simulation = new Simulation(dirtTrack: true, dirtStartOffset: slots[0].offset, dirtStartPhase: slots[0].phase);
             var race = new DirtRace(startPhase: slots[0].phase); race.countDown(3);
             var opponents = new[] { new DirtOpponent(slots[1]), new DirtOpponent(slots[2], laneOffset: 0), new DirtOpponent(slots[3], laneOffset: -0.65) };
+            // advanceRacePhysics: the shared 240 Hz race physics with the menu's default assists and robot collisions.
+            // PORT: the dune sand field and the town collision world (DirtWorld) are left out; neither acts on the
+            // start straight in these four seconds.
+            var racePhysics = new DirtRacePhysics();
             for (int frame = 0; frame < 240; frame++)
             {
                 var phase = DirtCourse.phase(simulation.x, simulation.z);
@@ -361,9 +370,8 @@ public static class UISmoke
                 var desired = atan2(target.x - simulation.x, target.z - simulation.z);
                 var error = atan2(sin(desired - simulation.heading), cos(desired - simulation.heading));
                 var input = new DriveInput(); input.throttle = 1; input.boost = true; input.turn = -error * 1.5;
-                simulation.advance(input, 1.0 / 60);
-                race.advance(simulation.x, simulation.z, 1.0 / 60);
-                for (int i = 0; i < opponents.Length; i++) opponents[i].advance(1.0 / 60, 1.0 / 60);
+                racePhysics.advance(input, ref simulation, ref race, opponents, 1.0 / 60, 1.0 / 60,
+                    robotCollisionsEnabled: true, assists: new DirtDrivingAssists(steering: true, braking: true));
             }
             raceHUD.opponents = opponents; raceHUD.race = race;
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading;
@@ -482,7 +490,8 @@ public static class UISmoke
             var hud = new HUDView();
             view.addSubview(hud);
             hud.frame = new NSRect(0, 0, ContentWidth, ContentHeight);
-            var state = new Simulation();
+            // Seed 0: the exploration course's beacons are seeded (the game uses a random seed per sandbox run).
+            var state = new Simulation(seed: 0);
             var input = new DriveInput(); input.throttle = 1; input.turn = 0.4;
             for (int i = 0; i < 40; i++) state.advance(input, 1.0 / 60);
             hud.state = state; hud.cameraName = "ORBIT";
@@ -504,6 +513,9 @@ public static class UISmoke
             view.scene = scene; view.pointOfView = camera;
             view.@delegate = fps;
             fps.resetSamples();
+            bitmap = fps.bitmapImageRepForCachingDisplay(fps.bounds);
+            fps.cacheDisplay(fps.bounds, bitmap);
+            Write(bitmap, dir, "fps-hud-empty.png");
             var started = ProcessInfo.processInfo.systemUptime;
             while (fps.framesPerSecond == null && ProcessInfo.processInfo.systemUptime - started < 5) await Frame(tree);
             report["fpsSample"] = fps.framesPerSecond ?? -1;
@@ -534,6 +546,7 @@ public static class UISmoke
             view.removeFromSuperview(); view.QueueFree();
         }
         bool passed = report["boostSteeringPassed"].AsBool() && report["focusPassed"].AsBool() && report["godotKeyRoutingPassed"].AsBool()
+            && report["pausePassed"].AsBool() && report["brakePassed"].AsBool() && report["headPassed"].AsBool()
             && report["commandPassed"].AsBool() && report["godotMouseThroughHUD"].AsBool()
             && report["loadingMonotonic"].AsBool() && report["dirtHudElapsed"].AsDouble() > 3.99;
         report["passed"] = passed;
@@ -551,6 +564,16 @@ public static class UISmoke
             var @event = NSEvent.keyEvent(down ? NSEvent.EventType.keyDown : NSEvent.EventType.keyUp, NSPoint.zero,
                 modifiers, ProcessInfo.processInfo.systemUptime, 0, null, "", "", false, code);
             if (down) { view.keyDown(@event); } else { view.keyUp(@event); }
+        }
+        // The composite smoke test's sandbox drive (frames 30-89 W, 90-119 D, cleared at 120, checks at 150), each
+        // frame advancing the sandbox simulation with the view's drive input.
+        var simulation = new Simulation(seed: 0);
+        for (int smokeFrames = 1; smokeFrames < 150; smokeFrames++)
+        {
+            if (smokeFrames >= 30 && smokeFrames < 90) key(13, down: true);
+            if (smokeFrames >= 90 && smokeFrames < 120) { key(13, down: false); key(2, down: true); }
+            if (smokeFrames == 120) view.clearInput();
+            simulation.advance(view.driveInput, 1.0 / 60);
         }
         var boostInputPassed = true;
         foreach (var (forward, turn) in new (ushort, ushort)[] { (13, 0), (13, 2), (126, 123), (126, 124) })
@@ -571,12 +594,30 @@ public static class UISmoke
             boostInputPassed = boostInputPassed && view.driveInput.turn == 0 && view.driveInput.boost;
         }
         result["boostSteeringPassed"] = boostInputPassed;
+        view.clearInput();
+        // PORT: AppController.togglePause (app stream): simulation.paused.toggle(); view.clearInput().
+        void togglePause() { simulation.paused = !simulation.paused; view.clearInput(); }
+        togglePause();
+        var elapsed = simulation.elapsed;
+        key(13, down: true);
+        simulation.advance(view.driveInput, 0.1);
+        result["pausePassed"] = simulation.paused && simulation.elapsed == elapsed;
+        togglePause();
+        key(13, down: true); key(49, down: true);
+        simulation.advance(view.driveInput, 0.1);
+        result["brakePassed"] = simulation.speed == 0;
+        view.clearInput();
+        result["focusPassed"] = view.held.Count == 0 && simulation.speed == 0;
+        key(14, down: true); key(15, down: true);
+        simulation.advance(view.driveInput, 0.1);
+        result["headPassed"] = simulation.yaw < 0 && simulation.pitch > 0;
+        view.clearInput();
         ushort command = 0xFFFF;
         view.onCommand = code => command = code;
         key(8, down: true);
         bool commandPassed = command == 8 && !view.held.Contains(8);
         view.clearInput();
-        result["focusPassed"] = view.held.Count == 0;
+        commandPassed = commandPassed && view.held.Count == 0;
         // Godot events through _GuiInput: physical W and Shift become keyCode 13 and flag 56, P a command.
         var w = new InputEventKey { PhysicalKeycode = Key.W, Keycode = Key.W, Pressed = true };
         var shiftKey = new InputEventKey { PhysicalKeycode = Key.Shift, Keycode = Key.Shift, Pressed = true, ShiftPressed = true };
