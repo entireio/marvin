@@ -3,6 +3,8 @@
 // and the SceneKit free functions (SCNMatrix4MakeTranslation, SCNVector3Zero, ...).
 global using Marvin.SceneKit;
 global using static Marvin.SceneKit.SCNGlobals;
+// Foundation/AppKit globals: NSApp, print, exit.
+global using static Marvin.SceneKit.Foundation;
 // AppKit aliases of the CoreGraphics geometry types (identical on macOS).
 global using NSPoint = Marvin.SceneKit.CGPoint;
 global using NSSize = Marvin.SceneKit.CGSize;
