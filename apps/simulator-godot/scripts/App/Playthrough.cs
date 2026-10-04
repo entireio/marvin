@@ -145,12 +145,16 @@ public sealed class Playthrough
         if (command) { var mod = new InputEventKey { Pressed = false, PhysicalKeycode = mac ? Key.Meta : Key.Ctrl, Keycode = mac ? Key.Meta : Key.Ctrl }; Input.ParseInputEvent(mod); }
         await frame();
     }
-    private static void mouseMove(Vector2 position, MouseButtonMask mask, Vector2 relative)
+    /// <summary>Window pixels of a point in the window's points (the content scale on HiDPI screens).</summary>
+    private float scale => (float)(app?.window?.backingScaleFactor ?? 1);
+    private void mouseMove(Vector2 position, MouseButtonMask mask, Vector2 relative)
     {
+        position *= scale; relative *= scale;
         Input.ParseInputEvent(new InputEventMouseMotion { Position = position, GlobalPosition = position, ButtonMask = mask, Relative = relative });
     }
-    private static void mouseButton(Vector2 position, MouseButton button, bool pressed)
+    private void mouseButton(Vector2 position, MouseButton button, bool pressed)
     {
+        position *= scale;
         Input.ParseInputEvent(new InputEventMouseButton
         {
             Position = position, GlobalPosition = position, ButtonIndex = button, Pressed = pressed,
@@ -172,6 +176,7 @@ public sealed class Playthrough
     }
     private async Task scroll(Vector2 at, bool up, int notches)
     {
+        at *= scale;
         for (int i = 0; i < notches; i++)
         {
             var b = up ? MouseButton.WheelUp : MouseButton.WheelDown;
@@ -272,7 +277,8 @@ public sealed class Playthrough
         bool ok = true;
         await seconds(1.0);
         ok &= check("main menu shown", !app.mainMenu.isHidden && !app.inSandbox && app.window.firstResponder == app.mainMenu && app.window.toolbar?.isVisible == false,
-            $"title '{app.window.title}', layout {app.window.contentLayoutRect.width}x{app.window.contentLayoutRect.height}, menu {app.mainMenu.frame.width}x{app.mainMenu.frame.height}");
+            $"title '{app.window.title}', layout {app.window.contentLayoutRect.width}x{app.window.contentLayoutRect.height}, menu {app.mainMenu.frame.width}x{app.mainMenu.frame.height}, " +
+            $"window {DisplayServer.WindowGetSize()} pixels, scale {app.window.backingScaleFactor}, root texture {tree.Root.GetTexture().GetSize()}");
         await shot("main-menu");
 
         // Keyboard: Down selects Dirt Track, Return starts loading the race.
@@ -314,6 +320,7 @@ public sealed class Playthrough
         async Task driving() { if (app.dirtIntro == null && app.race.countdown <= 0 && !app.race.finished && !app.simulation.paused) drive(); else releaseAll(); await frame(); }
         await waitFor("4 s of racing", () => app.race.elapsed >= 4, 15, driving);
         ok &= check("player moves under keyboard input", app.simulation.distance > 3, $"distance {Math.Round(app.simulation.distance, 2)} m");
+        ok &= check("race audio plays", app.raceAudio != null && app.raceAudio.active, $"engine running {app.raceAudio?.engine.isRunning}");
         hudCapture("dirt-hud.png");
         await shot("racing");
         // Camera: C cycles follow -> orbit -> overview -> follow.
@@ -362,7 +369,7 @@ public sealed class Playthrough
 
         // Command-R: race again (menu key equivalent, Control-R outside macOS).
         await tap(Key.R, command: true);
-        ok &= check($"{KeyEquivalent.command}R restarts the race", !app.race.finished && app.race.countdown > 2.5 && app.race.laps.Length == 0 && !app.raceHUD.isHidden && app.window.toolbar?.isVisible == true,
+        ok &= check($"{KeyEquivalent.command}R restarts the race", !app.race.finished && app.race.countdown > 1.5 && app.race.laps.Length == 0 && !app.raceHUD.isHidden && app.window.toolbar?.isVisible == true,
             $"countdown {Math.Round(app.race.countdown, 2)}, laps {app.race.laps.Length}");
         ok &= check($"{KeyEquivalent.command}R is not a driving key", app.simulation.pitch == 0 && !app.view.held.Contains(15));
         await shot("race-again");

@@ -123,6 +123,8 @@ public sealed class NSWindow
     public double backingScaleFactor { get; private set; } = 1;
     private static double ScreenScale(int window)
     {
+        // Test hook: MARVIN_BACKING_SCALE simulates a HiDPI screen on a 1x display.
+        if (double.TryParse(System.Environment.GetEnvironmentVariable("MARVIN_BACKING_SCALE"), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var forced) && forced >= 1) return forced;
         int screen = DisplayServer.WindowGetCurrentScreen(window);
         double scale = OS.GetName() == "macOS" ? DisplayServer.ScreenGetScale(screen) : DisplayServer.ScreenGetDpi(screen) / 96.0;
         return Math.Clamp(Math.Round(scale * 4) / 4, 1, 3);
