@@ -118,15 +118,31 @@ internal sealed class ViewRig
     internal SCNMatrix4 ViewProjection(SCNNode pov, double aspect) =>
         SCNMatrix4.Mul(pov.camera.ProjectionFor(aspect), SCNMatrix4.Inverse(pov.RenderWorld()));
 
+    /// <summary>
+    /// isNode(_:insideFrustumOf:). Measured: SceneKit tests the node's WORLD-SPACE axis-aligned bounding box
+    /// (the box enclosing the transformed local bounding box), not the oriented box: a unit box rotated by
+    /// 0.6 rad about y at depth 5 (fov 48, aspect 1280/820) leaves the frustum at x = 4.64-4.68 (world AABB:
+    /// 4.653; oriented box: 4.261); unrotated it leaves at 4.30-4.35 (both: 4.32).
+    /// </summary>
     internal bool IsNodeInFrustum(SCNNode node, SCNNode pov, double aspect)
     {
         if (pov?.camera == null || node == null) return false;
-        var vp = SCNMatrix4.Mul(ViewProjection(pov, aspect), node.RenderWorld());
+        var vp = ViewProjection(pov, aspect);
         var (mn, mx) = node.boundingBox;
+        var world = node.RenderWorld();
+        double lx = double.MaxValue, ly = double.MaxValue, lz = double.MaxValue, hx = double.MinValue, hy = double.MinValue, hz = double.MinValue;
+        for (int i = 0; i < 8; i++)
+        {
+            double bx = (i & 1) != 0 ? mx.x : mn.x, by = (i & 2) != 0 ? mx.y : mn.y, bz = (i & 4) != 0 ? mx.z : mn.z;
+            double wx = world[0, 0] * bx + world[1, 0] * by + world[2, 0] * bz + world[3, 0];
+            double wy = world[0, 1] * bx + world[1, 1] * by + world[2, 1] * bz + world[3, 1];
+            double wz = world[0, 2] * bx + world[1, 2] * by + world[2, 2] * bz + world[3, 2];
+            lx = Math.Min(lx, wx); ly = Math.Min(ly, wy); lz = Math.Min(lz, wz); hx = Math.Max(hx, wx); hy = Math.Max(hy, wy); hz = Math.Max(hz, wz);
+        }
         var corners = new (double x, double y, double z, double w)[8];
         for (int i = 0; i < 8; i++)
         {
-            var p = new SCNVector3((i & 1) != 0 ? mx.x : mn.x, (i & 2) != 0 ? mx.y : mn.y, (i & 4) != 0 ? mx.z : mn.z);
+            var p = new SCNVector3((i & 1) != 0 ? hx : lx, (i & 2) != 0 ? hy : ly, (i & 4) != 0 ? hz : lz);
             corners[i] = (vp[0, 0] * p.x + vp[1, 0] * p.y + vp[2, 0] * p.z + vp[3, 0],
                           vp[0, 1] * p.x + vp[1, 1] * p.y + vp[2, 1] * p.z + vp[3, 1],
                           vp[0, 2] * p.x + vp[1, 2] * p.y + vp[2, 2] * p.z + vp[3, 2],

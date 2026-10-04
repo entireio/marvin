@@ -108,6 +108,11 @@ internal static class ShaderComposer
         bool depthOnly = m.colorBufferWriteMask == SCNColorMask.none;
         bool noNormals = (flags & VariantFlags.NoNormals) != 0;
         bool background = (flags & VariantFlags.Background) != 0;
+        // Measured: SceneKit leaves materials with a .geometry shader modifier out of its SSAO depth/normal pass, so
+        // they receive (almost) no screen-space ambient occlusion: a box whose material has an identity .geometry
+        // modifier keeps 0.994 of its ambient light at its base, 0.853 without the modifier (SSAO 0.70, radius 1.6).
+        // Their ambient light bypasses Godot's SSAO (it is added as emission; material AO and fog still apply).
+        bool geometryModified = mods[SCNShaderModifierEntryPoint.geometry].Any(snippet => !string.IsNullOrWhiteSpace(snippet.body));
 
         string fragmentBody = string.Join("\n", mods[SCNShaderModifierEntryPoint.fragment].Select(x => x.body));
         bool fragmentWritesAlpha = Regex.IsMatch(fragmentBody, @"\bALPHA\s*[\*\+\-/]?=(?!=)");
@@ -482,8 +487,13 @@ internal static class ShaderComposer
                 sb.AppendLine("    scn_albedo = ALBEDO; scn_metallic = METALLIC;");
                 sb.AppendLine("    ALBEDO = vec3(1.0); METALLIC = 0.0; SPECULAR = 2.5;");
                 sb.AppendLine("    scn_unlit = EMISSION + IRRADIANCE.rgb * AO + RADIANCE.rgb;");
+                if (geometryModified) sb.AppendLine("    EMISSION += IRRADIANCE.rgb * AO; IRRADIANCE = vec4(0.0, 0.0, 0.0, 1.0); // .geometry modifier: no SSAO (measured)");
             }
-            else sb.AppendLine("    scn_unlit = EMISSION + IRRADIANCE.rgb * ALBEDO * AO;");
+            else
+            {
+                sb.AppendLine("    scn_unlit = EMISSION + IRRADIANCE.rgb * ALBEDO * AO;");
+                if (geometryModified) sb.AppendLine("    EMISSION += IRRADIANCE.rgb * ALBEDO * AO; IRRADIANCE = vec4(0.0, 0.0, 0.0, 1.0); // .geometry modifier: no SSAO (measured)");
+            }
         }
         sb.AppendLine("}");
 
