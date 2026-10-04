@@ -25,6 +25,8 @@ internal static class ShaderComposer
     /// <summary>SceneKit ambient light intensity 1000 adds albedo x 1.0 (all lit models, independent of metalness).</summary>
     internal const double AmbientPerLumen = 1.0 / 1000.0;
 
+    /// <summary>PBR materials use a light() without Godot's multi-scatter compensation (MARVIN_GODOT_GGX=1 restores Godot's).</summary>
+    internal static readonly bool SingleScatterLight = System.Environment.GetEnvironmentVariable("MARVIN_GODOT_GGX") != "1";
     private static readonly Dictionary<string, Shader> cache = new();
     internal static int CompiledShaders => cache.Count;
 
@@ -287,6 +289,7 @@ internal static class ShaderComposer
         sb.AppendLine("}");
         sb.AppendLine();
         foreach (var ch in uvChannels.Where(c => c >= 2)) sb.AppendLine($"varying vec2 scn_tc{ch};");
+        if (pbr && SingleScatterLight) sb.AppendLine("varying vec3 scn_light_multiply;");
 
         // ---- vertex()
         sb.AppendLine("void vertex() {");
@@ -392,6 +395,7 @@ internal static class ShaderComposer
                 sb.AppendLine("    // SceneKit ambient lights ignore metalness; Godot scales ambient by (1 - METALLIC).");
                 sb.AppendLine("    EMISSION += ALBEDO * scn_ambient.rgb * METALLIC * AO;");
                 sb.AppendLine("    SPECULAR *= clamp(dot(scn_multiply, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0);");
+                if (SingleScatterLight) sb.AppendLine("    scn_light_multiply = scn_multiply;");
             }
             else
             {
@@ -424,6 +428,32 @@ internal static class ShaderComposer
             sb.AppendLine("void light() {");
             sb.AppendLine("    // Deferred shadows darken the final colour of every material, constant ones included.");
             sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL) { SPECULAR_LIGHT -= ALBEDO * scn_deferred.x * (1.0 - ATTENUATION); }");
+            sb.AppendLine("}");
+        }
+        else if (pbr && SingleScatterLight)
+        {
+            sb.AppendLine();
+            sb.AppendLine("void light() {");
+            sb.AppendLine("    // SceneKit's direct lighting (measured): Lambert + GGX with Godot's D and Fresnel, the exact");
+            sb.AppendLine("    // Smith visibility and no multi-scatter energy compensation (Godot's defaults differ there).");
+            sb.AppendLine("    float NdotL = min(dot(NORMAL, LIGHT), 1.0);");
+            sb.AppendLine("    float cNdotL = max(NdotL, 0.0);");
+            sb.AppendLine("    float cNdotV = max(dot(NORMAL, VIEW), 1e-4);");
+            sb.AppendLine("    vec3 H = normalize(VIEW + LIGHT);");
+            sb.AppendLine("    float cNdotH = clamp(dot(NORMAL, H), 0.0, 1.0);");
+            sb.AppendLine("    float cLdotH = clamp(dot(LIGHT, H), 0.0, 1.0);");
+            sb.AppendLine("    DIFFUSE_LIGHT += LIGHT_COLOR * (cNdotL * (1.0 / PI)) * ATTENUATION;");
+            sb.AppendLine("    float alpha_ggx = ROUGHNESS * ROUGHNESS;");
+            sb.AppendLine("    float a = cNdotH * alpha_ggx;");
+            sb.AppendLine("    float k = alpha_ggx / (1.0 - cNdotH * cNdotH + a * a);");
+            sb.AppendLine("    float D = clamp(k * k * (1.0 / PI), 0.0, 65504.0);");
+            sb.AppendLine("    float a2 = alpha_ggx * alpha_ggx; // exact height-correlated Smith visibility (SceneKit), not Godot's approximation");
+            sb.AppendLine("    float G = 0.5 / max(cNdotL * sqrt(cNdotV * cNdotV * (1.0 - a2) + a2) + cNdotV * sqrt(cNdotL * cNdotL * (1.0 - a2) + a2), 1e-5);");
+            sb.AppendLine("    vec3 f0 = mix(vec3(0.04) * scn_light_multiply, ALBEDO, METALLIC); // .multiply scales the dielectric specular too");
+            sb.AppendLine("    float f90 = clamp(dot(f0, vec3(50.0 * 0.33)), METALLIC, 1.0);");
+            sb.AppendLine("    float m = 1.0 - cLdotH; float m5 = m * m * m * m * m;");
+            sb.AppendLine("    vec3 F = f0 + (f90 - f0) * m5;");
+            sb.AppendLine("    SPECULAR_LIGHT += cNdotL * D * F * G * LIGHT_COLOR * ATTENUATION * SPECULAR_AMOUNT;");
             sb.AppendLine("}");
         }
         else if (noNormals)
