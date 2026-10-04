@@ -303,7 +303,9 @@ internal static class ShaderComposer
         if (!constant)
         {
             sb.AppendLine("varying vec3 scn_unlit; // fragment colour without direct lights (deferred shadows darken it in light())");
+            sb.AppendLine("varying float scn_fog_amount; // FOG.a after .fragment modifiers (light() clamps unfogged LDR output)");
             if (litSpecular) sb.AppendLine("varying vec3 scn_dielectric_f0;");
+            if (litSpecular) sb.AppendLine("varying float scn_spec_a2; // GGX alpha^2 for light(), with SceneKit's specular anti-aliasing (see fragment end)");
             if (pbr) sb.AppendLine("varying vec3 scn_albedo; varying float scn_metallic; // the material's; Godot sees a white dielectric (see fragment end)");
         }
 
@@ -430,6 +432,7 @@ internal static class ShaderComposer
             sb.AppendLine(Indent(snip.body, 8));
             sb.AppendLine("    }");
         }
+        if (!constant) sb.AppendLine("    scn_fog_amount = FOG.a;");
         if (defaultAlpha)
         {
             sb.AppendLine("    // SceneKit blends premultiplied output; Godot multiplies by ALPHA itself.");
@@ -438,6 +441,15 @@ internal static class ShaderComposer
         }
         if (!constant)
         {
+            if (litSpecular)
+            {
+                sb.AppendLine("    // SceneKit's direct specular widens the GGX lobe by the shading normal's screen-space variation (measured:");
+                sb.AppendLine("    // alpha^2 + 0.25 x (|dN/dx|^2 + |dN/dy|^2) fits highlight profiles of roughness 0 .. 0.15 spheres from 0.0005 to");
+                sb.AppendLine("    // 0.007 rad per pixel); light() uses this instead of Godot's roughness limiter, which works on roughness^2.");
+                sb.AppendLine("    vec3 scn_dndx = dFdx(NORMAL), scn_dndy = dFdy(NORMAL);");
+                sb.AppendLine("    float scn_spec_r = ROUGHNESS;");
+                sb.AppendLine("    scn_spec_a2 = min(scn_spec_r * scn_spec_r * scn_spec_r * scn_spec_r + " + SceneKitCalibration.F(SceneKitCalibration.SpecularAntialiasing) + " * (dot(scn_dndx, scn_dndx) + dot(scn_dndy, scn_dndy)), 1.0);");
+            }
             sb.AppendLine("    // What Godot adds besides direct light (emission, ambient/IBL diffuse, IBL specular with its");
             sb.AppendLine("    // environment BRDF), so light() can apply SceneKit's deferred shadow to the whole colour.");
             if (pbr)
@@ -481,7 +493,7 @@ internal static class ShaderComposer
         {
             sb.AppendLine();
             sb.AppendLine("void light() {");
-            sb.AppendLine("    float scn_att = ATTENUATION;");
+            sb.AppendLine("    float scn_att = ATTENUATION, scn_white = 1.0;");
             sb.AppendLine("    if (LIGHT_IS_DIRECTIONAL && scn_deferred.x > 0.0) {");
             sb.AppendLine("        // SceneKit deferred shadows (measured): the light itself stays unshadowed and the final colour");
             sb.AppendLine("        // (direct, ambient, IBL, emission, back faces too) is multiplied by 1 - alpha x shadow.");
@@ -491,7 +503,7 @@ internal static class ShaderComposer
             sb.AppendLine("        float scn_face = clamp((0.04 - scn_cos) / 0.15, 0.0, 1.0);");
             sb.AppendLine("        float scn_self = scn_deferred.y * sqrt(clamp((degrees(acos(clamp(scn_cos, -1.0, 1.0))) - scn_deferred.z) / 28.0, 0.0, 1.0));");
             sb.AppendLine("        float scn_s = max(1.0 - ATTENUATION, max(scn_face, scn_self));");
-            sb.AppendLine("        scn_att = 1.0 - scn_deferred.x * scn_s;");
+            sb.AppendLine("        scn_att = 1.0 - scn_deferred.x * scn_s; scn_white = scn_att;");
             sb.AppendLine("        SPECULAR_LIGHT -= scn_unlit * (scn_deferred.x * scn_s);");
             sb.AppendLine("    }");
             if (noNormals)
@@ -511,11 +523,13 @@ internal static class ShaderComposer
                     sb.AppendLine("    vec3 H = normalize(VIEW + LIGHT);");
                     sb.AppendLine("    float cNdotH = clamp(dot(NORMAL, H), 0.0, 1.0);");
                     sb.AppendLine("    float cLdotH = clamp(dot(LIGHT, H), 0.0, 1.0);");
-                    sb.AppendLine("    float alpha_ggx = ROUGHNESS * ROUGHNESS;");
+                    sb.AppendLine("    float a2 = scn_spec_a2;");
+                    sb.AppendLine("    float alpha_ggx = sqrt(a2);");
                     sb.AppendLine("    float a = cNdotH * alpha_ggx;");
                     sb.AppendLine("    float k = alpha_ggx / (1.0 - cNdotH * cNdotH + a * a);");
-                    sb.AppendLine("    float D = clamp(k * k * (1.0 / PI), 0.0, 65504.0);");
-                    sb.AppendLine("    float a2 = alpha_ggx * alpha_ggx;");
+                    sb.AppendLine("    // Not clamped to the half-float maximum: SceneKit keeps sharp highlights' energy. alpha 0 (a flat mirror)");
+                    sb.AppendLine("    // reflects no direct light at all, also exactly in the mirror direction (measured: L_pbr_rough0_dir1000).");
+                    sb.AppendLine("    float D = alpha_ggx > 0.0 ? k * k * (1.0 / PI) : 0.0;");
                     sb.AppendLine("    float G = 0.5 / max(cNdotL * sqrt(cNdotV * cNdotV * (1.0 - a2) + a2) + cNdotV * sqrt(cNdotL * cNdotL * (1.0 - a2) + a2), 1e-5);");
                     if (pbr)
                     {
@@ -529,9 +543,17 @@ internal static class ShaderComposer
                     }
                     sb.AppendLine("    float m = 1.0 - cLdotH; float m5 = m * m * m * m * m;");
                     sb.AppendLine("    vec3 F = f0 + (f90 - f0) * m5;");
-                    sb.AppendLine("    SPECULAR_LIGHT += cNdotL * D * F * G * LIGHT_COLOR * scn_att * SPECULAR_AMOUNT" + (transparent && pbr && !fragmentWritesAlpha ? " / max(ALPHA, 1e-3); // SceneKit keeps the full highlight on transparent PBR surfaces" : ";"));
+                    sb.AppendLine("    // (min: stay within the half-float colour target, as SceneKit's does)");
+                    sb.AppendLine("    SPECULAR_LIGHT += min(cNdotL * D * F * G * LIGHT_COLOR * scn_att * SPECULAR_AMOUNT" + (transparent && pbr && !fragmentWritesAlpha ? " / max(ALPHA, 1e-3), vec3(65504.0)); // SceneKit keeps the full highlight on transparent PBR surfaces" : ", vec3(65504.0));"));
                 }
             }
+            sb.AppendLine("    // SceneKit renders LDR views (wantsHDR false, scn_ibl.z) into an 8-bit target: each draw is clamped to 1 before");
+            sb.AppendLine("    // MSAA resolve and blending (deferred shadows then scale it), so a highlight behind glass shows as the glass over");
+            sb.AppendLine("    // white (measured: WALL-E's eyes). Godot keeps float values until tonemapping; cap the fragment's total here.");
+            sb.AppendLine("    if (scn_ibl.z > 0.5 && scn_fog_amount <= 0.0) {");
+            sb.AppendLine("        float scn_cap = scn_white" + (transparent && !fragmentWritesAlpha ? " / max(ALPHA, 1e-3)" : "") + ";");
+            sb.AppendLine("        SPECULAR_LIGHT = min(SPECULAR_LIGHT, max(vec3(scn_cap) - DIFFUSE_LIGHT * ALBEDO - scn_unlit, vec3(0.0)));");
+            sb.AppendLine("    }");
             sb.AppendLine("}");
         }
         plan.code = sb.ToString();
@@ -624,7 +646,7 @@ internal sealed class MaterialGpu
             foreach (var (key, (sm, plan)) in variants)
                 foreach (var a in changed)
                     if (key.geometry == null || !key.geometry.arguments.ContainsKey(a))
-                        if (m.arguments.TryGetValue(a, out var value)) ApplyArgument(sm, a, value);
+                        if (m.arguments.TryGetValue(a, out var value)) ApplyArgument(sm, a, value, key.geometry?.DrawnScene);
         }
         structuralDirty = valuesDirty = false;
         lock (dirtyArguments) dirtyArguments.Clear();
@@ -653,16 +675,25 @@ internal sealed class MaterialGpu
             object value = null;
             if (g != null && g.arguments.TryGetValue(name, out var gv)) value = gv;
             else if (m.arguments.TryGetValue(name, out var mv)) value = mv;
-            if (value != null) ApplyArgument(sm, name, value);
+            if (value != null) ApplyArgument(sm, name, value, g?.DrawnScene);
         }
     }
 
     /// <summary>Godot converts Color values passed to vec4 uniforms from sRGB to linear; colours here are already linear.</summary>
     private static Vector4 V4(Color c) => new(c.R, c.G, c.B, c.A);
 
-    /// <summary>Converts a setValue(_:forKey:) value to a Godot uniform value.</summary>
-    internal static void ApplyArgument(ShaderMaterial sm, string name, object value)
+    /// <summary>Converts a setValue(_:forKey:) value to a Godot uniform value. An SCNMaterialProperty is bound with
+    /// the contents SceneKit draws it with in <paramref name="scene"/> (see SCNMaterialProperty.ArgumentContents).</summary>
+    internal static void ApplyArgument(ShaderMaterial sm, string name, object value, SCNScene scene = null)
     {
+        if (value is SCNMaterialProperty property)
+        {
+            var contents = property.ArgumentContents(scene, SceneKitRuntime.Flushing);
+            if (SCNMaterialProperty.KindOf(contents) != SCNMaterialProperty.ContentKind.Texture)
+                sm.SetShaderParameter(name, V4(SCNMaterialProperty.LinearColorOf(contents, new Color(0, 0, 0, 0))));
+            else if (SCNMaterialProperty.TextureOf(contents) is { } texture) sm.SetShaderParameter(name, texture);
+            return;
+        }
         Godot.Variant v = value switch
         {
             double d => (float)d,
@@ -683,7 +714,6 @@ internal sealed class MaterialGpu
             SCNMatrix4 mm => mm.ToGodotProjection(),
             CGPoint p => p.ToGodot(),
             NSColor c => V4(c.GodotLinear),
-            SCNMaterialProperty prop => prop.Kind == SCNMaterialProperty.ContentKind.Texture ? prop.Texture : V4(prop.LinearColor(new Color(0, 0, 0, 0))),
             MTLTexture t => t.GodotTexture,
             NSImage img => img.GodotTexture,
             _ => default,

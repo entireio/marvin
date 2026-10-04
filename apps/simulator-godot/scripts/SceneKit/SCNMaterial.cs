@@ -78,9 +78,34 @@ public sealed class SCNMaterialProperty
         return p;
     }
 
+    // ---- shader-modifier argument binding (setValue(_:forKey:) with this property)
+    // Measured in SceneKit (macOS 27; tools/scenekit-reference/robots/ArgumentBinding.swift): a shader program resolves
+    // the property's contents when it first draws with it. When the last setValue(_:forKey:) that received the property
+    // was on a primitive geometry (SCNBox, SCNPlane, SCNSphere, SCNCylinder, SCNCone, SCNFloor, SCNShape, ...), later
+    // `contents` changes never reach a program that has drawn with it: every geometry keeps the contents of its first
+    // draw (in-place MTLTexture writes still show) until a different program draws it (moving to a scene with another
+    // lighting setup resolves the contents again; a fresh renderer or re-adding to the same scene does not). After a
+    // setValue on a material or on a custom SCNGeometry, changes reach every program. The facade keys programs by scene.
+    // (DirtCoating: Marvin's and R2-D2's last coated part is an SCNBox spoke, so their dirt never appears once drawn.)
+    private WeakReference<object> argumentOwner;
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SCNScene, Box> argumentBindings = new();
+    private sealed class Box { public object contents; }
+    internal void ArgumentOwner(object owner) => argumentOwner = new WeakReference<object>(owner);
+    private bool ArgumentFrozen => argumentOwner != null && argumentOwner.TryGetTarget(out var o) && o is SCNGeometry g && g.GetType() != typeof(SCNGeometry);
+    /// <summary>The contents a shader argument draws with in <paramref name="scene"/> (null: detached, current contents).
+    /// <paramref name="draw"/>: called from the per-frame flush, i.e. the scene draws it now, which creates the binding.</summary>
+    internal object ArgumentContents(SCNScene scene, bool draw)
+    {
+        if (scene == null) return _contents;
+        if (argumentBindings.TryGetValue(scene, out var bound) && ArgumentFrozen) return bound.contents;
+        if (draw) argumentBindings.AddOrUpdate(scene, new Box { contents = _contents });
+        return _contents;
+    }
+
     // ---- facade internals
     internal enum ContentKind { None, Color, Scalar, Texture }
-    internal ContentKind Kind => _contents switch
+    internal ContentKind Kind => KindOf(_contents);
+    internal static ContentKind KindOf(object contents) => contents switch
     {
         null => ContentKind.None,
         NSColor => ContentKind.Color,
@@ -88,7 +113,8 @@ public sealed class SCNMaterialProperty
         NSImage or MTLTexture or string or Texture2D => ContentKind.Texture,
         _ => ContentKind.None,
     };
-    internal Texture2D Texture => _contents switch
+    internal Texture2D Texture => TextureOf(_contents);
+    internal static Texture2D TextureOf(object contents) => contents switch
     {
         NSImage img => img.GodotTexture,
         MTLTexture t => t.GodotTexture,
@@ -97,7 +123,8 @@ public sealed class SCNMaterialProperty
         _ => null,
     };
     /// <summary>Linear RGBA for colour/scalar contents (scalars are linear values: measured).</summary>
-    internal Color LinearColor(Color fallback) => _contents switch
+    internal Color LinearColor(Color fallback) => LinearColorOf(_contents, fallback);
+    internal static Color LinearColorOf(object contents, Color fallback) => contents switch
     {
         NSColor c => c.GodotLinear,
         double d => new Color((float)d, (float)d, (float)d, 1),
@@ -212,7 +239,7 @@ public sealed class SCNMaterial : IPropertyOwner
     /// <summary>setValue(_:forKey:) - a shader-modifier argument (#pragma arguments).</summary>
     public void setValue(object value, string forKey)
     {
-        if (value is SCNMaterialProperty p) p.AddOwner(this);
+        if (value is SCNMaterialProperty p) { p.AddOwner(this); p.ArgumentOwner(this); }
         arguments[forKey] = value is float f ? (double)f : value;
         gpu.ArgumentChanged(forKey);
     }

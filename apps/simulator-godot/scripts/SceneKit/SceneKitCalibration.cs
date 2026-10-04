@@ -67,6 +67,15 @@ internal static class SceneKitCalibration
     }
     public static double DeferredSelfShadowPlateau = 0.44;
 
+    // ---- Direct specular (GGX in the composer's light()).
+    // Measured (tools/scenekit-reference/robots/SpecularHighlight.swift: highlight profiles of roughness 0 .. 0.2 spheres
+    // under 0.01 .. 1000 lm suns, zoomed in at 0.0005 rad per pixel and whole at 0.007): SceneKit keeps the highlight's full
+    // energy as roughness goes to 0 (D is not clamped to the half-float maximum; Godot's 65504 clamp lost the highlight below
+    // roughness 0.04 and all of it at 0), and widens the lobe with the shading normal's screen-space variation:
+    // alpha^2 + SpecularAntialiasing x (|dN/dx|^2 + |dN/dy|^2) reproduces both scales (a roughness-0 sphere 145 px in radius
+    // has the highlight of roughness ~0.07; zoomed in, of ~0.018); a flat roughness-0 plane reflects no direct light.
+    public static double SpecularAntialiasing = 0.25;
+
     // ---- Image-based lighting (lightingEnvironment), as polynomials in roughness r (fitted to SceneKit).
     public static double IblDiffuse1 = -0.1757, IblDiffuse2 = 0.3455, IblDiffuse3 = -0.3623;
     public static double IblSpecular0 = 0.9358, IblSpecular1 = 1.1768, IblSpecular2 = -2.5492, IblSpecular3 = 0.7755;

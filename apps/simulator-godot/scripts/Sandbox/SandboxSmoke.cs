@@ -10,9 +10,11 @@
 // drive input that these modes run through, with App.swift's names. Race-track parts of the macOS modes
 // need DirtWorld, DirtRacePhysics, RaceHUD and the main menu (other streams) and are not run here:
 // the dirt-track captures (dirt-*.png, race-*.png, {key}-race.png), the menu captures and the App-level
-// input/pause/icon checks. The robot close-ups that macOS takes on the dirt track (r2d2-front.png,
+// icon checks. The sandbox input, pause, brake, focus, head, reset and camera checks run on this AppController stand-in. The robot close-ups that macOS takes on the dirt track (r2d2-front.png,
 // r2d2-wheels.png, bb8-front.png, walle-front.png, *-dirty.png) are taken with the same robot-relative
-// camera, robot and coating state, with the robot at the sandbox dock (see each capture below).
+// camera, robot and coating state, with the robot at the sandbox dock (see each capture below); compare them
+// with the output of tools/scenekit-reference/robots/RobotCloseups.swift (--robot-closeups, RobotCloseups.cs),
+// which renders the same views with SceneKit from the macOS sources.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -162,6 +164,14 @@ public sealed class SandboxSmoke
         if (down) { if (movement.Contains(code)) { held.Add(code); } }
         else { held.Remove(code); }
     }
+    /// SimulatorView.flagsChanged(with:): shift is held as key code 56 (boost).
+    private void flagsChanged(bool shift) { if (shift) { held.Add(56); } else { held.Remove(56); } }
+    /// AppController.togglePause(_:), sandbox path.
+    private void togglePause()
+    {
+        if (!inSandbox) { return; }
+        simulation.paused = !simulation.paused; clearInput();
+    }
     private void clearInput() { held.Clear(); if (!isDirtTrack) { simulation.stop(); } }
     private DriveInput driveInput
     {
@@ -247,9 +257,57 @@ public sealed class SandboxSmoke
         if (smokeFrames != 150) { return null; }
         System.IO.Directory.CreateDirectory(directory);
         snapshot("native-scene.png");
+        var boostInputPassed = true;
+        foreach (var (forward, turn) in new (ushort, ushort)[] { (13, 0), (13, 2), (126, 123), (126, 124) })
+        {
+            clearInput();
+            flagsChanged(shift: true);
+            key(forward, down: true); key(turn, down: true);
+            var input = driveInput;
+            var sample = new Simulation(dirtTrack: true);
+            var startHeading = sample.heading;
+            sample.advance(input, dt: 0.1); sample.advance(input, dt: 0.1);
+            var angle = atan2(sin(sample.heading - startHeading), cos(sample.heading - startHeading));
+            boostInputPassed = boostInputPassed && input.boost && input.throttle == 1
+                && abs(input.turn) == 1 && angle * input.turn < -0.04;
+            key(turn, down: false);
+            boostInputPassed = boostInputPassed && driveInput.turn == 0 && driveInput.boost;
+        }
+        clearInput();
         var traveled = simulation.distance; var heading = simulation.heading;
-        // (App-level keyboard, pause, focus, head, reset, camera and icon checks run in the App port.)
+        togglePause();
+        var elapsed = simulation.elapsed;
+        key(13, down: true);
+        simulation.advance(driveInput, dt: 0.1);
+        var pausePassed = simulation.paused && simulation.elapsed == elapsed;
+        togglePause();
+        key(13, down: true); key(49, down: true);
+        simulation.advance(driveInput, dt: 0.1);
+        var brakePassed = simulation.speed == 0;
+        clearInput();
+        var focusPassed = held.Count == 0 && simulation.speed == 0;
+        key(14, down: true); key(15, down: true);
+        simulation.advance(driveInput, dt: 0.1);
+        var headPassed = simulation.yaw < 0 && simulation.pitch > 0;
         reset();
+        var resetPassed = simulation.z == -2.6 && simulation.distance == 0 && simulation.yaw == 0;
+        var cameraPassed = true;
+        for (int mode = 0; mode <= 2; mode++)
+        {
+            cameraMode = mode;
+            foreach (var angle in new[] { -2.8, -1.0, 0.0, 1.0, 2.8 })
+            {
+                orbitYaw = angle; orbitPitch = 0.7;
+                updateCamera(snap: true);
+                // A level camera has a horizontal right axis and an
+                // upward-facing up axis, independent of orbit azimuth.
+                var transform = float4x4(world.camera.simdWorldTransform);
+                cameraPassed = cameraPassed && abs(transform.column0.y) < 0.00001f
+                    && transform.column1.y > 0;
+            }
+        }
+        reset();
+        // (The light/dark app icon checks belong to the App port.)
         var tracksPassed = robot.tracks.Count == 2;
         foreach (var (throttle, turn) in new[] { (1.0, 0.0), (-1.0, 0.0), (0.0, 1.0), (0.0, -1.0) })
         {
@@ -401,15 +459,18 @@ public sealed class SandboxSmoke
         // showMainMenu(nil); startSandbox(): back to the sandbox with the player's robot.
         startSandbox();
         var sandboxContactPassed = checkSandboxContact();
-        var passed = sandboxContactPassed && newModelsPassed && coatingPassed && modelScalePassed
+        var passed = sandboxContactPassed && newModelsPassed && coatingPassed && boostInputPassed && modelScalePassed
             && wheelsPassed && r2d2Passed && robot.partCount == 23 && robot.triangleCount > 600_000
             && traveled > 0.3 && abs(heading) > 0.3
-            && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed;
+            && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed
+            && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed;
         var report = new Dictionary<string, object>
         {
             ["passed"] = passed, ["sandboxContactPassed"] = sandboxContactPassed,
             ["bb8MotionPassed"] = bb8MotionPassed, ["wallEMotionPassed"] = wallEMotionPassed, ["newModelsPassed"] = newModelsPassed,
             ["coatingPassed"] = coatingPassed, ["bodyDirtAmounts"] = dirtAmounts.Cast<object>().ToList(),
+            ["boostSteeringPassed"] = boostInputPassed, ["pausePassed"] = pausePassed, ["brakePassed"] = brakePassed,
+            ["focusPassed"] = focusPassed, ["headPassed"] = headPassed, ["resetPassed"] = resetPassed, ["cameraPassed"] = cameraPassed,
             ["modelScalePassed"] = modelScalePassed, ["marvinToR2D2HeightRatio"] = modelHeightRatio,
             ["r2d2WheelsPassed"] = wheelsPassed, ["r2d2ModelPassed"] = r2d2Passed, ["parts"] = robot.partCount,
             ["triangles"] = robot.triangleCount, ["distance"] = traveled, ["heading"] = heading,

@@ -157,6 +157,14 @@ public sealed class NSImage
         if (path.StartsWith("res://") && ResourceLoader.Exists(path))
         {
             var tex = ResourceLoader.Load<Texture2D>(path);
+            // Grayscale images (L8/LA8) keep a single colour channel in Godot, and Godot's source_color samplers do not
+            // sRGB-decode them (measured: an R2-D2 panel line of 148 rendered as 200 by a constant material, 148 in
+            // SceneKit, which decodes gray images like RGB ones). Give them RGB channels so every sampler sees SceneKit's values.
+            if (tex != null && tex.GetImage() is Image gray && gray.GetFormat() is Image.Format.L8 or Image.Format.La8)
+            {
+                gray.Convert(gray.GetFormat() == Image.Format.L8 ? Image.Format.Rgb8 : Image.Format.Rgba8);
+                return new NSImage(gray, path);
+            }
             if (tex != null) return new NSImage(tex, path);
         }
         var file = path.StartsWith("res://") || path.StartsWith("user://") ? ProjectSettings.GlobalizePath(path) : path;

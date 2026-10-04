@@ -21,6 +21,8 @@ public partial class SceneKitRuntime : Node
     internal static readonly List<WeakReference<SCNView>> views = new();
     private static bool sceneStateDirty = true, masksDirty;
     private static bool flushing;
+    /// <summary>True while Flush() pushes state to Godot for the frame (or snapshot) about to be drawn.</summary>
+    internal static bool Flushing => flushing;
     internal static int CameraMask = -1, ShadowLightMask = -1;
     internal static SCNNode ActiveCamera;
     internal static SCNScene ActiveScene;
@@ -149,6 +151,9 @@ public partial class SceneKitRuntime : Node
         lock (parkGate) { parkedTextures.Add(t); anyParked = true; }
     }
     internal static void SceneStateDirty() => sceneStateDirty = true;
+    private static bool activeLdr;
+    /// <summary>The view being synced renders without HDR (SCNCamera.wantsHDR false).</summary>
+    internal static void SetActiveLdr(bool ldr) { if (activeLdr != ldr) { activeLdr = ldr; sceneStateDirty = true; } }
     internal static void MasksChanged() { masksDirty = true; sceneStateDirty = true; }
     internal static void ConstraintsChanged(SCNNode node, bool has)
     {
@@ -269,7 +274,8 @@ public partial class SceneKitRuntime : Node
         var (selfPlateau, selfOnset) = SceneKitCalibration.DeferredSelfShadow(deferredRadius);
         RenderingServer.GlobalShaderParameterSet("scn_deferred", new Vector4((float)deferredAlpha, (float)selfPlateau, (float)selfOnset, 0));
         bool ibl = scene.HasLightingEnvironment;
-        RenderingServer.GlobalShaderParameterSet("scn_ibl", new Vector4(ibl ? (float)scene.lightingEnvironment.intensity : 0, ibl ? 1 : 0, 0, 0));
+        // scn_ibl.z: the view renders LDR (SceneKit's 8-bit target; the composer's light() clamps each draw to 1).
+        RenderingServer.GlobalShaderParameterSet("scn_ibl", new Vector4(ibl ? (float)scene.lightingEnvironment.intensity : 0, ibl ? 1 : 0, activeLdr ? 1 : 0, 0));
         if (ibl) RenderingServer.GlobalShaderParameterSet("scn_radiance", scene.RadianceTexture());
         var sh = scene.IrradianceSH();
         for (int i = 0; i < 9; i++) RenderingServer.GlobalShaderParameterSet($"scn_sh{i}", new Vector4((float)sh[i * 3], (float)sh[i * 3 + 1], (float)sh[i * 3 + 2], 0));
