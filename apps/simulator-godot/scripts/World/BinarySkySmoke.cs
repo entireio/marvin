@@ -13,17 +13,17 @@ namespace Marvin;
 /// <summary>
 /// `--binary-sky-smoke-test DIR` (BinarySkySmoke.swift, AppController.checkBinaryRaces). Same races, cameras, captures
 /// (NAME-race.png, NAME-suns.png, sun-visible.png, sun-occluded.png) and binary-races.json keys.
-/// PORT: no robots or town (other streams). MARVIN_DAYLIGHT_REFERENCE=path/to/binary-races.json reuses a macOS run's
-/// daylight fraction and binary phase per capture so the skies compare 1:1; otherwise they are random as on macOS.
+/// PORT: MARVIN_DAYLIGHT_REFERENCE=path/to/binary-races.json reuses a macOS run's daylight fraction and binary phase per
+/// capture so the skies compare 1:1; otherwise they are random as on macOS.
 /// </summary>
-public static class BinarySkySmoke
+public partial class AppController
 {
     [GameMode("--binary-sky-smoke-test")]
-    public static Task Run(string dir, SceneTree tree)
+    public static async Task RunBinarySkySmokeTest(string dir, SceneTree tree)
     {
-        bool passed = checkBinaryRaces(new RaceWorldHarness(tree), dir);
-        tree.Quit(passed ? 0 : 1);
-        return Task.CompletedTask;
+        var app = await launchSmoke(tree, dir);
+        var passed = app.checkBinaryRaces(at: dir);
+        exit(passed ? 0 : 1);
     }
 
     private static Dictionary<string, (double fraction, double phase)> referenceDaylight()
@@ -40,8 +40,9 @@ public static class BinarySkySmoke
         return result;
     }
 
-    public static bool checkBinaryRaces(RaceWorldHarness app, string directory)
+    public bool checkBinaryRaces(string at)
     {
+        var directory = at;
         try
         {
             Directory.CreateDirectory(directory);
@@ -52,66 +53,66 @@ public static class BinarySkySmoke
                 passed = passed && s.directions.All(d => d.y > 0 && abs(Simd.length(d) - 1) < 1e-10)
                     && s.separationDegrees > 1.1 && s.separationDegrees < 13;
             }
-            app.startDirtTrack();
+            startDirtTrack(); raceHUD.isHidden = true;
             bool horizonCapture = System.Environment.GetEnvironmentVariable("MARVIN_HORIZON_CAPTURE") == "1";
             var times = horizonCapture ? new[] { ("sunrise", 0.015, 0.015), ("sunset", 0.985, 0.985) }
                 : new[] { ("morning", 0.025, 0.045), ("midday", 0.43, 0.57), ("evening", 0.95, 0.975) };
             var pinned = referenceDaylight();
             foreach (var (name, low, high) in times)
             {
-                app.reset(); app.dirtIntro = null; app.race.countDown(dt: 3);
+                reset(null); dirtIntro = null; race.countDown(dt: 3);
                 // Stratified random times exercise the full daylight range.
                 var s = new BinaryDaylight(fraction: SwiftRandom.doubleClosed(low, high), phase: horizonCapture ? 0.35 : SwiftRandom.doubleClosed(0.8, 2.0));
                 if (pinned.TryGetValue(name, out var reference)) s = new BinaryDaylight(fraction: reference.fraction, phase: reference.phase);
-                app.dirtWorld.sky.apply(s);
-                for (int i = 0; i < app.dirtWorld.sky.suns.Length; i++)
+                dirtWorld.sky.apply(s);
+                for (int i = 0; i < dirtWorld.sky.suns.Length; i++)
                 {
-                    var m = SimdBridge.M(app.dirtWorld.sky.suns[i].simdWorldTransform);
+                    var m = SimdBridge.M(dirtWorld.sky.suns[i].simdWorldTransform);
                     var forward = -new Double3(m.m31, m.m32, m.m33);
                     passed = passed && Simd.dot(forward, -s.directions[i]) > 0.99999;
                 }
                 bool captured = false;
                 for (int frame = 0; frame < 40000; frame++)
                 {
-                    app.advanceRacePhysics(DirtOpponent.driveInput(app.simulation), dt: 1.0 / 60, raceDT: 1.0 / 60);
+                    advanceRacePhysics(DirtOpponent.driveInput(simulation), dt: 1.0 / 60, raceDT: 1.0 / 60);
                     if (frame == 600)
                     {
-                        app.updateRaceWorld(dt: 1.0 / 60);
-                        app.camera.position = new SCNVector3(0, 38, -33);
-                        app.camera.look(SCNVector3Zero, up: new SCNVector3(0, 1, 0), localFront: new SCNVector3(0, 0, -1));
-                        app.saveTownFrame($"{name}-race", directory);
+                        updatePlayerModel(); updateOpponents(); updateRaceWorld(dt: 1.0 / 60);
+                        world.camera.position = new SCNVector3(0, 38, -33);
+                        world.camera.look(SCNVector3Zero, up: new SCNVector3(0, 1, 0), localFront: new SCNVector3(0, 0, -1));
+                        saveTownFrame($"{name}-race", directory);
                         var direction = Simd.normalize(s.directions[0] + s.directions[1]);
                         var horizontal = Simd.normalize(new Double3(direction.x, 0, direction.z));
                         var eye = -horizontal * 27 + new Double3(0, 7.5, 0);
-                        app.camera.position = new SCNVector3(eye.x, eye.y, eye.z);
+                        world.camera.position = new SCNVector3(eye.x, eye.y, eye.z);
                         var framing = name == "midday" ? direction : Simd.normalize(horizontal + new Double3(0, 0.01, 0));
-                        var at = eye + framing * 80;
-                        app.camera.look(new SCNVector3(at.x, at.y, at.z), up: new SCNVector3(0, 1, 0), localFront: new SCNVector3(0, 0, -1));
-                        app.saveTownFrame($"{name}-suns", directory);
+                        var lookAt = eye + framing * 80;
+                        world.camera.look(new SCNVector3(lookAt.x, lookAt.y, lookAt.z), up: new SCNVector3(0, 1, 0), localFront: new SCNVector3(0, 0, -1));
+                        saveTownFrame($"{name}-suns", directory);
                         captured = true;
                     }
-                    if (new[] { app.race }.Concat(app.opponents.Select(o => o.race)).All(r => r.finished)) break;
+                    if (new[] { race }.Concat(opponents.Select(o => o.race)).All(r => r.finished)) break;
                 }
-                var races = new[] { app.race }.Concat(app.opponents.Select(o => o.race)).ToArray();
+                var races = new[] { race }.Concat(opponents.Select(o => o.race)).ToArray();
                 bool finished = races.All(r => r.finished);
-                bool stable = app.dirtWorld.sky.daylight.fraction == s.fraction && app.dirtWorld.sky.daylight.phase == s.phase;
+                bool stable = dirtWorld.sky.daylight.fraction == s.fraction && dirtWorld.sky.daylight.phase == s.phase;
                 passed = passed && finished && captured && stable;
                 var report = new Dictionary<string, object> { ["time"] = name, ["daylightFraction"] = s.fraction, ["binaryPhase"] = s.phase, ["separationDegrees"] = s.separationDegrees, ["elevationsDegrees"] = s.directions.Select(d => asin(d.y) * 180 / Math.PI).ToList(), ["allFinished"] = finished, ["laps"] = races.Select(r => r.laps.Length).ToList(), ["stableDuringRace"] = stable };
                 reports.Add(report); GD.Print($"{name}: fraction {Swift.description(s.fraction)} phase {Swift.description(s.phase)} finished {finished} laps [{string.Join(", ", races.Select(r => r.laps.Length))}]");
             }
-            double previous = app.dirtWorld.sky.daylight.fraction;
-            app.reset();
-            passed = passed && previous != app.dirtWorld.sky.daylight.fraction;
+            double previous = dirtWorld.sky.daylight.fraction;
+            reset(null);
+            passed = passed && previous != dirtWorld.sky.daylight.fraction;
             bool occlusion = checkSunOcclusion(directory);
             passed = passed && occlusion;
-            RaceWorldHarness.writeJSON(Path.Combine(directory, "binary-races.json"), new Dictionary<string, object> { ["passed"] = passed, ["daylightSamples"] = 2000, ["occlusion"] = occlusion, ["races"] = reports });
+            File.WriteAllText(Path.Combine(directory, "binary-races.json"), JSONSerialization.prettyPrintedSortedKeys(new Dictionary<string, object> { ["passed"] = passed, ["daylightSamples"] = 2000, ["occlusion"] = occlusion, ["races"] = reports }));
             GD.Print($"Binary daylight races: {(passed ? "PASS" : "FAIL")}"); return passed;
         }
         catch (Exception error) { GD.Print($"Binary daylight: {error}"); return false; }
     }
     /// Render a sun directly behind an opaque screen. Its glare must disappear,
     /// including the bloom input, rather than being an always-visible HUD sprite.
-    private static bool checkSunOcclusion(string directory)
+    private bool checkSunOcclusion(string directory)
     {
         SCNScene scene = new SCNScene(); SCNNode camera = new SCNNode();
         var sky = new BinarySky(scene: scene);

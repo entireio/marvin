@@ -13,6 +13,7 @@ public partial class Main : Node3D
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (await Marvin.GameModes.TryRun(OS.GetCmdlineUserArgs(), GetTree())) return;
         GD.Print($"Marvin Godot: {Engine.GetVersionInfo()["string"]}, renderer {RenderingServer.GetCurrentRenderingDriverName()}");
-        GetTree().Quit();
+        // main.swift: the app with AppController as its delegate (PORT: the window chrome is not ported yet).
+        Marvin.AppController.launch(GetTree());
     }
 }

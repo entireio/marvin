@@ -7,28 +7,29 @@ using static Marvin.Core.Swift;
 
 namespace Marvin;
 
-// PORT: PeopleSmoke.swift (an AppController extension in Swift; see TownSmoke.cs for TownSmokeApp): the
+// Port of PeopleSmoke.swift (an AppController extension): the
 // native regression of TownResidents, TownStreetResidents and the crowd's GPU gait. 600 simulated seconds
 // with the survey daylight (0.48, phase 1.2), captures of street walkers, spectators and walking residents,
 // people.json / street-people.json, then camera-cut, pause, storm-shelter and robot-avoidance checks.
 // MARVIN_YIELD_RECOVERY_TEST, MARVIN_PEOPLE_OFFSCREEN, MARVIN_PEOPLE_MOVIE and MARVIN_STREET_MOVIE work as on macOS.
-public sealed partial class TownSmokeApp
+public partial class AppController
 {
-    public bool checkTownPeople(string directory)
+    public bool checkTownPeople(string at)
     {
+        var directory = at;
         try
         {
             Directory.CreateDirectory(directory);
             weatherOverride = false;
             try
             {
-                startDirtTrack(); dirtIntro = null; // raceHUD and the toolbar are not part of the snapshots.
+                startDirtTrack(); dirtIntro = null; raceHUD.isHidden = true; if (window.toolbar != null) { window.toolbar.isVisible = false; }
                 dirtWorld.sky.apply(new BinaryDaylight(fraction: 0.48, phase: 1.2));
                 if (Environment.GetEnvironmentVariable("MARVIN_YIELD_RECOVERY_TEST") == "1" && dirtWorld.town.residents is TownResidents recovering)
                 {
                     var result = recovering.checkYieldCornerRecovery();
-                    File.WriteAllText(Path.Combine(directory, "yield-recovery.json"), SmokeJSON.prettySorted(result));
-                    Godot.GD.Print($"Yield recovery: {SmokeJSON.prettySorted(result).Replace("\n", " ")}");
+                    File.WriteAllText(Path.Combine(directory, "yield-recovery.json"), JSONSerialization.prettyPrintedSortedKeys(result));
+                    Godot.GD.Print($"Yield recovery: {JSONSerialization.prettyPrintedSortedKeys(result).Replace("\n", " ")}");
                     return result.TryGetValue("passed", out var passedValue) && passedValue is bool yes && yes;
                 }
                 if (!(dirtWorld.town.residents is TownResidents residents && residents.walkers.Count >= 6 && residents.connections >= 4)) { return false; }
@@ -129,7 +130,7 @@ public sealed partial class TownSmokeApp
                     Godot.GD.Print($"Nearby: [{string.Join(", ", dirtWorld.town.collisionWorld.nearby(probe).Select(b => $"Body(position: {b.position}, heading: {description(b.heading)}, mass: {description(b.profile.mass)})"))}]");
                 }
                 var streetReport = new Dictionary<string, object> { ["count"] = street.walkers.Count, ["distance"] = street.walkers.Select(w => w.distance).ToList(), ["longestStop"] = longestStreetStop, ["positions"] = streetPositions, ["maximumPenetration"] = street.maximumPenetration, ["poseUpdates"] = street.poseUpdates, ["navigationUpdates"] = street.navigationUpdates };
-                File.WriteAllText(Path.Combine(directory, "street-people.json"), SmokeJSON.prettySorted(streetReport));
+                File.WriteAllText(Path.Combine(directory, "street-people.json"), JSONSerialization.prettyPrintedSortedKeys(streetReport));
                 var streetRatePassed = !offscreen || (street.poseUpdates == 0 && street.navigationUpdates < 36000 * street.walkers.Count / 2);
                 var streetPassed = streetRatePassed && street.walkers.All(w => w.distance > 30) && street.maximumPenetration < 0.005 && longestStreetStop < 15;
                 Godot.GD.Print($"Street residents: count {street.walkers.Count}, longestStop {description(longestStreetStop)}, maximumPenetration {description(street.maximumPenetration)}, poseUpdates {street.poseUpdates}, navigationUpdates {street.navigationUpdates}, passed {(streetPassed ? "true" : "false")}");
@@ -139,8 +140,8 @@ public sealed partial class TownSmokeApp
                     ["doors"] = residents.doors.Count, ["routes"] = residents.connections, ["visits"] = residents.walkers.Select(w => w.visits).ToList(), ["distance"] = residents.walkers.Select(w => w.distance).ToList(), ["blocked"] = residents.walkers.Select(w => w.blocked).ToList(),
                     ["waypoints"] = residents.walkers.Select(w => w.waypoint).ToList(), ["paths"] = residents.walkers.Select(w => w.path.Select(p => new List<double> { p.x, p.y }).ToList()).ToList(), ["positions"] = residents.walkers.Select(w => new List<double> { w.position.x, w.position.y }).ToList(), ["maximumPenetration"] = residents.maximumPenetration,
                 };
-                File.WriteAllText(Path.Combine(directory, "people.json"), SmokeJSON.prettySorted(report));
-                Godot.GD.Print(SmokeJSON.prettySorted(report.Where(pair => pair.Key != "paths").ToDictionary(pair => pair.Key, pair => pair.Value)).Replace("\n", " "));
+                File.WriteAllText(Path.Combine(directory, "people.json"), JSONSerialization.prettyPrintedSortedKeys(report));
+                Godot.GD.Print(JSONSerialization.prettyPrintedSortedKeys(report.Where(pair => pair.Key != "paths").ToDictionary(pair => pair.Key, pair => pair.Value)).Replace("\n", " "));
                 world.camera.position = new SCNVector3(0, 38, -33); world.camera.look(at: SCNVector3Zero, up: new SCNVector3(0, 1, 0), localFront: new SCNVector3(0, 0, -1));
                 saveTownFrame("town-people-overhead", directory);
                 var moving = residents.walkers.All(w => w.visits > 0 && w.distance > 20) && residents.maximumPenetration < 0.005;
@@ -176,12 +177,11 @@ public sealed partial class TownSmokeApp
     }
 
     [GameMode("--people-smoke-test")]
-    public static void RunPeopleSmoke(string dir, Godot.SceneTree tree)
+    public static async System.Threading.Tasks.Task RunPeopleSmokeTest(string dir, Godot.SceneTree tree)
     {
-        var app = new TownSmokeApp(tree);
-        app.weatherOverride = false;
-        var passed = app.checkTownPeople(dir);
-        Godot.GD.Print($"People smoke: {(passed ? "PASS" : "FAIL")} · {dir}");
-        tree.Quit(passed ? 0 : 1);
+        var app = await launchSmoke(tree, dir);
+        var passed = app.checkTownPeople(at: dir);
+        print($"People smoke: {(passed ? "PASS" : "FAIL")} · {dir}");
+        exit(passed ? 0 : 1);
     }
 }

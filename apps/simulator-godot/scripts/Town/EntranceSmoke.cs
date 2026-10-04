@@ -7,22 +7,22 @@ using static Marvin.Core.Swift;
 
 namespace Marvin;
 
-// PORT: EntranceSmoke.swift (an AppController extension in Swift; see TownSmoke.cs for TownSmokeApp).
-// The captures use the deterministic survey daylight (MARVIN_SURVEY_DAYLIGHT, default 0.48, phase 1.2), so
-// their lighting compares 1:1 with the macOS captures.
-public sealed partial class TownSmokeApp
+// Port of EntranceSmoke.swift (an AppController extension). The captures use the deterministic survey daylight
+// (MARVIN_SURVEY_DAYLIGHT, default 0.48, phase 1.2), so their lighting compares 1:1 with the macOS captures.
+public partial class AppController
 {
     private static string describe(IEnumerable<Double3> values) => "[" + string.Join(", ", values) + "]";
 
-    public bool checkTownEntrances(string directory)
+    public bool checkTownEntrances(string at)
     {
+        var directory = at;
         try
         {
             Directory.CreateDirectory(directory);
             weatherOverride = false;
             try
             {
-                startDirtTrack(); dirtIntro = null; // setRaceControlsHidden(true): the HUD is not part of the snapshots.
+                startDirtTrack(); dirtIntro = null; setRaceControlsHidden(true);
                 var surveyDaylight = Environment.GetEnvironmentVariable("MARVIN_SURVEY_DAYLIGHT");
                 dirtWorld.sky.apply(new BinaryDaylight(fraction: surveyDaylight != null && double.TryParse(surveyDaylight, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value) ? value : 0.48, phase: 1.2));
                 TownWorld town = dirtWorld.town; var entries = town.entrances; var city = town.collisionWorld;
@@ -71,7 +71,7 @@ public sealed partial class TownSmokeApp
                     }
                 }
                 var accessReport = new Dictionary<string, object> { ["compounds"] = town.lots.Count, ["connected"] = town.pedestrianAccess.Count, ["missing"] = town.inaccessibleBuildings.Select(m => new List<double> { m.x, m.y }).ToList(), ["blockedRoutes"] = blockedRoutes, ["samples"] = routeSamples, ["connectedVenues"] = town.venueAccess.Count };
-                File.WriteAllText(Path.Combine(directory, "pedestrian-access.json"), SmokeJSON.prettySorted(accessReport));
+                File.WriteAllText(Path.Combine(directory, "pedestrian-access.json"), JSONSerialization.prettyPrintedSortedKeys(accessReport));
                 Godot.GD.Print($"All-compound access audit: [\"blockedRoutes\": [{string.Join(", ", blockedRoutes.Select(r => description(r)))}], \"samples\": {routeSamples}, \"connectedVenues\": {town.venueAccess.Count}, \"connected\": {town.pedestrianAccess.Count}, \"missing\": [{string.Join(", ", town.inaccessibleBuildings.Select(m => description(new[] { m.x, m.y })))}], \"compounds\": {town.lots.Count}]");
                 if (world.camera.camera is SCNCamera camera)
                 {
@@ -207,7 +207,7 @@ public sealed partial class TownSmokeApp
                     saveTownFrame(role.Replace(" ", "-"), directory);
                 }
                 var activityReport = new Dictionary<string, object> { ["roles"] = roles, ["conversationGroups"] = conversations.Count, ["completeGroups"] = completeGroups, ["clearOfScenery"] = activityClear, ["shelterTogether"] = sheltered };
-                File.WriteAllText(Path.Combine(directory, "activities.json"), SmokeJSON.prettySorted(activityReport));
+                File.WriteAllText(Path.Combine(directory, "activities.json"), JSONSerialization.prettyPrintedSortedKeys(activityReport));
                 Godot.GD.Print($"Street activity audit: [\"conversationGroups\": {conversations.Count}, \"completeGroups\": {(completeGroups ? "true" : "false")}, \"roles\": [{string.Join(", ", roles.Select(r => $"\"{r.Key}\": {r.Value}"))}], \"clearOfScenery\": {(activityClear ? "true" : "false")}, \"shelterTogether\": {(sheltered ? "true" : "false")}]");
                 if (!(completeGroups && activityClear && sheltered && conversations.Count >= 5 && (roles.TryGetValue("waiting at door", out var waiting) ? waiting : 0) > 0 && (roles.TryGetValue("market vendor", out var vendors) ? vendors : 0) > 0)) { return false; }
                 var orientations = new HashSet<int>(entries.Select(e => (int)(((e.yaw + Math.PI / 4) % (2 * Math.PI)) / (Math.PI / 2))));
@@ -217,7 +217,7 @@ public sealed partial class TownSmokeApp
                     ["buildings"] = statistics.TryGetValue("buildings", out var buildings) ? buildings : 0, ["entrances"] = entries.Count, ["variants"] = Enumerable.Range(0, 5).Select(v => entries.Count(e => e.variant == v)).ToList(), ["blockedApproaches"] = blocked,
                     ["workingDoors"] = town.doorways.Count, ["doorConnections"] = town.residents?.connections ?? 0, ["townValid"] = town.validate(), ["orientations"] = orientations.OrderBy(o => o).ToList(), ["statistics"] = statistics,
                 };
-                File.WriteAllText(Path.Combine(directory, "entrances.json"), SmokeJSON.prettySorted(report));
+                File.WriteAllText(Path.Combine(directory, "entrances.json"), JSONSerialization.prettyPrintedSortedKeys(report));
                 Godot.GD.Print($"Entrance audit: [\"townValid\": {(town.validate() ? "true" : "false")}, \"entrances\": {entries.Count}, \"variants\": {description(Enumerable.Range(0, 5).Select(v => entries.Count(e => e.variant == v)))}, \"buildings\": {(statistics.TryGetValue("buildings", out var count) ? count : 0)}, \"doorConnections\": {town.residents?.connections ?? 0}, \"workingDoors\": {town.doorways.Count}, \"blockedApproaches\": {blocked.Count}, \"orientations\": {description(orientations.OrderBy(o => o))}]");
                 return blocked.Count == 0 && blockedRoutes.Count == 0 && town.inaccessibleBuildings.Count == 0 && entries.Count == town.lots.Count && entries.Count > 100 && orientations.Count >= 4 && town.validate();
             }
@@ -227,12 +227,10 @@ public sealed partial class TownSmokeApp
     }
 
     [GameMode("--entrance-smoke-test")]
-    public static void RunEntranceSmoke(string dir, Godot.SceneTree tree)
+    public static async System.Threading.Tasks.Task RunEntranceSmokeTest(string dir, Godot.SceneTree tree)
     {
-        var app = new TownSmokeApp(tree);
-        // App.swift: smoke runs never draw a sandstorm.
-        app.weatherOverride = false;
-        var passed = app.checkTownEntrances(dir);
-        tree.Quit(passed ? 0 : 1);
+        var app = await launchSmoke(tree, dir);
+        var passed = app.checkTownEntrances(at: dir);
+        exit(passed ? 0 : 1);
     }
 }

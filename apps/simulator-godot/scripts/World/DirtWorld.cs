@@ -605,7 +605,7 @@ ALBEDO = ALBEDO * (1.0 - deposit.a) + deposit.rgb;
     {
         if (!(dt > 0)) return;
         storm = state.storm;
-        town.shadowDirections = sky.daylight.directions;
+        town.shadowDirections = new List<Double3>(sky.daylight.directions);
         var allStates = new[] { state, opponent }.Concat(additional).ToArray();
         var allContacts = new[] { new[] { (x: 0.262225 * modelScale, z: -0.23 * modelScale, width: 0.155 * modelScale), (x: -0.262225 * modelScale, z: -0.23 * modelScale, width: 0.155 * modelScale) }, R2D2.groundContacts }.Concat(additionalContacts).ToArray();
         duneSand.update(states: allStates, contacts: allContacts.Select((feet, index) =>

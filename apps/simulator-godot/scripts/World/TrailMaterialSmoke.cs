@@ -15,18 +15,19 @@ namespace Marvin;
 /// clay and dark ground without hue shifts. Same 256 x 256 4x-MSAA captures (trail-sand.png, trail-clay.png,
 /// trail-dark-ground.png) and printed results.
 /// </summary>
-public static class TrailMaterialSmoke
+public partial class AppController
 {
     [GameMode("--trail-material-smoke-test")]
-    public static Task Run(string dir, SceneTree tree)
+    public static async Task RunTrailMaterialSmokeTest(string dir, SceneTree tree)
     {
-        bool passed = checkTrailMaterial(dir);
-        tree.Quit(passed ? 0 : 1);
-        return Task.CompletedTask;
+        var app = await launchSmoke(tree, dir);
+        var passed = app.checkTrailMaterial(at: dir);
+        exit(passed ? 0 : 1);
     }
 
-    public static bool checkTrailMaterial(string directory)
+    public bool checkTrailMaterial(string at)
     {
+        var directory = at;
         try
         {
             Directory.CreateDirectory(directory);
