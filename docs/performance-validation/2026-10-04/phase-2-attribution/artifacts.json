@@ -1,0 +1,8 @@
+{
+  "rawRoot": "/Users/thomi/Projects/marvin-town-planning/phase-2-attribution-2026-10-04",
+  "inventoryPath": "/Users/thomi/Projects/marvin-town-planning/phase-2-attribution-2026-10-04/artifact-inventory.json",
+  "inventorySHA256": "bbb0f6879c9e402ed0b05219c403930b84cf1a09a347a480ae4104c6e55df5dd",
+  "files": 384,
+  "bytes": 30320943,
+  "method": "SHA256 of sorted relative-path/byte-length/file-SHA256 inventory; artifact-inventory.json excludes itself. Raw hardware identifiers remain outside Git."
+}

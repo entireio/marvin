@@ -344,9 +344,10 @@ Historical claims of “final” in these documents are not user acceptance.
 
 ## 9. Apple rendering and frame pacing
 
-- The M2 MacBook Air used in this workspace is the sole performance target for
-  the current sustained-performance work, including clear/storm ten-minute runs
-  and rendering headroom. The user explicitly removed the M4 from scope.
+- For the authorized Phase 1 baseline and Phase 2 attribution work, use the
+  current Apple M4 MacBook Air with 32 GB. This October 4 instruction supersedes
+  the earlier M2-only restriction. Label hardware explicitly and do not
+  extrapolate M4 measurements to M2 or other Apple GPU generations.
 - Show a live FPS readout during gameplay, including manual town exploration.
   Measure rendered frames rather than the simulation update rate.
 

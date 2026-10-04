@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-time-profile.xml",
+    "sha256": "12bdd891224f024442c24361d25681e4d38fe5a30b02f4e5bbf7c72bff923891",
+    "expectedSHA256": "12bdd891224f024442c24361d25681e4d38fe5a30b02f4e5bbf7c72bff923891",
+    "matchesPhase1Inventory": true
+  },
+  {
+    "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-metal-application-encoders-list.xml",
+    "sha256": "b7fb8a6ca99a22959dba69394d9cb25bc72ee051353c81e4f6d58711c30e84f8",
+    "expectedSHA256": "b7fb8a6ca99a22959dba69394d9cb25bc72ee051353c81e4f6d58711c30e84f8",
+    "matchesPhase1Inventory": true
+  },
+  {
+    "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-toc.xml",
+    "sha256": "661a018e60e2c8cf492fde13fc84d2a370cbd91abc88bfffa6e6da91cd28f2ee",
+    "expectedSHA256": "661a018e60e2c8cf492fde13fc84d2a370cbd91abc88bfffa6e6da91cd28f2ee",
+    "matchesPhase1Inventory": true
+  },
+  {
+    "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-time-profile.xml",
+    "sha256": "14a03aea72285714c519ba5cbd8bc232d68fdf13b83bf4e1035ac2bde91588b2",
+    "expectedSHA256": "14a03aea72285714c519ba5cbd8bc232d68fdf13b83bf4e1035ac2bde91588b2",
+    "matchesPhase1Inventory": true
+  },
+  {
+    "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-metal-application-encoders-list.xml",
+    "sha256": "dc1dc10d8e71215477390fbb099c25f599a19e4b7d870695a69d13449c35bf35",
+    "expectedSHA256": "dc1dc10d8e71215477390fbb099c25f599a19e4b7d870695a69d13449c35bf35",
+    "matchesPhase1Inventory": true
+  },
+  {
+    "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-toc.xml",
+    "sha256": "edfc3f05929d4cc02e1e65069dff8152467730b9bb68d849b66db53a6b447089",
+    "expectedSHA256": "edfc3f05929d4cc02e1e65069dff8152467730b9bb68d849b66db53a6b447089",
+    "matchesPhase1Inventory": true
+  }
+]

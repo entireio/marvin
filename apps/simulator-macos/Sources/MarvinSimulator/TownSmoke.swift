@@ -236,6 +236,24 @@ extension AppController {
                 os_signpost(.event,log:townBenchmarkTraceLog,name:"TownBenchmarkStart","run=%{public}@ markerUptime=%.9f benchmarkBoundaryUptime=%.9f",townBenchmarkRunID as NSString,ProcessInfo.processInfo.systemUptime,start)
             }
             townBenchmarkResourceSamples.append(["second":Int(elapsed),"uptime":now,"thermalState":ProcessInfo.processInfo.thermalState.rawValue,"trailsHidden":trailsHidden,"shadowCasters":dirtWorld.town.shadowCasterCount,"trails":dirtWorld.trailDiagnostics(),"shadowBatch":dirtWorld.town.shadowBatchTelemetry])
+            if ProcessInfo.processInfo.environment["MARVIN_BENCHMARK_VISIBILITY"] == "1" {
+                var visibility: [String: Any] = [
+                    "uptime": ProcessInfo.processInfo.systemUptime,
+                    "appActive": NSApp.isActive,
+                    "windowVisible": window.isVisible,
+                    "windowOcclusionVisible": window.occlusionState.contains(.visible),
+                    "windowMiniaturized": window.isMiniaturized,
+                    "windowFrame": NSStringFromRect(window.frame),
+                    "screenName": window.screen?.localizedName ?? "UNKNOWN",
+                    "screenFrame": window.screen.map { NSStringFromRect($0.frame) } ?? "UNKNOWN",
+                    "backingScale": window.backingScaleFactor
+                ]
+                // Only retain the lock field, never the session dictionary.
+                // Absence is UNKNOWN, not proof that the screen is unlocked.
+                let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+                visibility["sessionLockFlag"] = (session?["CGSSessionScreenIsLocked"] as? Bool).map { $0 as Any } ?? NSNull()
+                townBenchmarkResourceSamples[townBenchmarkResourceSamples.count - 1]["visibility"] = visibility
+            }
         }
         var input=DirtOpponent.driveInput(for:simulation)
         if !townBenchmarkRoute.isEmpty {
@@ -272,6 +290,8 @@ extension AppController {
                 RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
             },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) },shadowCamera:world.camera,viewportAspect:Double(view.bounds.width/view.bounds.height))
         }
+        // townMS includes this main-thread audio update as well as town work.
+        // physicsMS starts before benchmark/input setup: both are wall spans.
         updateRaceAudio(dt:dt,advancing:true)
         let finish=ProcessInfo.processInfo.systemUptime
         townBenchmarkCPU.append(finish-begin)

@@ -1,0 +1,152 @@
+{
+  "early": {
+    "pid": 65595,
+    "traceDurationSeconds": 11.045617,
+    "sampleTimeBoundsSeconds": [
+      0.3291535,
+      11.04512975
+    ],
+    "recordedEncoderFrameCount": 631,
+    "frameOrdinalBounds": [
+      2,
+      632
+    ],
+    "drawingWorkerCount": 10,
+    "workers": {
+      "3476278": {
+        "label": "MarvinSimulator (0x350b36) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.446,
+        "drawInclusiveSeconds": 0.177,
+        "executeDrawInclusiveSeconds": 0.164
+      },
+      "3476295": {
+        "label": "MarvinSimulator (0x350b47) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.913,
+        "drawInclusiveSeconds": 0.623,
+        "executeDrawInclusiveSeconds": 0.586
+      },
+      "3476296": {
+        "label": "MarvinSimulator (0x350b48) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.335,
+        "drawInclusiveSeconds": 0.197,
+        "executeDrawInclusiveSeconds": 0.188
+      },
+      "3476297": {
+        "label": "MarvinSimulator (0x350b49) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.641,
+        "drawInclusiveSeconds": 0.392,
+        "executeDrawInclusiveSeconds": 0.374
+      },
+      "3476298": {
+        "label": "MarvinSimulator (0x350b4a) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.512,
+        "drawInclusiveSeconds": 0.3,
+        "executeDrawInclusiveSeconds": 0.278
+      },
+      "3476839": {
+        "label": "MarvinSimulator (0x350d67) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.47300000000000003,
+        "drawInclusiveSeconds": 0.296,
+        "executeDrawInclusiveSeconds": 0.267
+      },
+      "3477879": {
+        "label": "MarvinSimulator (0x351177) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.5710000000000001,
+        "drawInclusiveSeconds": 0.368,
+        "executeDrawInclusiveSeconds": 0.341
+      },
+      "3477893": {
+        "label": "MarvinSimulator (0x351185) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.6950000000000001,
+        "drawInclusiveSeconds": 0.402,
+        "executeDrawInclusiveSeconds": 0.376
+      },
+      "3477922": {
+        "label": "MarvinSimulator (0x3511a2) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.587,
+        "drawInclusiveSeconds": 0.385,
+        "executeDrawInclusiveSeconds": 0.363
+      },
+      "3477991": {
+        "label": "MarvinSimulator (0x3511e7) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 0.683,
+        "drawInclusiveSeconds": 0.462,
+        "executeDrawInclusiveSeconds": 0.441
+      }
+    },
+    "aggregateWorkerSampleWeightSeconds": 5.856,
+    "aggregateDrawInclusiveSeconds": 3.602,
+    "aggregateExecuteDrawInclusiveSeconds": 3.378,
+    "aggregateWorkerWeightPerTraceSecond": 0.530165041934733,
+    "aggregateDrawWeightPerTraceSecond": 0.3261021996326688,
+    "aggregateWorkerSampleMSPerRecordedFrame": 9.280507131537242,
+    "aggregateDrawInclusiveMSPerRecordedFrame": 5.708399366085579,
+    "inputs": [
+      {
+        "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-time-profile.xml",
+        "sha256": "12bdd891224f024442c24361d25681e4d38fe5a30b02f4e5bbf7c72bff923891"
+      },
+      {
+        "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-metal-application-encoders-list.xml",
+        "sha256": "b7fb8a6ca99a22959dba69394d9cb25bc72ee051353c81e4f6d58711c30e84f8"
+      },
+      {
+        "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-early-toc.xml",
+        "sha256": "661a018e60e2c8cf492fde13fc84d2a370cbd91abc88bfffa6e6da91cd28f2ee"
+      }
+    ]
+  },
+  "loaded": {
+    "pid": 65595,
+    "traceDurationSeconds": 12.329932,
+    "sampleTimeBoundsSeconds": [
+      0.397366041,
+      12.329364291
+    ],
+    "recordedEncoderFrameCount": 411,
+    "frameOrdinalBounds": [
+      1,
+      411
+    ],
+    "drawingWorkerCount": 1,
+    "workers": {
+      "3477991": {
+        "label": "MarvinSimulator (0x3511e7) (MarvinSimulator, pid: 65595)",
+        "allSampleWeightSeconds": 9.986,
+        "drawInclusiveSeconds": 8.425,
+        "executeDrawInclusiveSeconds": 7.966
+      }
+    },
+    "aggregateWorkerSampleWeightSeconds": 9.986,
+    "aggregateDrawInclusiveSeconds": 8.425,
+    "aggregateExecuteDrawInclusiveSeconds": 7.966,
+    "aggregateWorkerWeightPerTraceSecond": 0.8098990326953953,
+    "aggregateDrawWeightPerTraceSecond": 0.6832965502161732,
+    "aggregateWorkerSampleMSPerRecordedFrame": 24.29683698296837,
+    "aggregateDrawInclusiveMSPerRecordedFrame": 20.498783454987834,
+    "inputs": [
+      {
+        "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-time-profile.xml",
+        "sha256": "14a03aea72285714c519ba5cbd8bc232d68fdf13b83bf4e1035ac2bde91588b2"
+      },
+      {
+        "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-metal-application-encoders-list.xml",
+        "sha256": "dc1dc10d8e71215477390fbb099c25f599a19e4b7d870695a69d13449c35bf35"
+      },
+      {
+        "path": "/Users/thomi/Projects/marvin-town-planning/phase-1-baseline-2026-10-03/metal-loaded-toc.xml",
+        "sha256": "edfc3f05929d4cc02e1e65069dff8152467730b9bb68d849b66db53a6b447089"
+      }
+    ]
+  },
+  "method": {
+    "workerSelection": "Every non-main thread with an observed drawRenderElement:withPass: stack; aggregate all samples on those tids. Draw-inclusive weights include only matching stacks.",
+    "normalization": "Use full finalized trace duration and unique target-process encoder frame ordinals. Boundary frames may be partial; values are statistical weights per recorded frame, not measured frame encoding latency.",
+    "limitations": [
+      "Locked-screen Phase 1 diagnostics; pose and device state were mismatched.",
+      "Nested draw and execute weights overlap and must not be added.",
+      "Thread sample weights can sum beyond trace duration due to parallel execution.",
+      "Does not measure GPU execution or exclusive hardware busy time."
+    ]
+  }
+}
