@@ -91,10 +91,12 @@ public sealed class NSLayoutConstraint
         _ => 0,
     };
 
-    /// <summary>Solves the window's active constraints and assigns the constrained views' frames.</summary>
-    internal static void Solve(NSWindow window)
+    /// <summary>Solves the window's active constraints and assigns the constrained views' frames (only <paramref name="only"/>'s
+    /// when given: a view's layoutSubtreeIfNeeded re-applies its own constraints, measured on the Mac: a frame assigned
+    /// to the main menu overlay reverts to the content layout guide).</summary>
+    internal static void Solve(NSWindow window, Control only = null)
     {
-        foreach (var group in window.constraints.Where(c => c.firstItem is Control).GroupBy(c => (Control)c.firstItem).ToList())
+        foreach (var group in window.constraints.Where(c => c.firstItem is Control && (only == null || c.firstItem == only)).GroupBy(c => (Control)c.firstItem).ToList())
         {
             var view = group.Key;
             if (!GodotObject.IsInstanceValid(view) || !view.IsInsideTree()) continue;

@@ -23,4 +23,15 @@ public static class CommandLine
         return list.ToArray();
     });
     public static string[] arguments => _arguments.Value;
+    /// <summary>The game's own command line as the macOS app receives it: the executable and the game arguments
+    /// (after "--"), without Godot's engine arguments. For reports that record the invocation (benchmarkArguments).</summary>
+    public static string[] gameArguments
+    {
+        get
+        {
+            var list = new List<string> { OS.GetExecutablePath() };
+            list.AddRange(OS.GetCmdlineUserArgs());
+            return list.ToArray();
+        }
+    }
 }

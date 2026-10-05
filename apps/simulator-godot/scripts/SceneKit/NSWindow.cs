@@ -170,6 +170,23 @@ public sealed class NSWindow
         DisplayServer.WindowSetPosition(area.Position + (area.Size - size) / 2, WindowId);
     }
     public void makeKeyAndOrderFront(object sender) { if (HasWindow) DisplayServer.WindowMoveToForeground(WindowId); }
+    /// <summary>setContentSize(_:): the client area in points (the title bar is drawn over a full-size content view,
+    /// so the content size is the window size). Constraints follow through the resize notification.</summary>
+    public void setContentSize(CGSize size)
+    {
+        if (!HasWindow) return;
+        DisplayServer.WindowSetSize(Pixels(size), WindowId);
+        layoutConstraints();
+    }
+    /// <summary>miniaturize(_:) / deminiaturize(_:) / isMiniaturized: the Godot window's minimised mode. The delegate's
+    /// windowDidMiniaturize/Deminiaturize follow when the system reports the change (pollState).</summary>
+    public void miniaturize(object sender) { if (HasWindow) DisplayServer.WindowSetMode(DisplayServer.WindowMode.Minimized, WindowId); }
+    public void deminiaturize(object sender) { if (HasWindow) DisplayServer.WindowSetMode(DisplayServer.WindowMode.Windowed, WindowId); }
+    public bool isMiniaturized => HasWindow && DisplayServer.WindowGetMode(WindowId) == DisplayServer.WindowMode.Minimized;
+    /// <summary>displayIfNeeded(): views redraw in Godot's frame loop; nothing to force.</summary>
+    public void displayIfNeeded() { }
+    /// <summary>Facade helper (window level .floating): keeps the window above other applications' windows.</summary>
+    public void setAlwaysOnTop(bool onTop) { if (HasWindow) DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.AlwaysOnTop, onTop, WindowId); }
     /// <summary>occlusionState: .visible unless the window is minimised (Godot does not report occlusion by other windows).</summary>
     public OcclusionState occlusionState =>
         HasWindow && DisplayServer.WindowGetMode(WindowId) == DisplayServer.WindowMode.Minimized ? 0 : OcclusionState.visible;

@@ -63,6 +63,27 @@ public partial class SCNView : NSResponder
         var local = GetGlobalTransform().AffineInverse() * AppKitLayout.ToGlobal(point, from, this);
         return new CGPoint(local.X, Size.Y - local.Y);
     }
+    /// <summary>convert(_ rect:from:): a rectangle in another view's (or, for nil, the window's) coordinates to this view's.</summary>
+    public CGRect convert(CGRect rect, Control from)
+    {
+        CGPoint a = convertFrom(new CGPoint(rect.minX, rect.minY), from), b = convertFrom(new CGPoint(rect.maxX, rect.maxY), from);
+        return new CGRect(Math.Min(a.x, b.x), Math.Min(a.y, b.y), Math.Abs(b.x - a.x), Math.Abs(b.y - a.y));
+    }
+    /// <summary>convertToBacking(_:): view points to device pixels (the window's backingScaleFactor).</summary>
+    public CGRect convertToBacking(CGRect rect)
+    {
+        double scale = window?.backingScaleFactor ?? 1;
+        return new CGRect(rect.minX * scale, rect.minY * scale, rect.width * scale, rect.height * scale);
+    }
+    /// <summary>layoutSubtreeIfNeeded(): Auto Layout for the overlays (the window's constraints), then their own layout.</summary>
+    public void layoutSubtreeIfNeeded()
+    {
+        if (window is NSWindow w) w.layoutConstraints();
+        foreach (var child in GetChildren()) if (child is NSView v) v.layoutSubtreeIfNeeded();
+    }
+    /// <summary>displayLink(target:selector:) (macOS 14): a display link that calls the selector once per displayed frame
+    /// while the view is on screen (see CADisplayLink).</summary>
+    public CADisplayLink displayLink(object target, Action<object> selector) => new CADisplayLink(this, selector);
 
     public override void _Notification(int what)
     {
@@ -71,8 +92,14 @@ public partial class SCNView : NSResponder
             case NotificationEnterTree:
                 FocusMode = acceptsFirstResponder ? FocusModeEnum.All : FocusModeEnum.None;
                 resetCursorRects();
+                UpdateDrawable();
+                UpdateRendering();
+                break;
+            case NotificationVisibilityChanged:
+                UpdateRendering();
                 break;
             case NotificationResized:
+                UpdateDrawable();
                 if (Size != lastAppKitSize)
                 {
                     var old = new CGSize(Math.Max(0, lastAppKitSize.X), Math.Max(0, lastAppKitSize.Y));

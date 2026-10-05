@@ -6,7 +6,7 @@ using Godot;
 namespace Marvin.SceneKit;
 
 public enum SCNAntialiasingMode { none = 0, multisampling2X = 1, multisampling4X = 2, multisampling8X = 3, multisampling16X = 4 }
-public enum SCNRenderingAPI { metal = 0, openGLLegacy = 1, openGLCore32 = 2, openGLCore41 = 3 }
+public enum SCNRenderingAPI { metal = 0, openGLLegacy = 1, openGLCore32 = 2, openGLCore41 = 3, other = 100 }
 [Flags]
 public enum SCNDebugOptions { none = 0, showPhysicsShapes = 1, showBoundingBoxes = 2, showLightInfluences = 4, showLightExtents = 8, showPhysicsFields = 16, showWireframe = 32, renderAsWireframe = 64, showSkeletons = 128, showCreases = 256, showConstraints = 512, showCameras = 1024 }
 
@@ -186,6 +186,9 @@ internal sealed class ViewRig
 /// <summary>
 /// SCNView: a Control (SubViewportContainer) that renders an SCNScene. Position and
 /// size it like any Godot control; `frame`/`bounds` use Godot pixel coordinates.
+/// The scene renders at the drawable's pixel size, as SceneKit's does: the view's size in points times the window's
+/// content scale (backingScaleFactor, see NSWindow). The SubViewport therefore sits under a plain holder node (a
+/// SubViewportContainer would size it in points and draw it itself) and the view draws its texture over its frame.
 /// </summary>
 public partial class SCNView : SubViewportContainer, SCNSceneRenderer
 {
@@ -199,18 +202,37 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
     public double sceneTime { get; set; }
     public MTLDevice device => MTLDevice.Shared;
     public bool usesReverseZ = true;
-    /// <summary>renderingAPI: always .metal for compatibility with code that reports it.</summary>
-    public SCNRenderingAPI renderingAPI => SCNRenderingAPI.metal;
+    /// <summary>renderingAPI: .metal when Godot renders with its Metal driver. PORT: Godot's other drivers (Vulkan,
+    /// Direct3D 12, OpenGL) have no SceneKit counterpart and report <c>SCNRenderingAPI.other</c>.</summary>
+    public SCNRenderingAPI renderingAPI => RenderingServer.GetCurrentRenderingDriverName() == "metal" ? SCNRenderingAPI.metal : SCNRenderingAPI.other;
 
     public SCNView()
     {
         SceneKitRuntime.EnsureStarted();
-        Stretch = true;
+        Stretch = false;
+        var holder = new Node { Name = "SCNViewportHolder" };
+        AddChild(holder);
         var vp = new SubViewport { Name = "SCNViewport", RenderTargetUpdateMode = SubViewport.UpdateMode.Always, Msaa3D = Viewport.Msaa.Msaa4X };
-        AddChild(vp);
+        holder.AddChild(vp);
         rig = new ViewRig(vp);
         SceneKitRuntime.views.Add(new WeakReference<SCNView>(this));
     }
+    /// <summary>Device pixels per point: the window's content scale (1 on a 1x screen).</summary>
+    private double BackingScale => IsInsideTree() && GetWindow() is Window w && w.ContentScaleFactor > 0 ? w.ContentScaleFactor : 1;
+    /// <summary>The drawable size in pixels (bounds x backing scale).</summary>
+    internal Vector2I DrawableSize
+    {
+        get { double s = BackingScale; return new Vector2I(Math.Max(1, (int)Math.Round(Size.X * s)), Math.Max(1, (int)Math.Round(Size.Y * s))); }
+    }
+    private void UpdateDrawable()
+    {
+        var size = DrawableSize;
+        if (rig.viewport.Size != size) rig.viewport.Size = size;
+        QueueRedraw();
+    }
+    public override void _Draw() => DrawTextureRect(rig.viewport.GetTexture(), new Rect2(Vector2.Zero, Size), false);
+    /// <summary>Renders every frame while visible, not at all while hidden (as a SubViewportContainer manages its viewports).</summary>
+    private void UpdateRendering() => rig.viewport.RenderTargetUpdateMode = IsVisibleInTree() ? SubViewport.UpdateMode.Always : SubViewport.UpdateMode.Disabled;
     public SCNView(CGRect frame) : this() { this.frame = frame; }
 
     public SCNScene scene { get => rig.scene; set => rig.SetScene(value); }
@@ -238,11 +260,11 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
     /// <summary>snapshot(): renders now and returns the view's image.</summary>
     public NSImage snapshot()
     {
-        // The container resizes its SubViewport on a deferred notification; apply the size now.
-        var size = new Vector2I(Math.Max(1, (int)Size.X / Math.Max(1, StretchShrink)), Math.Max(1, (int)Size.Y / Math.Max(1, StretchShrink)));
+        // Apply a pending size change now (the drawable follows the view's size and backing scale).
+        var size = DrawableSize;
         if (rig.viewport.Size != size) rig.viewport.Size = size;
-        rig.Sync();
-        SceneKitRuntime.RenderNow(rig.viewport);
+        // Rendered alone with this view's scene uniforms (a hidden view, which does not render each frame, renders once).
+        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync);
         var img = rig.viewport.GetTexture().GetImage();
         return NSImage.data(img.SavePngToBuffer());
     }
@@ -265,7 +287,7 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         if (scene == null) return new List<SCNHitTestResult>();
         var a = unprojectPoint(new SCNVector3(point.x, point.y, 0));
         var b = unprojectPoint(new SCNVector3(point.x, point.y, 1));
-        return scene.rootNode.hitTestWithSegment(a, b, options);
+        return SCNHitTest.Run(scene.rootNode, a, b, options, renderTransforms: true);
     }
 }
 
@@ -303,11 +325,8 @@ public sealed class SCNRenderer : SCNSceneRenderer
         rig.viewport.Size = size;
         rig.viewport.Msaa3D = ViewRig.Msaa(antialiasingMode);
         rig.viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
-        rig.Sync();
-        SceneKitRuntime.RenderNow();
-        rig.Sync();
-        rig.viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
-        RenderingServer.ForceDraw(false, 0.0);
+        // Two draws, as before the isolation (the first one after a size or scene change is not used).
+        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, draws: 2);
         return rig.viewport.GetTexture().GetImage();
     }
     /// <summary>render(withViewport:commandBuffer:passDescriptor:) is Metal-specific. PORT: unsupported (diagnostics only).</summary>
@@ -321,5 +340,13 @@ public sealed class SCNRenderer : SCNSceneRenderer
     }
     public SCNVector3 projectPoint(SCNVector3 point) => rig.Project(point, rig.viewport.Size.X, rig.viewport.Size.Y);
     public SCNVector3 unprojectPoint(SCNVector3 point) => rig.Unproject(point, rig.viewport.Size.X, rig.viewport.Size.Y);
+    /// <summary>hitTest(_:options:): a point of the last snapshot's viewport (origin bottom-left), nearest hits first.</summary>
+    public List<SCNHitTestResult> hitTest(CGPoint point, Dictionary<string, object> options = null)
+    {
+        if (scene == null) return new List<SCNHitTestResult>();
+        var a = unprojectPoint(new SCNVector3(point.x, point.y, 0));
+        var b = unprojectPoint(new SCNVector3(point.x, point.y, 1));
+        return SCNHitTest.Run(scene.rootNode, a, b, options, renderTransforms: true);
+    }
     public void prepare(object[] objects, Action<bool> completionHandler) { SceneKitRuntime.Flush(); completionHandler?.Invoke(true); }
 }
