@@ -402,6 +402,7 @@ public partial class SceneKitRuntime : Node
     // ---- Directional shadows fitted per camera
     private static readonly HashSet<SCNNode> shadowLights = new();
     private static readonly Projection[] shadowBoxes = new Projection[2];
+    private static Vector4 shadowSlope;
     internal static void RegisterShadowLight(SCNNode node, bool on) { if (on) shadowLights.Add(node); else shadowLights.Remove(node); }
 
     /// <summary>
@@ -420,15 +421,22 @@ public partial class SceneKitRuntime : Node
         // SceneKit's fixed shadow boxes (automaticallyAdjustsShadowProjection = false): the composer's light() leaves
         // receivers outside them unshadowed. Up to two such lights (the game's binary suns); further ones use Godot's fit.
         var boxes = new Projection[2];
+        var slopes = new double[2];
         int boxCount = 0;
         foreach (var n in lights)
-            if (!n.light.automaticallyAdjustsShadowProjection && boxCount < boxes.Length) boxes[boxCount++] = n.light.ShadowBox(n.RenderWorld());
+            if (!n.light.automaticallyAdjustsShadowProjection && boxCount < boxes.Length)
+            {
+                slopes[boxCount] = SceneKitCalibration.ShadowSlopeBiasTexels * n.light.SceneKitShadowTexel;
+                boxes[boxCount++] = n.light.ShadowBox(n.RenderWorld());
+            }
         for (int i = 0; i < boxes.Length; i++)
         {
             if (shadowBoxes[i] == boxes[i]) continue;
             shadowBoxes[i] = boxes[i];
             ShaderNames.SetGlobal(ShaderNames.Of(i == 0 ? "scn_shadow_box0" : "scn_shadow_box1"), boxes[i]);
         }
+        var slope = new Vector4((float)slopes[0], (float)slopes[1], (float)SceneKitCalibration.ShadowSlopeMax, 0);
+        if (shadowSlope != slope) { shadowSlope = slope; RenderingServer.GlobalShaderParameterSet("scn_shadow_slope", slope); }
         if (lights.Count == 0) return;
         int splitH = 1, splitV = 1;
         while (splitH * splitV < lights.Count) { if (splitH == splitV) splitH <<= 1; else splitV <<= 1; }

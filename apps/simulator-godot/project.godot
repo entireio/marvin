@@ -102,3 +102,8 @@ scn_shadow_box1={
 "type": "mat4",
 "value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }
+
+scn_shadow_slope={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

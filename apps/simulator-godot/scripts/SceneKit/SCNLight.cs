@@ -96,6 +96,8 @@ public sealed class SCNLight
         return new Vector3(c.X / w.X, c.Y / w.Y, c.Z / w.Z);
     }
 
+    /// <summary>SceneKit's shadow texel of a fixed shadow box (world): 2 x orthographicScale / shadowMapSize.</summary>
+    internal double SceneKitShadowTexel => 2 * _orthographicScale / (_shadowMapSize.width > 0 ? _shadowMapSize.width : SceneKitCalibration.DefaultShadowMapSize);
     /// <summary>
     /// Per-camera shadow parameters (see SceneKitRuntime.FitShadows). texel: Godot's shadow texel for this camera (world);
     /// depthRange: Godot's light-space depth range (bias scale). SceneKit's kernel is shadowRadius texels of its own map:
@@ -105,9 +107,7 @@ public sealed class SCNLight
     internal void FitShadow(DirectionalLight3D light, double texel, double depthRange, double normalBiasScale = 1)
     {
         double qr = SceneKitCalibration.ShadowQualityRadius;
-        double skTexel = !_automaticallyAdjustsShadowProjection
-            ? 2 * _orthographicScale / (_shadowMapSize.width > 0 ? _shadowMapSize.width : SceneKitCalibration.DefaultShadowMapSize)
-            : texel;
+        double skTexel = !_automaticallyAdjustsShadowProjection ? SceneKitShadowTexel : texel;
         double kernel = _shadowRadius * skTexel * SceneKitCalibration.ShadowKernelScale;
         double blur = Math.Clamp(kernel / (qr * texel), SceneKitCalibration.ShadowBlurMin, SceneKitCalibration.ShadowBlurMax);
         double kernelTexels = blur * qr;
@@ -119,6 +119,7 @@ public sealed class SCNLight
         // own large-kernel self-shadowing is reproduced analytically for deferred lights (ShaderComposer light()).
         // normalBiasScale: Godot's normal-bias texel is 2 x radius / the light's shadow size, which halves for split maps
         // (FitShadows passes the ratio so the world offset stays calibrated).
+        // Fixed boxes also get SceneKit's caster slope bias in the shadow pass (ShaderComposer.ShadowSlopeBias).
         double normalBias = (SceneKitCalibration.ShadowNormalBias + SceneKitCalibration.ShadowNormalBiasPerKernel * kernelTexels) * normalBiasScale;
         if (Math.Abs(light.ShadowNormalBias - normalBias) > 1e-4) light.ShadowNormalBias = (float)normalBias;
     }
