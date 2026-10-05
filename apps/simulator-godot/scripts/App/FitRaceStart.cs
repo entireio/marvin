@@ -8,6 +8,7 @@
 // it prints the best grid and daylight in TestPins' format and writes fit.json and the best render. Fitted for
 // reference/mac/smoke/race-start.png (the third reset of that --smoke-test run): grid 3,1,2,0, daylight 0.8305 / 2.5753
 // (1.40/255 for the composite; the phase is loosely constrained, 2.66 scores 1.42).
+// MARVIN_FIT_STORM=1 fits a capture taken with the sandstorm drawn.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -31,6 +32,8 @@ public partial class AppController
         int w = mac.GetWidth(), h = mac.GetHeight();
         var app = await launchSmoke(tree, dir);
         app.startDirtTrack(); app.dirtIntro = null;
+        // MARVIN_FIT_STORM=1: the capture was taken after a reset that drew the sandstorm (SandstormSmoke's reset-storm).
+        if (System.Environment.GetEnvironmentVariable("MARVIN_FIT_STORM") == "1") { app.weatherOverride = true; }
         var macBytes = mac.GetData();
         // The candidate as RaceFinishSmoke composites it: the view scaled to the HUD's 900 x 550 frame with the race
         // HUD over it (its panels, the countdown backdrop and the course map's racer dots depend on the grid).
