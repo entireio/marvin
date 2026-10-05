@@ -14,11 +14,14 @@ namespace Marvin.Core;
 /// <item><c>max(x, y)</c> is Swift's generic <c>y &gt;= x ? y : x</c> and <c>min(x, y)</c> is
 /// <c>y &lt; x ? y : x</c>. They differ from <see cref="Math.Max(double,double)"/> for NaN and
 /// signed zeros, so <see cref="Math.Max(double,double)"/>/<see cref="Math.Min(double,double)"/> must not be used.</item>
-/// <item><c>hypot</c> calls the platform C library (Darwin libm on macOS, the same function Swift
-/// calls). .NET's <see cref="double.Hypot"/> is a managed implementation that can differ in the
-/// last bit; it is only the fallback when libm cannot be loaded.</item>
+/// <item><c>hypot</c> is Darwin's: on macOS it calls Darwin libm (the function Swift calls); on every other
+/// platform it runs <see cref="portableHypot(double,double)"/>, a managed reproduction of Darwin's algorithm
+/// that gives the same bits (measured, <c>tools/checks --portable-math</c>). .NET's <see cref="double.Hypot"/>
+/// rounds differently from Darwin in one call in ten, and the Windows C runtime's <c>hypot</c> is another
+/// implementation again.</item>
 /// <item>Transcendentals forward to <see cref="Math"/>/<see cref="MathF"/>, which call the C runtime
-/// (Darwin libm on macOS, the same as Swift).</item>
+/// (Darwin libm on macOS, the same as Swift; the Windows C runtime on Windows, which can differ from
+/// Darwin in the last bit, see PORTING.md "Windows").</item>
 /// <item><c>sorted</c> is stable like Swift's sort; <see cref="Array.Sort(Array)"/> is not.</item>
 /// <item><c>minBy</c>/<c>maxBy</c> follow <c>Sequence.min(by:)</c>/<c>max(by:)</c>: the first
 /// minimum and the last maximum win.</item>
@@ -122,22 +125,58 @@ public static class Swift
     /// <summary>Swift <c>x.rounded()</c> on Float.</summary>
     public static float rounded(float x) => MathF.Round(x, MidpointRounding.AwayFromZero);
 
-    /// <summary>Darwin <c>hypot</c> (libm). Falls back to <see cref="double.Hypot"/> if libm is unavailable.</summary>
+    /// <summary>Darwin <c>hypot</c>: Darwin libm on macOS, <see cref="portableHypot(double,double)"/> elsewhere.</summary>
     public static unsafe double hypot(double x, double y)
     {
         var f = Libm.hypot;
-        return f != null ? f(x, y) : double.Hypot(x, y);
+        return f != null ? f(x, y) : portableHypot(x, y);
     }
 
-    /// <summary>Darwin <c>hypotf</c> (libm). Falls back to <see cref="float.Hypot"/> if libm is unavailable.</summary>
+    /// <summary>Darwin <c>hypotf</c>: Darwin libm on macOS, <see cref="portableHypot(float,float)"/> elsewhere.</summary>
     public static unsafe float hypot(float x, float y)
     {
         var f = Libm.hypotf;
-        return f != null ? f(x, y) : float.Hypot(x, y);
+        return f != null ? f(x, y) : portableHypot(x, y);
     }
 
-    /// <summary>True when <see cref="hypot(double,double)"/> uses the platform C library.</summary>
+    /// <summary>True when <see cref="hypot(double,double)"/> calls Darwin libm, false when it runs the portable path.</summary>
     public static unsafe bool usesNativeHypot => Libm.hypot != null;
+
+    private static readonly double Two500 = Math.ScaleB(1.0, 500), Two600 = Math.ScaleB(1.0, 600);
+    private static readonly double TwoMinus500 = Math.ScaleB(1.0, -500), TwoMinus600 = Math.ScaleB(1.0, -600);
+
+    /// <summary>
+    /// Darwin's <c>hypot</c> without libm (PORT: macOS 27 arm64 libm reproduced). Measured against libSystem:
+    /// Darwin returns <c>sqrt(fma(b, b, a * a))</c> with a = max(|x|, |y|) and b = min(|x|, |y|) (the square of
+    /// the larger operand rounded first, the smaller one's square added exactly), which is not correctly rounded
+    /// (11 % of random arguments differ from the nearest double; .NET's <see cref="double.Hypot"/> differs from
+    /// Darwin in 10 % of game-range calls). Operands are scaled by an exact power of two outside 2^-500..2^500, so nothing
+    /// overflows or underflows on the way; infinities win over NaNs, as in C. Bit-identical to Darwin over the
+    /// game's range, wide exponents, subnormals and the overflow boundary (<c>tools/checks --portable-math</c>).
+    /// </summary>
+    public static double portableHypot(double x, double y)
+    {
+        double a = Math.Abs(x), b = Math.Abs(y);
+        if (double.IsInfinity(a) || double.IsInfinity(b)) return double.PositiveInfinity;
+        if (double.IsNaN(a) || double.IsNaN(b)) return double.NaN;
+        if (a < b) (a, b) = (b, a);
+        if (b == 0) return a;
+        if (a > Two500) return Math.Sqrt(Math.FusedMultiplyAdd(b * TwoMinus600, b * TwoMinus600, (a * TwoMinus600) * (a * TwoMinus600))) * Two600;
+        if (a < TwoMinus500) return Math.Sqrt(Math.FusedMultiplyAdd(b * Two600, b * Two600, (a * Two600) * (a * Two600))) * TwoMinus600;
+        return Math.Sqrt(Math.FusedMultiplyAdd(b, b, a * a));
+    }
+
+    /// <summary>
+    /// Darwin's <c>hypotf</c> without libm: the float result of the computation in double (the squares are exact in
+    /// double); Darwin's hypotf returns the same bits (measured on 200 million argument pairs, <c>tools/checks --portable-math</c>).
+    /// </summary>
+    public static float portableHypot(float x, float y)
+    {
+        double a = Math.Abs((double)x), b = Math.Abs((double)y);
+        if (double.IsInfinity(a) || double.IsInfinity(b)) return float.PositiveInfinity;
+        if (double.IsNaN(a) || double.IsNaN(b)) return float.NaN;
+        return (float)Math.Sqrt(a * a + b * b);
+    }
 
     /// <summary>Swift <c>Double.ulp</c> (NaN for non-finite values; subnormals give the least subnormal).</summary>
     public static double ulp(double x)
@@ -499,6 +538,11 @@ public static class Swift
 
     // MARK: libm binding
 
+    /// <summary>
+    /// Darwin libm's hypot/hypotf, bound on macOS only: other C libraries (the Windows C runtime, glibc) are not
+    /// Darwin's, so the portable functions stand in there. Test hook: <c>MARVIN_PORTABLE_MATH=1</c> runs the portable
+    /// path on macOS too, to check it against the game's own results.
+    /// </summary>
     private static unsafe class Libm
     {
         internal static readonly delegate* unmanaged[SuppressGCTransition]<double, double, double> hypot;
@@ -506,20 +550,21 @@ public static class Swift
 
         static Libm()
         {
-            string[] candidates = OperatingSystem.IsMacOS() || OperatingSystem.IsIOS()
-                ? new[] { "/usr/lib/libSystem.B.dylib", "libm.dylib" }
-                : OperatingSystem.IsWindows()
-                    ? new[] { "ucrtbase.dll", "msvcrt.dll" }
-                    : new[] { "libm.so.6", "libm.so" };
-            foreach (var name in candidates)
+            if (!(OperatingSystem.IsMacOS() || OperatingSystem.IsIOS()) || Environment.GetEnvironmentVariable("MARVIN_PORTABLE_MATH") == "1") return;
+            if (!NativeLibrary.TryLoad("/usr/lib/libSystem.B.dylib", out var library)) return;
+            if (NativeLibrary.TryGetExport(library, "hypot", out var p) && NativeLibrary.TryGetExport(library, "hypotf", out var q))
             {
-                if (!NativeLibrary.TryLoad(name, out var library)) continue;
-                if (NativeLibrary.TryGetExport(library, "hypot", out var p) || NativeLibrary.TryGetExport(library, "_hypot", out p))
-                    hypot = (delegate* unmanaged[SuppressGCTransition]<double, double, double>)p;
-                if (NativeLibrary.TryGetExport(library, "hypotf", out var q) || NativeLibrary.TryGetExport(library, "_hypotf", out q))
-                    hypotf = (delegate* unmanaged[SuppressGCTransition]<float, float, float>)q;
-                if (hypot != null) break;
+                hypot = (delegate* unmanaged[SuppressGCTransition]<double, double, double>)p;
+                hypotf = (delegate* unmanaged[SuppressGCTransition]<float, float, float>)q;
             }
         }
+    }
+
+    /// <summary>Darwin libm's hypot and hypotf for comparisons (null when not on macOS). Checks only.</summary>
+    public static unsafe (Func<double, double, double> hypot, Func<float, float, float> hypotf)? nativeHypotForChecks()
+    {
+        if (!(OperatingSystem.IsMacOS() || OperatingSystem.IsIOS()) || !NativeLibrary.TryLoad("/usr/lib/libSystem.B.dylib", out var library)) return null;
+        if (!NativeLibrary.TryGetExport(library, "hypot", out var p) || !NativeLibrary.TryGetExport(library, "hypotf", out var q)) return null;
+        return ((x, y) => ((delegate* unmanaged<double, double, double>)p)(x, y), (x, y) => ((delegate* unmanaged<float, float, float>)q)(x, y));
     }
 }
