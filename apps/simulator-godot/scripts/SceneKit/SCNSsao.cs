@@ -96,12 +96,7 @@ public partial class SCNSsaoEffect : CompositorEffect
             pc.Add(inv.X.Z, inv.Y.Z, inv.X.W, inv.Y.W); // x/y contributions to view z and w
             pc.Add(full.X, full.Y, projInfo.X, projInfo.Y);
             pc.Add(projInfo.Z, projInfo.W, ortho ? 1 : 0, skyBehindCamera ? 1 : 0);
-            var set = UniformSetCacheRD.GetCache(SCNSsao.CszShader, 0u, new Godot.Collections.Array<RDUniform>
-            {
-                SCNSsao.SampledUniform(0, SCNSsao.NearestSampler, depth),
-                SCNSsao.SampledUniform(1, SCNSsao.NearestSampler, normal),
-                SCNSsao.ImageUniform(2, cszMips[0]),
-            });
+            var set = CachedSet(rd, SCNSsao.CszShader, Bind.Nearest, depth, Bind.Nearest, normal, Bind.Image, cszMips[0]);
             SCNSsao.Dispatch(rd, SCNSsao.CszPipeline, set, pc, full);
         }
         // 2. Box-filtered mips (only their depth is read).
@@ -109,19 +104,13 @@ public partial class SCNSsaoEffect : CompositorEffect
         {
             var src = Mip(full, m - 1); var dst = Mip(full, m);
             var pc = new PushConstants(); pc.Add(src.X, src.Y, dst.X, dst.Y);
-            var set = UniformSetCacheRD.GetCache(SCNSsao.MipShader, 0, new Godot.Collections.Array<RDUniform>
-            {
-                SCNSsao.ImageUniform(0, cszMips[m - 1]), SCNSsao.ImageUniform(1, cszMips[m]),
-            });
+            var set = CachedSet(rd, SCNSsao.MipShader, Bind.Image, cszMips[m - 1], Bind.Image, cszMips[m]);
             SCNSsao.Dispatch(rd, SCNSsao.MipPipeline, set, pc, dst);
         }
         // 3. Checkerboard nearest / farthest sample of each 2x2 block (scn_ssao_downsample).
         {
             var pc = new PushConstants(); pc.Add(half.X, half.Y, full.X, full.Y);
-            var set = UniformSetCacheRD.GetCache(SCNSsao.IndexShader, 0, new Godot.Collections.Array<RDUniform>
-            {
-                SCNSsao.ImageUniform(0, cszMips[0]), SCNSsao.ImageUniform(1, index),
-            });
+            var set = CachedSet(rd, SCNSsao.IndexShader, Bind.Image, cszMips[0], Bind.Image, index);
             SCNSsao.Dispatch(rd, SCNSsao.IndexPipeline, set, pc, half);
         }
         // 4. Scalable ambient obscurance at half resolution (scn_ssao_compute).
@@ -132,34 +121,49 @@ public partial class SCNSsaoEffect : CompositorEffect
             pc.Add(half.X, half.Y, full.X, full.Y);
             pc.Add(r, r2, bias, intensity / (r2 * r2 * r2));
             pc.Add(mipCount, ortho ? 1 : 0, 0, 0);
-            var set = UniformSetCacheRD.GetCache(SCNSsao.SaoShader, 0, new Godot.Collections.Array<RDUniform>
-            {
-                SCNSsao.SampledUniform(0, SCNSsao.NearestSampler, csz), SCNSsao.ImageUniform(1, index), SCNSsao.ImageUniform(2, aoA),
-            });
+            var set = CachedSet(rd, SCNSsao.SaoShader, Bind.Nearest, csz, Bind.Image, index, Bind.Image, aoA);
             SCNSsao.Dispatch(rd, SCNSsao.SaoPipeline, set, pc, half);
         }
         // 5. Bilateral Gaussian blur, x then y (scn_ssao_blur_x / _y).
         foreach (var (src, dst, dx, dy) in new[] { (aoA, aoB, 1, 0), (aoB, aoA, 0, 1) })
         {
             var pc = new PushConstants(); pc.Add(half.X, half.Y, dx, dy); pc.Add(depthThreshold, normalThreshold, 0, 0);
-            var set = UniformSetCacheRD.GetCache(SCNSsao.BlurShader, 0, new Godot.Collections.Array<RDUniform>
-            {
-                SCNSsao.ImageUniform(0, src), SCNSsao.ImageUniform(1, dst),
-            });
+            var set = CachedSet(rd, SCNSsao.BlurShader, Bind.Image, src, Bind.Image, dst);
             SCNSsao.Dispatch(rd, SCNSsao.BlurPipeline, set, pc, half);
         }
         // 6. Edge-aware upsampling into the global scn_ssao texture (scn_ssao_upsampling).
         {
             var pc = new PushConstants(); pc.Add(full.X, full.Y, half.X, half.Y); pc.Add(depthThreshold, 0, 0, 0);
-            var set = UniformSetCacheRD.GetCache(SCNSsao.UpShader, 0, new Godot.Collections.Array<RDUniform>
-            {
-                SCNSsao.SampledUniform(0, SCNSsao.LinearSampler, aoA), SCNSsao.ImageUniform(1, cszMips[0]), SCNSsao.ImageUniform(2, SCNSsao.Output),
-            });
+            var set = CachedSet(rd, SCNSsao.UpShader, Bind.Linear, aoA, Bind.Image, cszMips[0], Bind.Image, SCNSsao.Output);
             SCNSsao.Dispatch(rd, SCNSsao.UpPipeline, set, pc, full);
         }
     }
 
     private static Vector2I Mip(Vector2I s, int m) => new(Math.Max(1, s.X >> m), Math.Max(1, s.Y >> m));
+
+    /// <summary>How a pass binds a texture: sampled with the nearest or the linear sampler, or as a storage image.</summary>
+    private enum Bind { None, Nearest, Linear, Image }
+    /// <summary>The passes' uniform sets by shader and bound textures (bindings 0, 1, 2 in order). Building the RDUniform
+    /// list for UniformSetCacheRD created a dozen engine objects per pass and frame; the set itself is the same one the
+    /// cache returns, and it stays valid until one of its textures is freed (checked, then rebuilt).</summary>
+    private readonly Dictionary<(Rid shader, Rid a, Rid b, Rid c), Rid> sets = new();
+    private Rid CachedSet(RenderingDevice rd, Rid shader, Bind k0, Rid t0, Bind k1, Rid t1, Bind k2 = Bind.None, Rid t2 = default)
+    {
+        var key = (shader, t0, t1, t2);
+        if (sets.TryGetValue(key, out var cached) && rd.UniformSetIsValid(cached)) return cached;
+        if (sets.Count > 256) sets.Clear(); // keys of freed render buffers (resizes) accumulate otherwise
+        var uniforms = new Godot.Collections.Array<RDUniform> { Uniform(0, k0, t0), Uniform(1, k1, t1) };
+        if (k2 != Bind.None) uniforms.Add(Uniform(2, k2, t2));
+        var set = UniformSetCacheRD.GetCache(shader, 0u, uniforms);
+        sets[key] = set;
+        return set;
+    }
+    private static RDUniform Uniform(int binding, Bind kind, Rid texture) => kind switch
+    {
+        Bind.Nearest => SCNSsao.SampledUniform(binding, SCNSsao.NearestSampler, texture),
+        Bind.Linear => SCNSsao.SampledUniform(binding, SCNSsao.LinearSampler, texture),
+        _ => SCNSsao.ImageUniform(binding, texture),
+    };
 
     private void Allocate(RenderingDevice rd, Vector2I full)
     {
@@ -183,6 +187,7 @@ public partial class SCNSsaoEffect : CompositorEffect
         cszMips.Clear();
         foreach (var t in new[] { csz, index, aoA, aoB }) if (t.IsValid) rd.FreeRid(t);
         csz = index = aoA = aoB = default;
+        sets.Clear();
     }
 
     public override void _Notification(int what)

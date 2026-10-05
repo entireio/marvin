@@ -260,7 +260,12 @@ public sealed class SCNMaterial : IPropertyOwner
     public void setValue(object value, string forKey)
     {
         if (value is SCNMaterialProperty p) { p.AddOwner(this); p.ArgumentOwner(this); }
-        arguments[forKey] = value is float f ? (double)f : value;
+        var stored = value is float f ? (double)f : value;
+        // A number set to the bits it already has changes nothing: the town's walkers write their gait uniforms every
+        // frame, and each write re-sent the parameter to every variant of the material.
+        if (stored is double d && arguments.TryGetValue(forKey, out var old) && old is double o
+            && BitConverter.DoubleToInt64Bits(o) == BitConverter.DoubleToInt64Bits(d)) return;
+        arguments[forKey] = stored;
         gpu.ArgumentChanged(forKey);
     }
     public object value(string forKey) => arguments.TryGetValue(forKey, out var v) ? v : null;

@@ -258,6 +258,7 @@ public partial class SCNNode : Node3D
         AddChild(child);
         child.SetSceneOwner(sceneOwner);
         child.Touch();
+        child.transformStamp = SceneKitRuntime.StampTransform(); // the subtree's global transforms changed
         SceneKitRuntime.Adopt(child); // a subtree built on another thread is handed over here
     }
     public void insertChildNode(SCNNode child, int at)
@@ -287,11 +288,14 @@ public partial class SCNNode : Node3D
         _parent.RemoveChild(this);
         _parent = null;
         SetSceneOwner(null);
+        transformStamp = SceneKitRuntime.StampTransform();
     }
     internal void SetSceneOwner(SCNScene scene)
     {
         if (sceneOwner == scene) return;
         sceneOwner = scene;
+        // Changes made while the node was outside every scene reach Godot now (see Flush).
+        if (scene != null && deferredFlags != 0) { int flags = deferredFlags; deferredFlags = 0; SceneKitRuntime.NodeDirty(this, flags); }
         if (_light != null) SceneKitRuntime.SceneStateDirty();
         if (scene != null) _geometry?.SceneChanged();
         foreach (var c in _children) c.SetSceneOwner(scene);
@@ -454,9 +458,19 @@ public partial class SCNNode : Node3D
     // Godot side
     internal const int DirtyTransform = 1, DirtyGeometry = 2, DirtyVisual = 4, DirtyLight = 8;
     private Transform3D? appliedTransform;
+    /// <summary>The model values appliedTransform was computed from (see Flush).</summary>
+    private SCNVector3 appliedPosition, appliedScale;
+    private SCNVector4 appliedQuat;
+    private SCNMatrix4 appliedPivot;
     /// <summary>Set when a constraint moved the Godot transform away from the model value.</summary>
     internal bool constraintsApplied;
+    /// <summary>The flags this node is queued with in the runtime's dirty set (main thread; 0 when not queued), so the
+    /// transform getters, which mark the node on every access, skip the dictionary once it is queued.</summary>
     internal int dirtyFlags;
+    /// <summary>Transform and visual changes flushed while the node was outside every scene (sceneOwner null): nothing shows
+    /// such a node, so they reach Godot when it is added to a scene (SetSceneOwner). The race's 1,600 pooled particle slots
+    /// are never added to the scene (their particles are drawn as batches) and pushed hundreds of transforms per frame.</summary>
+    private int deferredFlags;
     private readonly List<MeshInstance3D> meshes = new();
     private Light3D godotLight;
     internal Light3D GodotLight => godotLight;
@@ -473,11 +487,27 @@ public partial class SCNNode : Node3D
     /// <summary>Pushes SceneKit state to Godot. Called once per frame for dirty nodes.</summary>
     internal void Flush(int flags)
     {
+        if (sceneOwner == null)
+        {
+            // Outside every scene: the transform and the visual state wait (deferredFlags). Meshes, material variants and
+            // lights are still built now, in the same order as before: the order Godot resources are created in decides
+            // its draw order among surfaces of equal depth (deferring them changed a few z-fighting pixels).
+            deferredFlags |= flags & (DirtyTransform | DirtyVisual);
+            if ((flags & DirtyGeometry) != 0) { RebuildMeshes(); deferredFlags |= DirtyVisual; }
+            if ((flags & DirtyLight) != 0) SyncLight();
+            return;
+        }
         if ((flags & DirtyTransform) != 0)
         {
-            // Getters mark nodes dirty too; only push real changes to Godot.
-            var t = RenderLocal().ToGodot();
-            if (!appliedTransform.HasValue || appliedTransform.Value != t || constraintsApplied) { Transform = t; appliedTransform = t; constraintsApplied = false; }
+            // Getters mark nodes dirty too; only push real changes to Godot. The transform is a function of the model
+            // values, so when they equal those of the last push (most nodes the game only read) it is not recomputed.
+            SyncRotation();
+            if (!appliedTransform.HasValue || constraintsApplied || _position != appliedPosition || _quat != appliedQuat || _scale != appliedScale || !_pivot.Equals(appliedPivot))
+            {
+                var t = RenderLocal().ToGodot();
+                if (!appliedTransform.HasValue || appliedTransform.Value != t || constraintsApplied) { Transform = t; appliedTransform = t; constraintsApplied = false; transformStamp = SceneKitRuntime.StampTransform(); }
+                appliedPosition = _position; appliedQuat = _quat; appliedScale = _scale; appliedPivot = _pivot;
+            }
         }
         if ((flags & DirtyGeometry) != 0) RebuildMeshes();
         if ((flags & (DirtyGeometry | DirtyVisual)) != 0) ApplyVisuals();
@@ -486,7 +516,7 @@ public partial class SCNNode : Node3D
         {
             // Only push changes: setting Node3D.Visible costs an engine call even when the value is unchanged.
             bool visible = !_isHidden;
-            if (appliedVisible != visible) { Visible = visible; appliedVisible = visible; }
+            if (appliedVisible != visible) { Visible = visible; appliedVisible = visible; SceneKitRuntime.TransformsChanged(); }
         }
     }
     private bool? appliedVisible;
@@ -507,7 +537,9 @@ public partial class SCNNode : Node3D
             for (int i = 0; i < lods.Count; i++) levels.Add((lods[i].geometry, distances[i], i + 1 < lods.Count ? distances[i + 1] : 0));
         }
         while (meshes.Count > levels.Count) { var mi = meshes[^1]; meshes.RemoveAt(meshes.Count - 1); RemoveChild(mi); mi.QueueFree(); }
-        while (meshes.Count < levels.Count) { var mi = new MeshInstance3D(); AddChild(mi, false, InternalMode.Front); meshes.Add(mi); }
+        while (meshes.Count < levels.Count) { var mi = new MeshInstance3D(); AddChild(mi, false, InternalMode.Front); meshes.Add(mi); appliedVisuals = null; }
+        sortCenters.Clear(); sortWorldCenters.Clear(); while (sortOffsets.Count > meshes.Count) sortOffsets.RemoveAt(sortOffsets.Count - 1);
+        while (sortOffsets.Count < meshes.Count) sortOffsets.Add(0); // Godot's default sorting offset of a new instance
         // Measured (Swift probe): SceneKit measures a worldSpaceDistance LOD from the node's origin, Godot's visibility
         // range from the instance's AABB centre. Centre the instances' culling box on the node origin (a symmetric box
         // enclosing every level), so the switch happens where SceneKit's does (DesertWorld's dune tiles have their
@@ -524,33 +556,88 @@ public partial class SCNNode : Node3D
             lodBounds = new Aabb(-extent, extent * 2);
         }
         bool transparent = false, ssaoSky = false;
+        var levelMeshes = new ArrayMesh[levels.Count];
         for (int i = 0; i < levels.Count; i++)
         {
             var (g, from, to) = levels[i];
             var mi = meshes[i];
             var mesh = g.GodotMesh;
+            levelMeshes[i] = mesh;
             if (mi.Mesh != mesh) mi.Mesh = mesh;
             mi.CustomAabb = lodBounds ?? new Aabb();
             mi.VisibilityRangeBegin = (float)from;
             mi.VisibilityRangeEnd = (float)to;
             var mats = g.MaterialList;
-            for (int s = 0; s < mesh.GetSurfaceCount(); s++)
+            var geometryFlags = ShaderComposer.VariantFlags.None;
+            if (g.HasColors) geometryFlags |= ShaderComposer.VariantFlags.VertexColors;
+            if (!g.HasNormals) geometryFlags |= ShaderComposer.VariantFlags.NoNormals;
+            int surfaces = mesh.GetSurfaceCount();
+            for (int s = 0; s < surfaces; s++)
             {
                 var material = mats.Count == 0 ? SceneKitRuntime.DefaultMaterial : mats[g.surfaceElements[s] % mats.Count];
-                var flags = ShaderComposer.VariantFlags.None;
-                if (g.HasColors) flags |= ShaderComposer.VariantFlags.VertexColors;
-                if (!g.HasNormals) flags |= ShaderComposer.VariantFlags.NoNormals;
+                var flags = geometryFlags;
                 if (!material.readsFromDepthBuffer && _renderingOrder < 0) flags |= ShaderComposer.VariantFlags.Background;
                 mi.SetSurfaceOverrideMaterial(s, material.gpu.Variant(g, _renderingOrder, flags));
                 transparent |= material.gpu.IsTransparentVariant(g, _renderingOrder, flags);
                 ssaoSky |= material.gpu.IsSsaoSkyVariant(g, _renderingOrder, flags);
             }
         }
-        SceneKitRuntime.RegisterTransparent(this, transparent && meshes.Count > 0);
+        if (transparent)
+        {
+            // The culling box centre of each instance for the transparent sort (SortTransparent): the custom box when one
+            // is set, else the mesh's own box (a Godot mesh does not change after it is built).
+            for (int i = 0; i < meshes.Count; i++)
+            {
+                var box = lodBounds is Aabb b && b.Size != Vector3.Zero ? b : levelMeshes[i].GetAabb();
+                sortCenters.Add(box.Position + box.Size * 0.5f);
+            }
+        }
+        SceneKitRuntime.RegisterTransparent(this, transparent && meshes.Count > 0); SceneKitRuntime.TransformsChanged();
         SceneKitRuntime.RegisterSsaoSky(this, ssaoSky && meshes.Count > 0);
     }
     /// <summary>The Godot instances of this node's geometry (one per level of detail).</summary>
     internal IReadOnlyList<MeshInstance3D> MeshInstances => meshes;
+    /// <summary>Per instance: the local culling-box centre (filled for transparent nodes) and the sorting offset last set.</summary>
+    private readonly List<Vector3> sortCenters = new();
+    private readonly List<float> sortOffsets = new();
+    /// <summary>The centres in world space and the transform stamp they were computed at.</summary>
+    private readonly List<Vector3> sortWorldCenters = new();
+    private int sortStamp = -1;
+    /// <summary>The stamp of this node's last Godot transform push or reparenting (SceneKitRuntime.StampTransform).</summary>
+    internal int transformStamp;
+    private bool ChainUnchangedSince(int stamp)
+    {
+        if (stamp < 0) return false;
+        for (var n = this; n != null; n = n._parent) if (n.transformStamp > stamp) return false;
+        return true;
+    }
+    /// <summary>
+    /// SceneKit's transparent draw order for this node's instances (see SceneKitRuntime.SortTransparent): Godot sorts by
+    /// |centre - eye| - SortingOffset, so the offset is distance - view depth of the box centre. The instances have an
+    /// identity local transform, so their global transform is the node's (one engine call per node); the offset last set
+    /// is remembered instead of read back.
+    /// </summary>
+    internal void SortTransparent(Vector3 eye, Vector3 forward, bool orthographic)
+    {
+        if (sortCenters.Count != meshes.Count || meshes.Count == 0) return;
+        // World-space centres, recomputed only when this node or an ancestor got another Godot transform or parent since
+        // (most transparent nodes, the trail chunks and ground overlays, never move; 500 chunks after ten minutes).
+        if (sortWorldCenters.Count != meshes.Count || !ChainUnchangedSince(sortStamp))
+        {
+            sortStamp = SceneKitRuntime.TransformStamp;
+            var global = GlobalTransform;
+            sortWorldCenters.Clear();
+            foreach (var center in sortCenters) sortWorldCenters.Add(global * center);
+        }
+        for (int i = 0; i < meshes.Count; i++)
+        {
+            var d = sortWorldCenters[i] - eye;
+            // Godot: perspective depth = |centre - eye| - offset; orthographic: distance of the nearest box corner to
+            // the near plane - offset (left as Godot has it).
+            float offset = orthographic ? 0 : d.Length() - d.Dot(forward);
+            if (Math.Abs(sortOffsets[i] - offset) > 0.01f) { meshes[i].SortingOffset = offset; sortOffsets[i] = offset; }
+        }
+    }
     private static double LodDistance(SCNLevelOfDetail l)
     {
         if (l.screenSpaceRadius <= 0) return l.worldSpaceDistance;
@@ -559,6 +646,9 @@ public partial class SCNNode : Node3D
         return r * 1080 / (2 * Math.Tan(48 * Math.PI / 360) * l.screenSpaceRadius);
     }
 
+    /// <summary>The visual state last pushed to every instance in <see cref="meshes"/> (null after an instance was added).</summary>
+    private VisualState? appliedVisuals;
+    private readonly record struct VisualState(GeometryInstance3D.ShadowCastingSetting Cast, uint Layers, float Transparency, bool Visible);
     private void ApplyVisuals()
     {
         double opacity = EffectiveOpacity;
@@ -567,13 +657,32 @@ public partial class SCNNode : Node3D
         var cast = !_castsShadow || !lightsSeeIt ? GeometryInstance3D.ShadowCastingSetting.Off
             : visibleToCamera ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.ShadowsOnly;
         uint layers = SceneKitRuntime.GodotLayers(_categoryBitMask);
-        foreach (var mi in meshes)
+        var state = new VisualState(cast, layers == 0 ? 1u : layers, (float)Math.Clamp(1 - opacity, 0, 1),
+            visibleToCamera || cast == GeometryInstance3D.ShadowCastingSetting.ShadowsOnly);
+        // Only push changes: each setter is an engine call (a shadow-casting change also updates the instance's light
+        // pairing), and geometry rebuilds re-apply the same state to the same instances every frame.
+        if (appliedVisuals is VisualState applied)
         {
-            mi.CastShadow = cast;
-            mi.Layers = layers == 0 ? 1u : layers;
-            mi.Transparency = (float)Math.Clamp(1 - opacity, 0, 1);
-            mi.Visible = visibleToCamera || cast == GeometryInstance3D.ShadowCastingSetting.ShadowsOnly;
+            if (applied == state) return;
+            foreach (var mi in meshes)
+            {
+                if (applied.Cast != state.Cast) mi.CastShadow = state.Cast;
+                if (applied.Layers != state.Layers) mi.Layers = state.Layers;
+                if (applied.Transparency != state.Transparency) mi.Transparency = state.Transparency;
+                if (applied.Visible != state.Visible) mi.Visible = state.Visible;
+            }
         }
+        else
+        {
+            foreach (var mi in meshes)
+            {
+                mi.CastShadow = state.Cast;
+                mi.Layers = state.Layers;
+                mi.Transparency = state.Transparency;
+                mi.Visible = state.Visible;
+            }
+        }
+        appliedVisuals = state;
     }
 
     private void SyncLight()

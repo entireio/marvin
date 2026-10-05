@@ -17,6 +17,8 @@ public partial class SceneKitRuntime : Node
     private static readonly Dictionary<SCNNode, int> dirtyNodes = new();
     private static readonly HashSet<MaterialGpu> dirtyMaterials = new();
     private static readonly HashSet<SCNNode> constrained = new();
+    /// <summary>The constrained nodes of the flush in progress (a copy: a constraint may change the set).</summary>
+    private static readonly List<SCNNode> constrainedBuffer = new();
     private static readonly List<SubViewport> pendingHosts = new();
     internal static readonly List<WeakReference<SCNView>> views = new();
     private static bool sceneStateDirty = true, masksDirty;
@@ -58,6 +60,7 @@ public partial class SceneKitRuntime : Node
     {
         foreach (var h in pendingHosts) if (h.GetParent() == null) AddChild(h);
         pendingHosts.Clear();
+        TransformsChanged();
     }
     public override void _Process(double delta)
     {
@@ -81,6 +84,7 @@ public partial class SceneKitRuntime : Node
         EnsureStarted();
         if (instance.IsInsideTree()) instance.AddChild(host);
         else pendingHosts.Add(host);
+        TransformsChanged(); // the scene's nodes enter the tree
     }
 
     // ---- Threads
@@ -151,8 +155,12 @@ public partial class SceneKitRuntime : Node
     internal static void NodeDirty(SCNNode node, int flags)
     {
         if (!OnMainThread) { Park(node, flags); return; }
-        if (dirtyNodes.TryGetValue(node, out var f)) { if ((f | flags) != f) dirtyNodes[node] = f | flags; }
-        else dirtyNodes[node] = flags;
+        // node.dirtyFlags mirrors the node's entry in dirtyNodes: the transform getters mark their node on every access
+        // (the race's particle loop reads positions thousands of times per frame), so skip the dictionary once queued.
+        int queued = node.dirtyFlags;
+        if ((queued | flags) == queued) return;
+        node.dirtyFlags = queued | flags;
+        dirtyNodes[node] = queued | flags;
     }
     internal static void MaterialDirty(MaterialGpu m)
     {
@@ -224,9 +232,10 @@ public partial class SceneKitRuntime : Node
             t = FrameProfile.Now;
             if (dirtyTextures.Count > 0) { foreach (var t2 in dirtyTextures) t2.Refresh(); dirtyTextures.Clear(); }
             FrameProfile.Add(FrameProfile.Textures, t); t = FrameProfile.Now;
-            var constrainedNodes = constrained.ToArray();
-            foreach (var node in constrainedNodes) ApplyConstraints(node);
-            FrameProfile.ConstraintsEvaluated += constrainedNodes.Length;
+            constrainedBuffer.Clear(); constrainedBuffer.AddRange(constrained);
+            foreach (var node in constrainedBuffer) ApplyConstraints(node);
+            FrameProfile.ConstraintsEvaluated += constrainedBuffer.Count;
+            constrainedBuffer.Clear();
             FrameProfile.Add(FrameProfile.Constraints, t); t = FrameProfile.Now;
             foreach (var view in LiveViews()) view.SyncCamera();
             FrameProfile.Add(FrameProfile.Cameras, t); t = FrameProfile.Now;
@@ -330,12 +339,13 @@ public partial class SceneKitRuntime : Node
         // again (in the flush that shows it). The race's 1,067 billboarded dust slots stay hidden (their particles are
         // drawn as one batch) and each cost engine round trips every frame before.
         if (!GodotObject.IsInstanceValid(node) || node.HiddenInHierarchy) return;
-        if (node.constraints == null || !node.IsInsideTree()) return;
+        // A node outside every scene is not in Godot's tree either (managed test first: the race's pooled particle slots).
+        if (node.constraints == null || node.sceneOwner == null || !node.IsInsideTree()) return;
         var world = node.RenderWorld();
         foreach (var c in node.constraints)
             if (c.isEnabled) world = c.Apply(node, world, ActiveCamera);
         var parentWorld = node.parent?.RenderWorld() ?? SCNMatrix4.Identity;
-        node.Transform = SCNMatrix4.Mul(SCNMatrix4.Inverse(parentWorld), world).ToGodot();
+        node.Transform = SCNMatrix4.Mul(SCNMatrix4.Inverse(parentWorld), world).ToGodot(); node.transformStamp = StampTransform();
         node.constraintsApplied = true;
     }
 
@@ -382,6 +392,7 @@ public partial class SceneKitRuntime : Node
             {
                 var t = FrameProfile.Now;
                 var nodes = dirtyNodes.ToArray(); dirtyNodes.Clear();
+                foreach (var (node, _) in nodes) node.dirtyFlags = 0;
                 PrepareMeshes(nodes);
                 FrameProfile.Add(FrameProfile.PrepareMeshes, t); t = FrameProfile.Now;
                 foreach (var (node, flags) in nodes) if (GodotObject.IsInstanceValid(node)) node.Flush(flags);
@@ -458,24 +469,35 @@ public partial class SceneKitRuntime : Node
     }
     private static readonly HashSet<SCNNode> transparentNodes = new();
     internal static void RegisterTransparent(SCNNode node, bool on) { if (on) transparentNodes.Add(node); else transparentNodes.Remove(node); }
+    private static readonly Predicate<SCNNode> Freed = node => !GodotObject.IsInstanceValid(node);
+    /// <summary>Set whenever a Godot transform, the node hierarchy, a node's visibility or the set of transparent instances
+    /// changes: the offsets depend on nothing else but the camera, so a sort for the same camera with nothing changed since
+    /// (the second flush of a frame) would set the same offsets and is skipped.</summary>
+    private static bool transformsChanged = true;
+    private static Transform3D lastSortCamera;
+    private static bool lastSortOrthographic;
+    internal static void TransformsChanged() => transformsChanged = true;
+    /// <summary>Stamps of Godot transform changes: a node's transformStamp is the stamp of its last transform push or
+    /// reparenting (SCNNode.SortTransparent caches world-space box centres until its chain gets a newer stamp).</summary>
+    private static int transformStamp;
+    internal static int TransformStamp => transformStamp;
+    internal static int StampTransform() { transformsChanged = true; return System.Threading.Interlocked.Increment(ref transformStamp); }
     internal static void SortTransparent(Transform3D camera, bool orthographic)
     {
+        if (!transformsChanged && camera == lastSortCamera && orthographic == lastSortOrthographic) return;
+        transformsChanged = false; lastSortCamera = camera; lastSortOrthographic = orthographic;
         var eye = camera.Origin; var forward = -camera.Basis.Z.Normalized();
-        transparentNodes.RemoveWhere(node => !GodotObject.IsInstanceValid(node));
+        transparentNodes.RemoveWhere(Freed);
+        // A node is in Godot's tree exactly when its scene's host viewport is (the facade mirrors the SceneKit hierarchy
+        // under the scene's root node): one engine call per scene instead of one per node.
+        SCNScene lastScene = null; bool sceneInTree = false;
         foreach (var node in transparentNodes)
         {
-            if (!node.IsInsideTree() || node.HiddenInHierarchy) continue;
-            foreach (var mi in node.MeshInstances)
-            {
-                if (mi.Mesh == null) continue;
-                var box = mi.CustomAabb.Size != Vector3.Zero ? mi.CustomAabb : mi.Mesh.GetAabb();
-                var center = mi.GlobalTransform * (box.Position + box.Size * 0.5f);
-                var d = center - eye;
-                // Godot: perspective depth = |centre - eye| - offset; orthographic: distance of the nearest box corner to
-                // the near plane - offset (left as Godot has it).
-                float offset = orthographic ? 0 : d.Length() - d.Dot(forward);
-                if (Math.Abs(mi.SortingOffset - offset) > 0.01f) mi.SortingOffset = offset;
-            }
+            var scene = node.sceneOwner;
+            if (scene == null) continue;
+            if (scene != lastScene) { lastScene = scene; sceneInTree = scene.host.IsInsideTree(); }
+            if (!sceneInTree || node.HiddenInHierarchy) continue;
+            node.SortTransparent(eye, forward, orthographic);
         }
     }
 
