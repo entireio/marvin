@@ -84,7 +84,8 @@ public sealed class DeformableSand
     }
     public void reset()
     {
-        field.reset(); foreach (var patch in patches.Values) patch.node.removeFromParentNode(); patches.Clear();
+        // PORT: removed patches are dropped for good; Godot nodes are freed explicitly (SCNNode.releaseRemoved).
+        field.reset(); foreach (var patch in patches.Values) patch.node.releaseRemoved(); patches.Clear();
         foreach (var @base in bases.Values) @base.node.geometry = @base.geometry;
         topology = -1; pending = 0; updates = 0;
     }
@@ -102,7 +103,7 @@ public sealed class DeformableSand
         if (topology != field.topologyVersion)
         {
             var removed = new HashSet<SandDeformation.Key>(patches.Keys); removed.ExceptWith(field.tiles.Keys);
-            foreach (var key in removed) { if (patches.Remove(key, out var gone)) gone.node.removeFromParentNode(); }
+            foreach (var key in removed) { if (patches.Remove(key, out var gone)) gone.node.releaseRemoved(); }
             foreach (var key in field.tiles.Keys.Where(k => !patches.ContainsKey(k)).ToList())
             {
                 var patch = new Patch(key); patches[key] = patch; root.addChildNode(patch.node);
