@@ -42,6 +42,7 @@ public static class Calibration
         if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "pane") { Pane(); tree.Quit(); return; }
         if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "penumbra") { Penumbra(); tree.Quit(); return; }
         if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "mirror") { Mirror(); tree.Quit(); return; }
+        if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "ssao") { SsaoProbe(); tree.Quit(); return; }
         Race(0.5, "race_midday");
         Race(0.96, "race_evening");
         Sandbox();
@@ -684,6 +685,55 @@ ALBEDO = cityTint * (0.62 + grain * 0.65);
                 o += $" {0.2126 * lin(c.R) + 0.7152 * lin(c.G) + 0.0722 * lin(c.B):0.000}";
             }
             GD.Print(o);
+        }
+    }
+
+    // ---- SSAO probe (Swift twin ssao.swift): ambient-only race camera (HDR, fixed exposure, no bloom), SSAO
+    // 0.70/1.6/0.025 on and off; Marvin, an R2-like cylinder, a BB-8-like sphere and a box on a flat ground, from four
+    // distances. Writes ssao_NAME_on/off.png; the on/off ratio is SceneKit's ambient occlusion factor.
+    private static void SsaoProbe()
+    {
+        var env = System.Environment.GetEnvironmentVariable("SSAO_I");
+        double ssaoIntensity = env != null ? double.Parse(env) : 0.70;
+        env = System.Environment.GetEnvironmentVariable("SSAO_R");
+        double ssaoRadius = env != null ? double.Parse(env) : 1.6;
+        bool ambientOnly = System.Environment.GetEnvironmentVariable("SSAO_SUN") == null;
+        foreach (var (name, eye, target) in new[] {
+            ("near", new SCNVector3(0.9, 0.55, 1.6), new SCNVector3(0, 0.25, 0)),
+            ("mid", new SCNVector3(1.8, 1.3, 3.6), new SCNVector3(0, 0.25, 0)),
+            ("far", new SCNVector3(5, 4.5, 11), new SCNVector3(0, 0.25, 0)),
+            ("low", new SCNVector3(0.7, 0.18, 1.3), new SCNVector3(0, 0.2, 0)) })
+        {
+            foreach (var on in new[] { true, false })
+            {
+                var scene = new SCNScene(); scene.background.contents = color(0x9db7cf);
+                var ground = new SCNBox(60, 0.2, 60, 0); ground.materials = new() { material(0xb07a55, roughness: 0.95) };
+                add(scene.rootNode, ground, new SCNVector3(0, -0.1, 0));
+                marvin(scene.rootNode, new SCNVector3(0, 0, 0), 0.35, -0.30);
+                var cyl = new SCNCylinder(0.22, 0.6); cyl.materials = new() { material(0xe8ecef, roughness: 0.5) };
+                add(scene.rootNode, cyl, new SCNVector3(0.9, 0.3, -0.5));
+                var sph = new SCNSphere(0.28) { segmentCount = 64 }; sph.materials = new() { material(0xd8d2c8, roughness: 0.55) };
+                add(scene.rootNode, sph, new SCNVector3(-0.8, 0.28, -0.2));
+                var box = new SCNBox(0.4, 0.4, 0.4, 0.02); box.materials = new() { material(0x8a9aa0, roughness: 0.7) };
+                add(scene.rootNode, box, new SCNVector3(0.3, 0.2, -1.3));
+                scene.rootNode.addChildNode(new SCNNode { light = new SCNLight { type = SCNLight.LightType.ambient, intensity = ambientOnly ? 1000 : 190 } });
+                if (!ambientOnly)
+                {
+                    var sun = new SCNNode { light = new SCNLight { type = SCNLight.LightType.directional, intensity = 1550 } };
+                    sun.eulerAngles = new SCNVector3(-0.9, 2.6, 0); scene.rootNode.addChildNode(sun);
+                }
+                var cam = camera(scene, eye, target, 48, 0.02, 250);
+                var lens = cam.camera;
+                lens.wantsHDR = true; lens.wantsExposureAdaptation = false; lens.exposureOffset = 0; lens.bloomIntensity = 0;
+                lens.screenSpaceAmbientOcclusionIntensity = on ? ssaoIntensity : 0;
+                lens.screenSpaceAmbientOcclusionRadius = ssaoRadius; lens.screenSpaceAmbientOcclusionBias = 0.025;
+                renderer.scene = scene; renderer.pointOfView = cam;
+                var aa = System.Environment.GetEnvironmentVariable("SSAO_AA") == "none" ? SCNAntialiasingMode.none : SCNAntialiasingMode.multisampling2X;
+                renderer.SnapshotImage(new Vector2I(W, H), aa);
+                var img = renderer.SnapshotImage(new Vector2I(W, H), aa);
+                img.SavePng(dir.PathJoin($"ssao_{name}_{(on ? "on" : "off")}.png"));
+                GD.Print($"rendered ssao_{name}_{(on ? "on" : "off")}");
+            }
         }
     }
 

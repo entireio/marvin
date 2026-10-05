@@ -11,7 +11,7 @@ namespace Marvin.SceneKit;
 /// `tools/godot -- --calibration DIR` and their SceneKit twins.
 ///
 /// For experiments every field can be overridden without rebuilding:
-///   MARVIN_SCN_CAL="SsaoIntensityScale=1.5;ShadowBlurPerRadius=0.4" tools/godot -- --calibration DIR
+///   MARVIN_SCN_CAL="ShadowKernelScale=1;ShadowBlurPerRadius=0.4" tools/godot -- --calibration DIR
 /// (MARVIN_BLOOM="scale,hdrScale,levelOffset,levelWeight" is still honoured for the bloom fields.)
 /// </summary>
 internal static class SceneKitCalibration
@@ -30,8 +30,7 @@ internal static class SceneKitCalibration
     // ---- Bloom (SceneKit bloom -> Godot glow, additive). Levels: round(log2(bloomBlurRadius) + BloomLevelOffset - log2(height/400)).
     public static double BloomIntensityScale = 0.15, BloomHdrScale = 1.0, BloomLevelOffset = -0.6, BloomLevelWeight = 1.0, BloomHeightScaling = 0.0;
 
-    // ---- Screen-space ambient occlusion (SceneKit -> Godot SSAO; ambient and IBL only).
-    public static double SsaoRadiusScale = 1.0, SsaoIntensityScale = 4.0, SsaoPower = 1.5, SsaoDetail = 0.5, SsaoHorizon = 0.06, SsaoSharpness = 0.98;
+    // ---- Screen-space ambient occlusion: SceneKit's own algorithm, ported from its Metal kernels (SCNSsao.cs); no constants.
 
     // ---- Shadows.
     // SceneKit's shadowBias has no measurable effect (sphere self-shadowing identical for bias 0.001, 1 and 10, forward

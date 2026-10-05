@@ -93,6 +93,11 @@ scn_radiance={
 "value": ""
 }
 
+scn_ssao={
+"type": "sampler2D",
+"value": ""
+}
+
 scn_shadow_box0={
 "type": "mat4",
 "value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)

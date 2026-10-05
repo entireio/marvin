@@ -110,8 +110,9 @@ internal static class ShaderComposer
         bool background = (flags & VariantFlags.Background) != 0;
         // Measured: SceneKit leaves materials with a .geometry shader modifier out of its SSAO depth/normal pass, so
         // they receive (almost) no screen-space ambient occlusion: a box whose material has an identity .geometry
-        // modifier keeps 0.994 of its ambient light at its base, 0.853 without the modifier (SSAO 0.70, radius 1.6).
-        // Their ambient light bypasses Godot's SSAO (it is added as emission; material AO and fog still apply).
+        // modifier keeps 0.994 of its ambient light at its base, 0.853 without the modifier (SSAO 0.70, radius 1.6), and
+        // the ground next to it is not darkened. Only physically based materials receive SSAO; every opaque material
+        // without a .geometry modifier occludes (constant, lambert and blinn boxes darken the ground like a PBR box).
         bool geometryModified = mods[SCNShaderModifierEntryPoint.geometry].Any(snippet => !string.IsNullOrWhiteSpace(snippet.body));
 
         string fragmentBody = string.Join("\n", mods[SCNShaderModifierEntryPoint.fragment].Select(x => x.body));
@@ -165,6 +166,7 @@ internal static class ShaderComposer
         sb.AppendLine("global uniform mat4 scn_shadow_box1;");
         sb.AppendLine("global uniform vec4 scn_shadow_slope; // slope-scaled caster bias (world) of box 0 / 1, maximum slope (SceneKitRuntime.FitShadows)");
         sb.AppendLine("global uniform sampler2D scn_radiance : filter_linear, repeat_enable; // SCNScene.RadianceTexture bands");
+        sb.AppendLine("global uniform sampler2D scn_ssao : filter_nearest; // SceneKit SSAO of the view being drawn, at its pixels (SCNSsao.cs)");
         sb.AppendLine();
 
         // ---- Material property uniforms
@@ -472,7 +474,7 @@ internal static class ShaderComposer
             sb.AppendLine("    // environment BRDF), so light() can apply SceneKit's deferred shadow to the whole colour.");
             if (pbr)
             {
-                sb.AppendLine("    // All ambient light goes through IRRADIANCE, which Godot multiplies by AO and SSAO (SceneKit's SSAO darkens");
+                sb.AppendLine("    // All ambient light goes through IRRADIANCE, multiplied by SceneKit's SSAO here and by AO in Godot (SceneKit's SSAO darkens");
                 sb.AppendLine("    // image-based specular too, Godot's never does): sky diffuse x (1 - metalness), ambient lights (independent");
                 sb.AppendLine("    // of metalness, measured) and sky specular (pre-filtered radiance x analytic split-sum environment BRDF).");
                 sb.AppendLine("    // Godot then sees a white dielectric; light() uses the material's albedo and metalness.");
@@ -489,6 +491,7 @@ internal static class ShaderComposer
                 sb.AppendLine("    // white dielectric with SPECULAR 2.5 (f0 = f90 = 1: energy compensation x DFG = 1).");
                 sb.AppendLine("    float scn_so = smoothstep(" + SceneKitCalibration.F(SceneKitCalibration.SpecularOcclusionFrom) + ", " + SceneKitCalibration.F(SceneKitCalibration.SpecularOcclusionTo) + ", scn_r);");
                 sb.AppendLine("    IRRADIANCE = vec4(ALBEDO * (scn_amb_diffuse * (1.0 - METALLIC) + scn_ambient.rgb) + scn_ibl_spec * scn_so, 1.0);");
+                if (!geometryModified) sb.AppendLine("    IRRADIANCE.rgb *= texelFetch(scn_ssao, ivec2(FRAGCOORD.xy), 0).r; // SceneKit's SSAO (SCNSsao.cs)");
                 sb.AppendLine("    RADIANCE = vec4(scn_ibl_spec * (1.0 - scn_so), 1.0);");
                 sb.AppendLine("    scn_albedo = ALBEDO; scn_metallic = METALLIC;");
                 sb.AppendLine("    ALBEDO = vec3(1.0); METALLIC = 0.0; SPECULAR = 2.5;");
@@ -500,6 +503,16 @@ internal static class ShaderComposer
                 sb.AppendLine("    scn_unlit = EMISSION + IRRADIANCE.rgb * ALBEDO * AO;");
                 if (geometryModified) sb.AppendLine("    EMISSION += IRRADIANCE.rgb * ALBEDO * AO; IRRADIANCE = vec4(0.0, 0.0, 0.0, 1.0); // .geometry modifier: no SSAO (measured)");
             }
+        }
+        {
+            // Tag for SceneKit's SSAO depth/normal pass (SCNSsao.cs reads it from Godot's normal-roughness prepass; nothing
+            // reads ROUGHNESS after this point: light() uses scn_spec_a2 and the environment BRDF cancels for f0 = f90 = 1).
+            // 0: occluder, normal from the buffer; 0.6: occluder, geometric normal from depth (SceneKit's pass ignores normal
+            // maps and .surface normals: a normal-mapped ground gets exactly the same SSAO as a flat one, measured); 1: not in
+            // the pass (.geometry modifier, transparent, depth only).
+            bool surfaceNormal = mods[SCNShaderModifierEntryPoint.surface].Any(snippet => Regex.IsMatch(snippet.body, @"\bNORMAL\s*[\*\+\-/]?=(?!=)"));
+            string tag = transparent || geometryModified || depthOnly ? "1.0" : normalMap != null || surfaceNormal ? "0.6" : "0.0";
+            sb.AppendLine($"    ROUGHNESS = {tag}; // SCNSsao pass tag");
         }
         sb.AppendLine("}");
 

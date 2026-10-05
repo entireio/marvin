@@ -122,19 +122,8 @@ public sealed class SCNCamera
             int top = Math.Clamp((int)Math.Round(Math.Log2(Math.Max(1, bloomBlurRadius)) + SceneKitCalibration.BloomLevelOffset - heightScale), 1, 7);
             for (int i = 1; i <= 7; i++) env.SetGlowLevel(i - 1, i <= top ? (float)SceneKitCalibration.BloomLevelWeight : 0.0f);
         }
-        bool ssao = screenSpaceAmbientOcclusionIntensity > 0;
-        env.SsaoEnabled = ssao;
-        if (ssao)
-        {
-            env.SsaoRadius = (float)(screenSpaceAmbientOcclusionRadius * SceneKitCalibration.SsaoRadiusScale);
-            env.SsaoIntensity = (float)(screenSpaceAmbientOcclusionIntensity * SceneKitCalibration.SsaoIntensityScale);
-            env.SsaoPower = (float)SceneKitCalibration.SsaoPower;
-            env.SsaoDetail = (float)SceneKitCalibration.SsaoDetail;
-            env.SsaoHorizon = (float)SceneKitCalibration.SsaoHorizon;
-            env.SsaoSharpness = (float)SceneKitCalibration.SsaoSharpness;
-            env.SsaoLightAffect = 0.0f; // SceneKit SSAO attenuates ambient and IBL only
-            env.SsaoAOChannelAffect = 0.0f;
-        }
+        // SSAO is SceneKit's own algorithm (SCNSsaoEffect, configured by ViewRig.Sync), not Godot's.
+        env.SsaoEnabled = false;
         bool adjust = contrast != 0 || saturation != 1;
         env.AdjustmentEnabled = adjust;
         if (adjust)

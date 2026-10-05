@@ -43,6 +43,8 @@ internal sealed class ViewRig
     internal readonly Camera3D camera = new() { Current = true };
     private readonly Godot.Environment env = new();
     private readonly CameraAttributesPractical attributes = new();
+    /// <summary>SceneKit's SSAO (SCNSsao.cs), computed for this view after Godot's depth prepass.</summary>
+    internal readonly SCNSsaoEffect ssao = new();
     internal SCNScene scene;
     internal SCNNode pointOfView;
     internal NSColor backgroundColor = NSColor.black;
@@ -57,6 +59,8 @@ internal sealed class ViewRig
         viewport.AddChild(camera);
         camera.Environment = env;
         camera.Attributes = attributes;
+        camera.Compositor = new Compositor { CompositorEffects = new Godot.Collections.Array<CompositorEffect> { ssao } };
+        SCNSsao.Prime();
         env.FogEnabled = false;
         env.AmbientLightSource = Godot.Environment.AmbientSource.Disabled;
         env.ReflectedLightSource = Godot.Environment.ReflectionSource.Disabled;
@@ -91,6 +95,7 @@ internal sealed class ViewRig
         camera.Transform = world;
         pov.camera.ApplyLens(camera);
         pov.camera.ApplyEnvironment(env, attributes, viewport.Size.Y);
+        ssao.Configure(pov.camera);
         SceneKitRuntime.FitShadows(scene, camera, viewport.Size);
         // Background.
         var bg = scene.background.contents;
