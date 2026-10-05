@@ -18,9 +18,10 @@ A faithful port of the macOS game in `apps/simulator-macos` to Godot 4.7 (.NET/C
 | `scenes/` | Godot scenes. `Main.tscn` is the entry point. |
 | `assets/` | **Gitignored.** Runtime assets copied from the macOS game by `tools/sync-assets.py`. |
 | `reference/` | **Gitignored.** Reference outputs from the macOS game (SimulationChecks output, captures). |
-| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`; `perf/`: like-for-like benchmark runner and probes (see `docs/performance.md`). |
+| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export` (release builds) and `export-verify.py` (their layout); `perf/`: like-for-like benchmark runner and probes (see `docs/performance.md`). |
 | `docs/performance.md` | The measured performance gap to the macOS game (same drawable sizes, GPU per pass, CPU, memory, loading) and the ranked costs. |
-| `export_presets.cfg`, `MarvinGodot.sln` | Export presets (macOS universal, Windows x86_64; Godot 4.7.2 .NET export templates) and the solution file Godot's C# export needs. |
+| `export_presets.cfg`, `MarvinGodot.sln` | Export presets (macOS universal, Windows x86_64 with Direct3D 12 and a Vulkan fallback; Godot 4.7.2 .NET export templates) and the solution file Godot's C# export needs. |
+| `README.md` | Building, exporting and running, on macOS and Windows (see "Release builds and Windows" below for what was verified). |
 
 ## Build and run
 
@@ -41,6 +42,8 @@ apps/simulator-godot/tools/godot --audio-driver Dummy -- --playthrough DIR   # p
 apps/simulator-godot/tools/godot -- --window-chrome DIR BG.png   # title bar/toolbar captures for tools/scenekit-reference/WindowChrome.swift
 MARVIN_BACKING_SCALE=2 MARVIN_BENCHMARK_ON_TOP=1 apps/simulator-godot/tools/godot --audio-driver Dummy -- --town-benchmark DIR --city-roam   # 1080p town benchmark (see "Performance")
 apps/simulator-godot/tools/godot -- --world-build-profile DIR   # Godot-only: race-world build stages and first frames
+apps/simulator-godot/tools/export [macos|windows] [--zip]   # release builds in build/, checked by tools/export-verify.py (README.md)
+apps/simulator-godot/tools/checks --portable-math [MILLIONS] # the portable Darwin hypot (Windows) against Darwin libm
 ```
 
 The C# assemblies are compiled with optimisation in every configuration (`<Optimize>true</Optimize>` in both projects): the Godot editor binary runs a project's Debug build, and unoptimised C# made the world build and every frame several times slower (see "Performance").
@@ -69,7 +72,7 @@ The C# assemblies are compiled with optimisation in every configuration (`<Optim
 
 **Randomness.** Seeded generators (custom `RandomNumberGenerator` structs, LCGs, hashes) must give identical sequences. Swift's `Double.random(in:using:)`, `Float.random(in:using:)`, `Int.random(in:using:)`, `Bool.random(using:)` and `shuffle(using:)` / `shuffled(using:)` / `randomElement(using:)` have specific stdlib algorithms. Port them **exactly**, from the Swift stdlib source, into `Marvin.Core.SwiftRandom`. Unseeded calls (`SystemRandomNumberGenerator`, plain `.random(in:)`) may use `System.Random.Shared`.
 
-**Core helpers (src/Core).** Beyond `Simd` and `SwiftRandom`, `Swift.cs` ports Swift/Darwin behaviour the app also needs: `Swift.format` (exact `String(format:)`, Darwin rounding), `Swift.description` (Swift number/array printing), libm `hypot`, stable `sorted`, `stride`. Measured: Apple's `simd_cross`, quaternion maths and `stride` use fused multiply-add; .NET's `double.Hypot` differs from Darwin's. Never format numbers with `$"{x}"`/`ToString()` for user-visible or report text; use `Swift.format`/`Swift.description` (the current culture would print decimal commas or U+2212 minus signs). Value-type models that hold collections (`DirtRacePhysics`, `PostRaceEscape`, `RacePerformance`, `SandDeformation`) have `Clone()`; call it wherever Swift copies one and mutates either side. Structs with Swift default values have explicit parameterless constructors: never use `default(T)` or `new T[n]` for them.
+**Core helpers (src/Core).** Beyond `Simd` and `SwiftRandom`, `Swift.cs` ports Swift/Darwin behaviour the app also needs: `Swift.format` (exact `String(format:)`, Darwin rounding), `Swift.description` (Swift number/array printing), Darwin's `hypot` (libm on macOS; elsewhere `Swift.portableHypot`, its algorithm reproduced bit for bit, see "Release builds and Windows"), stable `sorted`, `stride`. Measured: Apple's `simd_cross`, quaternion maths and `stride` use fused multiply-add; .NET's `double.Hypot` differs from Darwin's in 10 % of calls. Never format numbers with `$"{x}"`/`ToString()` for user-visible or report text; use `Swift.format`/`Swift.description` (the current culture would print decimal commas or U+2212 minus signs). Value-type models that hold collections (`DirtRacePhysics`, `PostRaceEscape`, `RacePerformance`, `SandDeformation`) have `Clone()`; call it wherever Swift copies one and mutates either side. Structs with Swift default values have explicit parameterless constructors: never use `default(T)` or `new T[n]` for them.
 
 **Reference numbers.** `reference/simulation-checks-swift.txt` comes from a **debug** Swift build (`swift run SimulationChecks`); an optimized Swift build differs in the last digits. The C# port matches the debug build byte for byte on macOS. The shipped game is the release build, so a long chaotic simulation can drift from it after a one-ulp difference (TrailRaceSmoke's three-lap race, see "Race smokes against macOS").
 
@@ -113,10 +116,10 @@ Coordinate systems match: right-handed, +Y up, cameras look down −Z, metres.
 | `background` colour | `Environment.BackgroundMode = Color` |
 | `SCNView.antialiasingMode` | `Viewport.Msaa3D` |
 | AppKit views, Quartz drawing | `Control` nodes; immediate-mode drawing in `_Draw()` |
-| SF Pro / SF Mono | `SystemFont` with `FontNames` `["SF Pro Text", "SF Pro", ".AppleSystemUIFont"]` / `["SF Mono", "Menlo"]`; on Windows it falls back to Segoe UI / Consolas |
+| SF Pro / SF Mono | `SystemFont` with `FontNames` `["SF Pro Text", "SF Pro", ".AppleSystemUIFont"]` / `["SF Mono", "Menlo"]`; on Windows it falls back to Segoe UI / Consolas (and the signs' Avenir Next Condensed to Bahnschrift) |
 | `NSEvent.keyCode` | `InputEventKey.PhysicalKeycode` |
 | Command key (menu key equivalents, `modifierFlags.contains(.command)`) | Command on macOS, **Control** elsewhere (`NSEvent.commandIsControlKey`); help texts show `KeyEquivalent.command` ("⌘" or "Ctrl+") |
-| `NSWindow`, `NSToolbar`, `NSApp.mainMenu` | The Godot window (`extend_to_title` on macOS), a title bar/toolbar drawn by the facade, the macOS global menu (Godot `MenuBar`/`NativeMenu`) or an in-window menu bar elsewhere |
+| `NSWindow`, `NSToolbar`, `NSApp.mainMenu` | The Godot window (`extend_to_title` on macOS), a title bar/toolbar drawn by the facade, the macOS global menu (Godot `MenuBar`/`NativeMenu`) or an in-window menu bar elsewhere. Which conventions apply is `Platform.macUI` (`MARVIN_PLATFORM_UI=windows` runs the Windows ones on a Mac) |
 | `Timer` 1/60 s tick | `_Process(delta)`, with the same dt clamping and pause rules; frames capped at the content view's `preferredFramesPerSecond` (`Engine.MaxFps`) |
 | UserDefaults / Application Support | `user://` (`ConfigFile` for settings at `user://UserDefaults.cfg`, the Swift JSON format for scores at `user://motocross-v4-scores.json`) |
 | GCD background world build | `Task.Run` for data generation; node-tree changes on the main thread |
@@ -556,6 +559,42 @@ Measured and dropped: 8 PCF taps (no gain over 16), exact restructurings of the 
 **Ten minutes.** The 603 s run drops from 60 to 54-55 FPS after three to four minutes, as the macOS run on the MacBook Air did after four (docs/performance-validation/2026-10-03/ten-minute-drive; the macOS benchmark was not repeated for ten minutes on this shared Mac, where it would play race audio throughout). The CPU update and facade flush stay flat (flush 1.5-1.8 ms per minute), draw calls (1,300-1,500) and primitives (about 4.2 M including shadow passes) do not grow, the long frames are render submissions that wait for the GPU (renderCallbackSpanMS 28 ms in them), and the trails reach their 32,768-mark cap per racer by minute 5-8. With `--benchmark-isolate-trails` (a second run, with another job's Godot running), hiding the trails at 300-330 s gave 58.8 FPS (54.5 before) but at 480-510 s nothing (54.0), the same inconclusive pattern as the macOS investigation (sustained-fix/plan.md), so the drop is not attributed. The node count grows by about 800 over the run (5,066 to 5,876: trail chunks). `check-sustained-performance.py --scope cadence` reads the Godot run and fails it on the resolution (960 x 540 on this screen), the gaps over 25 ms and the frame coverage.
 
 **Where the 1080p GPU time goes** (Metal System Trace and benchmark flags at 1920 x 1050): about 20 ms of Godot GPU work per frame, mostly fragment shading: the opaque pass 6 ms, the transparent pass (town ground overlays, trails, dust, lit with both suns' soft shadows) 3.3 ms, SSAO about 1.5 ms, bloom 0.6 ms. Directional shadows cost about 7.5 ms in all: `--benchmark-no-shadows` gives 49-50 FPS, Godot's hard shadow filter instead of SoftHigh's 16 taps per light (`MARVIN_SCN_CAL=ShadowFilterQuality=0`) 39 FPS; turning off the robots' or the town's shadow casting changes nothing, so the cost is in sampling and the four 4096-texel map passes (two suns x two splits), not in the casters. Godot's pipeline is fragment-heavy where SceneKit's is vertex-heavy, so it uses less GPU than SceneKit at 960 x 540 but more at 1080p. Reaching 1080p at 60 FPS on an M2 would take quality changes (fewer shadow filter taps, one split, lower SSAO quality), which this pass did not make.
+
+## Release builds and Windows
+
+`tools/export` builds both presets and `tools/export-verify.py` checks them (README.md: how to build, run and copy
+them). macOS: `build/macos/Marvin Simulator.app`, universal, Metal, ad-hoc signed. Windows: `build/windows/`
+(`MarvinSimulator.exe`, `MarvinSimulator.console.exe`, `MarvinSimulator.pck`, `data_MarvinGodot_windows_x86_64/`),
+Direct3D 12 with a Vulkan fallback. Both carry the self-contained .NET 8.0.31 runtime and the C# built as
+`ExportRelease` by Godot's own `dotnet publish`; the raw files the game reads with `FileAccess` are packed through
+`include_filter` (`assets/*.json, assets/*.bin`) and the "keep" importer of the `.wav` files.
+
+**The exported macOS app**, measured on this Mac (M2, 1x display), one of these runs at a time (another worktree's
+GPU benchmarks ran on the Mac during most of them: that changes timings, not captures or reports); "deterministic"
+captures are those that two runs of the editor runtime render pixel-identically (smoke 21 of 36, town 14 of 21, HUD 19
+of 21, facade 12 of 12; the others hold random state: dirty robots, the sandbox course, dust):
+
+| What | Result |
+|---|---|
+| `--smoke-test` (reference pins), `--town-smoke-test` (pinned), `--audio-smoke-test`, `--hud-smoke-test`, `--facade-test`, `--loading-smoke-test` | all pass; `smoke.json`, `full-race-trails.json`, `menu-smoke.json`, `town-smoke.json`, `audio.json`, `measurements.json` identical to the editor runtime's; every deterministic capture pixel-identical; the random ones within the editor's own run-to-run spread (at most 0.59/255, two editor runs 1.32/255) |
+| `--playthrough` (menu, dirt track with loading, intro, countdown, pause, three laps, results, post-race, ⌘R, ⌘M, sandbox driving, toolbar, menu bar) | 63 of 63 steps pass, as in the editor runtime |
+| the same flags without `--` (`"Marvin Simulator" --smoke-test DIR`) | identical results (an export takes the game's flags either way; the editor runtime still needs `--`) |
+| loading (`--world-build-profile`, `--loading-smoke-test`, two runs each, under the other job's load) | world build 7.2 s, `startDirtTrack` 3.2-3.3 s, 442-452 responsive loading ticks. ReadyToRun (`PublishReadyToRun` for `ExportRelease`) was tried the same way: build 6.5-6.7 s, but `startDirtTrack` 3.4-3.6 s (the precompiled node flush is slower than the JIT's tier-1 code until it is re-jitted) and 422-424 ticks, for 17 MB more per architecture and a crossgen download at export time; not adopted |
+
+**Windows, verified on this Mac** (no Windows machine was available; the Windows build has never been started):
+
+| Area | How | Result |
+|---|---|---|
+| Export and layout | `tools/export windows`, `tools/export-verify.py` | PE32+ x86-64 GUI exe with the game's icon and version resources, console wrapper, pack (format 4, 370 files: geometry.bin, JSON meshes and 161 `.wav` byte-identical to `assets/`, 34 textures), `data_MarvinGodot_windows_x86_64` with the win-x64 .NET runtime (coreclr, hostfxr, hostpolicy, clrjit: x86-64 PE), `MarvinGodot.dll`/`MarvinCore.dll` built as ExportRelease, no editor assemblies, no `.dylib`/`.so`. The D3D12 Agility SDK is not in the templates, so D3D12 uses the Windows runtime |
+| Native code | strings of the game assemblies, source review | the only native bindings are macOS-only and behind OS checks: `libobjc` (ProcessInfo.thermalState; `.nominal` elsewhere) and `libSystem` (Darwin hypot). `MTLDevice`, `renderingAPI` and the SSAO compute shaders go through Godot's RenderingDevice, not Metal. `metalRenderer` in benchmark.json is false on D3D12 and Vulkan, so the repository's `check-sustained-performance.py`, which requires Metal, rejects benchmark runs from Windows |
+| `hypot` | `Swift.portableHypot`, `tools/checks --portable-math 400` | Darwin's algorithm reproduced (`sqrt(fma(b, b, a * a))`, see `Swift.cs`): 600 million argument pairs bit-identical to libSystem, including subnormals, scaling thresholds, the overflow boundary and special values. With `MARVIN_PORTABLE_MATH=1` on this Mac: `tools/checks` byte-identical to the Swift reference, `smoke.json` and `town-smoke.json` identical, captures pixel-identical. Before, Windows called the C runtime's `hypot` (and .NET's `double.Hypot` differs from Darwin in 10 % of calls) |
+| Other libm functions | (not reproducible) | `sin`, `cos`, `atan2`, `exp`, `log`, `pow` come from the Windows C runtime; Apple's arm64 libm is not public, so its last-bit rounding cannot be copied. Long chaotic simulations can drift in their last digits, like the macOS release build against the debug build ("Race smokes against macOS") |
+| Renderer other than Metal | the export with `--rendering-driver vulkan` (Vulkan 1.2 through MoltenVK) | every mode passes, all reports identical to Metal, deterministic captures within one 8-bit step in a few pixels (worst mean 0.0007/255) |
+| Windows user-interface paths | `MARVIN_PLATFORM_UI=windows` (`Platform.macUI`) | the playthrough passes 64 of 64 steps with the in-window menu bar (Marvin Simulator, Simulation; drawn at 8, 0, 640 x 30 in the title bar) and Control shortcuts; captures change only where a shortcut is printed ("Ctrl+R" for "⌘R": race-pause 0.51/255, race-start 0.23, main-menu-window 0.14) |
+| Closest to Windows | the export with Vulkan, the portable hypot and the Windows conventions together | smoke, town, audio and the playthrough pass; `smoke.json`, `town-smoke.json`, `audio.json` identical |
+| Threads | the exe's PE header | the Windows exe reserves 8 MB of stack per thread (`SizeOfStackReserve`), the default .NET threads take there; on macOS .NET's threads get 1.5 MB, so recursion that works on a Mac has more room on Windows |
+| Text and paths | source review | `.gitattributes` checks sources out with LF; the composed shaders are normalised to `\n` (`AppendLine` writes `\r\n` on Windows); assets are read through Godot (`res://`, packed), reports with `System.IO` and `Path.Combine`, Godot APIs accept either separator; `user://` is `%APPDATA%\Godot\app_userdata\Marvin Simulator` |
+| Not verified | | Direct3D 12, WASAPI audio output, the real title bar and display scaling, and the fonts (Segoe UI, Consolas and Bahnschrift stand in for SF Pro, SF Mono and Avenir Next Condensed, which Apple does not license for redistribution) |
 
 ## Validation
 
