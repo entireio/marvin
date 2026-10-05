@@ -4,7 +4,9 @@
 // verbatim; the files that extend AppController in Swift add theirs as further `partial class AppController`
 // declarations (PlayerCharacter.cs, LevelLoading.cs, RaceAudio.cs and the smoke checks: AppSmokeTest.cs,
 // BinarySkySmoke.cs, SandstormSmoke.cs, DuneContactSmoke.cs, DustVisibilitySmoke.cs, TrailMaterialSmoke.cs,
-// TownSmoke.cs, EntranceSmoke.cs, PeopleSmoke.cs, CharacterSmoke.cs, RaceAudioSmoke.cs, MenuSmoke.cs).
+// TownSmoke.cs (with the town benchmark), EntranceSmoke.cs, PeopleSmoke.cs, CityEscapeSmoke.cs, PostRaceSmoke.cs,
+// NavigationSmoke.cs, PassageSmoke.cs, TownDepartureMovie.cs, GroundPerformanceSmoke.cs, CharacterSmoke.cs,
+// RaceAudioSmoke.cs, MenuSmoke.cs).
 //
 // PORT: AppController is a Godot Node and the NSApplication's delegate. `launch(tree:smokeDirectory:)` (AppModes.cs)
 // is main.swift: NSApp.run() adds it to the scene tree and calls applicationDidFinishLaunching. The window, its
@@ -13,8 +15,7 @@
 // menu (in the title bar elsewhere), and Command shortcuts are Control shortcuts outside macOS. tick() runs from
 // _Process while `timer` is valid (PORTING.md: Timer -> _Process). Game modes are dispatched by GameModes (each flag
 // once) instead of tick's smoke branch; their entry points run the same 20 main-menu frames first. Not ported (marked
-// "PORT"): the display link, BenchmarkGPUCapture, TownFrameMeter and the town benchmark, the renderer study and the
-// display-link lifecycle check.
+// "PORT"): the display link, BenchmarkGPUCapture, the renderer study and the display-link lifecycle check.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -104,8 +105,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
     public NSToolbarItem pauseItem;
     public NSKeyValueObservation appearanceObservation;
     public string appliedIconName = "";
-    // PORT: `let townMeter = TownFrameMeter()` (TownSmoke.swift: the town benchmark's frame meter, which also feeds the
-    // FPS HUD) is not ported; the frame rate HUD is the view's renderer delegate directly.
+    public readonly TownFrameMeter townMeter = new TownFrameMeter();
     public object rendererStudy;
     public double? townBenchmarkStart;
     public string townBenchmarkRunID = Guid.NewGuid().ToString().ToUpperInvariant();
@@ -212,8 +212,8 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         frameRateHUD.isHidden = true; installContentOverlay(frameRateHUD);
         // Keep the delegate's optional callback capabilities stable while
         // SceneKit renders on its background queue.
-        // PORT: townMeter.fpsHUD = frameRateHUD; view.delegate = townMeter (TownFrameMeter is not ported).
-        view.@delegate = frameRateHUD;
+        townMeter.fpsHUD = frameRateHUD;
+        view.@delegate = townMeter;
         mainMenu.onSandbox = () => startSandbox();
         mainMenu.onDirtTrack = () => loadDirtTrack();
         makeMenu();
@@ -285,7 +285,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         var wallDelta = max(0, now - lastTime);
         var dt = min(wallDelta, 0.1); lastTime = now;
         if (isLoadingDirt) { loadingHeartbeats += 1; return; }
-        // PORT: if townBenchmarkStart != nil { tickTownBenchmark(now:dt:) } (the town benchmark is not ported).
+        if (townBenchmarkStart != null) { tickTownBenchmark(now: now, dt: dt); return; }
         if (!inSandbox)
         {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt);
