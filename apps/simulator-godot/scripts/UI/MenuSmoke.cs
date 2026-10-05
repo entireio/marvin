@@ -194,11 +194,11 @@ public partial class AppController
     }
 
     /// <summary>
-    /// DrivingAssistSmoke.swift checkDrivingAssistSettings(at:).
-    /// PORT: on the Mac, layoutSubtreeIfNeeded re-applies the overlay's Auto Layout constraints, so the 900x550
-    /// frame reverts to the 1280x792 content size before the check and the capture. Here there are no
-    /// constraints: the check and driving-assist-settings-900x550.png use the intended 900x550 frame, and
-    /// driving-assist-settings.png is captured at the content size like the Mac's.
+    /// DrivingAssistSmoke.swift checkDrivingAssistSettings(at:). As on the Mac, layoutSubtreeIfNeeded re-applies the
+    /// overlay's Auto Layout constraints (installContentOverlay), so the 900x550 frame reverts to the 1280x792 content
+    /// size before the button check and driving-assist-settings.png. Godot-only: driving-assist-settings-900x550.png
+    /// lays the settings out at the intended 900x550 frame (layout() without the constraint pass) and checks that all
+    /// six buttons fit there too.
     /// </summary>
     public bool checkDrivingAssistSettings(string at)
     {
@@ -225,18 +225,21 @@ public partial class AppController
             mainMenu.layoutSubtreeIfNeeded();
             var buttons = mainMenu.subviews.OfType<NSButton>().Where(b => !b.isHidden).ToList();
             passed = passed && buttons.Count == 6 && buttons.All(b => mainMenu.bounds.contains(b.frame));
-            if (mainMenu.bitmapImageRepForCachingDisplay(mainMenu.bounds) is NSBitmapImageRep small)
-            {
-                mainMenu.cacheDisplay(mainMenu.bounds, small);
-                UISmoke.Write(small, directory, "driving-assist-settings-900x550.png");
-            }
-            else passed = false;
-            mainMenu.frame = frame;
-            mainMenu.layoutSubtreeIfNeeded();
             if (mainMenu.bitmapImageRepForCachingDisplay(mainMenu.bounds) is NSBitmapImageRep bitmap)
             {
                 mainMenu.cacheDisplay(mainMenu.bounds, bitmap);
                 UISmoke.Write(bitmap, directory, "driving-assist-settings.png");
+            }
+            else passed = false;
+            // Godot-only: the same settings laid out at the minimum QA size, bypassing the constraints.
+            mainMenu.frame = new NSRect(0, 0, 900, 550);
+            mainMenu.layout();
+            buttons = mainMenu.subviews.OfType<NSButton>().Where(b => !b.isHidden).ToList();
+            passed = passed && buttons.Count == 6 && buttons.All(b => mainMenu.bounds.contains(b.frame));
+            if (mainMenu.bitmapImageRepForCachingDisplay(mainMenu.bounds) is NSBitmapImageRep small)
+            {
+                mainMenu.cacheDisplay(mainMenu.bounds, small);
+                UISmoke.Write(small, directory, "driving-assist-settings-900x550.png");
             }
             else passed = false;
             return passed;
