@@ -7,7 +7,21 @@ sources as of 1c8bb11; the later commits only add diagnostics); the Godot port i
 tooling of `tools/perf` (commit 6a9f018 and the telemetry committed with this document). Raw runs are in the session
 scratchpad, not in the repository; every number below can be reproduced with the commands at the end.
 
+Three passes followed on the same day, each on its own branch from c19fd6f: the CPU pass and the GPU optimisation pass
+(sections below) and the release builds (PORTING.md, "Release builds and Windows"). "All passes merged" measures the
+branch with all three replayed onto it against c19fd6f, like for like.
+
 ## Summary
+
+- **All passes merged, like for like against c19fd6f** (section below; the look is unchanged: captures identical,
+  within 0.005/255 or within the random modes' own spread): at 1920 x 1080 the race runs at 37.2 FPS instead of 34.4 and the town roam at 29.9 instead of 28.6 (editor runtime;
+  the export 37.2 / 30.0 against 35.6 / 29.4), with 1.2 ms less GPU work per frame (busy 22.2 -> 21.0 ms race,
+  23.5 -> 22.7 ms roam) and 4.2 / 3.3 M primitives instead of 5.3 / 4.2 M. At 960 x 540 both builds hold 60 FPS; the
+  merged one has a slightly lower p99 (17.9-18.8 ms against 18.1-19.0), a facade flush of 1.2-1.4 ms instead of
+  1.6-2.0, 0.6 MB of allocation per frame instead of 1.5-1.7 and 7-9 ms of GC pauses per second instead of 17-19. Loading:
+  launch to the end of the loading check 13.0 -> 10.8 s, the freeze at 93 % 2.5-2.7 s -> 0.3 s plus 0.1 s at the
+  reveal. Ten minutes of city roam: 59.97 FPS, 2 frames over 25 ms, flush flat at 1.2-1.6 ms, no orphan nodes.
+  The gap to macOS at 1080p (60 FPS, 11 ms GPU) is still mostly Godot's renderer: shadows, scene shading and the post chain.
 
 - **960 x 540: both games hold 60 FPS** in the town roam and the race (Godot 59.3-59.9 FPS, p99 18.3-19.5 ms, 0-1
   frames over 25 ms per 45 s; macOS 60.0, p99 18.2-20.3 ms, 0-1 frames over 25 ms). Ten minutes of town roaming: both
@@ -54,6 +68,119 @@ scratchpad, not in the repository; every number below can be reproduced with the
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## All passes merged: before and after
+
+The GPU, CPU and release passes were developed on separate branches from c19fd6f and replayed onto this branch one
+commit at a time (17 commits, 0436006..4c0875a). Two files were changed by both the GPU and the CPU pass and were merged
+by hand, keeping both: `SCNNode.ApplyVisuals` pushes only changed visual state (CPU) and then re-applies the robots'
+shadow-only twin (GPU), whose creation or removal resets the pushed state; `SCNSsaoEffect` keeps its cached uniform
+sets (CPU), now with a fourth binding for the one-channel depth chain (GPU).
+
+**Method.** As in the measurement above: `tools/perf/run-benchmark.py --wait-idle`, 45 s per run, daylight 0.5, a
+drawable of exactly 960 x 540 or 1920 x 1080 over the black backdrop, the editor runtime (C# compiled optimised) and an
+exported release build (release template, `ExportRelease` C#). "c19fd6f" is a worktree of that commit, built and
+exported next to this branch and run by the same runner script. The builds were interleaved (c19fd6f editor, merged
+editor, c19fd6f export, merged export) in two rounds; the table gives both runs. No other game process ran (one run
+recorded two short-lived game processes of another job); the user's MarvinSimulator, covered by the backdrop and
+presenting nothing, still used 190-215 GPU-ms per second and WindowServer 95-155 in every trace. The 1080p editor runs
+recorded a labelled Metal System Trace 20-24 s into the benchmark ("GPU busy"; the export runs have none:
+`--trace-from-start` did not see the benchmark's start line in the export's log while it ran). Facade flush, allocation, GC and
+primitives are means over the benchmark from `godot-render.json`; "tick p95" is the benchmark's CPU update per tick.
+
+| scene | drawable | build | FPS | p99 ms | frames > 25 ms | GPU walltime ms/frame | GPU busy ms/frame | facade flush ms | allocation MB/frame | GC pauses ms/s | primitives M/frame | tick p95 ms |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| city roam | 960 x 540 | c19fd6f editor | 59.86, 59.86 | 18.5, 18.1 | 0, 0 | 15.2, 15.3 | - | 2.04, 2.02 | 1.60, 1.61 | 17.6, 17.3 | 4.2, 4.2 | 3.26, 3.27 |
+| city roam | 960 x 540 | merged editor | 59.90, 59.88 | 18.3, 18.4 | 0, 0 | 15.0, 15.1 | - | 1.33, 1.37 | 0.60, 0.60 | 7.1, 7.9 | 3.2, 3.2 | 2.39, 2.49 |
+| city roam | 960 x 540 | c19fd6f export | 59.79, 59.88 | 19.0, 18.1 | 1, 0 | 15.5, 15.3 | - | 1.82, 1.85 | 1.72, 1.70 | 18.9, 19.1 | 4.2, 4.2 | 3.50, 3.57 |
+| city roam | 960 x 540 | merged export | 59.91, 59.93 | 18.0, 18.1 | 1, 1 | 15.2, 15.2 | - | 1.26, 1.24 | 0.61, 0.61 | 8.2, 8.2 | 3.2, 3.2 | 2.62, 2.65 |
+| race | 960 x 540 | c19fd6f editor | 59.71, 59.87 | 18.6, 18.8 | 0, 0 | 15.7, 15.1 | - | 1.92, 2.02 | 1.57, 1.67 | 17.0, 16.6 | 5.3, 5.0 | 3.26, 3.11 |
+| race | 960 x 540 | merged editor | 60.00, 60.00 | 17.9, 18.0 | 0, 2 | 15.2, 15.0 | - | 1.28, 1.33 | 0.61, 0.60 | 7.5, 7.5 | 4.1, 3.9 | 2.11, 2.22 |
+| race | 960 x 540 | c19fd6f export | 59.68, 59.85 | 19.0, 18.7 | 0, 0 | 15.2, 15.5 | - | 1.60, 1.68 | 1.54, 1.65 | 17.5, 18.7 | 5.3, 5.3 | 3.65, 3.56 |
+| race | 960 x 540 | merged export | 59.86, 59.82 | 18.3, 18.8 | 0, 1 | 15.3, 15.3 | - | 1.21, 1.21 | 0.65, 0.63 | 9.2, 8.4 | 4.1, 4.1 | 2.13, 2.16 |
+| city roam | 1920 x 1080 | c19fd6f editor | 28.58, 28.67 | 43.9, 44.1 | 1201, 1205 | 35.7, 35.6 | 23.4, 23.5 | 2.57, 2.56 | 1.96, 1.97 | 8.6, 10.0 | 4.2, 4.2 | 4.05, 4.34 |
+| city roam | 1920 x 1080 | merged editor | 29.60, 30.21 | 41.9, 42.5 | 1243, 1268 | 34.5, 34.1 | 22.5, 22.9 | 1.55, 1.60 | 0.68, 0.68 | 3.2, 3.5 | 3.3, 3.3 | 3.75, 3.67 |
+| city roam | 1920 x 1080 | c19fd6f export | 29.72, 29.02 | 41.5, 43.4 | 1248, 1219 | 34.5, 35.2 | - | 2.57, 2.54 | 2.12, 2.11 | 13.1, 12.5 | 4.2, 4.2 | 5.08, 5.33 |
+| city roam | 1920 x 1080 | merged export | 29.74, 30.26 | 41.9, 41.4 | 1249, 1271 | 34.5, 33.9 | - | 1.63, 1.64 | 0.69, 0.69 | 4.2, 4.4 | 3.3, 3.3 | 4.38, 4.26 |
+| race | 1920 x 1080 | c19fd6f editor | 33.39, 35.33 | 36.8, 37.1 | 1323, 1308 | 30.5, 28.9 | 22.4, 21.9 | 2.41, 2.23 | 1.91, 1.72 | 9.4, 9.9 | 5.3, 5.4 | 3.19, 3.36 |
+| race | 1920 x 1080 | merged editor | 36.35, 37.95 | 34.6, 34.0 | 1158, 946 | 28.2, 27.1 | 20.6, 21.3 | 1.45, 1.49 | 0.62, 0.64 | 3.3, 3.9 | 4.3, 4.1 | 2.42, 2.71 |
+| race | 1920 x 1080 | c19fd6f export | 36.14, 35.15 | 34.6, 36.4 | 1285, 1292 | 28.3, 29.1 | - | 2.12, 2.11 | 1.96, 1.95 | 12.7, 12.0 | 5.3, 5.4 | 4.00, 3.89 |
+| race | 1920 x 1080 | merged export | 35.53, 38.78 | 34.0, 33.5 | 1213, 818 | 28.9, 26.4 | - | 1.48, 1.35 | 0.68, 0.63 | 4.7, 4.6 | 4.2, 4.2 | 3.08, 2.89 |
+
+- **960 x 540**: both builds are vsync-bound at 59.7-60.0 FPS. The merged build's p99 is the same in the editor's
+  city roam and 0.3-0.8 ms lower in the other three pairs, its GPU walltime up to 0.3 ms lower. On the CPU side the
+  facade flush is 0.4-0.7 ms shorter, the main thread allocates 0.6 MB per frame instead of 1.5-1.7, the GC pauses
+  7-9 ms per second instead of 17-19, and the tick's p95 is 0.8-1.5 ms lower.
+- **1920 x 1080**: GPU-bound in both. Means of the two runs: race 34.4 -> 37.2 FPS in the editor runtime (+8 %) and
+  35.6 -> 37.2 in the export; town roam 28.6 -> 29.9 (+4.5 %) and 29.4 -> 30.0. GPU walltime per frame race 29.7 ->
+  27.7 ms, roam 35.7 -> 34.3 ms; GPU busy race 22.2 -> 21.0 ms, roam 23.5 -> 22.7 ms. In the roam every frame of
+  both builds takes more than 25 ms, so the count follows the frame rate; in the race it falls from 1,285-1,323 to
+  818-1,213. Within a round the merged build was ahead in every pair but the first race export pair (36.14 against
+  35.53 FPS).
+- **Editor runtime vs export**: within the run-to-run spread of each other after the merge, as before it. Resident
+  memory varies by several hundred MB between runs of the same build (3.2-4.0 GB) and shows no difference between the
+  builds.
+
+GPU busy per pass at 1080p (editor runtime, the two traces' mean, `tools/perf/gpu-passes.py`):
+
+| pass | city roam c19fd6f | city roam merged | race c19fd6f | race merged |
+|---|---|---|---|---|
+| **total GPU busy per frame** | **23.47** | **22.67** | **22.15** | **20.95** |
+| shadow maps (+ atlas clear) | 3.07 + 0.35 | 2.53 + 0.34 | 2.92 + 0.35 | 2.34 + 0.33 |
+| depth/normal resolve + SSAO (one compute encoder) | 2.68 | 1.99 | 2.90 | 2.10 |
+| opaque pass | 8.20 | 8.02 | 10.31 | 10.46 |
+| transparent pass | 6.45 | 6.88 | 2.83 | 2.46 |
+| depth prepass | 1.26 | 1.27 | 1.46 | 1.55 |
+| resolves, glow, tonemap and 2D, window blit, uploads | 2.89 | 2.88 | 2.78 | 2.81 |
+
+The two GPU changes show where expected: the SSAO step is 0.7-0.8 ms shorter (one-channel depth mips) and the shadow
+maps 0.55-0.6 ms (robot casters from mesh LODs); the opaque and transparent passes move by up to 0.7 ms between the
+two traces of one build, so the frame totals differ by less than the sum of the two.
+
+**Loading** (`--loading-smoke-test` through the same runner, two runs per build; `--world-build-profile`, two runs):
+
+| | c19fd6f editor / export | merged editor / export |
+|---|---|---|
+| launch to the end of the loading check | 13.0-13.1 s / 13.0-13.1 s | 10.8-10.9 s / 10.8-10.9 s |
+| freeze at 93 % (main-thread stall) | 2.73 s / 2.52 s (the other run's stall log missed it) | 0.30-0.31 s + 0.10-0.11 s at the reveal / 0.26-0.27 s + 0.10-0.11 s |
+| freeze at launch (engine, .NET, app launch) | 1.66-1.71 s + 0.36-0.41 s | 1.85-1.89 s + 0.38-0.40 s |
+| responsive ticks while loading | 422, 422 / 439, 446 | 438, 447 / 450, 453 |
+| world build (background queue) | 6.79-6.84 s | 6.18-6.29 s |
+| `startDirtTrack` run synchronously | 3.23-3.25 s (node flush 2.05-2.06 s, discarded PNG 0.30-0.33 s) | 1.40-1.43 s (node flush 0.56-0.58 s, no PNG) |
+| first frames after the reveal | 74-81, 41-43 ms | 72-73, 30-32 ms |
+
+The launch freeze is 0.15-0.2 s longer in the merged build, in all four runs. Most likely this is the GPU pass's mesh
+LOD generation for the robots' CAD meshes (meshoptimizer over 695,000 triangles for Marvin alone, done when the robots'
+meshes are first prepared at launch); not verified separately.
+
+**Ten minutes** (merged editor runtime, 603 s city roam, 960 x 540): 59.97 FPS, p50 16.65, p95 17.56, p99 18.09 ms,
+2 frames over 25 ms, none over 50 ms (c19fd6f in the measurement above: 59.92 FPS, p99 18.27 ms, 0 over 25 ms). Facade
+flush 1.38 ms in the first minute, 1.55 ms around minute 5, 1.19 ms in the last (c19fd6f: 2.11 -> 2.53 ms); allocation
+0.56-0.69 MB per frame, 4.2-5.2 gen0 collections per second; orphan nodes 3,207 throughout; nodes 4,905 -> 5,847 (the
+trail chunks); resident memory 3.73-3.85 GB, texture memory flat at 691 MB, the .NET heap 1.8 GB after loading and
+1.06-1.07 GB from minute 5.
+
+**Look and checks** (the rule for every optimisation: the look must not change):
+
+- `tools/checks` is byte-identical to `reference/simulation-checks-swift.txt`, also with `MARVIN_PORTABLE_MATH=1`;
+  `tools/checks --portable-math` passes.
+- Every game mode was run on the merged editor runtime (49 runs, PORTING.md "App and game modes"): all pass except
+  `--town-departure-movie`, which fails on macOS too (departure.json identical to the earlier run). The playthrough
+  passes 63 of 63 steps; the fit tools find the same pins as before.
+- 21 capture modes (477 images, the full-game comparison's pins) were run on c19fd6f and on the merged build. 246
+  images are pixel-identical and 143 differ by less than 0.005/255 in the mean (at most 4,200 pixels by an 8-bit step
+  or two, where the robots' own shadows fall: they are now cast from mesh LODs). The other 88 hold random state (dust,
+  dirt coatings, the sandbox course, crowd and racer contacts) and differ from c19fd6f no more than c19fd6f differs
+  from the earlier comparison run of the same code (largest: town robot POV 1.16 against 1.22, sandbox contact 1.10
+  against 1.10, ground-performance midday infield 0.89 against 0.61, character sandbox 0.40-0.89 against 0.08-0.72).
+  Every JSON report of a deterministic mode is byte-identical to c19fd6f's. Two reports differ as expected: `visual-regression.json` counts 512 robot shadow
+  samples instead of 516 (per robot 500/537/150/422 instead of 501/538/153/420; the robots cast from mesh LODs; macOS
+  598; the check passes), and `dune-contact.json`'s `cpuUpdateP95MS` is a timing (3.77 -> 3.38 ms).
+- Two modes draw their starting grid at random and gave an unusual draw in the first merged run: the sandstorm
+  (Marvin a lap behind at 120 s, storm-driving.png 30/255 from macOS) and the navigation drive (a rival's contact at
+  the gate). Pinned to the same grids, the merged build reproduces c19fd6f exactly (sandstorm.json identical for two
+  grids, captures 0.00/255; navigation.json identical for two grids, one of them the macOS run's 2,1,0,3, captures
+  0.08-0.09/255), and a second unpinned merged sandstorm run gave the usual result, as both unpinned c19fd6f runs did. The exported merged build passes the same checks (PORTING.md, "Release builds and Windows").
 
 ## CPU pass: per-frame facade work, allocation, texture churn and the loading freeze
 
@@ -495,9 +622,13 @@ tools/perf/run-benchmark.py OUT --app godot --flag=--playthrough --godot-args="-
 # ten minutes
 tools/perf/run-benchmark.py OUT --app godot --mode city-roam --seconds 603
 # exports (Godot 4.7.2 .NET export templates in ~/Library/Application Support/Godot/export_templates/4.7.2.stable.mono)
-mkdir -p build/macos build/windows
-tools/godot --headless --export-release "macOS" "build/macos/Marvin Simulator.app"
-tools/godot --headless --export-release "Windows Desktop" build/windows/MarvinSimulator.exe
+tools/export                                     # build/macos/Marvin Simulator.app, build/windows, checked by export-verify.py
+# before/after of a merge ("All passes merged"): a worktree of the old commit next to this one, assets and import
+# cache cloned, built and exported there; this tree's tools/perf copied in, so the same runner measures both
+git worktree add --detach BASE c19fd6f && cp -cR assets BASE/apps/simulator-godot/ && cp -cR .godot/imported .godot/editor BASE/apps/simulator-godot/.godot/
+cp tools/perf/*.py tools/perf/*.m BASE/apps/simulator-godot/tools/perf/ && (cd BASE/apps/simulator-godot && tools/build && \
+    tools/godot --headless --export-release "macOS" "$PWD/build/macos/Marvin Simulator.app")
+BASE/apps/simulator-godot/tools/perf/run-benchmark.py OUT_BASE --app godot --size 1920x1080 --mode race --wait-idle   # then this tree's, interleaved
 ```
 
 `run-benchmark.py` needs `metalperftrace` (macOS 27) and, for `--trace`, Xcode's `xctrace`; `profile-cpu.sh` needs
