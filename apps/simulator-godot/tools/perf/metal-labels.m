@@ -7,7 +7,7 @@
 // Labels (set at endEncoding, when the encoder's work is known):
 //   render:  "R#k <color0> [+N] | D <depth> <load|clear> | <draws> draws"  e.g. "R#3 RGBA16F 1920x1080x4 +1 | D D32F 1920x1080x4 clear | 812 draws"
 //   compute: "C#k <pipeline labels or #index> x<dispatches> <last grid>"  pipeline index = creation order in the process
-//   blit:    "B#k"
+//   blit:    "B#k <operations>"  e.g. "B#0 copyBB x12 1.2MB, copyTT RGBA16F 1920x1080" (copies, fills, mipmap generation)
 // k is the encoder's ordinal in its command buffer.
 // Formats: RGBA16F, RGBA8, BGRA8, RG16F, R32F, D32F, D32FS8, R16F, R8, ...; sizes as W x H (x samples when > 1).
 //
@@ -30,6 +30,9 @@ static NSUInteger nextPipeline = 0;
 @property(nonatomic) NSUInteger draws, dispatches;
 @property(nonatomic, strong) NSMutableOrderedSet<NSString *> *pipelines;
 @property(nonatomic, copy) NSString *grid;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *blitCounts;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *blitBytes;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, NSString *> *blitTargets;
 @end
 @implementation MLEncoderInfo
 @end
@@ -209,6 +212,53 @@ static id hookBlit1(id self, SEL _cmd, id arg) {
     return encoder;
 }
 
+// Blit encoders: count each kind of operation, the bytes of buffer copies/fills and the largest texture involved.
+static void noteBlit(id self, NSString *kind, NSUInteger bytes, id<MTLTexture> texture) {
+    MLEncoderInfo *i = objc_getAssociatedObject(self, infoKey);
+    if (!i) return;
+    if (!i.blitCounts) { i.blitCounts = [NSMutableDictionary new]; i.blitBytes = [NSMutableDictionary new]; i.blitTargets = [NSMutableDictionary new]; }
+    i.blitCounts[kind] = @(i.blitCounts[kind].unsignedIntegerValue + 1);
+    i.blitBytes[kind] = @(i.blitBytes[kind].unsignedIntegerValue + bytes);
+    if (texture) {
+        NSString *name = textureName(texture);
+        NSString *old = i.blitTargets[kind];
+        if (!old || texture.width * texture.height > 0) i.blitTargets[kind] = name;
+    }
+}
+static void hookCopyTT9(id self, SEL _cmd, id src, NSUInteger a, NSUInteger b, MTLOrigin c, MTLSize d, id dst, NSUInteger e, NSUInteger f, MTLOrigin g) {
+    noteBlit(self, @"copyTT", 0, dst); CALLV(void (*)(id, SEL, id, NSUInteger, NSUInteger, MTLOrigin, MTLSize, id, NSUInteger, NSUInteger, MTLOrigin), src, a, b, c, d, dst, e, f, g);
+}
+static void hookCopyTT2(id self, SEL _cmd, id src, id dst) {
+    noteBlit(self, @"copyTT", 0, dst); CALLV(void (*)(id, SEL, id, id), src, dst);
+}
+static void hookCopyBB(id self, SEL _cmd, id src, NSUInteger a, id dst, NSUInteger b, NSUInteger size) {
+    noteBlit(self, @"copyBB", size, nil); CALLV(void (*)(id, SEL, id, NSUInteger, id, NSUInteger, NSUInteger), src, a, dst, b, size);
+}
+static void hookCopyBT(id self, SEL _cmd, id src, NSUInteger a, NSUInteger b, NSUInteger c, MTLSize d, id dst, NSUInteger e, NSUInteger f, MTLOrigin g) {
+    noteBlit(self, @"copyBT", b * d.height, dst); CALLV(void (*)(id, SEL, id, NSUInteger, NSUInteger, NSUInteger, MTLSize, id, NSUInteger, NSUInteger, MTLOrigin), src, a, b, c, d, dst, e, f, g);
+}
+static void hookCopyTB(id self, SEL _cmd, id src, NSUInteger a, NSUInteger b, MTLOrigin c, MTLSize d, id dst, NSUInteger e, NSUInteger f, NSUInteger g) {
+    noteBlit(self, @"copyTB", f * d.height, src); CALLV(void (*)(id, SEL, id, NSUInteger, NSUInteger, MTLOrigin, MTLSize, id, NSUInteger, NSUInteger, NSUInteger), src, a, b, c, d, dst, e, f, g);
+}
+static void hookFill(id self, SEL _cmd, id buffer, NSRange range, uint8_t value) {
+    noteBlit(self, @"fill", range.length, nil); CALLV(void (*)(id, SEL, id, NSRange, uint8_t), buffer, range, value);
+}
+static void hookMipmaps(id self, SEL _cmd, id texture) {
+    noteBlit(self, @"mipmaps", 0, texture); CALLV(void (*)(id, SEL, id), texture);
+}
+static NSString *blitSummary(MLEncoderInfo *i) {
+    if (!i.blitCounts.count) return @"";
+    NSMutableArray *parts = [NSMutableArray new];
+    for (NSString *kind in [i.blitCounts.allKeys sortedArrayUsingSelector:@selector(compare:)]) {
+        NSMutableString *p = [NSMutableString stringWithFormat:@"%@ x%@", kind, i.blitCounts[kind]];
+        NSUInteger bytes = i.blitBytes[kind].unsignedIntegerValue;
+        if (bytes) [p appendFormat:@" %.1fMB", bytes / 1048576.0];
+        if (i.blitTargets[kind]) [p appendFormat:@" %@", i.blitTargets[kind]];
+        [parts addObject:p];
+    }
+    return [@" " stringByAppendingString:[parts componentsJoinedByString:@", "]];
+}
+
 // Encoders: count work, label at the end.
 static void countDraw(id self) { MLEncoderInfo *i = objc_getAssociatedObject(self, infoKey); if (i) i.draws++; }
 static void hookDrawPrimitives4(id self, SEL _cmd, NSUInteger a, NSUInteger b, NSUInteger c, NSUInteger d) {
@@ -252,7 +302,7 @@ static void hookEndEncoding(id self, SEL _cmd) {
             NSArray *p = i.pipelines.array;
             NSString *names = p.count > 4 ? [[[p subarrayWithRange:NSMakeRange(0, 4)] componentsJoinedByString:@","] stringByAppendingFormat:@",+%lu", (unsigned long)(p.count - 4)] : [p componentsJoinedByString:@","];
             label = [NSString stringWithFormat:@"%@ %@ x%lu %@", i.prefix, names, (unsigned long)i.dispatches, i.grid ?: @""];
-        } else label = i.prefix;
+        } else label = [i.prefix stringByAppendingString:blitSummary(i)];
         [self setLabel:label];
         if (logging && logged < 200) { logged++; fprintf(stderr, "metal-labels: %s\n", label.UTF8String); }
     }
@@ -308,6 +358,13 @@ __attribute__((constructor)) static void metalLabelsInit(void) {
         hook(c, @selector(setComputePipelineState:), (IMP)hookSetComputePipeline);
         hook(c, @selector(dispatchThreadgroups:threadsPerThreadgroup:), (IMP)hookDispatch);
         hook(c, @selector(dispatchThreads:threadsPerThreadgroup:), (IMP)hookDispatch);
+        hook(c, @selector(copyFromTexture:sourceSlice:sourceLevel:sourceOrigin:sourceSize:toTexture:destinationSlice:destinationLevel:destinationOrigin:), (IMP)hookCopyTT9);
+        hook(c, @selector(copyFromTexture:toTexture:), (IMP)hookCopyTT2);
+        hook(c, @selector(copyFromBuffer:sourceOffset:toBuffer:destinationOffset:size:), (IMP)hookCopyBB);
+        hook(c, @selector(copyFromBuffer:sourceOffset:sourceBytesPerRow:sourceBytesPerImage:sourceSize:toTexture:destinationSlice:destinationLevel:destinationOrigin:), (IMP)hookCopyBT);
+        hook(c, @selector(copyFromTexture:sourceSlice:sourceLevel:sourceOrigin:sourceSize:toBuffer:destinationOffset:destinationBytesPerRow:destinationBytesPerImage:), (IMP)hookCopyTB);
+        hook(c, @selector(fillBuffer:range:value:), (IMP)hookFill);
+        hook(c, @selector(generateMipmapsForTexture:), (IMP)hookMipmaps);
         (*count)++;
     };
     hookClasses(@protocol(MTLCommandEncoder), encoder);

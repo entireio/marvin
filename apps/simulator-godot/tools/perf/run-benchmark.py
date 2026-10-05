@@ -21,7 +21,14 @@ did at 1080p and Godot's window did not.
 GPU: `metalperftrace listen` (Apple's always-on Metal performance statistics, no HUD overhead) records every Metal
 process that presents frames, once per second: the game's FPS on glass, on-GPU walltime per frame (min/mean/max) and
 frame-on-glass intervals, and the GPU time of the other processes (contention, e.g. a MarvinSimulator left running).
---trace AT:SECONDS also records a Metal System Trace (xctrace) AT seconds after launch.
+--trace AT:SECONDS also records a Metal System Trace (xctrace) AT seconds after launch, or, with --trace-from-start, AT
+seconds after the benchmark started (its MARVIN_BENCHMARK_ID line), which does not depend on how long loading took.
+--env MARVIN_BENCHMARK_FREEZE=S stops the benchmark's drive and camera at benchmark time S and keeps drawing that view
+(Godot only), so a trace after S measures one fixed frame and can be compared across builds.
+
+Shared machine: --wait-idle waits until no other Godot or Marvin Simulator process runs (MARVIN_PERF_IGNORE_PIDS: a
+comma-separated list of PIDs to ignore, e.g. a game left running), and every run records the other game processes that
+were alive during it in run.json "contention" (rerun when it is not empty: parallel GPU work skews every number).
 
 Main thread: main-stalls.m logs every gap of 50 ms or more between turns of the main run loop (OUT/main-stalls.txt), in
 both games, which shows loading freezes and long frames whether or not a Metal layer is presenting.
@@ -158,6 +165,38 @@ def summarize_stalls(path, launch, start=None, end=None):
             'worst': sorted(([round(t, 2), g] for t, g in gaps), key=lambda g: -g[1])[:10]}
 
 
+# The Godot editor, exported builds of the port and the macOS game (any build of either).
+GAME_PATTERN = r'Godot_mono\.app/Contents/MacOS/Godot|Marvin Simulator\.app/Contents/MacOS/|MarvinSimulator'
+
+
+def other_games(own_pids):
+    """PIDs of other running Godot / Marvin Simulator processes (not ours, not MARVIN_PERF_IGNORE_PIDS)."""
+    ignore = {int(p) for p in os.environ.get('MARVIN_PERF_IGNORE_PIDS', '').split(',') if p.strip()}
+    out = subprocess.run(['pgrep', '-f', GAME_PATTERN], capture_output=True, text=True).stdout.split()
+    return sorted(int(p) for p in out if int(p) not in own_pids and int(p) not in ignore and int(p) != os.getpid())
+
+
+def wait_idle(quiet_seconds=3, poll=1.0, limit=7200):
+    """Wait until no other game process has run for quiet_seconds (at most limit seconds); returns the time waited."""
+    t0, quiet_since = time.time(), None
+    while time.time() - t0 < limit:
+        if other_games(set()):
+            quiet_since = None
+        elif quiet_since is None:
+            quiet_since = time.time()
+        elif time.time() - quiet_since >= quiet_seconds:
+            return time.time() - t0
+        time.sleep(poll)
+    return time.time() - t0
+
+
+def watch_contention(own_pid, seen, stop):
+    while not stop.is_set():
+        for pid in other_games({own_pid}):
+            seen.add(pid)
+        stop.wait(1.0)
+
+
 def sample_process(pid, out, stop):
     while not stop.is_set():
         try:
@@ -191,7 +230,9 @@ def main():
     p.add_argument('--flag', help='game mode to run instead of --town-benchmark (it gets OUT as its directory)')
     p.add_argument('--level', default='3')
     p.add_argument('--no-backdrop', action='store_true', help='do not cover the rest of the screen with a black window')
-    p.add_argument('--trace', help='AT:SECONDS: record a Metal System Trace AT seconds after launch')
+    p.add_argument('--trace', help='AT:SECONDS: record a Metal System Trace AT seconds after launch (or after the benchmark start)')
+    p.add_argument('--trace-from-start', action='store_true', help='--trace AT counts from the benchmark start, not from launch')
+    p.add_argument('--wait-idle', action='store_true', help='wait until no other Godot / Marvin Simulator process runs')
     p.add_argument('--godot-args', default='', help='extra Godot engine arguments (space separated), e.g. --audio-driver Dummy')
     p.add_argument('--env', action='append', default=[], help='KEY=VALUE for the game')
     a = p.parse_args(argv)
@@ -229,6 +270,9 @@ def main():
             cmd = [str(a.export_binary)] + engine + ['--'] + game
     meta = {'app': a.app, 'size': [w, h], 'mode': a.flag or a.mode, 'seconds': a.seconds, 'command': cmd, 'launchWallTime': time.time(),
             'env': {k: env[k] for k in sorted(env) if k.startswith(('MARVIN_', 'DYLD_', 'MTL_'))}}
+    if a.wait_idle:
+        meta['waitedForIdleSeconds'] = wait_idle()
+        meta['launchWallTime'] = time.time()
     listen_path = a.out / 'metal-listen.json'
     with open(a.out / 'game.log', 'w') as log, open(listen_path.with_suffix('.raw'), 'w') as listen_out:
         listener = subprocess.Popen(['metalperftrace', 'listen', '--json'], stdout=listen_out, stderr=subprocess.DEVNULL)
@@ -236,10 +280,17 @@ def main():
         samples, stop = [], threading.Event()
         sampler = threading.Thread(target=sample_process, args=(game_proc.pid, samples, stop), daemon=True)
         sampler.start()
+        contention = set()
+        watcher = threading.Thread(target=watch_contention, args=(game_proc.pid, contention, stop), daemon=True)
+        watcher.start()
         tracer = None
         if a.trace:
             at, secs = (float(v) for v in a.trace.split(':'))
             def record():
+                if a.trace_from_start:
+                    log_path = a.out / 'game.log'
+                    while game_proc.poll() is None and 'MARVIN_BENCHMARK_ID' not in log_path.read_text(errors='replace'):
+                        time.sleep(0.2)
                 time.sleep(at)
                 if game_proc.poll() is None:
                     subprocess.run(['xctrace', 'record', '--template', 'Metal System Trace', '--attach', str(game_proc.pid),
@@ -266,7 +317,7 @@ def main():
     listen_path.with_suffix('.raw').unlink()
     (a.out / 'process.json').write_text(json.dumps(samples))
     meta['exitWallTime'] = time.time()
-    summary = {'run': meta, 'exitCode': code}
+    summary = {'run': meta, 'exitCode': code, 'contention': sorted(contention)}
     summary['mainStalls'] = summarize_stalls(a.out / 'main-stalls.txt', meta['launchWallTime'])
     bench = a.out / 'benchmark.json'
     if bench.exists():
@@ -288,13 +339,33 @@ def main():
         summary['mainStallsInBenchmark'] = summarize_stalls(a.out / 'main-stalls.txt', meta['launchWallTime'], start, end)
     else:
         summary['metal'] = summarize_metal(records, game_proc.pid, meta['launchWallTime'], meta['exitWallTime'])
+    trace = a.out / 'metal-system.trace'
+    if a.trace and trace.exists():
+        # GPU per pass of this run's process (tools/perf/mst-gpu.py), for the frames presented during the trace.
+        r = subprocess.run([sys.executable, str(HERE / 'mst-gpu.py'), str(trace), '--process', f'({game_proc.pid})',
+                            '--json', str(a.out / 'mst-gpu.json')], capture_output=True, text=True)
+        (a.out / 'mst-gpu.txt').write_text(r.stdout + r.stderr)
+        if (a.out / 'mst-gpu.json').exists():
+            mst = json.loads((a.out / 'mst-gpu.json').read_text())
+            ignore = [p for p in os.environ.get('MARVIN_PERF_IGNORE_PIDS', '').split(',') if p.strip()]
+            busy = {k: v['busyMSPerSecond'] for k, v in mst['processes'].items()}
+            # Other processes doing GPU work during the trace (not this game, WindowServer or ignored PIDs; more than 100 ms
+            # of GPU time in all, so a few stray intervals do not count): the per-pass numbers of a run with any are skewed.
+            others = {k: v['busyMSPerSecond'] for k, v in mst['processes'].items()
+                      if v['busyMSPerSecond'] * v['spanSeconds'] > 100 and f'({game_proc.pid})' not in k
+                      and not k.startswith('WindowServer') and not any(f'({p})' in k for p in ignore)}
+            summary['traceGPU'] = {'busyMSPerFrame': mst.get('busyMSPerFrame'), 'frames': mst.get('frames'),
+                                   'processesBusyMSPerSecond': busy, 'contention': others}
     (a.out / 'run.json').write_text(json.dumps(summary, indent=2) + '\n')
     b, m = summary.get('benchmark', {}), summary.get('metal', {})
     if b:
         print(f"{a.app:6s} {a.mode:10s} {b['drawableWidth']:.0f}x{b['drawableHeight']:.0f}  fps {b['meanFPS']:6.2f}  p50 {b['p50MS']:5.2f}  "
               f"p95 {b['p95MS']:5.2f}  p99 {b['p99MS']:5.2f}  >25ms {b['over25MS']:4d}  glass {m.get('onGlassFPS') or 0:6.2f} fps  "
               f"GPU {m.get('gpuMSPerFrame') or 0:5.2f} ms/frame ({m.get('gpuBusyMSPerSecond') or 0:4.0f} ms/s)  "
-              f"others {', '.join(f'{k} {v:.0f}' for k, v in (m.get('otherProcessesGPUMSPerSecond') or {}).items())}")
+              f"others {', '.join(f'{k} {v:.0f}' for k, v in (m.get('otherProcessesGPUMSPerSecond') or {}).items())}"
+              + (f"  CONTENTION {sorted(contention)}" if contention else '')
+              + (f"  trace GPU busy {summary['traceGPU']['busyMSPerFrame']:.2f} ms/frame" if 'traceGPU' in summary else '')
+              + (f"  TRACE CONTENTION {summary['traceGPU']['contention']}" if summary.get('traceGPU', {}).get('contention') else ''))
     else:
         st = summary['mainStalls']
         print(f"{a.app:6s} {a.flag or a.mode} {a.size}: exit {code}, {meta['exitWallTime'] - meta['launchWallTime']:.1f} s; main-thread stalls "
