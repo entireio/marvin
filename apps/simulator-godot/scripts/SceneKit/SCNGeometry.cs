@@ -189,6 +189,7 @@ public class SCNGeometry : IPropertyOwner
     private SCNLevelOfDetail[] _levelsOfDetail;
     private (SCNVector3 min, SCNVector3 max)? _customBounds;
     private Dictionary<SCNShaderModifierEntryPoint, string> _shaderModifiers;
+    private bool _godotAutomaticLevelsOfDetail;
     internal readonly Dictionary<string, object> arguments = new();
     /// <summary>Binding version: materials, LODs, shader modifiers, arguments.</summary>
     internal int version;
@@ -213,6 +214,7 @@ public class SCNGeometry : IPropertyOwner
         EnsureBuilt();
         var g = CopyShape() ?? new SCNGeometry(_sources, _elements);
         g.name = name; g._materials = new List<SCNMaterial>(_materials); g._levelsOfDetail = _levelsOfDetail; g._customBounds = _customBounds;
+        g._godotAutomaticLevelsOfDetail = _godotAutomaticLevelsOfDetail;
         g._shaderModifiers = _shaderModifiers == null ? null : new Dictionary<SCNShaderModifierEntryPoint, string>(_shaderModifiers);
         foreach (var kv in arguments) g.arguments[kv.Key] = kv.Value;
         return g;
@@ -254,6 +256,20 @@ public class SCNGeometry : IPropertyOwner
         set { if (_materials.Count == 0) _materials.Add(value); else _materials[0] = value; Changed(); }
     }
     public SCNLevelOfDetail[] levelsOfDetail { get => _levelsOfDetail; set { _levelsOfDetail = value; Changed(); } }
+    /// <summary>
+    /// Godot-only: draw this geometry's shadows from screen-space levels of detail, for static, very finely tessellated
+    /// geometry that SceneKit draws at full detail (the robots' CAD and scanned meshes: Marvin's 695,000 triangles cover a
+    /// few thousand pixels in a town view, so every shadow map rasterised tens of triangles per pixel). The mesh gets
+    /// Godot's own mesh LODs (meshoptimizer, as for imported scenes; vertex normals weighted in the error); the node draws
+    /// the full mesh for the camera and the depth prepass, unchanged, and a shadow-only twin instance with the levels casts
+    /// its shadows (SCNNode.RebuildMeshes; SceneKitCalibration.MeshLodForCamera lets the camera draw the levels too). A
+    /// level is used only while its geometric error stays below SceneKitCalibration.MeshLodThreshold pixels of the
+    /// camera's view, far below the shadow maps' texels. Surfaces with fewer than AutomaticLodMinTriangles triangles,
+    /// vertex colours or SceneKit levels of detail are left alone. Generated when the mesh is prepared (on worker threads
+    /// in a large flush).
+    /// </summary>
+    public bool godotAutomaticLevelsOfDetail { get => _godotAutomaticLevelsOfDetail; set { if (_godotAutomaticLevelsOfDetail == value) return; _godotAutomaticLevelsOfDetail = value; Changed(true); } }
+    internal const int AutomaticLodMinTriangles = 2048;
     public Dictionary<SCNShaderModifierEntryPoint, string> shaderModifiers
     {
         get => _shaderModifiers;
@@ -395,6 +411,8 @@ public class SCNGeometry : IPropertyOwner
     internal bool HasNormals => sources.Any(s => s.semantic == SCNGeometrySourceSemantic.normal);
     internal bool HasColors => sources.Any(s => s.semantic == SCNGeometrySourceSemantic.color);
     internal int SurfaceCount => mesh?.GetSurfaceCount() ?? 0;
+    /// <summary>The current Godot mesh has levels of detail (godotAutomaticLevelsOfDetail) on at least one surface.</summary>
+    internal bool MeshHasLods { get; private set; }
     /// <summary>For each Godot surface, the index of the first SceneKit element it came from.</summary>
     internal readonly List<int> surfaceElements = new();
     private int[] meshRuns = Array.Empty<int>();
@@ -413,6 +431,30 @@ public class SCNGeometry : IPropertyOwner
         return runs.ToArray();
     }
 
+    /// <summary>
+    /// Godot's mesh LODs for one surface (ImporterMesh.GenerateLods, as for imported scenes: vertices merged within 60
+    /// degrees of normal for the simplifier, normals weighted in its error). The levels index the surface's own vertices,
+    /// so the full-detail level is the surface unchanged. Any thread.
+    /// </summary>
+    private static void GenerateLods(PreparedSurface s)
+    {
+        using var importer = new ImporterMesh();
+        using var arrays = new Godot.Collections.Array();
+        arrays.Resize((int)Mesh.ArrayType.Max);
+        arrays[(int)Mesh.ArrayType.Vertex] = s.vertices;
+        arrays[(int)Mesh.ArrayType.Normal] = s.normals;
+        if (s.uv0 != null) arrays[(int)Mesh.ArrayType.TexUV] = s.uv0;
+        if (s.uv1 != null) arrays[(int)Mesh.ArrayType.TexUV2] = s.uv1;
+        arrays[(int)Mesh.ArrayType.Index] = s.indices;
+        importer.AddSurface(Mesh.PrimitiveType.Triangles, arrays);
+        using var noBones = new Godot.Collections.Array();
+        importer.GenerateLods(60, 0, noBones);
+        int count = importer.GetSurfaceLodCount(0);
+        if (count == 0) return;
+        s.lodSizes = new float[count]; s.lodIndices = new int[count][];
+        for (int i = 0; i < count; i++) { s.lodSizes[i] = importer.GetSurfaceLodSize(0, i); s.lodIndices[i] = importer.GetSurfaceLodIndices(0, i); }
+    }
+
     /// <summary>Godot meshes built so far (diagnostics).</summary>
     internal static int MeshesBuilt;
 
@@ -427,6 +469,8 @@ public class SCNGeometry : IPropertyOwner
     {
         internal Vector3[] vertices, normals; internal float[] tangents, colors; internal Vector2[] uv0, uv1;
         internal float[][] custom; internal int[] indices; internal Mesh.ArrayFormat flags; internal int element;
+        /// <summary>Godot mesh LODs (godotAutomaticLevelsOfDetail): screen-space error of each level and its indices.</summary>
+        internal float[] lodSizes; internal int[][] lodIndices;
     }
     private volatile PreparedMesh prepared;
 
@@ -540,6 +584,8 @@ public class SCNGeometry : IPropertyOwner
             }
             if (C != null)
                 s.flags |= (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << ((int)Mesh.ArrayFormat.FormatCustom0Shift + 3 * (int)Mesh.ArrayFormat.FormatCustomBits));
+            if (_godotAutomaticLevelsOfDetail && C == null && (_levelsOfDetail == null || _levelsOfDetail.Length == 0) && idx.Length / 3 >= AutomaticLodMinTriangles)
+                GenerateLods(s);
             result.pending.Add(s);
         }
         return result;
@@ -568,6 +614,7 @@ public class SCNGeometry : IPropertyOwner
         if (!meshTangents && !registeredWithoutTangents) { registeredWithoutTangents = true; lock (withoutTangents) withoutTangents.Add(new WeakReference<SCNGeometry>(this)); }
         var result = new ArrayMesh();
         surfaceElements.Clear();
+        MeshHasLods = ready.pending.Any(p => p.lodIndices != null);
         foreach (var s in ready.pending)
         {
             using var arrays = new Godot.Collections.Array();
@@ -580,7 +627,13 @@ public class SCNGeometry : IPropertyOwner
             if (s.uv1 != null) Put(arrays, (int)Mesh.ArrayType.TexUV2, s.uv1);
             for (int c = 0; c < 3; c++) if (s.custom[c] != null) Put(arrays, (int)Mesh.ArrayType.Custom0 + c, s.custom[c]);
             Put(arrays, (int)Mesh.ArrayType.Index, s.indices);
-            result.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays, NoBlendShapes, NoLods, s.flags);
+            if (s.lodIndices != null)
+            {
+                using var lods = new Godot.Collections.Dictionary();
+                for (int i = 0; i < s.lodIndices.Length; i++) lods[s.lodSizes[i]] = s.lodIndices[i];
+                result.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays, NoBlendShapes, lods, s.flags);
+            }
+            else result.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays, NoBlendShapes, NoLods, s.flags);
             surfaceElements.Add(s.element);
         }
         if (_customBounds.HasValue)

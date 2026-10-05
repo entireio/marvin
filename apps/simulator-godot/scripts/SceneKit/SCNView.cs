@@ -218,7 +218,7 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         Stretch = false;
         var holder = new Node { Name = "SCNViewportHolder" };
         AddChild(holder);
-        var vp = new SubViewport { Name = "SCNViewport", RenderTargetUpdateMode = SubViewport.UpdateMode.Always, Msaa3D = Viewport.Msaa.Msaa4X };
+        var vp = new SubViewport { Name = "SCNViewport", RenderTargetUpdateMode = SubViewport.UpdateMode.Always, Msaa3D = Viewport.Msaa.Msaa4X, MeshLodThreshold = (float)SceneKitCalibration.MeshLodThreshold };
         holder.AddChild(vp);
         rig = new ViewRig(vp);
         SceneKitRuntime.views.Add(new WeakReference<SCNView>(this));
@@ -316,7 +316,7 @@ public sealed class SCNRenderer : SCNSceneRenderer
     public SCNRenderer(MTLDevice device, Dictionary<string, object> options)
     {
         SceneKitRuntime.EnsureStarted();
-        var vp = new SubViewport { Name = "SCNRenderer", RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled, Size = new Vector2I(64, 64) };
+        var vp = new SubViewport { Name = "SCNRenderer", RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled, Size = new Vector2I(64, 64), MeshLodThreshold = (float)SceneKitCalibration.MeshLodThreshold };
         SceneKitRuntime.AddRendererViewport(vp);
         rig = new ViewRig(vp);
     }

@@ -80,6 +80,16 @@ internal static class SceneKitCalibration
     }
     public static double DeferredSelfShadowPlateau = 0.44;
 
+    // ---- Godot mesh LODs of shadow casters (SCNGeometry.godotAutomaticLevelsOfDetail): a level casts while its geometric
+    // error stays below this many pixels of the camera's view (Viewport.MeshLodThreshold of every SCNView and SCNRenderer);
+    // the camera always draws the full mesh. Measured on the robots: drawn by the camera too, Godot's default of 1 pixel
+    // changed the close-ups by 0.03/255 on average and half a pixel by 0.01 (town view: 2.2 and 2.4 M primitives per frame
+    // instead of 3.8 M); as shadow casters only, half a pixel changes them by at most 0.003/255.
+    public static double MeshLodThreshold = 0.5;
+    /// <summary>Let the camera draw the levels too (no shadow-only twin): about 0.5 ms less GPU time per 1080p frame than
+    /// shadows alone, but the robots' silhouettes move by up to MeshLodThreshold (MARVIN_SCN_CAL="MeshLodForCamera=1").</summary>
+    public static bool MeshLodForCamera = false;
+
     // ---- Direct specular (GGX in the composer's light()).
     // Measured (tools/scenekit-reference/robots/SpecularHighlight.swift: highlight profiles of roughness 0 .. 0.2 spheres
     // under 0.01 .. 1000 lm suns, zoomed in at 0.0005 rad per pixel and whole at 0.007): SceneKit keeps the highlight's full
