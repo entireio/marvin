@@ -23,6 +23,11 @@ scratchpad, not in the repository; every number below can be reproduced with the
 - **The gap is fragment shading and directional shadows**: Godot's shadows cost about 7.4 ms per 1080p frame
   (SceneKit about 1.4 ms), its opaque and transparent passes shade the same screen 1.6x as expensively even without
   shadows, and its post-processing chain and depth prepass cost about 3 ms more. SSAO costs the same in both.
+- **GPU optimisation pass** (section below; the look unchanged): the SSAO port reads its depth mips from a one-channel
+  texture (bit-identical, 0.75 ms less per 1080p frame) and the robots' CAD meshes cast their shadows from mesh LODs
+  (camera images unchanged). The race at 1080p now runs at about 36 FPS (33 before) with 3 ms less GPU work per frame,
+  the town roam at 29.7 (29.1). Most of what remains is Godot's renderer itself: the soft-shadow path (~4 ms over a hard
+  filter, whatever the tap count), its fixed passes, and per-fragment occupancy in the composed materials.
 - **Loading freezes the loading screen for 2.8-3.4 s at 93 %** (macOS: 0.75 s), almost all of it the facade's
   synchronous first flush of 4,884 nodes (2.6 s) and a PNG-encoded snapshot whose image is thrown away (0.3 s).
   Launch to race: 13.1 s against 8.6 s.
@@ -151,6 +156,94 @@ At 540p the gap is 1.8 ms and SceneKit is relatively heavier in vertex work (2.5
 vertex shading in its forward pass and 1.8 ms in its SSAO pass against Godot's 0.9 and 0.7): Godot is fill-bound,
 SceneKit vertex-bound, so Godot's cost grows with the pixel count (x2.3 from 540p to 1080p, SceneKit x1.4).
 
+## GPU optimisation pass (after the measurement above)
+
+The rule: the look must not change. Every change was checked with 14 capture modes (249 images: facade test,
+calibration scenes, shadow probes, robot close-ups in both lights, menu, the pinned smoke and town tests, binary sky,
+dunes, navigation, visual regression, sandstorm) against two runs of the unchanged build, which also give the noise of
+the random modes, and against the macOS captures in `reference/mac`.
+
+**Method.** One GPU-heavy process at a time on a machine shared with other jobs: `run-benchmark.py --wait-idle` waits
+for other Godot or Marvin Simulator processes to end, and every run records the game processes alive during it and the
+other GPU work in its trace (`run.json` `contention`, `traceGPU.contention`). For A/B comparisons of one frame,
+`MARVIN_BENCHMARK_FREEZE=16` stops the town roam at the same view after 16 s and keeps drawing it; a labelled Metal
+System Trace 21-25 s after the benchmark started (`--trace 21:4 --trace-from-start`) gives the GPU time per pass
+(`tools/perf/gpu-passes.py`). The same build varies by about ±0.7 ms in total GPU busy per frame between runs (other
+processes' GPU work interleaves with Godot's, and Instruments sometimes files an encoder under another label), so
+totals come from several interleaved runs and small changes are judged by their own pass. `MARVIN_BENCHMARK_HIDE`
+hides nodes by name to cost a class of geometry. The race's frozen view is not repeatable (the rivals' positions after
+12 s depend on the frame timing), so race results come from the 45 s benchmark.
+
+### Kept
+
+| change | GPU (1920 x 1080) | look |
+|---|---|---|
+| **SSAO depth mips in one channel** (`SCNSsao.cs`): the depth/normal pass also writes the half-precision depth alone into an R16F texture with SceneKit's box-filtered mips; the checkerboard index and the first mip come from it in one pass, the SAO taps and the upsampling read it. Before, all four channels of the RGBA16F texture were mip-mapped although the kernels read only the depth beyond mip 0. | depth/normal resolve + SSAO compute encoder 2.58-2.63 -> 1.81-1.92 ms per frame (frozen town view, 3 runs each); 2.67-2.73 -> 2.02-2.04 ms in the moving town roam | bit-identical (the same half-precision values): every deterministic capture is byte-identical, the random ones differ from the old build no more than two runs of the old build |
+| **Robot shadow casters from mesh LODs** (`SCNGeometry.godotAutomaticLevelsOfDetail`, set by `DirtCoating.install` for every robot part): the robots' CAD and scanned meshes (Marvin alone 695,000 triangles in 23 parts) get Godot's own screen-space mesh LODs (meshoptimizer, as for imported scenes); a shadow-only twin instance casts from them while the camera and the depth prepass keep the full mesh (`SCNNode.RebuildMeshes`). A level casts only while its error stays under 0.5 pixel of the camera's view (`SceneKitCalibration.MeshLodThreshold`), far below the shadow maps' 2-6 cm texels. | shadow maps 3.0 -> 2.6 ms (town roam), 2.7 -> 2.4 ms (race); primitives per frame 4.2 -> 3.3 M and 5.2 -> 4.2 M; frame totals within the run-to-run spread (table below) | camera images unchanged: close-ups 0.0000-0.0006/255 (robot shadows), visual regression 0.0025/255; its shadow-angle check counts 512 shadow samples as before (macOS 598) |
+
+Results, 45 s benchmark at 1920 x 1080 with the moving camera (two interleaved runs per build; FPS from
+`benchmark.json`, GPU busy from the labelled trace at 20-24 s, GPU walltime per frame from `metalperftrace`):
+
+| build | town roam FPS | GPU busy ms/frame | GPU walltime | race FPS | GPU busy | GPU walltime | primitives/frame (roam, race) |
+|---|---|---|---|---|---|---|---|
+| before (c19fd6f) | 29.66, 28.58 | 23.74, 24.40 | 34.3, 35.5 | 33.40, 32.22 | 24.22, 23.64 | 30.6, 31.7 | 4.2 M, 5.3 M |
+| SSAO change | 29.45, 29.40 | 22.07, 22.77 | 34.7, 34.7 | 36.42, 35.69 | 20.83, 21.48 | 28.0, 28.7 | 4.2 M, 5.2 M |
+| final (+ robot shadow LODs) | 29.76, 29.60 | 22.72, 22.61 | 34.3, 34.4 | 35.78, 37.06 | 21.01, 20.79 | 28.6, 27.5 | 3.3 M, 4.2 M |
+| option `MeshLodForCamera=1` (LODs for the camera too, 0.5 px) | 30.74, 30.22 | 21.64, 21.73 | 33.4, 33.8 | 37.86, 35.97 | 19.77, 20.86 | 27.0, 28.3 | 2.9 M, 3.7 M |
+
+So at 1080p the pass gives the race about 3.5 FPS (32.8 -> 36.4 on average) and 3 ms of GPU work per frame (busy
+23.9 -> 20.9, walltime 31.2 -> 28.1), the town roam 1.4 ms of GPU work (24.1 -> 22.7) but only 0.6 FPS (29.1 -> 29.7):
+the GPU is shared (a MarvinSimulator left running and WindowServer used 270-350 GPU-ms per second in every run), and
+the roam's walltime per frame fell only from 34.9 to 34.4 ms. At 960 x 540 both hold 60 FPS (town roam 59.62 before,
+59.76 now; GPU busy 10.3 -> 9.8 ms, walltime 15.6 -> 14.8 ms; shadow maps 3.1 -> 2.6 ms).
+
+On the frozen town view the total GPU busy per frame went from 21.7 and 22.7 ms (before) to 20.6-21.7 (SSAO change,
+three runs) and 19.3 and 19.3 (final), with the shadow maps at 1.6-2.2 ms instead of 2.6-2.7.
+
+The option `SceneKitCalibration.MeshLodForCamera` (off) lets the camera draw the levels too, about another 0.5-1 ms per
+1080p frame, but then the robots' silhouettes move by up to half a pixel: close-ups 0.011/255 on average (0.031 at
+Godot's default of 1 pixel), visual regression 0.025/255, dunes 0.018/255, all slightly further from macOS, and
+DuneContact's `opaqueMarvinBodySamples` falls from 4,422 to 4,282 (macOS 4,428). Every check still passes, but the
+camera image is no longer the same, so it stays off.
+
+### Tried and dropped
+
+Each on the frozen town view, against several runs of the build without it:
+
+- **8 PCF taps instead of 16** (`MARVIN_SCN_CAL=ShadowFilterQuality=3`, SoftMedium; the suns' SceneKit
+  `shadowSampleCount` is 8): 20.7 and 20.9 ms against 20.1-21.3, no gain. The opaque pass costs the same with 8 or 16
+  taps but 1.9 ms less with Godot's hard filter (one tap; about 4 ms less in all): the cost is apparently the soft path
+  itself (its register use), not the number of taps, so matching SceneKit's sample count saves nothing.
+- **Shared-memory bilateral blur** for the SSAO: the SSAO encoder is unchanged (1.92-2.0 ms).
+- **The shadow-box test once per fragment** instead of once per light in the composer's `light()`, and **discarding
+  fragments whose alpha is exactly 0** on blended overlays that write no depth (both exact): no measurable change.
+- **One sky-radiance fetch when the roughness falls on a band** (exact) and **polynomial atan/acos** for the
+  sky-light lookup: the opaque pass 0.1-0.2 ms lower, within the run-to-run spread.
+- **A fused SSAO kernel** (depth/normal, index and first mip in one dispatch through shared memory): as fast as the kept
+  version but not bit-exact (half rounding of the shared values; robot close-ups 0.04-0.12/255), so the kept version
+  reads the stored depth back in a second dispatch.
+
+### Where the remaining time goes
+
+Diagnostics on the frozen town view (they change the look; Godot 4.7.2's renderer cannot be changed from the game):
+
+- **Shadows ~7 ms**: no shadows 20.9 -> 14.2 ms. The soft filter is about 4 ms of it (above); the maps 2.6 ms plus 0.35 ms
+  to clear the whole 8192² atlas every frame, and every pass loads and stores the atlas (a pass with 16 draws still costs
+  0.4-0.5 ms).
+- **The composer's `light()`**: a plain Lambert `light()` saves 1.6 ms in the opaque pass, but removing any single part
+  (the deferred-shadow and LDR branches, the specular term, the shadow-box test) saves nothing: an occupancy limit, not
+  arithmetic.
+- **Sky light**: dropping the radiance lookups (atan, acos, two fetches) saves 0.7 ms.
+- **Robots**: besides the triangles now handled, every robot part is its own draw with its own material (DirtCoating's
+  per-geometry arguments) in the prepass, the colour pass and each shadow map: about 760 draw calls per frame.
+- **Ground overlays**: of the transparent pass (~6 ms), the trampled sand is 1.7 ms, the streets 1.2, the doorway
+  patches 0.2 (fully lit, with both suns' soft shadows, as SceneKit draws them).
+- **Godot's fixed passes**: depth prepass ~0.9 ms, the MSAA depth resolve between the opaque and transparent passes
+  0.25-0.35 ms (Godot resolves whenever a compositor effect asks for the normal-roughness buffer, which the SSAO port
+  needs), final depth resolve + glow 0.6-0.8, tonemap and 2D 0.6-0.7, window blit 0.3. The "Blit Command 0" of the
+  earlier report is Godot's per-frame uploads (15 small buffer copies) and a 1.9 MB buffer fill (the cluster buffer),
+  0.2-0.4 ms.
+
 ## CPU per subsystem
 
 960 x 540 town roam (both at 60 FPS). Per frame of 16.7 ms:
@@ -236,24 +329,34 @@ report, not gameplay. The gameplay transitions themselves are smooth: intro -> c
 finish -> overview, ⌘R, ⌘M, menu -> sandbox have worst frames of 19-73 ms. Frame rates at 1280 x 820: race 49-53 FPS,
 intro 42, finish overview 36 (GPU-bound views of the whole town), sandbox and menus 60.
 
-## What this means for optimisation (not done here)
+## What this means for optimisation
 
 In order of payoff at 1080p, each to be checked against the captures (the rule for all optimisations: the look must not
-change):
+change). The GPU optimisation pass above did the SSAO mips and the robots' shadow casters; what it found for the rest:
 
 1. Shadows (~6 ms): render only what SceneKit renders (one map per sun instead of two splits each, or the second split
    only when the fixed box needs it, as now, but with a smaller atlas region), stop clearing the full 8192² atlas, and
    reproduce SceneKit's penumbra with fewer taps (Godot's SoftHigh is 3.7 ms more than its hard filter; SceneKit's own
-   kernel is a fixed set of taps x `shadowRadius`, PORTING.md "Not resolved").
-2. Scene shading (~3.4 ms): the ground (terrain and the transparent town overlays) is shaded with full lighting and
+   kernel is a fixed set of taps x `shadowRadius`, PORTING.md "Not resolved"). Measured since: fewer taps do not help
+   (SoftMedium's 8 taps cost what SoftHigh's 16 do), the atlas clear and the per-pass atlas load/store are inside
+   Godot's renderer, and Godot fits its maps to the camera (no fixed box per light), so this needs either a custom
+   Godot build or shadow maps rendered by the facade itself.
+2. The robots' draw calls (~760 per 1080p frame in the town roam): every robot part is its own draw with its own
+   material (DirtCoating's per-geometry arguments) in the prepass, the colour pass and each shadow map. Merging the
+   parts that move together and share a material would need the coating's per-part `dirtToBody` folded into the
+   vertices.
+3. Scene shading (~3.4 ms): the ground (terrain and the transparent town overlays) is shaded with full lighting and
    shadowing per overlay layer; materials that SceneKit shades as `.constant` or whose result is covered could skip
    Godot's light loop (`render_mode unshaded` where the composer already writes the final colour), and the overlays could
-   share one lit evaluation.
-3. Post chain and prepass (~3 ms): glow, tonemap and the 2D pass at full resolution, the depth prepass, two MSAA
-   resolves.
-4. Loading freeze (2-2.6 s): hand meshes to Godot over several frames or from a worker thread while the loading screen
+   share one lit evaluation. Measured since: the composed `light()` and the sky-light lookups cost 1.6 and 0.7 ms
+   in the opaque pass, but only when removed whole (an occupancy limit); exact restructurings of single parts gained
+   nothing measurable. The trampled sand and the streets are 1.7 and 1.2 ms of the transparent pass.
+4. Post chain and prepass (~3 ms): glow, tonemap and the 2D pass at full resolution, the depth prepass, two MSAA
+   resolves. All inside Godot's renderer; the depth resolve between the opaque and transparent passes runs because the
+   SSAO port asks for the normal-roughness buffer.
+5. Loading freeze (2-2.6 s): hand meshes to Godot over several frames or from a worker thread while the loading screen
    draws, and do not encode a PNG for snapshots whose image is discarded.
-5. CPU: a separate render thread (Godot's thread model) would give the main thread back ~5 ms; allocation in the trails,
+6. CPU: a separate render thread (Godot's thread model) would give the main thread back ~5 ms; allocation in the trails,
    dust/debris rebuilds and the node flush drives the GC.
 
 ## Reproduce
@@ -268,6 +371,13 @@ tools/perf/summarize-runs.py --label-from-name RUN_DIRS...
 # GPU per pass: labelled Metal System Trace 30 s after launch, then per-encoder sums
 tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --labels --trace 30:4
 tools/perf/mst-gpu.py OUT/metal-system.trace --process Godot
+# A/B of one fixed frame (GPU optimisation pass): wait for an idle GPU, freeze the town roam after 16 s, trace 21-25 s
+# after the benchmark start (the run analyses its own trace into OUT/mst-gpu.json), then compare runs pass by pass
+MARVIN_PERF_IGNORE_PIDS=<pid of a game left running> tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 \
+    --mode city-roam --seconds 28 --labels --trace 21:4 --trace-from-start --wait-idle --env MARVIN_BENCHMARK_FREEZE=16
+tools/perf/gpu-passes.py OUT_A OUT_B ...
+# diagnostics: --env MARVIN_BENCHMARK_HIDE="Marvin CAD assembly;R2-D2 · ;BB-8 · ;WALL-E · " (no robots),
+# --env MARVIN_SCN_CAL=ShadowFilterQuality=0 (hard shadows), -- --benchmark-no-shadows, -- --benchmark-no-ssao
 # CPU: managed stacks (dotnet-trace) and a native sample of all threads
 tools/perf/profile-cpu.sh OUT 25 15 --sample -- --app godot --size 960x540
 tools/perf/speedscope-top.py OUT/cpu.speedscope.json 40 all

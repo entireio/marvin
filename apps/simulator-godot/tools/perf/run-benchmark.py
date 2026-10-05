@@ -176,7 +176,7 @@ def other_games(own_pids):
     return sorted(int(p) for p in out if int(p) not in own_pids and int(p) not in ignore and int(p) != os.getpid())
 
 
-def wait_idle(quiet_seconds=3, poll=1.0, limit=7200):
+def wait_idle(quiet_seconds=1.0, poll=0.25, limit=7200):
     """Wait until no other game process has run for quiet_seconds (at most limit seconds); returns the time waited."""
     t0, quiet_since = time.time(), None
     while time.time() - t0 < limit:

@@ -149,6 +149,18 @@ def main():
     for r in rows_out[:a.top]:
         chans = ' '.join(f"{k[0]}{v:.2f}" for k, v in sorted(r['channelMSPerFrame'].items()))
         print(f"{r['busyMSPerFrame']:13.3f} {r['encodersPerFrame']:9.2f} {r['drawsPerEncoder']:9.0f}  {chans:22s} {r['label']}")
+    # Per frame: the union of the frame's own encoders. The median is robust against frames whose encoders were
+    # interleaved with other processes' GPU work (which stretches their intervals) and against labelling gaps.
+    per_frame = collections.defaultdict(list)
+    for s, d, ch, f, label in items:
+        if f is not None:
+            per_frame[f].append((s, s + d))
+    frame_busy = sorted(union_length(v) / 1e6 for v in per_frame.values())
+    if frame_busy:
+        q = lambda p: frame_busy[min(len(frame_busy) - 1, int(p * (len(frame_busy) - 1) + 0.5))]
+        report['busyMSPerFrameQuartiles'] = [q(0.25), q(0.5), q(0.75)]
+        report['busyMSPerFrameP10'] = q(0.1)
+        print(f"per frame (union of each frame's encoders, {len(frame_busy)} frames): p10 {q(0.1):.2f}  p25 {q(0.25):.2f}  median {q(0.5):.2f}  p75 {q(0.75):.2f} ms")
     report['target'] = target
     report['frames'] = frames
     report['busyMSPerFrame'] = total
