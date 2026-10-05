@@ -687,6 +687,8 @@ public static class CheckRunner
 {
     public static int Main(string[] args)
     {
+        // Godot-port only: the managed Darwin hypot used on Windows against Darwin libm (PortableMathChecks.cs).
+        if (args.Contains("--portable-math")) return PortableMathChecks.Run(args);
         var checks = new SimulationTests();
         checks.testTownSpeedAndGaze();
         checks.testStormLanding();
