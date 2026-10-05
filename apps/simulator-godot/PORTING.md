@@ -18,7 +18,9 @@ A faithful port of the macOS game in `apps/simulator-macos` to Godot 4.7 (.NET/C
 | `scenes/` | Godot scenes. `Main.tscn` is the entry point. |
 | `assets/` | **Gitignored.** Runtime assets copied from the macOS game by `tools/sync-assets.py`. |
 | `reference/` | **Gitignored.** Reference outputs from the macOS game (SimulationChecks output, captures). |
-| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`. |
+| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`; `perf/`: like-for-like benchmark runner and probes (see `docs/performance.md`). |
+| `docs/performance.md` | The measured performance gap to the macOS game (same drawable sizes, GPU per pass, CPU, memory, loading) and the ranked costs. |
+| `export_presets.cfg`, `MarvinGodot.sln` | Export presets (macOS universal, Windows x86_64; Godot 4.7.2 .NET export templates) and the solution file Godot's C# export needs. |
 
 ## Build and run
 
@@ -511,6 +513,14 @@ Every capture mode of the Godot port against the macOS game of this branch, on t
 **Not resolved:** Godot's directional shadows cannot sample SceneKit's PCF kernel (a fixed set of `shadowKernel` taps x `shadowRadius`, bilinear compare per tap, in its common profile source), which gives SceneKit's penumbrae their blotchy look, and Godot's receiver normal bias moves shadow edges towards their casters (up to 17-19 cm at a 10 degree sun; reducing it brings back self-shadowing on town walls); SceneKit's grazing-view darkening in deferred shadows; SSAO of `.geometry`-modified surfaces themselves; the self-illumination diffuse response (unused by the game). **Performance** with the SSAO port: `--town-benchmark --city-roam` at 960 x 540 59.74 FPS (p95 18.5 ms, no frame over 25 ms); at 1920 x 1050 30.0 FPS (31.7-32.1 before; the port's SSAO passes cost about 1.8 ms more per frame than Godot's SSAO did).
 
 ## Performance
+
+**The like-for-like comparison is `docs/performance.md`** (2026-10-05): both games at exactly 960 x 540 and 1920 x 1080
+drawables (`tools/perf/run-benchmark.py`; the macOS window is resized by an injected library, not by changing its
+sources), GPU per pass from labelled Metal System Traces, CPU per subsystem, ten-minute memory and node counts, loading
+and transition hitches, editor runtime vs release C# vs an exported release build. In short: 60 FPS in both at 540p
+(Godot 9.7 ms GPU per frame vs 7.9), at 1080p macOS 60 and Godot 29-35 FPS (22.1 vs 11.0 ms GPU: shadows ~6 ms, scene
+shading ~3.4 ms, post chain ~3 ms more), a 2.8-3.4 s loading freeze (macOS 0.75 s). The numbers below are the earlier
+measurements of the performance pass.
 
 **Benchmark.** `--town-benchmark DIR [--city-roam | --dune-roam | --postrace-roam | --outer-town-survey] [--benchmark-*]` is TownSmoke.swift's benchmark with the same flags, environment (`MARVIN_BENCHMARK_SECONDS`, default 45; `MARVIN_SANDSTORM`; `MARVIN_DAYLIGHT_FRACTION`) and files, so `scripts/rendering/check-sustained-performance.py` and `analyze-frame-timeline.py` read Godot runs unchanged. `TownFrameMeter` is the view's renderer delegate: the facade calls updateAtTime/willRender when it flushes before drawing (Godot's frame_pre_draw) and didRender after the frame was submitted (frame_post_draw), so `renderCallbackSpanMS` is Godot's render submission, which with vsync includes waiting for a drawable. `benchmarkArguments` are the game's own arguments (without Godot's). Godot-only output: `godot-render.json` (per second: draw calls and primitives of the visible and shadow passes, process and facade flush times, meshes built, node count, video memory) and `benchmark.json["godot"]` (engine, driver, C# optimisation). The macOS benchmark gets its 1080p drawable from a Retina screen (960 x 540 points at 2x); on a 1x screen run with `MARVIN_BACKING_SCALE=2`. Godot (like AppKit) does not draw a fully covered window, so on a shared desktop `MARVIN_BENCHMARK_ON_TOP=1` keeps the window above others (without it another app's window halved the rendered-frame ledger). GPU time per process comes from the Metal HUD (`MTL_HUD_ENABLED=1 MTL_HUD_LOG_ENABLED=1`) and Metal System Trace (`xctrace record --template 'Metal System Trace' --attach PID`); Godot's own viewport GPU timestamps report 0 on its Metal driver.
 

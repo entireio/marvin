@@ -270,9 +270,14 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         var size = DrawableSize;
         if (rig.viewport.Size != size) rig.viewport.Size = size;
         // Rendered alone with this view's scene uniforms (a hidden view, which does not render each frame, renders once).
+        long t0 = FrameProfile.Now.Ticks;
         SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, scene: rig.scene);
+        long t1 = FrameProfile.Now.Ticks;
         var img = rig.viewport.GetTexture().GetImage();
-        return NSImage.data(img.SavePngToBuffer());
+        long t2 = FrameProfile.Now.Ticks;
+        var png = img.SavePngToBuffer();
+        FrameProfile.Snapshot(t0, t1, t2);
+        return NSImage.data(png);
     }
     /// <summary>prepare(_:completionHandler:): shaders compile on first use in Godot; completes immediately.</summary>
     public void prepare(object[] objects, Action<bool> completionHandler) { SceneKitRuntime.Flush(); completionHandler?.Invoke(true); }

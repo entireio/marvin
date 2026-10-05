@@ -212,7 +212,7 @@ public partial class SceneKitRuntime : Node
         try
         {
             // FrameProfile: per-stage CPU time for the benchmark telemetry (measurement only).
-            long t = FrameProfile.Now;
+            var t = FrameProfile.Now;
             foreach (var view in LiveViews()) view.scene?.EnsureAttached();
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateUpdate();
             FrameProfile.Add(FrameProfile.Attach, t); t = FrameProfile.Now;
@@ -372,7 +372,7 @@ public partial class SceneKitRuntime : Node
         {
             if (dirtyMaterials.Count > 0)
             {
-                long t = FrameProfile.Now;
+                var t = FrameProfile.Now;
                 var mats = dirtyMaterials.ToArray(); dirtyMaterials.Clear();
                 foreach (var m in mats) m.Flush();
                 FrameProfile.MaterialsFlushed += mats.Length;
@@ -380,7 +380,7 @@ public partial class SceneKitRuntime : Node
             }
             if (dirtyNodes.Count > 0)
             {
-                long t = FrameProfile.Now;
+                var t = FrameProfile.Now;
                 var nodes = dirtyNodes.ToArray(); dirtyNodes.Clear();
                 PrepareMeshes(nodes);
                 FrameProfile.Add(FrameProfile.PrepareMeshes, t); t = FrameProfile.Now;

@@ -5,7 +5,8 @@
                      [--seconds 45] [--godot-binary PATH] [--export-binary PATH] [--trace AT:SECONDS [--labels]]
                      [--flag GAME-FLAG] [-- game flags]
 
---flag runs another game mode in the same window and with the same recording (`GAME-FLAG OUT`, e.g. --loading-smoke-test)
+--flag=GAME-FLAG runs another game mode in the same window and with the same recording (`GAME-FLAG OUT`, e.g.
+--flag=--loading-smoke-test; write it with "=" so the flag is not read as an option)
 instead of --town-benchmark.
 
 Window: both games get their window from window-inject.m (DYLD_INSERT_LIBRARIES; the macOS game is not modified). The

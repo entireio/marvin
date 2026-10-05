@@ -28,6 +28,10 @@ public sealed class GodotFrameTelemetry
     private long drawCalls, objects, primitives, shadowDrawCalls, shadowPrimitives, visibleDrawCalls, visiblePrimitives; private int frames, current = -1;
     // Facade CPU per Flush stage (FrameProfile), per second and over the run, and the resource counters.
     private readonly double[] secondStages = new double[FrameProfile.FlushStages.Length], runStages = new double[FrameProfile.FlushStages.Length];
+    private readonly double[] secondStageBytes = new double[FrameProfile.FlushStages.Length], runStageBytes = new double[FrameProfile.FlushStages.Length];
+    // Allocation: main thread per frame (all of it: game tick, facade, Godot callbacks) and the whole process.
+    private long secondTickBytes, runTickBytes;
+    private long lastThreadBytes = -1, lastProcessBytes = -1, secondThreadBytes, secondProcessBytes, runThreadBytes, runProcessBytes;
     private readonly List<double> setup = new(), secondSetup = new();
     private long secondMaterials, secondNodes, secondConstraints, secondMetalTextures, secondImageCreated, secondImageUpdates, secondImageBytes;
     private int runFrames;
@@ -74,6 +78,12 @@ public sealed class GodotFrameTelemetry
             },
             // Facade CPU per frame (mean ms per Flush stage) and what it flushed per second.
             ["flushStagesMS"] = Enumerable.Range(0, secondStages.Length).ToDictionary(i => FrameProfile.FlushStages[i], i => (object)(secondStages[i] / frames)),
+            ["allocationKBPerFrame"] = new Dictionary<string, object>
+            {
+                ["mainThread"] = secondThreadBytes / 1024.0 / frames, ["process"] = secondProcessBytes / 1024.0 / frames, ["benchmarkTick"] = secondTickBytes / 1024.0 / frames,
+                ["tickPhases"] = Enumerable.Range(0, 6).ToDictionary(i => TickPhases[i], i => (object)(secondPhaseBytes[i] / 1024.0 / frames)),
+                ["flushStages"] = Enumerable.Range(0, secondStageBytes.Length).ToDictionary(i => FrameProfile.FlushStages[i], i => (object)(secondStageBytes[i] / 1024.0 / frames)),
+            },
             ["frameSetupCpuMS"] = secondSetup.Count == 0 ? 0 : secondSetup.Average(),
             ["flushed"] = new Dictionary<string, object>
             {
@@ -83,7 +93,7 @@ public sealed class GodotFrameTelemetry
             },
         });
         secondGpu.Clear(); secondCpu.Clear(); secondProcess.Clear(); secondFlush.Clear(); drawCalls = objects = primitives = 0; shadowDrawCalls = shadowPrimitives = visibleDrawCalls = visiblePrimitives = 0; frames = 0;
-        Array.Clear(secondStages); secondSetup.Clear(); ResetGc();
+        Array.Clear(secondStages); Array.Clear(secondStageBytes); secondThreadBytes = secondProcessBytes = secondTickBytes = 0; Array.Clear(secondPhaseBytes); secondSetup.Clear(); ResetGc();
         secondMaterials = secondNodes = secondConstraints = secondMetalTextures = secondImageCreated = secondImageUpdates = secondImageBytes = 0;
     }
     /// <summary>Takes the facade counters of the frame just processed (FrameProfile) and resets them.</summary>
@@ -92,20 +102,31 @@ public sealed class GodotFrameTelemetry
         if (keep)
         {
             for (int i = 0; i < secondStages.Length; i++) { double ms = FrameProfile.Milliseconds(FrameProfile.FlushTicks[i]); secondStages[i] += ms; runStages[i] += ms; }
+            for (int i = 0; i < secondStageBytes.Length; i++) { secondStageBytes[i] += FrameProfile.FlushBytes[i]; runStageBytes[i] += FrameProfile.FlushBytes[i]; }
+            long threadBytes = GC.GetAllocatedBytesForCurrentThread(), processBytes = GC.GetTotalAllocatedBytes(false);
+            if (lastThreadBytes >= 0) { secondThreadBytes += threadBytes - lastThreadBytes; runThreadBytes += threadBytes - lastThreadBytes; secondProcessBytes += processBytes - lastProcessBytes; runProcessBytes += processBytes - lastProcessBytes; }
+            lastThreadBytes = threadBytes; lastProcessBytes = processBytes;
             secondMaterials += FrameProfile.MaterialsFlushed; secondNodes += FrameProfile.NodesFlushed; secondConstraints += FrameProfile.ConstraintsEvaluated;
             secondMetalTextures += FrameProfile.MetalTexturesCreated; secondImageCreated += FrameProfile.ImageTexturesCreated;
             secondImageUpdates += FrameProfile.ImageTextureUpdates; secondImageBytes += FrameProfile.ImageTextureBytes;
             runFrames++;
         }
+        else { lastThreadBytes = lastProcessBytes = -1; }
         FrameProfile.Reset();
     }
     /// <summary>Called once per tick with the benchmark's elapsed time (samples taken during the 3 s warm-up are dropped).</summary>
-    public void sample(double elapsed)
+    /// <summary>Tick phases of tickTownBenchmark whose allocations the benchmark reports (timeline update columns + audio).</summary>
+    public static readonly string[] TickPhases = { "physics", "models", "effects", "camera", "town", "audio" };
+    private readonly double[] secondPhaseBytes = new double[6], runPhaseBytes = new double[6];
+    public void sample(double elapsed, long[] tickPhaseBytes = null)
     {
-        if (elapsed < 3) { gpu.Clear(); cpu.Clear(); process.Clear(); flush.Clear(); dispatch.Clear(); meshes.Clear(); secondFlush.Clear(); seconds.Clear(); current = -1; frames = 0; secondGpu.Clear(); secondCpu.Clear(); secondProcess.Clear(); drawCalls = objects = primitives = 0; TakeProfile(false); Array.Clear(runStages); runFrames = 0; setup.Clear(); return; }
+        long tickBytes = tickPhaseBytes?.Sum() ?? 0;
+        if (elapsed < 3) { gpu.Clear(); cpu.Clear(); process.Clear(); flush.Clear(); dispatch.Clear(); meshes.Clear(); secondFlush.Clear(); seconds.Clear(); current = -1; frames = 0; secondGpu.Clear(); secondCpu.Clear(); secondProcess.Clear(); drawCalls = objects = primitives = 0; TakeProfile(false); Array.Clear(runStages); Array.Clear(runStageBytes); runThreadBytes = runProcessBytes = runTickBytes = 0; Array.Clear(runPhaseBytes); runFrames = 0; setup.Clear(); return; }
         int second = (int)elapsed;
         if (second != current) { Close(); current = second; }
         TakeProfile(true);
+        secondTickBytes += tickBytes; runTickBytes += tickBytes;
+        if (tickPhaseBytes != null) for (int i = 0; i < 6; i++) { secondPhaseBytes[i] += tickPhaseBytes[i]; runPhaseBytes[i] += tickPhaseBytes[i]; }
         double frameSetup = RenderingServer.GetFrameSetupTimeCpu(); setup.Add(frameSetup); secondSetup.Add(frameSetup);
         var rid = viewport.GetViewportRid();
         double g = RenderingServer.ViewportGetMeasuredRenderTimeGpu(rid), c = RenderingServer.ViewportGetMeasuredRenderTimeCpu(rid);
@@ -134,6 +155,13 @@ public sealed class GodotFrameTelemetry
             ["flushMS"] = stats(flush), ["dispatchMS"] = stats(dispatch), ["meshesBuiltPerFrame"] = stats(meshes),
             ["flushStagesMS"] = Enumerable.Range(0, runStages.Length).ToDictionary(i => FrameProfile.FlushStages[i], i => (object)(runFrames == 0 ? 0 : runStages[i] / runFrames)),
             ["frameSetupCpuMS"] = stats(setup),
+            ["allocationKBPerFrame"] = new Dictionary<string, object>
+            {
+                ["mainThread"] = runFrames == 0 ? 0 : runThreadBytes / 1024.0 / runFrames, ["process"] = runFrames == 0 ? 0 : runProcessBytes / 1024.0 / runFrames,
+                ["benchmarkTick"] = runFrames == 0 ? 0 : runTickBytes / 1024.0 / runFrames,
+                ["tickPhases"] = Enumerable.Range(0, 6).ToDictionary(i => TickPhases[i], i => (object)(runFrames == 0 ? 0 : runPhaseBytes[i] / 1024.0 / runFrames)),
+                ["flushStages"] = Enumerable.Range(0, runStageBytes.Length).ToDictionary(i => FrameProfile.FlushStages[i], i => (object)(runFrames == 0 ? 0 : runStageBytes[i] / 1024.0 / runFrames)),
+            },
         };
     }
 }
@@ -170,25 +198,45 @@ public partial class AppController
             ["heapMB"] = System.GC.GetTotalMemory(false) / 1048576.0,
         };
         app.cachedDirtWorld = world;
+        // What startDirtTrack spends its time on (the loading screen's freeze at 93 %): the facade's Flush stages (view.prepare
+        // and the snapshot's flush), SCNView.snapshot (revealDirtTrack: first draw of the race world, read-back, PNG), GC,
+        // and the rest (game code and Godot calls outside the flush).
+        FrameProfile.Reset(); FrameProfile.ResetSnapshots();
+        int startGc0 = System.GC.CollectionCount(0), startGc1 = System.GC.CollectionCount(1), startGc2 = System.GC.CollectionCount(2);
+        var startPause = System.GC.GetTotalPauseDuration();
         var start = Stopwatch.StartNew();
         app.startDirtTrack();
         double startMs = start.Elapsed.TotalMilliseconds;
+        var startBreakdown = new Dictionary<string, object>
+        {
+            ["flushStagesMs"] = Enumerable.Range(0, FrameProfile.FlushStages.Length).ToDictionary(i => FrameProfile.FlushStages[i], i => (object)FrameProfile.Milliseconds(FrameProfile.FlushTicks[i])),
+            ["nodesFlushed"] = FrameProfile.NodesFlushed, ["materialsFlushed"] = FrameProfile.MaterialsFlushed,
+            ["snapshots"] = FrameProfile.Snapshots, ["snapshotRenderMs"] = FrameProfile.Milliseconds(FrameProfile.SnapshotRenderTicks),
+            ["snapshotReadbackMs"] = FrameProfile.Milliseconds(FrameProfile.SnapshotReadbackTicks), ["snapshotPngMs"] = FrameProfile.Milliseconds(FrameProfile.SnapshotEncodeTicks),
+            ["gc"] = new[] { System.GC.CollectionCount(0) - startGc0, System.GC.CollectionCount(1) - startGc1, System.GC.CollectionCount(2) - startGc2 },
+            ["gcPauseMs"] = (System.GC.GetTotalPauseDuration() - startPause).TotalMilliseconds,
+        };
         var frames = new List<double>();
+        var frameFlush = new List<double>();
         app.timer = new Marvin.SceneKit.Timer(1.0 / 60);
         var frameWatch = Stopwatch.StartNew();
-        for (int i = 0; i < 30; i++)
+        FrameProfile.Reset();
+        for (int i = 0; i < 60; i++)
         {
             await frame(tree);
             frames.Add(frameWatch.Elapsed.TotalMilliseconds); frameWatch.Restart();
+            frameFlush.Add(Enumerable.Range(0, FrameProfile.FlushStages.Length).Sum(k => FrameProfile.Milliseconds(FrameProfile.FlushTicks[k]))); FrameProfile.Reset();
         }
         var report = new Dictionary<string, object>
         {
             ["stages"] = stages, ["buildMs"] = buildMs, ["gc"] = gc, ["startDirtTrackMs"] = startMs, ["firstFramesMs"] = frames,
+            ["startDirtTrackBreakdown"] = startBreakdown, ["firstFramesFlushMs"] = frameFlush,
             ["engine"] = app.benchmarkEngineReport(),
         };
         System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "world-build-profile.json"), JSONSerialization.prettyPrintedSortedKeys(report));
         foreach (var s in stages) GD.Print($"{s["ms"],9:F1} ms  {s["label"]}");
         GD.Print($"build {buildMs:F0} ms, startDirtTrack {startMs:F0} ms, first frames {string.Join(" ", frames.Take(8).Select(f => f.ToString("F0")))} ms");
+        GD.Print("startDirtTrack breakdown: " + JSONSerialization.prettyPrintedSortedKeys(startBreakdown));
         if (delay > 0) { await tree.ToSignal(tree.CreateTimer(delay), SceneTreeTimer.SignalName.Timeout); }
         Foundation.exit(0);
     }

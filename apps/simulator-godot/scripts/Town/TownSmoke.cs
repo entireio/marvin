@@ -330,6 +330,9 @@ public partial class AppController
         // PORT: benchmarkGPUCapture.update(elapsed:device:directory:) (Xcode GPU trace) is not ported.
         if (elapsed < 3) { townMeter.reset(); townBenchmarkCPU = new(); townBenchmarkTimeline = new(); }
         var begin = ProcessInfo.processInfo.systemUptime;
+        // Godot-only telemetry (godot-render.json): bytes the main thread allocates per phase of the tick.
+        long allocationBegin = GC.GetAllocatedBytesForCurrentThread();
+        var allocation = new long[6];
         var args = CommandLine.arguments;
         var isolateTrails = args.Contains("--benchmark-isolate-trails");
         var trailsHidden = isolateTrails && ((elapsed >= 300 && elapsed < 330) || (elapsed >= 480 && elapsed < 510));
@@ -353,10 +356,13 @@ public partial class AppController
         }
         advanceRacePhysics(input, dt: dt, raceDT: dt);
         var physicsEnd = ProcessInfo.processInfo.systemUptime;
+        allocation[0] = GC.GetAllocatedBytesForCurrentThread();
         updateOpponents();
         var modelsEnd = ProcessInfo.processInfo.systemUptime;
+        allocation[1] = GC.GetAllocatedBytesForCurrentThread();
         updateRaceWorld(dt: dt);
         var effectsEnd = ProcessInfo.processInfo.systemUptime;
+        allocation[2] = GC.GetAllocatedBytesForCurrentThread();
         var aerial = !raceCameraLocked && townBenchmarkRoute.Count == 0 && !args.Contains("--benchmark-chase-only") && elapsed % 24 > 18;
         if (aerial)
         {
@@ -374,15 +380,20 @@ public partial class AppController
             world.camera.look(at: new SCNVector3(ahead.x, 1.5, ahead.y), up: new SCNVector3(0, 1, 0), localFront: new SCNVector3(0, 0, -1));
         }
         var cameraEnd = ProcessInfo.processInfo.systemUptime;
+        allocation[3] = GC.GetAllocatedBytesForCurrentThread();
         if (!dirtWorld.town.root.isHidden)
         {
             dirtWorld.town.update(dt: dt, camera: world.camera.position, player: detailPlayer, robots: robotBodies(),
                 visible: node => view.isNode(node, insideFrustumOf: world.camera), shadowCamera: world.camera, viewportAspect: (double)(view.bounds.width / view.bounds.height));
         }
+        allocation[4] = GC.GetAllocatedBytesForCurrentThread();
         updateRaceAudio(dt: dt, advancing: true);
         var finish = ProcessInfo.processInfo.systemUptime;
+        allocation[5] = GC.GetAllocatedBytesForCurrentThread();
         townBenchmarkCPU.Add(finish - begin);
-        godotTelemetry?.sample(elapsed);
+        for (int i = 5; i > 0; i--) allocation[i] -= allocation[i - 1];
+        allocation[0] -= allocationBegin;
+        godotTelemetry?.sample(elapsed, allocation);
         townBenchmarkTimeline.Add(new[] { now, elapsed, dt * 1000, (physicsEnd - begin) * 1000, (modelsEnd - physicsEnd) * 1000, (effectsEnd - modelsEnd) * 1000, (cameraEnd - effectsEnd) * 1000, (finish - cameraEnd) * 1000, (finish - begin) * 1000, simulation.x, simulation.z, aerial ? 1 : 0 });
         var duration = double.TryParse(environmentValue("MARVIN_BENCHMARK_SECONDS") ?? "45", System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : 45;
         if (elapsed >= max(10, duration))
