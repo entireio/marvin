@@ -43,6 +43,14 @@ internal static class SceneKitCalibration
     public static double ShadowBiasTexels = 1.0, ShadowBiasPerKernel = 0.6;
     /// <summary>Godot ShadowNormalBias (Godot's default is 2.0; texel-scaled by Godot).</summary>
     public static double ShadowNormalBias = 2.0, ShadowNormalBiasPerKernel = 0.8;
+    /// <summary>
+    /// SceneKit's caster-side slope-scaled bias for fixed shadow boxes (ShaderComposer.ShadowSlopeBias), in SceneKit
+    /// shadow texels (2 x orthographicScale / shadowMapSize) per unit tangent of the surface's angle to the light, and the
+    /// largest tangent used. 2.6 texels (7.4 cm for the race sun) is about the PCF kernel's radius, so a casting ground
+    /// leaves the walls standing on it lit, as in SceneKit (GroundBiasProbe test A). Casters without normals (the town's
+    /// shadow proxies) get none.
+    /// </summary>
+    public static double ShadowSlopeBiasTexels = 2.6, ShadowSlopeMax = 20.0;
     /// <summary>PCF kernel: Godot blur x quality radius x Godot texel = ShadowKernelScale x shadowRadius x SceneKit texel (world).
     /// Static fallback before the first fit: blur = shadowRadius x ShadowBlurPerRadius.</summary>
     public static double ShadowKernelScale = 0.88, ShadowBlurPerRadius = 1.0 / 3.0, ShadowBlurMin = 0.25, ShadowBlurMax = 16.0;

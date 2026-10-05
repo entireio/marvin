@@ -163,6 +163,7 @@ internal static class ShaderComposer
         sb.AppendLine("global uniform vec4 scn_deferred;");
         sb.AppendLine("global uniform mat4 scn_shadow_box0; // fixed shadow boxes (SceneKitRuntime.FitShadows; zero = none)");
         sb.AppendLine("global uniform mat4 scn_shadow_box1;");
+        sb.AppendLine("global uniform vec4 scn_shadow_slope; // slope-scaled caster bias (world) of box 0 / 1, maximum slope (SceneKitRuntime.FitShadows)");
         sb.AppendLine("global uniform sampler2D scn_radiance : filter_linear, repeat_enable; // SCNScene.RadianceTexture bands");
         sb.AppendLine();
 
@@ -327,6 +328,7 @@ internal static class ShaderComposer
             sb.AppendLine(Indent(snip.body, 8));
             sb.AppendLine("    }");
         }
+        if (!noNormals && !background) ShadowSlopeBias(sb);
         if (background)
         {
             sb.AppendLine("    // readsFromDepthBuffer = false + negative renderingOrder: drawn first in SceneKit.");
@@ -597,6 +599,32 @@ internal static class ShaderComposer
         sb.AppendLine("            if (dot(scn_lw, scn_bz) < -0.99995 * length(scn_bz)) {");
         sb.AppendLine("                vec3 scn_q = abs((scn_box * vec4(scn_wpos, 1.0)).xyz);");
         sb.AppendLine("                if (max(scn_q.x, max(scn_q.y, scn_q.z)) > 1.0) scn_atten = 1.0;");
+        sb.AppendLine("            }");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
+    }
+
+    /// <summary>
+    /// vertex() epilogue for Godot's shadow pass: SceneKit's caster-side, slope-scaled shadow bias for the lights with a
+    /// fixed shadow box. Measured (GroundBiasProbe): SceneKit pushes a caster away from the light by about
+    /// ShadowSlopeBiasTexels of its own shadow texels times the tangent of the angle between the surface and the light
+    /// direction, so a ground plane at a grazing sun never darkens the walls standing on it, and a plate's shadow on the
+    /// ground fades in once the gap exceeds that offset. The shadow pass's view axis identifies the light (the box's z row).
+    /// </summary>
+    private static void ShadowSlopeBias(StringBuilder sb)
+    {
+        sb.AppendLine("    if (IN_SHADOW_PASS) {");
+        sb.AppendLine("        // SceneKit's slope-scaled caster bias (fixed shadow boxes; SceneKitRuntime.FitShadows sets scn_shadow_slope).");
+        sb.AppendLine("        vec3 scn_towards = normalize(INV_VIEW_MATRIX[2].xyz);");
+        sb.AppendLine("        for (int scn_i = 0; scn_i < 2; scn_i++) {");
+        sb.AppendLine("            mat4 scn_box = scn_i == 0 ? scn_shadow_box0 : scn_shadow_box1;");
+        sb.AppendLine("            float scn_bias = scn_i == 0 ? scn_shadow_slope.x : scn_shadow_slope.y;");
+        sb.AppendLine("            vec3 scn_bz = vec3(scn_box[0][2], scn_box[1][2], scn_box[2][2]);");
+        sb.AppendLine("            if (scn_bias > 0.0 && dot(scn_towards, scn_bz) < -0.99995 * length(scn_bz)) {");
+        sb.AppendLine("                vec3 scn_n = normalize(MODEL_NORMAL_MATRIX * NORMAL);");
+        sb.AppendLine("                float scn_c = abs(dot(scn_n, scn_towards));");
+        sb.AppendLine("                float scn_slope = min(sqrt(max(0.0, 1.0 - scn_c * scn_c)) / max(scn_c, 1e-4), scn_shadow_slope.z);");
+        sb.AppendLine("                VERTEX -= inverse(mat3(MODEL_MATRIX)) * (scn_towards * (scn_bias * scn_slope));");
         sb.AppendLine("            }");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
