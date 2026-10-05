@@ -281,9 +281,12 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         FrameProfile.Snapshot(t0, t1, t2);
         return image;
     }
-    /// <summary>prepare(_:completionHandler:): shaders compile on first use in Godot; completes immediately.</summary>
-    public void prepare(object[] objects, Action<bool> completionHandler) { SceneKitRuntime.Flush(); completionHandler?.Invoke(true); }
-    public bool prepare(object @object, Func<bool> shouldAbortBlock) { SceneKitRuntime.Flush(); return true; }
+    /// <summary>prepare(_:completionHandler:): asynchronous like SceneKit's: the scenes' first flush (meshes, material
+    /// variants, textures) is spread over the next frames and the handler runs when it is done (SceneKitRuntime.PrepareAsync;
+    /// shaders still compile on first use in Godot). Other objects need no preparation.</summary>
+    public void prepare(object[] objects, Action<bool> completionHandler) => SceneKitRuntime.PrepareAsync(objects.OfType<SCNScene>(), completionHandler);
+    /// <summary>prepare(_:shouldAbortBlock:): synchronous, flushes everything now.</summary>
+    public bool prepare(object @object, Func<bool> shouldAbortBlock) { SceneKitRuntime.FlushAll(); return true; }
     public bool isNode(SCNNode node, SCNNode insideFrustumOf) => rig.IsNodeInFrustum(node, insideFrustumOf, rig.Aspect);
     public List<SCNNode> nodesInsideFrustum(SCNNode of)
     {
@@ -361,7 +364,7 @@ public sealed class SCNRenderer : SCNSceneRenderer
         var b = unprojectPoint(new SCNVector3(point.x, point.y, 1));
         return SCNHitTest.Run(scene.rootNode, a, b, options, renderTransforms: true);
     }
-    public void prepare(object[] objects, Action<bool> completionHandler) { SceneKitRuntime.Flush(); completionHandler?.Invoke(true); }
+    public void prepare(object[] objects, Action<bool> completionHandler) => SceneKitRuntime.PrepareAsync(objects.OfType<SCNScene>(), completionHandler);
     /// <summary>prepare(_:shouldAbortBlock:) (SCNSceneRenderer), as SCNView's: flushes pending changes; Godot compiles on first draw.</summary>
-    public bool prepare(object @object, Func<bool> shouldAbortBlock) { SceneKitRuntime.Flush(); return true; }
+    public bool prepare(object @object, Func<bool> shouldAbortBlock) { SceneKitRuntime.FlushAll(); return true; }
 }
