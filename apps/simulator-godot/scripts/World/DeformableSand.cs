@@ -25,6 +25,8 @@ public sealed class DeformableSand
     {
         public float[] lastGrid = Array.Empty<float>();
         public readonly SCNMaterialProperty heights = new SCNMaterialProperty();
+        /// <summary>PORT: the patch's height texture, updated in place (see rebuild).</summary>
+        public MTLTexture texture;
         public readonly SCNNode node = new SCNNode();
         public readonly SCNGeometrySource uv;
         public readonly float[] @base;
@@ -155,11 +157,21 @@ public sealed class DeformableSand
         }
         // Immutable small height texture, retained by SceneKit until its draw
         // completes. Static vertex/index buffers stay on the GPU throughout.
-        var descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: MTLPixelFormat.r32Float, width: 67, height: 67, mipmapped: false);
-        descriptor.storageMode = device.supportsFamily(MTLGPUFamily.apple1) ? MTLStorageMode.shared : MTLStorageMode.managed; descriptor.usage = MTLTextureUsage.shaderRead;
-        var texture = device.makeTexture(descriptor);
+        // PORT: Swift makes a new texture per update because SceneKit's in-flight draws still read the previous one.
+        // Godot updates a texture in place safely (ImageTexture.Update before the frame is drawn), and the patch
+        // geometry's argument shows content changes either way (a custom SCNGeometry: SCNMaterialProperty.ArgumentContents),
+        // so each patch keeps one texture and replaces its texels: the same heights, without a new GPU texture per update
+        // (about 50 per second while robots drive over the dunes).
+        if (patch.texture == null)
+        {
+            var descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: MTLPixelFormat.r32Float, width: 67, height: 67, mipmapped: false);
+            descriptor.storageMode = device.supportsFamily(MTLGPUFamily.apple1) ? MTLStorageMode.shared : MTLStorageMode.managed; descriptor.usage = MTLTextureUsage.shaderRead;
+            patch.texture = device.makeTexture(descriptor);
+        }
+        var texture = patch.texture;
         texture.replace(MTLRegionMake2D(0, 0, 67, 67), mipmapLevel: 0, withBytes: delta, bytesPerRow: 67 * 4);
-        patch.heights.contents = texture; updates += 1;
+        if (patch.heights.contents != texture) patch.heights.contents = texture;
+        updates += 1;
     }
     // MSL `duneHeights.read(p)` -> texelFetch (PORTING.md, shader modifier translation guide).
     private const string displacement = @"

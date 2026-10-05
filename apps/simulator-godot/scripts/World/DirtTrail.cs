@@ -10,6 +10,7 @@ namespace Marvin;
 public sealed class DirtTrail
 {
     public enum Style { tracks, tires }
+    private static readonly (double, double)[] Corners = { (-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0) };
     public readonly SCNNode root = new SCNNode();
     private readonly Style style;
     private readonly List<CGPoint> uv = new();
@@ -145,13 +146,14 @@ if (stormActive > 0.5) {
                     double nz = state.terrainHeight(x, z - e) - state.terrainHeight(x, z + e);
                     double length = sqrt(nx * nx + 4 * e * e + nz * nz);
                     var normal = new SCNVector3(nx / length, 2 * e / length, nz / length);
-                    foreach (var (side, along) in new[] { (-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0) })
+                    // PORT: the corner literals and the four tone floats are written without temporary arrays (same values).
+                    foreach (var (side, along) in Corners)
                     {
                         double lateral = contact.x + side * contact.width / 2;
                         double forward = contact.z + along * (style == Style.tracks ? 0.021 : spacing * 0.53);
                         double px = x + cos(heading) * lateral + sin(heading) * forward;
                         double pz = z - sin(heading) * lateral + cos(heading) * forward;
-                        normals.Add(normal); strengths.AddRange(new[] { strength, (float)state.storm.elapsed, 0, 1 });
+                        normals.Add(normal); strengths.Add(strength); strengths.Add((float)state.storm.elapsed); strengths.Add(0); strengths.Add(1);
                         uv.Add(new CGPoint((side + 1) / 2, (along + 1) / 2));
                         // Flat-town road/plaza dressing rises above the base sand.
                         // Place marks over that dressing; fade this floor away before
@@ -163,7 +165,7 @@ if (stormActive > 0.5) {
                         double height = edge < DesertTerrain.townEdge - 2 ? max(ground, floor) : ground;
                         vertices.Add(new SCNVector3(px, height + 0.007, pz));
                     }
-                    indices.AddRange(new[] { @base, @base + 2, @base + 1, @base, @base + 3, @base + 2 });
+                    indices.Add(@base); indices.Add(@base + 2); indices.Add(@base + 1); indices.Add(@base); indices.Add(@base + 3); indices.Add(@base + 2);
                     count += 1; dirty = true;
                 }
                 travel += spacing;

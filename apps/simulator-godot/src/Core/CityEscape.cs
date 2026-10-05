@@ -158,20 +158,30 @@ public struct CityCollisionWorld
             }
         }
     }
+    // PORT: per-thread scratch lists instead of a Set, a sorted copy and a result list per query (the town's walkers and
+    // the race physics query every frame). The ids are visited in the same ascending order without duplicates.
+    [ThreadStatic] private static List<int> nearbyIds;
+    [ThreadStatic] private static List<RobotCollisions.Body> nearbyResult;
     public readonly RobotCollisions.Body[] nearby(RobotCollisions.Body body)
     {
         var r = hypot(body.profile.halfWidth, body.profile.halfDepth) + 0.1;
-        var ids = new HashSet<int>();
+        var ids = nearbyIds ??= new List<int>();
+        ids.Clear();
         for (var x = (int)floor((body.position.x - r) / 8); x <= (int)floor((body.position.x + r) / 8); x++)
         {
             for (var z = (int)floor((body.position.z - r) / 8); z <= (int)floor((body.position.z + r) / 8); z++)
             {
-                if (buckets.TryGetValue(new Int2(x, z), out var list)) foreach (var i in list) ids.Add(i);
+                if (buckets.TryGetValue(new Int2(x, z), out var list)) ids.AddRange(list);
             }
         }
-        var result = new List<RobotCollisions.Body>();
-        foreach (var i in sorted(ids))
+        ids.Sort();
+        var result = nearbyResult ??= new List<RobotCollisions.Body>();
+        result.Clear();
+        var previous = -1;
+        foreach (var i in ids)
         {
+            if (i == previous) continue;
+            previous = i;
             var b = bodies[i];
             var reach = r + hypot(b.profile.halfWidth, b.profile.halfDepth);
             if (hypot(body.position.x - b.position.x, body.position.z - b.position.z) < reach) result.Add(b);

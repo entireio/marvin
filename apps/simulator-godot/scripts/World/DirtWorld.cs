@@ -663,6 +663,14 @@ ALBEDO = ALBEDO * (1.0 - deposit.a) + deposit.rgb;
         }
         rebuildDebrisBatches();
     }
+    private static readonly bool[] DebrisKinds = { false, true };
+    private static readonly (double, double)[] DustCorners = { (-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0) };
+    private static readonly Float3[] ClodCorners = { new Float3(0, 1, 0), new Float3(-0.87f, -0.5f, -0.5f), new Float3(0.87f, -0.5f, -0.5f), new Float3(0, -0.5f, 1) };
+    private static readonly int[] ClodIndices = { 0, 2, 1, 0, 3, 2, 0, 1, 3, 1, 2, 3 };
+    private readonly List<SCNVector3> debrisVertices = new(), debrisNormals = new();
+    private readonly List<CGPoint> debrisUV = new();
+    private readonly List<float> debrisRGBA = new();
+    private readonly List<int> debrisIndices = new();
     /// Two draw submissions replace up to 1,600 individual particle nodes.
     /// Per-vertex tints keep the source soil color without per-particle materials.
     private void rebuildDebrisBatches()
@@ -672,9 +680,12 @@ ALBEDO = ALBEDO * (1.0 - deposit.a) + deposit.rgb;
         var right = new Float3((float)t.m11, (float)t.m12, (float)t.m13);
         var up = new Float3((float)t.m21, (float)t.m22, (float)t.m23);
         var normal = Simd.normalize(Simd.cross(right, up));
-        foreach (var dust in new[] { false, true })
+        foreach (var dust in DebrisKinds)
         {
-            var vertices = new List<SCNVector3>(); var normals = new List<SCNVector3>(); var uv = new List<CGPoint>(); var rgba = new List<float>(); var indices = new List<int>();
+            // PORT: the per-frame vertex lists are reused (cleared) instead of allocated, and the corner and index
+            // literals are written without temporary arrays: the same values in the same order (the sources copy them).
+            var vertices = debrisVertices; var normals = debrisNormals; var uv = debrisUV; var rgba = debrisRGBA; var indices = debrisIndices;
+            vertices.Clear(); normals.Clear(); uv.Clear(); rgba.Clear(); indices.Clear();
             foreach (var f in flecks)
             {
                 if (!(f.life > 0 && f.dust == dust)) continue;
@@ -688,22 +699,23 @@ ALBEDO = ALBEDO * (1.0 - deposit.a) + deposit.rgb;
                     var along = storm.enabled && Simd.length(projected) > 0.01f ? Simd.normalize(projected) : right;
                     var across = Simd.normalize(Simd.cross(normal, along));
                     float stretch = storm.enabled ? 3.8f : 1.6f;
-                    foreach (var (sx, sy) in new[] { (-1.0, -1.0), (1.0, -1.0), (1.0, 1.0), (-1.0, 1.0) })
+                    foreach (var (sx, sy) in DustCorners)
                     {
                         vertices.Add(V3(center + along * (float)sx * radius * stretch + across * (float)sy * radius * 0.65f));
                         normals.Add(V3(normal)); uv.Add(new CGPoint((sx + 1) / 2, (sy + 1) / 2));
                     }
-                    indices.AddRange(new[] { @base, @base + 1, @base + 2, @base, @base + 2, @base + 3 });
+                    indices.Add(@base); indices.Add(@base + 1); indices.Add(@base + 2); indices.Add(@base); indices.Add(@base + 2); indices.Add(@base + 3);
                 }
                 else
                 {
-                    foreach (var v in new[] { new Float3(0, 1, 0), new Float3(-0.87f, -0.5f, -0.5f), new Float3(0.87f, -0.5f, -0.5f), new Float3(0, -0.5f, 1) })
+                    foreach (var v in ClodCorners)
                     {
                         vertices.Add(V3(center + v * f.radius)); normals.Add(V3(Simd.normalize(v))); uv.Add(CGPoint.zero);
                     }
-                    indices.AddRange(new[] { @base, @base + 2, @base + 1, @base, @base + 3, @base + 2, @base, @base + 1, @base + 3, @base + 1, @base + 2, @base + 3 });
+                    foreach (var k in ClodIndices) indices.Add(@base + k);
                 }
-                for (int k = 0; k < 4; k++) { rgba.AddRange(new[] { f.tint.x, f.tint.y, f.tint.z, (float)f.node.opacity }); }
+                float opacity = (float)f.node.opacity;
+                for (int k = 0; k < 4; k++) { rgba.Add(f.tint.x); rgba.Add(f.tint.y); rgba.Add(f.tint.z); rgba.Add(opacity); }
             }
             var batch = dust ? dustBatch : clodBatch;
             batch.isHidden = indices.Count == 0;

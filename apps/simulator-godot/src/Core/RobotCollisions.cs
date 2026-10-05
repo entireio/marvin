@@ -76,31 +76,39 @@ public static class RobotCollisions
         var high = min(a.position.y + a.profile.height, b.position.y + b.profile.height);
         if (!(high > low)) return null;
         var delta = b.center - a.center;
-        var axes = new List<Double2>(4);
-        if (!a.profile.round) { axes.Add(a.lateral); axes.Add(a.forward); }
-        if (!b.profile.round) { axes.Add(b.lateral); axes.Add(b.forward); }
+        // PORT: the axes (at most four) and box corners live on the stack instead of in a List and arrays: contact runs
+        // thousands of times per frame (race physics against the town, residents' swept steps). Same values, same order;
+        // the nearest corner is the first minimal one, as Swift's min(by:).
+        Span<Double2> axes = stackalloc Double2[4];
+        int axisCount = 0;
+        if (!a.profile.round) { axes[axisCount++] = a.lateral; axes[axisCount++] = a.forward; }
+        if (!b.profile.round) { axes[axisCount++] = b.lateral; axes[axisCount++] = b.forward; }
         if (a.profile.round && b.profile.round)
         {
-            axes.Clear();
-            axes.Add(Simd.length_squared(delta) > 1e-12 ? Simd.normalize(delta) : new Double2(1, 0));
+            axisCount = 0;
+            axes[axisCount++] = Simd.length_squared(delta) > 1e-12 ? Simd.normalize(delta) : new Double2(1, 0);
         }
         else if (a.profile.round || b.profile.round)
         {
             var box = a.profile.round ? b : a;
             var circle = a.profile.round ? a : b;
-            var corners = new Double2[4];
+            var nearest = default(Double2);
             var k = 0;
-            foreach (var x in new[] { -1.0, 1 })
-                foreach (var z in new[] { -1.0, 1 })
-                    corners[k++] = box.center + box.lateral * x * box.profile.halfWidth + box.forward * z * box.profile.halfDepth;
-            minBy(corners, (p, q) => Simd.length_squared(p - circle.center) < Simd.length_squared(q - circle.center), out var nearest);
+            for (var xi = 0; xi < 2; xi++)
+                for (var zi = 0; zi < 2; zi++)
+                {
+                    double x = xi == 0 ? -1.0 : 1, z = zi == 0 ? -1.0 : 1;
+                    var corner = box.center + box.lateral * x * box.profile.halfWidth + box.forward * z * box.profile.halfDepth;
+                    if (k++ == 0 || Simd.length_squared(corner - circle.center) < Simd.length_squared(nearest - circle.center)) nearest = corner;
+                }
             var direction = nearest - circle.center;
-            if (Simd.length_squared(direction) > 1e-12) { axes.Add(Simd.normalize(direction)); }
+            if (Simd.length_squared(direction) > 1e-12) { axes[axisCount++] = Simd.normalize(direction); }
         }
         double depth = double.PositiveInfinity;
         var n = new Double2(1, 0);
-        foreach (var axis in axes)
+        for (var i = 0; i < axisCount; i++)
         {
+            var axis = axes[i];
             var overlap = a.extent(axis) + b.extent(axis) - abs(Simd.dot(delta, axis));
             if (!(overlap > 0)) return null;
             if (overlap < depth) { depth = overlap; n = Simd.dot(delta, axis) >= 0 ? axis : -axis; }
