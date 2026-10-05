@@ -28,6 +28,8 @@ public sealed class TownStreetResidents
         }
     }
     public List<Walker> walkers { get; private set; } = new();
+    /// <summary>The solids of the walker being stepped (reused list, see update).</summary>
+    private readonly List<RobotCollisions.Body> solidsBuffer = new();
     private readonly CityCollisionWorld city;
     private bool storm = false; private double time = 0.0;
     public double maximumPenetration { get; private set; } = 0.0;
@@ -108,7 +110,10 @@ public sealed class TownStreetResidents
             var w = walkers[i];
             w.pending += min(dt, 0.05);
             var detailed = visible?.Invoke(w.node) ?? true;
-            var near = obstacles.Any(o => Simd.distance(new Double2(o.position.x, o.position.z), w.position) < 3);
+            // PORT: Swift's contains(where:)/allSatisfy closures are loops here (no per-walker closures and lists each
+            // frame); the same tests in the same order.
+            var near = false;
+            foreach (var o in obstacles) if (Simd.distance(new Double2(o.position.x, o.position.z), w.position) < 3) { near = true; break; }
             if (!(detailed || near || w.pending >= 0.1 - 1e-8)) { continue; }
             var step = w.pending; w.pending = 0; navigationUpdates += 1;
             if (Simd.distance(w.position, w.path[w.target]) < 0.15)
@@ -125,14 +130,16 @@ public sealed class TownStreetResidents
             // can leave the validated corridor and pin a walker to a wall.
             var length = w.wait > 0 || abs(turn) > 0.25 ? 0 : min(Simd.length(delta), w.speed * step);
             var next = w.position + delta / max(0.001, Simd.length(delta)) * length;
-            var solids = city.nearby(body(next)).Concat(obstacles).ToList();
+            var solids = solidsBuffer; solids.Clear();
+            solids.AddRange(city.nearby(body(next))); solids.AddRange(obstacles);
             var samples = max(1, (int)ceil(length / 0.015));
             var free = true;
             for (var j = 1; j <= samples && free; j++)
             {
                 var p = w.position + (next - w.position) * (double)j / (double)samples;
-                free = solids.All(solid => RobotCollisions.contact(body(p), solid) == null)
-                    && walkers.All(other => other == w || Simd.distance(p, other.position) > 0.38);
+                var probe = body(p);
+                foreach (var solid in solids) if (RobotCollisions.contact(probe, solid) != null) { free = false; break; }
+                if (free) foreach (var other in walkers) if (other != w && !(Simd.distance(p, other.position) > 0.38)) { free = false; break; }
             }
             var moved = free ? Simd.distance(w.position, next) : 0;
             if (free) { w.position = next; }
@@ -149,7 +156,8 @@ public sealed class TownStreetResidents
             }
             if (detailed) { poseUpdates += 1; }
             pose(w, detailed: detailed);
-            foreach (var b in solids) { if (RobotCollisions.contact(body(w.position), b) is RobotCollisions.Contact c) { maximumPenetration = max(maximumPenetration, c.penetration); } }
+            var standing = body(w.position);
+            foreach (var b in solids) { if (RobotCollisions.contact(standing, b) is RobotCollisions.Contact c) { maximumPenetration = max(maximumPenetration, c.penetration); } }
         }
     }
 }

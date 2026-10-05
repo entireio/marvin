@@ -155,18 +155,22 @@ public sealed class TownResidents
         pedestrians ??= new List<RobotCollisions.Body>();
         if (!(dt > 0)) { return; }
         dt = min(dt, 0.05); clock += dt;
+        // PORT: the per-frame contains(where:)/allSatisfy/filter closures and concatenated arrays of TownResidents.swift
+        // are loops over reused lists here (they allocated about 80 KB per frame); the same tests in the same order.
         for (var i = 0; i < doors.Count; i++)
         {
             var door = doors[i];
-            var request = walkers.Any(w =>
+            var request = false;
+            foreach (var w in walkers)
             {
-                if (storm && w.index % 11 != 0) { return false; }
-                return (w.indoors && !w.settlingInside && w.home == i && w.wait < 1.2 && w.reserved.Count != 0)
-                    || (!w.indoors && Simd.distance(w.position, door.center) < 1.6);
-            }) || robots.Any(robot => Simd.distance(new Double2(robot.position.x, robot.position.z), door.center) < 1.1);
+                if (storm && w.index % 11 != 0) { continue; }
+                if ((w.indoors && !w.settlingInside && w.home == i && w.wait < 1.2 && w.reserved.Count != 0)
+                    || (!w.indoors && Simd.distance(w.position, door.center) < 1.6)) { request = true; break; }
+            }
+            if (!request) foreach (var robot in robots) if (Simd.distance(new Double2(robot.position.x, robot.position.z), door.center) < 1.1) { request = true; break; }
             door.update(dt: dt, requested: request);
         }
-        var everyone = robots.Concat(pedestrians).ToList();
+        var everyone = everyoneBuffer; everyone.Clear(); everyone.AddRange(robots); everyone.AddRange(pedestrians);
         foreach (var w in walkers)
         {
             if (!(!storm || w.index % 11 == 0)) { continue; }
@@ -175,9 +179,10 @@ public sealed class TownResidents
             // Grace prevents rate oscillation at a camera edge. Collision-critical
             // residents stay responsive even outside the camera frustum.
             var detailed = clock - w.lastSeen < 0.35;
-            var interactive = everyone.Any(b => Simd.distance(new Double2(b.position.x, b.position.z), w.position) < 4)
-                || (!w.node.isHidden && doors.Any(door => Simd.distance(door.center, w.position) < 1.6))
-                || (!w.node.isHidden && walkers.Any(other => other != w && !other.node.isHidden && Simd.distance(other.position, w.position) < 1.2));
+            var interactive = false;
+            foreach (var b in everyone) if (Simd.distance(new Double2(b.position.x, b.position.z), w.position) < 4) { interactive = true; break; }
+            if (!interactive && !w.node.isHidden) foreach (var door in doors) if (Simd.distance(door.center, w.position) < 1.6) { interactive = true; break; }
+            if (!interactive && !w.node.isHidden) foreach (var other in walkers) if (other != w && !other.node.isHidden && Simd.distance(other.position, w.position) < 1.2) { interactive = true; break; }
             if (!(detailed || interactive || w.pending >= 0.1 - 1e-8)) { continue; }
             // PORT: Swift shadows `dt` with the walker's accumulated step.
             var step_dt = w.pending; w.pending = 0;
@@ -238,13 +243,11 @@ public sealed class TownResidents
             // Street walkers can be boxed against a route endpoint. After a
             // short pedestrian stand-off, use the same swept sidestep as for
             // robots, without treating pedestrians as door-opening requests.
-            var yieldingTo = robots.Concat(w.blocked > 0.5 ? pedestrians.Where(b =>
-                Simd.distance(new Double2(b.position.x, b.position.z), w.position) < 1.0) : Enumerable.Empty<RobotCollisions.Body>()).ToList();
-            var approaching = yieldingTo.Where(r =>
-            {
-                var d = w.position - new Double2(r.position.x, r.position.z);
-                return Simd.length(d) < 2.4 && Simd.dot(d, new Double2(sin(r.heading), cos(r.heading))) > -0.2;
-            }).ToList();
+            var approaching = approachingBuffer; approaching.Clear();
+            foreach (var r in robots) if (Approaches(w, r)) approaching.Add(r);
+            if (w.blocked > 0.5)
+                foreach (var b in pedestrians)
+                    if (Simd.distance(new Double2(b.position.x, b.position.z), w.position) < 1.0 && Approaches(w, b)) approaching.Add(b);
             if (approaching.Count != 0) { w.yieldUntil = clock + 1.2; }
             if (w.yieldPoint == null && w.yieldOrigin == null && minBy(approaching, (x, y) => Simd.distance(new Double2(x.position.x, x.position.z), w.position) < Simd.distance(new Double2(y.position.x, y.position.z), w.position), out var robot))
             {
@@ -286,11 +289,12 @@ public sealed class TownResidents
             }
             Double2 delta = target - w.position, direction = delta / max(0.001, Simd.length(delta));
             var steering = direction;
-            var robotNear = robots.Any(r =>
+            var robotNear = false;
+            foreach (var r in robots)
             {
                 var d = new Double2(r.position.x, r.position.z) - w.position;
-                return Simd.length(d) < 1.2 && Simd.dot(d, direction) > 0;
-            });
+                if (Simd.length(d) < 1.2 && Simd.dot(d, direction) > 0) { robotNear = true; break; }
+            }
             var moved = 0.0;
             var heading = atan2(steering.x, steering.y);
             var angle = atan2(sin(heading - w.heading), cos(heading - w.heading));
@@ -301,7 +305,10 @@ public sealed class TownResidents
             var stepLength = w.speed * step_dt * (abs(angle) < 0.35 ? max(0, cos(angle)) : 0) * (robotNear && w.yieldPoint == null ? 0 : 1);
             var next = w.position + direction * min(stepLength, Simd.length(delta));
             var probe = body(next);
-            var solids = staticWorld.nearby(probe).Concat(doors.Select(door => door.body)).Concat(robots).Concat(pedestrians).ToList();
+            var solids = solidsBuffer; solids.Clear();
+            solids.AddRange(staticWorld.nearby(probe));
+            foreach (var door in doors) solids.Add(door.body);
+            solids.AddRange(robots); solids.AddRange(pedestrians);
             // Coarse updates still sweep the whole step; thin scenery cannot
             // disappear between the old and new positions.
             var subdivisions = max(1, (int)ceil(Simd.distance(next, w.position) / 0.015));
@@ -309,8 +316,9 @@ public sealed class TownResidents
             for (var i = 1; i <= subdivisions && swept; i++)
             {
                 var p = w.position + (next - w.position) * (double)i / (double)subdivisions;
-                swept = solids.All(solid => RobotCollisions.contact(body(p), solid) == null)
-                    && walkers.All(other => other == w || other.node.isHidden || Simd.distance(p, other.position) > 0.35);
+                var sample = body(p);
+                foreach (var solid in solids) if (RobotCollisions.contact(sample, solid) != null) { swept = false; break; }
+                if (swept) foreach (var other in walkers) if (!(other == w || other.node.isHidden || Simd.distance(p, other.position) > 0.35)) { swept = false; break; }
             }
             if (swept) { moved = Simd.distance(next, w.position); w.position = next; }
             var previousBlocked = w.blocked;
@@ -324,7 +332,8 @@ public sealed class TownResidents
             }
             w.distance += moved; w.blend += ((moved > 0.0001 ? 1.0 : 0) - w.blend) * min(1, step_dt * 10);
             var cycle = (float)(w.distance / 0.24 * Math.PI);
-            var nearDoor = doors.FirstOrDefault(door => Simd.distance(w.position, door.center) < 1);
+            TownDoorway nearDoor = null;
+            foreach (var door in doors) if (Simd.distance(w.position, door.center) < 1) { nearDoor = door; break; }
             var threshold = nearDoor != null ? max(0, min(1, 0.5 - Simd.dot(w.position - nearDoor.center, nearDoor.outward) * 3)) : 0;
             var floor = -0.016 + threshold * 0.026;
             var y = floor - (double)(detailed ? w.feet.minimum(cycle: cycle, blend: (float)w.blend) : w.restingSole);
@@ -338,8 +347,16 @@ public sealed class TownResidents
                     m.setValue((float)w.blend, "walkBlend");
                 }
             }
-            foreach (var obstacle in solids) { if (RobotCollisions.contact(body(w.position), obstacle) is RobotCollisions.Contact c) { maximumPenetration = max(maximumPenetration, c.penetration); } }
+            var standing = body(w.position);
+            foreach (var obstacle in solids) { if (RobotCollisions.contact(standing, obstacle) is RobotCollisions.Contact c) { maximumPenetration = max(maximumPenetration, c.penetration); } }
         }
+    }
+    private readonly List<RobotCollisions.Body> everyoneBuffer = new(), approachingBuffer = new(), solidsBuffer = new();
+    /// <summary>A robot (or blocking pedestrian) within 2.4 m that is not moving away from the walker.</summary>
+    private static bool Approaches(Walker w, RobotCollisions.Body r)
+    {
+        var d = w.position - new Double2(r.position.x, r.position.z);
+        return Simd.length(d) < 2.4 && Simd.dot(d, new Double2(sin(r.heading), cos(r.heading))) > -0.2;
     }
     /// Swift's description of a RobotCollisions.Body (debug print only).
     private static string describe(RobotCollisions.Body b) =>
