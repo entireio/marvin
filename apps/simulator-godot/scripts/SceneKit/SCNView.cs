@@ -145,17 +145,19 @@ internal sealed class ViewRig
             double wz = world[0, 2] * bx + world[1, 2] * by + world[2, 2] * bz + world[3, 2];
             lx = Math.Min(lx, wx); ly = Math.Min(ly, wy); lz = Math.Min(lz, wz); hx = Math.Max(hx, wx); hy = Math.Max(hy, wy); hz = Math.Max(hz, wz);
         }
-        var corners = new (double x, double y, double z, double w)[8];
+        // The box is outside when all eight clip-space corners lie beyond one of the six frustum planes. (Counted per plane
+        // without allocating: the town's residents test their visibility every frame.)
+        int left = 0, right = 0, bottom = 0, top = 0, near = 0, far = 0;
         for (int i = 0; i < 8; i++)
         {
             var p = new SCNVector3((i & 1) != 0 ? hx : lx, (i & 2) != 0 ? hy : ly, (i & 4) != 0 ? hz : lz);
-            corners[i] = (vp[0, 0] * p.x + vp[1, 0] * p.y + vp[2, 0] * p.z + vp[3, 0],
-                          vp[0, 1] * p.x + vp[1, 1] * p.y + vp[2, 1] * p.z + vp[3, 1],
-                          vp[0, 2] * p.x + vp[1, 2] * p.y + vp[2, 2] * p.z + vp[3, 2],
-                          vp[0, 3] * p.x + vp[1, 3] * p.y + vp[2, 3] * p.z + vp[3, 3]);
+            double cx = vp[0, 0] * p.x + vp[1, 0] * p.y + vp[2, 0] * p.z + vp[3, 0];
+            double cy = vp[0, 1] * p.x + vp[1, 1] * p.y + vp[2, 1] * p.z + vp[3, 1];
+            double cz = vp[0, 2] * p.x + vp[1, 2] * p.y + vp[2, 2] * p.z + vp[3, 2];
+            double cw = vp[0, 3] * p.x + vp[1, 3] * p.y + vp[2, 3] * p.z + vp[3, 3];
+            if (cx < -cw) left++; if (cx > cw) right++; if (cy < -cw) bottom++; if (cy > cw) top++; if (cz < -cw) near++; if (cz > cw) far++;
         }
-        bool Out(Func<(double x, double y, double z, double w), bool> outside) => corners.All(outside);
-        return !(Out(c => c.x < -c.w) || Out(c => c.x > c.w) || Out(c => c.y < -c.w) || Out(c => c.y > c.w) || Out(c => c.z < -c.w) || Out(c => c.z > c.w));
+        return !(left == 8 || right == 8 || bottom == 8 || top == 8 || near == 8 || far == 8);
     }
     /// <summary>projectPoint: x,y in view points with the origin at the bottom left (AppKit), z depth 0 (near) .. 1 (far).</summary>
     internal SCNVector3 Project(SCNVector3 p, double width, double height)
