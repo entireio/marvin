@@ -23,6 +23,9 @@ process that presents frames, once per second: the game's FPS on glass, on-GPU w
 frame-on-glass intervals, and the GPU time of the other processes (contention, e.g. a MarvinSimulator left running).
 --trace AT:SECONDS also records a Metal System Trace (xctrace) AT seconds after launch, or, with --trace-from-start, AT
 seconds after the benchmark started (its MARVIN_BENCHMARK_ID line), which does not depend on how long loading took.
+An exported release build does not flush its stdout per line, so the line arrives only when the game exits: trace an
+export from launch instead (the benchmark starts 11-12 s after launch on an M2). xctrace leaves its raw kernel trace
+(about 1 GB per recording) in the temporary directory; the runner deletes the ones its recording created.
 --env MARVIN_BENCHMARK_FREEZE=S stops the benchmark's drive and camera at benchmark time S and keeps drawing that view
 (Godot only), so a trace after S measures one fixed frame and can be compared across builds.
 
@@ -169,6 +172,12 @@ def summarize_stalls(path, launch, start=None, end=None):
 GAME_PATTERN = r'Godot_mono\.app/Contents/MacOS/Godot|Marvin Simulator\.app/Contents/MacOS/|MarvinSimulator'
 
 
+def leftover_ktraces():
+    """Instruments' raw kernel traces in the temporary directories (xctrace does not delete them after a recording)."""
+    dirs = {Path(tempfile.gettempdir()), Path(os.environ.get('TMPDIR', tempfile.gettempdir()))}
+    return {f for d in dirs if d.is_dir() for f in d.glob('instruments*.ktrace')}
+
+
 def other_games(own_pids):
     """PIDs of other running Godot / Marvin Simulator processes (not ours, not MARVIN_PERF_IGNORE_PIDS)."""
     ignore = {int(p) for p in os.environ.get('MARVIN_PERF_IGNORE_PIDS', '').split(',') if p.strip()}
@@ -293,9 +302,12 @@ def main():
                         time.sleep(0.2)
                 time.sleep(at)
                 if game_proc.poll() is None:
+                    before = leftover_ktraces()
                     subprocess.run(['xctrace', 'record', '--template', 'Metal System Trace', '--attach', str(game_proc.pid),
                                     '--time-limit', f'{secs:g}s', '--output', str(a.out / 'metal-system.trace')],
                                    stdout=open(a.out / 'xctrace.log', 'w'), stderr=subprocess.STDOUT)
+                    for path in leftover_ktraces() - before:
+                        path.unlink(missing_ok=True)
             tracer = threading.Thread(target=record, daemon=True)
             tracer.start()
         try:
