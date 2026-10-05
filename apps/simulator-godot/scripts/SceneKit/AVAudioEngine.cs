@@ -961,16 +961,20 @@ public sealed class AVAudioEngine
             {
                 var p = playback;
                 if (p == null) { Thread.Sleep(4); continue; }
+                // The playback object is freed when Godot quits (or its player is freed); stop feeding it then
+                // (it used to throw ObjectDisposedException on this thread at exit).
+                if (!GodotObject.IsInstanceValid(p)) { if (ReferenceEquals(playback, p)) playback = null; continue; }
                 if (p != watched) { watched = p; seenSkips = 0; settleAt = System.Diagnostics.Stopwatch.GetTimestamp() + System.Diagnostics.Stopwatch.Frequency / 4; }
                 // Godot's generator plays silence when it runs dry. After start-up, each new underrun raises
                 // the queued target (bursty consumers such as the headless Dummy driver), up to 100 ms.
-                int skips = p.GetSkips();
+                int skips, available;
+                try { skips = p.GetSkips(); available = p.GetFramesAvailable(); }
+                catch (ObjectDisposedException) { if (ReferenceEquals(playback, p)) playback = null; continue; }
                 if (skips != seenSkips)
                 {
                     if (System.Diagnostics.Stopwatch.GetTimestamp() > settleAt) target = Math.Min(target + 512, 4800);
                     seenSkips = skips;
                 }
-                int available = p.GetFramesAvailable();
                 if (emptyAvailable - available >= target || available < Chunk) { Thread.Sleep(1); continue; }
                 lock (engine.gate)
                 {
@@ -979,7 +983,8 @@ public sealed class AVAudioEngine
                 }
                 engine.RunCompletions();
                 for (int i = 0; i < Chunk; i++) frames[i] = new Vector2(left[i], right[i]);
-                p.PushBuffer(frames);
+                try { p.PushBuffer(frames); }
+                catch (ObjectDisposedException) { if (ReferenceEquals(playback, p)) playback = null; }
             }
         }
     }
