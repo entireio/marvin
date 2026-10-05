@@ -9,10 +9,21 @@ scratchpad, not in the repository; every number below can be reproduced with the
 
 Three passes followed on the same day, each on its own branch from c19fd6f: the CPU pass and the GPU optimisation pass
 (sections below) and the release builds (PORTING.md, "Release builds and Windows"). "All passes merged" measures the
-branch with all three replayed onto it against c19fd6f, like for like.
+branch with all three replayed onto it against c19fd6f, like for like. After that, the game switched to hard shadows and
+mesh LODs for the robots' camera images, two small look changes accepted for frame rate at 1080p ("Hard shadows and
+camera mesh LODs"); every measurement before that section is of the exact-SceneKit configuration, which
+`MARVIN_SCN_CAL=Exact` still selects.
 
 ## Summary
 
+- **Hard shadows and camera mesh LODs** (the default since ef7b4e6; section below, like for like against 3cb6567, the
+  exact-SceneKit configuration): at 1920 x 1080 the town roam runs at 39.2 FPS instead of 29.7 and the race at 46.9
+  instead of 34.0 (editor runtime; the export 40.3 / 46.8 against 30.2 / 35.4), with 5.3-5.8 ms less GPU work per frame
+  (busy 22.9 -> 17.6 ms roam, 21.9 -> 16.1 ms race) and 1,000 instead of 1,250 (roam) and 230 instead of 1,260 (race)
+  frames over 25 ms per 45 s. At 960 x 540 both hold 60 FPS, with about 1 ms less GPU walltime per frame. The look
+  changes where shadows are seen close up: hard edges one Godot texel wide (1.3-2 cm in the race views) instead of
+  SceneKit's 11.5-16 cm penumbrae, so close views show the shadow map's texels as stair-steps; the full-game comparison
+  moves from 1.77 to 1.96/255 from macOS on average. `MARVIN_SCN_CAL=Exact` restores the exact look and its cost.
 - **All passes merged, like for like against c19fd6f** (section below; the look is unchanged: captures identical,
   within 0.005/255 or within the random modes' own spread): at 1920 x 1080 the race runs at 37.2 FPS instead of 34.4 and the town roam at 29.9 instead of 28.6 (editor runtime;
   the export 37.2 / 30.0 against 35.6 / 29.4), with 1.2 ms less GPU work per frame (busy 22.2 -> 21.0 ms race,
@@ -58,6 +69,9 @@ branch with all three replayed onto it against c19fd6f, like for like.
 
 ### Ranked costs (what separates Godot from SceneKit)
 
+Measured with the exact-SceneKit configuration (SoftHigh shadows); the game's default hard filter removes most of the
+sampling cost in row 1 (about 4.5-5 ms at 1080p, "Hard shadows and camera mesh LODs").
+
 | # | Cost | Godot | macOS | Gap | Evidence |
 |---|---|---|---|---|---|
 | 1 | Directional shadows (two suns): maps + sampling | 7.4 ms GPU/frame at 1080p (maps 3.1 incl. the atlas clear; sampling makes the opaque and transparent passes 5.0 ms slower, partly overlapping); maps 3.1 ms at 540p | ~1.4 ms at 1080p (two maps 1.8 ms; turning shadows off saves 1.4 ms) | **~6 ms at 1080p** | `--benchmark-no-shadows`: 22.1 -> 14.7 ms, 29 -> 45 FPS. Godot's soft filter alone (SoftHigh vs hard, `MARVIN_SCN_CAL=ShadowFilterQuality=0`) is 3.7 ms. Godot renders four maps (two suns x two splits) into an 8192² atlas and clears the whole atlas every frame (0.34 ms); SceneKit renders one 4096 and one 2048 map. |
@@ -68,6 +82,125 @@ branch with all three replayed onto it against c19fd6f, like for like.
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## Hard shadows and camera mesh LODs: before and after
+
+The user accepted two small look changes for frame rate at 1920 x 1080, both measured earlier as diagnostics and options
+(sections below): Godot's **hard shadow filter** instead of SoftHigh (`SceneKitCalibration.ShadowFilterQuality` 4 -> 0)
+and the robots' **mesh LODs for the camera too** (`MeshLodForCamera` false -> true; before, only their shadows were cast
+from the LODs). Both are the default for the game and every mode since ef7b4e6. `MARVIN_SCN_CAL=Exact` (or
+`MARVIN_SCN_CAL="ShadowFilterQuality=4;MeshLodForCamera=0"`) selects the exact-SceneKit configuration again, in the editor
+runtime and in the exported builds; the probes and capture modes give the same values with it as the build before.
+
+**Method.** As in "All passes merged": `tools/perf/run-benchmark.py --wait-idle`, 45 s per run, daylight 0.5, drawables of
+exactly 960 x 540 and 1920 x 1080 over the black backdrop, the editor runtime and an exported release build. "Before" is a
+worktree of 3cb6567 (the merged branch, exact-SceneKit look), built and exported next to this branch, measured by its own
+copy of the same runner. Two interleaved rounds (before editor, after editor, before export, after export) per scene and
+size, plus the after build with `MARVIN_SCN_CAL=Exact` at 1080p (one run each). The user's MarvinSimulator (PID 68407) ran
+throughout, covered by the backdrop and presenting nothing; the traces show it using 186-219 GPU-ms per second in every
+1080p run and WindowServer 72-163, so absolute numbers are pessimistic, and both builds ran under the same conditions.
+One run saw another game process start during it (before export, roam, round 1: 29.86 FPS against 30.48 in round 2). The
+first before-editor roam run at 1080p was lost when the disk filled up (Instruments leaves about 1 GB of raw kernel trace
+per recording in the temporary directory; `run-benchmark.py` now deletes it) and was repeated as a third interleaved pair
+(before, after) at the end. The 1080p runs recorded a labelled Metal System Trace: 20-24 s after the benchmark start in
+the editor runtime, 31-35 s after launch for the exports (about 19.5-23.5 s after their start: a release export does not
+flush its stdout per line, so the runner cannot see the start line while it runs).
+
+| scene | drawable | build | FPS | p99 ms | frames > 25 ms | GPU walltime ms/frame | GPU busy ms/frame | primitives M/frame | facade flush ms | tick p95 ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| city roam | 960 x 540 | before editor | 59.88, 59.90 | 18.2, 18.3 | 1, 0 | 14.9, 15.1 | - | 3.2 | 1.31, 1.34 | 2.43, 2.34 |
+| city roam | 960 x 540 | after editor | 60.00, 60.00 | 17.9, 17.9 | 0, 0 | 13.8, 13.8 | - | 2.7 | 1.24, 1.34 | 2.49, 2.57 |
+| city roam | 960 x 540 | before export | 59.87, 59.93 | 18.4, 18.1 | 0, 0 | 15.3, 15.1 | - | 3.2 | 1.23, 1.24 | 2.56, 2.59 |
+| city roam | 960 x 540 | after export | 60.00, 60.00 | 17.9, 18.0 | 0, 1 | 14.2, 13.7 | - | 2.7 | 1.22, 1.29 | 2.72, 2.60 |
+| race | 960 x 540 | before editor | 59.97, 59.96 | 17.9, 18.2 | 0, 0 | 15.1, 15.1 | - | 4.1-4.2 | 1.24, 1.30 | 2.01, 2.10 |
+| race | 960 x 540 | after editor | 60.00, 60.00 | 17.8, 17.8 | 0, 0 | 14.2, 14.0 | - | 3.5-3.6 | 1.32, 1.30 | 2.13, 1.93 |
+| race | 960 x 540 | before export | 60.00, 59.87 | 17.9, 18.6 | 0, 1 | 14.9, 15.3 | - | 4.1-4.2 | 1.19, 1.19 | 2.28, 2.05 |
+| race | 960 x 540 | after export | 59.98, 59.97 | 17.8, 17.7 | 1, 1 | 14.1, 13.9 | - | 3.5-3.6 | 1.24, 1.18 | 2.51, 2.28 |
+| city roam | 1920 x 1080 | before editor | 29.61, 29.70 | 43.0, 43.6 | 1242, 1247 | 34.5, 34.5 | 23.4, 22.4 | 3.3 | 1.49, 1.63 | 3.52, 3.70 |
+| city roam | 1920 x 1080 | after editor | 38.92, 39.01, 39.73 | 31.4, 31.5, 30.8 | 1024, 1000, 929 | 26.3, 26.4, 26.0 | 18.0, 17.8, 17.2 | 2.9 | 1.42, 1.39, 1.39 | 2.55, 2.85, 2.86 |
+| city roam | 1920 x 1080 | after editor, `Exact` | 30.89 | 42.6 | 1297 | 33.1 | 22.5 | 3.3 | 1.63 | 3.57 |
+| city roam | 1920 x 1080 | before export | 29.86, 30.48 | 42.7, 42.5 | 1254, 1279 | 34.4, 33.7 | 21.4, 22.1 | 3.3 | 1.46, 1.48 | 3.82, 3.79 |
+| city roam | 1920 x 1080 | after export | 39.81, 40.85 | 30.5, 31.2 | 920, 657 | 25.8, 25.1 | 17.1, 17.2 | 2.9 | 1.29, 1.27 | 2.91, 2.84 |
+| race | 1920 x 1080 | before editor | 34.58, 33.43 | 35.1, 36.2 | 1292, 1237 | 29.5, 30.6 | 21.5, 22.3 | 4.2-4.3 | 1.50, 1.55 | 2.63, 2.60 |
+| race | 1920 x 1080 | after editor | 46.56, 47.23 | 27.1, 27.1 | 223, 234 | 22.1, 21.7 | 16.1, 16.1 | 3.6 | 1.30, 1.36 | 2.06, 2.24 |
+| race | 1920 x 1080 | after editor, `Exact` | 36.61 | 34.6 | 1109 | 28.0 | 20.0 | 4.2 | 1.46 | 2.79 |
+| race | 1920 x 1080 | before export | 34.40, 36.34 | 36.9, 33.9 | 1171, 1214 | 29.9, 28.2 | 23.2, 22.1 | 4.3 | 1.41, 1.25 | 2.94, 2.58 |
+| race | 1920 x 1080 | after export | 47.65, 45.86 | 26.9, 28.1 | 143, 254 | 21.5, 22.3 | 17.2, 17.1 | 3.8 | 1.21, 1.28 | 1.97, 2.19 |
+
+(The before-editor roam runs at 1080p are rounds 2 and 3; the after-editor ones rounds 1-3.)
+
+- **1920 x 1080**: still GPU-bound, but much less so. Means: town roam 29.7 -> 39.2 FPS in the editor runtime (+32 %) and
+  30.2 -> 40.3 in the export; race 34.0 -> 46.9 (+38 %) and 35.4 -> 46.8. GPU busy per frame roam 22.9 -> 17.6 ms, race
+  21.9 -> 16.1 ms (export 21.8 -> 17.2 and 22.6 -> 17.2); GPU walltime per frame roam 34.5 -> 26.2 ms, race 30.1 -> 21.9 ms.
+  Frames over 25 ms: roam 1,242-1,279 -> 657-1,024 per 45 s (every roam frame took longer than 25 ms before), race
+  1,171-1,292 -> 143-254; p99 roam 42.5-43.6 -> 30.5-31.5 ms, race 33.9-36.9 -> 26.9-28.1 ms. The after build with
+  `MARVIN_SCN_CAL=Exact` runs like the before build (roam 30.9 FPS, 22.5 ms busy; race 36.6 FPS, 20.0 ms), so the gain is
+  the two settings. 60 FPS at 1080p is still out of reach: the median frame takes 24-26 ms in the roam and 20-22 ms in the
+  race (before: 33-34 and 27-30 ms).
+- **960 x 540**: both builds vsync-bound at 59.9-60.0 FPS; the after build has about 1 ms less GPU walltime per frame
+  (13.7-14.2 against 14.9-15.3 ms), a p99 0.1-0.9 ms lower and 15 % fewer primitives. CPU numbers (facade flush, tick,
+  allocation, GC) are unchanged within the run-to-run spread.
+- **Editor runtime vs export**: the same within the spread, as before.
+
+GPU busy per pass at 1080p (editor runtime, mean of the traces of each build: before rounds 2-3 (roam) and 1-2 (race),
+after rounds 1-3 and 1-2; `tools/perf/gpu-passes.py`):
+
+| pass | roam before | roam after | race before | race after |
+|---|---|---|---|---|
+| **total GPU busy per frame** | **22.89** | **17.64** | **21.91** | **16.10** |
+| opaque pass | 8.13 | 5.82 | 10.30 | 7.52 |
+| transparent pass | 7.08 | 4.31 | 3.75 | 1.19 |
+| depth prepass | 1.27 | 1.01 | 1.48 | 1.19 |
+| shadow maps (+ atlas clear) | 2.58 + 0.34 | 2.59 + 0.35 | 2.32 + 0.34 | 2.23 + 0.35 |
+| depth/normal resolve + SSAO | 2.01 | 2.00 | 2.10 | 2.08 |
+| resolves, glow, tonemap and 2D, window blit, uploads | 2.71 | 2.79 | 2.70 | 2.68 |
+
+The exports' traces show the same split (roam 21.8 -> 17.1 ms, opaque 7.9 -> 5.7, transparent 6.2 -> 4.1; race 22.6 ->
+17.2 ms, opaque 10.9 -> 7.8, transparent 3.8 -> 2.0). The hard filter's single depth comparison removes the soft
+filter's cost from every lit fragment of the opaque and transparent passes (2.3-2.8 ms each; Instruments filed some
+transparent encoders of the after traces under other labels, 0.5-0.9 encoders per frame, so the totals are the robust
+numbers); the camera's mesh LODs make the depth prepass 0.26-0.29 ms shorter and take some of the opaque pass. The shadow
+maps cost the same: they were already cast from the LODs. Hard filter alone (`MARVIN_SCN_CAL=MeshLodForCamera=0`, one
+run each against an after run right after it): roam 38.8 FPS / 17.95 ms busy against 40.4 / 17.21, race 45.3 / 17.11
+against 45.7 / 16.26, so of the 5.3-5.8 ms the hard filter is about 4.5-5 ms and the camera's mesh LODs 0.75-0.85 ms
+(depth prepass 0.24-0.28 ms, opaque pass 0.3-0.4 ms; primitives per frame 3.3 -> 2.9 M and 4.25 -> 3.7 M).
+
+**Bias retune for the hard filter.** The soft filter's biases grow with its kernel (depth bias 1 + 0.6 x kernel texels,
+normal bias 2 + 0.8 x kernel texels, about 3 and 5-6 Godot texels for the race suns) so that its 16 taps do not reach
+into lit slopes. The hard filter takes one bilinear depth comparison, so with those biases it only moved its sharp edges
+as far towards their casters as the soft ones (`MARVIN_SCN_CAL=ShadowFilterQuality=0` on the earlier build). It now has
+its own biases without the kernel terms (`HardShadowBiasTexels` 1, `HardShadowNormalBias` 2, Godot's default normal
+bias). Probes (`CAL_EXP=penumbra CAL_PENUMBRA_ELEV=1`, a box edge on a floor under the race suns' fixed boxes; SceneKit
+from `reference/calibration/tools/fullgame/pen2.swift`, run again on this Mac), penumbra 10-90 % / edge offset in cm
+(negative: towards the caster):
+
+| sun elevation | SceneKit sun A / sun B | exact (SoftHigh) | hard, soft biases | hard, retuned (default) |
+|---|---|---|---|---|
+| 60 degrees | 11.5 / -0.7, 15.8 / -4.4 | 11.7 / -3.5, 15.8 / -4.0 | 1.3 / -3.6, 1.3 / -4.1 | 1.3 / -1.8 (both suns) |
+| 35 degrees | 17.5 / 0.1, 24.1 / -5.6 | 17.8 / -7.0, 23.9 / -8.9 | 2.0 / -7.0, 2.0 / -8.4 | 2.0 / -2.7 |
+| 20 degrees | 29.1 / -6.1, 40.1 / 0.9 | 30.2 / -13.8, 40.1 / -16.7 | 3.3 / -14.0, 3.4 / -16.7 | 3.3 / -5.8 |
+| 10 degrees | 58.2 / -7.8, 79.7 / -10.2 | 60.4 / -24.7, 78.7 / -29.2 | 6.7 / -23.8, 6.7 / -29.5 | 6.6 / -6.8 |
+
+`--ground-bias-probe` with the retuned biases: no self-shadowing of lit walls at 0-85 degrees to the light (D), sunlit
+walls standing on a casting ground lit down to 2 mm at 5-35 degrees (A), and a 1 cm plate casts its shadow from a gap of
+8 / 16 / 4 / 2 cm for SceneKit texels of 2.83 / 5.66 / 1.42 / 0.49 cm (C; SceneKit's half-shadow gaps 7.5 / 15 / 4.8 /
+2.4 cm; exact 15 / 24 / 8 / 3 cm, the hard filter with the soft biases 16 / 26 / 8 / 4 cm). Depth biases of 0.5, 1 and 2
+texels gave identical probe values. On the game's captures (16 capture modes, 429 images, mean |sRGB difference| from
+macOS) normal biases of 1 / 2 / 4 / 6 Godot texels gave 1.98 / 1.97 / 2.02 / 2.14 /255 (exact: 1.78): larger offsets
+light the robots' tread plates more as SceneKit does, but move every shadow edge further from where SceneKit puts it.
+
+**Look against macOS** (the full-game comparison, PORTING.md "Full-game comparison": the same 21 capture modes, pins and
+macOS sets as the merged comparison, 473 captures): the mean |sRGB difference| from macOS goes from 1.77 to 1.96/255;
+139 captures change by less than 0.05/255. What changed, by area: hard one-texel shadow edges everywhere, stair-stepped
+where the camera is close (race-light robot close-ups at about 1 mm per pixel show the 2 cm shadow texels as blocks:
+1.50 -> 2.01/255, worst walle-gear 3.32 -> 5.37; dune contact close-ups 2.08 -> 2.66; walls next to the camera at a
+grazing angle); the weaker sun's shadow as a lighter band beside the dark core where SceneKit's penumbrae blend the two
+suns' shadows; crisp outlines of the menu's and sandbox's faint deferred shadows (menu 0.53 -> 0.51). No acne in the captures
+looked at close up (track and town walls, roofs, dunes, robots, sandbox, menu): the saw-tooth edges along walls at
+grazing angles are the shadow texels (identical with normal biases 1 and 2). Robot silhouettes from the mesh LODs move by up to half a pixel. Reports that count rendered pixels move
+towards macOS (visual regression's robot shadow samples 512 -> 569, macOS 598); every check gives the merged build's result.
+`MARVIN_SCN_CAL=Exact` renders the merged build's captures pixel for pixel (calibration, menu, close-ups, visual
+regression, the deterministic smoke and town captures), in the editor runtime and in the export.
 
 ## All passes merged: before and after
 
@@ -565,7 +698,9 @@ intro 42, finish overview 36 (GPU-bound views of the whole town), sandbox and me
 ## What this means for optimisation
 
 In order of payoff at 1080p, each to be checked against the captures (the rule for all optimisations: the look must not
-change). The GPU optimisation pass above did the SSAO mips and the robots' shadow casters; what it found for the rest:
+change). The GPU optimisation pass above did the SSAO mips and the robots' shadow casters; what it found for the rest
+(the hard filter and the camera mesh LODs that followed are look changes, accepted for frame rate; "Hard shadows and
+camera mesh LODs"):
 
 1. Shadows (~6 ms): render only what SceneKit renders (one map per sun instead of two splits each, or the second split
    only when the fixed box needs it, as now, but with a smaller atlas region), stop clearing the full 8192² atlas, and
@@ -573,7 +708,8 @@ change). The GPU optimisation pass above did the SSAO mips and the robots' shado
    kernel is a fixed set of taps x `shadowRadius`, PORTING.md "Not resolved"). Measured since: fewer taps do not help
    (SoftMedium's 8 taps cost what SoftHigh's 16 do), the atlas clear and the per-pass atlas load/store are inside
    Godot's renderer, and Godot fits its maps to the camera (no fixed box per light), so this needs either a custom
-   Godot build or shadow maps rendered by the facade itself.
+   Godot build or shadow maps rendered by the facade itself. The game now uses the hard filter (about 4.5-5 ms less);
+   the maps themselves (2.2-2.6 ms plus the 0.35 ms atlas clear) are unchanged.
 2. The robots' draw calls (~760 per 1080p frame in the town roam): every robot part is its own draw with its own
    material (DirtCoating's per-geometry arguments) in the prepass, the colour pass and each shadow map. Merging the
    parts that move together and share a material would need the coating's per-part `dirtToBody` folded into the
@@ -604,6 +740,9 @@ tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --mode race
 tools/perf/summarize-runs.py --label-from-name RUN_DIRS...
 # GPU per pass: labelled Metal System Trace 30 s after launch, then per-encoder sums
 tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --labels --trace 30:4
+# an export does not flush its stdout per line: trace it from launch (its benchmark starts 11-12 s after launch)
+tools/perf/run-benchmark.py OUT --app export --export-binary "build/macos/Marvin Simulator.app/Contents/MacOS/Marvin Simulator" \
+    --size 1920x1080 --labels --trace 31:4
 tools/perf/mst-gpu.py OUT/metal-system.trace --process Godot
 # A/B of one fixed frame (GPU optimisation pass): wait for an idle GPU, freeze the town roam after 16 s, trace 21-25 s
 # after the benchmark start (the run analyses its own trace into OUT/mst-gpu.json), then compare runs pass by pass
@@ -611,7 +750,9 @@ MARVIN_PERF_IGNORE_PIDS=<pid of a game left running> tools/perf/run-benchmark.py
     --mode city-roam --seconds 28 --labels --trace 21:4 --trace-from-start --wait-idle --env MARVIN_BENCHMARK_FREEZE=16
 tools/perf/gpu-passes.py OUT_A OUT_B ...
 # diagnostics: --env MARVIN_BENCHMARK_HIDE="Marvin CAD assembly;R2-D2 · ;BB-8 · ;WALL-E · " (no robots),
-# --env MARVIN_SCN_CAL=ShadowFilterQuality=0 (hard shadows), -- --benchmark-no-shadows, -- --benchmark-no-ssao
+# --env MARVIN_SCN_CAL=Exact (the exact-SceneKit look: SoftHigh shadows, full robot meshes for the camera; the game's
+# default is hard shadows and camera mesh LODs), -- --benchmark-no-shadows, -- --benchmark-no-ssao
+# before/after of a look option on one build: the same runs with and without --env MARVIN_SCN_CAL=..., interleaved
 # CPU: managed stacks (dotnet-trace) and a native sample of all threads
 tools/perf/profile-cpu.sh OUT 25 15 --sample -- --app godot --size 960x540
 tools/perf/speedscope-top.py OUT/cpu.speedscope.json 40 all
