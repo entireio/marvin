@@ -290,6 +290,20 @@ public partial class SCNNode : Node3D
         SetSceneOwner(null);
         transformStamp = SceneKitRuntime.StampTransform();
     }
+    /// <summary>
+    /// PORT helper (no SceneKit counterpart): Swift deallocates a node that was removed from its parent once the game drops
+    /// its last reference (ARC), while a Godot node, its mesh instances and their meshes stay allocated until freed.
+    /// Game code calls this where the Swift code removes a node and drops it for good (trail chunks and sand patches on a
+    /// reset, the sandbox's rebuilt floor details); before, every race reset left its trail chunks behind as orphan
+    /// nodes. Removes the node, releases its geometry and light, and frees it with its subtree at the end of the frame;
+    /// neither may be used afterwards.
+    /// </summary>
+    public void releaseRemoved()
+    {
+        removeFromParentNode();
+        enumerateHierarchy((n, _) => { n.constraints = null; n.geometry = null; n.light = null; });
+        if (SceneKitRuntime.OnMainThread) QueueFree(); else Callable.From(QueueFree).CallDeferred();
+    }
     internal void SetSceneOwner(SCNScene scene)
     {
         if (sceneOwner == scene) return;

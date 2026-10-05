@@ -95,7 +95,8 @@ if (stormActive > 0.5) {
     }
     public void reset()
     {
-        foreach (var chunk in chunks) chunk.removeFromParentNode(); chunks.Clear(); chunkMarks.Clear();
+        // PORT: Swift drops the removed chunks (ARC frees them); Godot nodes must be freed explicitly (releaseRemoved).
+        foreach (var chunk in chunks) chunk.releaseRemoved(); chunks.Clear(); chunkMarks.Clear();
         vertices.Clear(); normals.Clear(); strengths.Clear(); uv.Clear(); indices.Clear(); chunkIndex = 0;
         previous = null; remainder = 0; count = 0; dirty = false; geometryUploads = 0;
     }

@@ -98,7 +98,8 @@ public sealed class World
             var start = i == 0 ? new Checkpoint(x: CourseLayout.launch.x, z: CourseLayout.launch.z) : checkpoints[i - 1];
             beaconLabels[i].eulerAngles = new SCNVector3(-Math.PI / 2, CourseRoute.labelYaw(start, point), 0);
         }
-        floorDetails.childNodes.ForEach(n => n.removeFromParentNode());
+        // PORT: the old details are dropped for good; Godot nodes are freed explicitly (SCNNode.releaseRemoved).
+        floorDetails.childNodes.ForEach(n => n.releaseRemoved());
         var path = new NSBezierPath(new NSRect(-6, -5, 12, 10));
         path.windingRule = NSBezierPath.WindingRule.evenOdd;
         foreach (var point in checkpoints)
