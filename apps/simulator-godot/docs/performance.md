@@ -32,6 +32,10 @@ scratchpad, not in the repository; every number below can be reproduced with the
   (Godot +24 MB, macOS +51 MB). The node count grows by about 1,000 in ten minutes (trail chunks, as on macOS) and the
   .NET heap holds about 1 GB. The main thread allocates 1.6 MB per frame, so the GC runs 12-14 gen0 collections per
   second and pauses 16-19 ms per second.
+- **After the CPU pass** (section below): facade flush 1.9 → 1.2 ms per frame, main-thread allocation 1.6 → 0.6 MB per
+  frame (gen0 collections 12 → 4.6 per second, GC pauses 17 → 7 ms per second), no new GPU texture per dune update,
+  no orphan nodes left by race resets, and the freeze at 93 % 2.8 → 0.3 s (launch to race 15.0 → 12.2 s in the
+  loading check). Frame rates are unchanged: vsync-bound at 960 x 540, GPU-bound at 1080p.
 
 ### Ranked costs (what separates Godot from SceneKit)
 
@@ -45,6 +49,108 @@ scratchpad, not in the repository; every number below can be reproduced with the
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## CPU pass: per-frame facade work, allocation, texture churn and the loading freeze
+
+Done after the measurement above, without changing the look (see "Look and checks" below). Measured with the same runner
+on the same Mac at 960 x 540, the unchanged build (a copy of commit c19fd6f) and the new one run back to back: two runs
+each for the town roam and the race, one for the dune roam; means per frame of the 45 s runs (`godot-render.json`).
+
+| | city roam before → after | race before → after | dune roam before → after |
+|---|---|---|---|
+| facade flush (both flushes of a frame) | 1.89 → 1.19 ms | 1.78 → 1.13 ms | 1.55 → 0.93 ms |
+| of which the node flush | 1.47 → 0.93 ms | 1.35 → 0.86 ms | 1.16 → 0.69 ms |
+| of which the camera sync (transparent sort, shadow fit) | 0.47 → 0.23 ms | 0.48 → 0.23 ms | 0.43 → 0.21 ms |
+| main-thread allocation | 1.64 → 0.60 MB | 1.53 → 0.59 MB | 1.60 → 0.71 MB |
+| of which the game tick | 1.10 → 0.27 MB | 1.03 → 0.27 MB | 1.15 → 0.44 MB |
+| gen0 collections, GC pauses | 12.4/s, 16.9 ms/s → 4.6/s, 6.9 ms/s | 11.6/s, 17.2 ms/s → 4.5/s, 6.5 ms/s | 12.1/s, 14.9 ms/s → 5.4/s, 7.1 ms/s |
+| new GPU textures | 1.3/s → 1.3/s | 1.3/s → 1.3/s | 49.4/s → 1.7/s (47.9 updated in place) |
+| FPS (vsync-bound) | 59.78, 59.83 → 59.86, 59.81 | 59.32, 59.66 → 59.37, 59.86 | 60.00 → 60.00 |
+
+These 45 s runs were taken before the last change, the transparent sort's world-space centre cache, which matters once
+trail chunks pile up (see "Ten minutes"). The game tick's time is unchanged within the run-to-run spread (roam 1.39 →
+1.47 ms, race 1.32 → 1.28 ms): it does the same work, with a quarter of the allocation. At 1920 x 1080 the frame rate stays GPU-bound (roam 29.4 → 29.0 FPS, race
+32.1 → 34.1 FPS, within the spread between runs) while the flush drops from 2.60 to 1.66 ms (roam) and 2.38 to 1.50 ms
+(race). One of the two new race runs had 19 frames over 25 ms in its first 15 s, all waiting for the GPU in the render
+submission (no slow tick or flush, another job's GPU run had just ended); the other new and both old runs had none.
+
+**Ten minutes** (603 s city roam, new build): 59.91 FPS, p99 18.4 ms, 2 frames over 25 ms. The facade flush is 1.30 ms
+in the first minute, 1.46 ms around minute 5 and 1.20 ms in the last minute (before: 2.11 → 2.53 ms), because the
+transparent sort no longer queries Godot for each of the 500 trail chunks that pile up (camera sync 0.25 → 0.35 ms over
+the run; a run without that cache went 0.23 → 0.56 ms). Allocation stays at 0.56-0.68 MB per frame and 4.1-5.0 gen0
+collections per second; orphan nodes stay at 3,207 (the scenes not shown); the node count grows from 4,870 to 5,836
+(the trail chunks, as before).
+
+**Loading** (`--loading-smoke-test`, main-thread stalls of 50 ms or more): the freeze at 93 % went from **2.82 s to
+0.31 s** (`startDirtTrack`: the shadow batch, attaching the world and the robots) plus 0.15 s at the reveal (the first
+draw of the race world in `revealDirtTrack`'s snapshot); the loading screen keeps drawing in between. Launch to the end
+of the check 15.0 → 12.2 s. Done synchronously (`--world-build-profile`), `startDirtTrack` takes 1.41 s instead of
+3.36 s: node flush 2.14 → 0.57 s, the snapshot's PNG 0.33 s → 0. First frames after the reveal 73, 47 → 70, 32 ms.
+
+**What changed:**
+
+1. *Facade flush* (`SceneKitRuntime`, `SCNNode`): engine calls only for changes. Nodes outside every scene (the race's
+   1,600 pooled particle slots, which SceneKit never draws either) keep their transform and visual changes until they are
+   added; that alone removed about 250 transform pushes and 190 visual updates per frame. A node's transform is recomputed
+   only when its model values changed (the game reads positions through the `ref` getters, which mark the node), and the
+   dirty set is mirrored on the node so those reads skip the dictionary. Mesh instances get cast-shadow, layer,
+   transparency and visibility only when they change (geometry rebuilds re-applied them every frame, and a cast-shadow
+   write updates the instance's light pairing). The transparent sort reads one global transform per node with cached box
+   centres and offsets, tests scenes instead of nodes for being in the tree, and is skipped in the frame's second flush
+   when nothing moved. The constraint loop no longer copies the set, the SSAO passes reuse their uniform sets (keyed by
+   shader and textures, rebuilt when one is freed), `isNode(_:insideFrustumOf:)` allocates nothing, and a material
+   argument set to the bits it already has is not re-sent.
+2. *Meshes and snapshots* (`SCNGeometry`, `NSImage`): mesh arrays are compacted with an index array instead of a
+   dictionary and without intermediate copies (the same arrays: compared for all 2,937 geometries of the race world, the
+   robots and the sandbox), geometry sources and elements are packed with one copy, a new geometry's default material is
+   created only when read (per-frame batches replace it at once), and snapshots keep their pixels instead of a PNG
+   encode and decode (lossless for the RGBA8 they are).
+3. *Loading* (`SceneKitRuntime.PrepareAsync`, `NSImage`): `prepare(_:completionHandler:)` is asynchronous as in
+   SceneKit: mesh arrays and procedural textures (the per-pixel conversion and mipmaps) are prepared on worker threads and
+   the main thread hands ready nodes to Godot for 10 ms per frame. The town's scanned 2048² textures (30-140 ms each to
+   decode, 1.4 s in all, inside single nodes' flushes) start loading on Godot's loader threads when a material names
+   them, during the background world build.
+4. *Game code* (PORT comments; same values in the same order): debris batches and trail marks reuse their vertex lists
+   and write their literals without temporary arrays; `TownResidents` and `TownStreetResidents` replaced the per-frame
+   LINQ closures and concatenated lists with loops over reused lists; `RobotCollisions.contact` keeps its axes on the
+   stack and `CityCollisionWorld.nearby` uses per-thread scratch lists (`tools/checks` is byte-identical);
+   `TownShadowBatch` presizes its weld tables.
+5. *Texture churn*: `DeformableSand` keeps one height texture per patch and updates it in place (49 new GPU textures per
+   second over the dunes before). `DirtCoating` keeps SceneKit's new texture per upload: Marvin's and R2-D2's coatings
+   rely on SceneKit not showing new contents for primitive geometries (PORTING.md, Known deviations), which in-place
+   writes would change.
+6. *Node growth*: the +3 nodes per second while racing are DirtTrail's chunk nodes, as on macOS (one chunk node and its
+   mesh instance per filled chunk, at most 128 chunks per racer), not a leak. A real leak was found: removed nodes are not
+   freed in Godot, so every race reset left the old trail chunks behind (100-130 orphan nodes and 150 objects per reset
+   after 30 s of racing, measured over four resets). `SCNNode.releaseRemoved()` frees what the Swift code drops: trail
+   chunks and sand patches on a reset or eviction and the sandbox's rebuilt floor details; the counts now stay flat.
+
+**Look and checks.** Every capture mode below was run twice on the unchanged build (to know the noise of each image) and
+once on the new one: `--facade-test` (all images and measurements.json identical), `--hud-smoke-test`, pinned
+`--town-smoke-test`, pinned `--smoke-test` (smoke.json, full-race-trails.json, menu-smoke.json identical),
+`--trail-material-smoke-test`, `--debris-smoke-test`, `--dune-contact-test`, `--sandstorm-smoke-test`,
+`--character-smoke-test`, `--people-smoke-test`, `--dust-visibility-test`, `--navigation-smoke-test` (pinned grid and
+daylight), `--loading-smoke-test`, `--entrance-smoke-test`, `--passage-smoke-test`, pinned `--city-escape-smoke-test` and
+`--postrace-smoke-test`, `--visual-regression-test`, `--binary-sky-smoke-test` (daylights from the macOS run),
+`--ground-performance-test`, `--mesh-reuse-test`, `--shadow-culling-test`, `--viewport-smoke-test`,
+`--weather-reset-test`, `--menu-smoke-test`, `--audio-smoke-test`. Every JSON report of a deterministic mode is
+byte-identical (characters, people, street-people, navigation, entrances, passages, preflight, city-escape, postrace,
+visual-regression, binary-races, viewport, menu, town and smoke reports, the ground-performance, mesh-reuse and
+shadow-culling comparisons, audio.json in a run whose unseeded voice director drew the same count; the mean error of the
+comparisons' uncovered-infield views follows the random starting grid and varies between two old runs too); the others differ in timing fields and random draws exactly as
+two runs of the unchanged build do. Images: passage (66), visual regression (43), facade, trail, menu and loading are
+pixel-identical; the rest are within the unchanged build's own run-to-run spread (largest deterministic difference
+0.08/255 in the town smoke, noise 0.08/255); the random modes (character races, dust, weather resets, dirty robots with
+their dust plumes) differ as two old runs do. A first version deferred the mesh builds of nodes outside every scene too,
+which changed 50 z-fighting pixels in one ground-performance view (resource creation order decides Godot's order among
+equal-depth surfaces); it now builds them in the old order and that report is identical again. After the last change
+(the sort's centre cache) the facade, town, smoke, trail, people, dust, navigation, entrance, passage, escape, post-race,
+visual-regression and ground-performance modes were run once more, with the same result. A temporary check that ran the
+old and the new mesh preparation side by side found identical arrays for all 2,937 geometries.
+
+**Not done.** Godot's own scene and render encoding (~3.3 ms) and the Metal driver (~1.5 ms) still run on the main
+thread; a separate render thread (Godot's threading model) was not tried. The remaining loading stalls are game code
+(`TownShadowBatch` welds 1.8 million vertices, 0.16 s) and the first draw of the race world (0.12-0.17 s).
 
 ## Method
 
@@ -252,9 +358,10 @@ change):
 3. Post chain and prepass (~3 ms): glow, tonemap and the 2D pass at full resolution, the depth prepass, two MSAA
    resolves.
 4. Loading freeze (2-2.6 s): hand meshes to Godot over several frames or from a worker thread while the loading screen
-   draws, and do not encode a PNG for snapshots whose image is discarded.
+   draws, and do not encode a PNG for snapshots whose image is discarded. *Done in the CPU pass (2.8 → 0.3 s).*
 5. CPU: a separate render thread (Godot's thread model) would give the main thread back ~5 ms; allocation in the trails,
-   dust/debris rebuilds and the node flush drives the GC.
+   dust/debris rebuilds and the node flush drives the GC. *Allocation and the flush done in the CPU pass; the render
+   thread not tried.*
 
 ## Reproduce
 
