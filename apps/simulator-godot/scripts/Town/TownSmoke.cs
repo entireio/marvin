@@ -72,7 +72,7 @@ public sealed class TownFrameMeter : SCNSceneRendererDelegate
         finally { @lock.unlock(); }
     }
     public void reset() { @lock.@lock(); collecting = true; intervals = new(); frames = new(); previous = null; @lock.unlock(); }
-    public List<double[]> timeline() { @lock.@lock(); try { return frames; } finally { @lock.unlock(); } }
+    public List<double[]> timeline() { @lock.@lock(); try { return new List<double[]>(frames); } finally { @lock.unlock(); } } // a copy: Swift arrays are values
     public Dictionary<string, object> report()
     {
         @lock.@lock(); var values = intervals.ToList(); @lock.unlock();
@@ -80,7 +80,7 @@ public sealed class TownFrameMeter : SCNSceneRendererDelegate
         double percentile(double p) => sorted.Count == 0 ? 0 : sorted[Math.Min(sorted.Count - 1, (int)((double)(sorted.Count - 1) * p))] * 1000;
         return new Dictionary<string, object>
         {
-            ["samples"] = values.Count, ["meanFPS"] = values.Count == 0 ? 0 : (double)values.Count / values.Sum(),
+            ["samples"] = values.Count, ["meanFPS"] = values.Count == 0 ? 0 : (double)values.Count / values.Aggregate(0.0, (x, y) => x + y),
             ["p50MS"] = percentile(0.5), ["p95MS"] = percentile(0.95), ["p99MS"] = percentile(0.99),
             ["over25MS"] = values.Count(v => v > 0.025), ["over50MS"] = values.Count(v => v > 0.050),
             ["metric"] = "SceneKit didRenderScene wall-clock intervals (Godot: RenderingServer frame_post_draw); not GPU or display presentation timing",

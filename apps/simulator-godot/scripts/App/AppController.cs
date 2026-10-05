@@ -4,7 +4,9 @@
 // verbatim; the files that extend AppController in Swift add theirs as further `partial class AppController`
 // declarations (PlayerCharacter.cs, LevelLoading.cs, RaceAudio.cs and the smoke checks: AppSmokeTest.cs,
 // BinarySkySmoke.cs, SandstormSmoke.cs, DuneContactSmoke.cs, DustVisibilitySmoke.cs, TrailMaterialSmoke.cs,
-// TownSmoke.cs, EntranceSmoke.cs, PeopleSmoke.cs, CharacterSmoke.cs, RaceAudioSmoke.cs, MenuSmoke.cs).
+// TownSmoke.cs (with the town benchmark), EntranceSmoke.cs, PeopleSmoke.cs, CityEscapeSmoke.cs, PostRaceSmoke.cs,
+// NavigationSmoke.cs, PassageSmoke.cs, TownDepartureMovie.cs, GroundPerformanceSmoke.cs, CharacterSmoke.cs,
+// RaceAudioSmoke.cs, MenuSmoke.cs).
 //
 // PORT: AppController is a Godot Node and the NSApplication's delegate. `launch(tree:smokeDirectory:)` (AppModes.cs)
 // is main.swift: NSApp.run() adds it to the scene tree and calls applicationDidFinishLaunching. The window, its
