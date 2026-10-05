@@ -93,15 +93,27 @@ public partial class NSView : Control, NSResponder
             if (value && !layoutQueued) { layoutQueued = true; Callable.From(DeferredLayout).CallDeferred(); }
         }
     }
-    private void DeferredLayout() { layoutQueued = false; if (IsInstanceValid(this)) layoutSubtreeIfNeeded(); }
+    private void DeferredLayout() { layoutQueued = false; if (IsInstanceValid(this)) LayoutSubtree(); }
     /// <summary>layout(): subclasses position their subviews; called when the size changed or needsLayout was set.</summary>
     public virtual void layout() { }
+    /// <summary>
+    /// layoutSubtreeIfNeeded(): AppKit's layout pass for this view: its own Auto Layout constraints win over a frame
+    /// assigned directly (measured on the Mac: the main menu overlay's 900x550 frame reverts to the content layout guide),
+    /// then layout() wherever it is needed in the subtree. Display caching (cacheDisplay) and the deferred layout after a
+    /// resize lay out the subtree without the constraint pass, as AppKit's display does (the race HUD keeps a 900x550
+    /// frame through RaceFinishSmoke's captures).
+    /// </summary>
     public void layoutSubtreeIfNeeded()
+    {
+        if (window is NSWindow w && w.constraints.Count > 0) NSLayoutConstraint.Solve(w, this);
+        LayoutSubtree();
+    }
+    internal void LayoutSubtree()
     {
         if (_needsLayout) { _needsLayout = false; layout(); QueueRedraw(); }
         foreach (var child in GetChildren())
-            if (child is NSView v) v.layoutSubtreeIfNeeded();
-            else if (child is SCNView s) foreach (var c in s.GetChildren()) if (c is NSView sv) sv.layoutSubtreeIfNeeded();
+            if (child is NSView v) v.LayoutSubtree();
+            else if (child is SCNView s) foreach (var c in s.GetChildren()) if (c is NSView sv) sv.LayoutSubtree();
     }
     /// <summary>resizeSubviews(withOldSize:): applies each subview's autoresizingMask.</summary>
     public virtual void resizeSubviews(CGSize withOldSize)
@@ -394,7 +406,7 @@ internal static class NSViewRendering
     internal static void Capture(NSView view, CGRect rect, NSBitmapImageRep to)
     {
         if (!SceneKitRuntime.OnMainThread) throw new InvalidOperationException("cacheDisplay must run on the main thread");
-        view.layoutSubtreeIfNeeded();
+        view.LayoutSubtree();
         int w = to.pixelsWide, h = to.pixelsHigh;
         var viewport = new SubViewport
         {

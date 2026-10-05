@@ -70,6 +70,8 @@ public sealed class SCNGeometrySource
     }
     /// <summary>The raw bytes (Swift Data).</summary>
     public byte[] data => _buffer != null ? _buffer.bytes : _data;
+    /// <summary>Version of the backing MTLBuffer (0 for data sources): changes when its contents are written.</summary>
+    internal int BufferVersion => _buffer?.version ?? 0;
 
     /// <summary>Component c of vector i as double (float, half, double or normalised integer sources).</summary>
     internal double Component(int i, int c)
@@ -236,6 +238,8 @@ public class SCNGeometry : IPropertyOwner
     public SCNGeometrySource[] sourcesForSemantic(SCNGeometrySourceSemantic semantic) => sources.Where(s => s.semantic == semantic).ToArray();
     /// <summary>sources(for:) - `sources(for: .vertex)` -> `sources(SCNGeometrySourceSemantic.vertex)`.</summary>
     public SCNGeometrySource[] sourcesFor(SCNGeometrySourceSemantic semantic) => sourcesForSemantic(semantic);
+    /// <summary>The first vertex source (hit testing).</summary>
+    internal SCNGeometrySource VertexSource => Array.Find(sources, s => s.semantic == SCNGeometrySourceSemantic.vertex);
     public SCNGeometryElement element(int at) => elements[at];
 
     /// <summary>materials. Swift arrays are values: the getter returns a copy, assign to change.</summary>
@@ -368,8 +372,11 @@ public class SCNGeometry : IPropertyOwner
         return runs.ToArray();
     }
 
+    /// <summary>Godot meshes built so far (diagnostics).</summary>
+    internal static int MeshesBuilt;
     private ArrayMesh BuildMesh()
     {
+        MeshesBuilt++;
         var result = new ArrayMesh();
         surfaceElements.Clear();
         var pos = sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.vertex);

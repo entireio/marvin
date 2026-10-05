@@ -239,6 +239,8 @@ public partial class SCNNode : Node3D
     public SCNNode parent => _parent;
     /// <summary>childNodes (a copy, like Swift's array value).</summary>
     public List<SCNNode> childNodes => new(_children);
+    /// <summary>The children without a copy (facade internals that only read them).</summary>
+    internal IReadOnlyList<SCNNode> ChildrenView => _children;
     public void addChildNode(SCNNode child)
     {
         if (child == null || child == this) return;
@@ -568,59 +570,9 @@ public partial class SCNNode : Node3D
     /// <summary>hitTestWithSegment(from:to:options:) on this node's geometry and children (local coordinates).</summary>
     public List<SCNHitTestResult> hitTestWithSegment(SCNVector3 from, SCNVector3 to, Dictionary<string, object> options = null)
     {
-        bool backFaceCulling = true;
-        if (options != null && options.TryGetValue(SCNHitTestOption.backFaceCulling, out var bf) && bf is bool b) backFaceCulling = b;
-        var results = new List<SCNHitTestResult>();
         var world = ModelWorld();
-        var a = world.TransformPoint(from); var bpt = world.TransformPoint(to);
-        void Test(SCNNode n)
-        {
-            if (n._geometry != null)
-            {
-                var m = n.ModelWorld();
-                var inv = SCNMatrix4.Inverse(m);
-                var la = inv.TransformPoint(a); var lb = inv.TransformPoint(bpt);
-                foreach (var hit in RayTriangles(n._geometry, la, lb, backFaceCulling))
-                {
-                    var wp = m.TransformPoint(hit.p);
-                    results.Add(new SCNHitTestResult(n, hit.p, wp, hit.n, m.TransformVector(hit.n).Normalized(), hit.face, hit.element, (wp - a).Length));
-                }
-            }
-            foreach (var c in n._children) Test(c);
-        }
-        Test(this);
-        results.Sort((x, y) => x.distance.CompareTo(y.distance));
-        return results;
+        return SCNHitTest.Run(this, world.TransformPoint(from), world.TransformPoint(to), options, renderTransforms: false);
     }
-    private static IEnumerable<(SCNVector3 p, SCNVector3 n, int face, int element)> RayTriangles(SCNGeometry g, SCNVector3 a, SCNVector3 b, bool cull)
-    {
-        var pos = g.sourcesFor(SCNGeometrySourceSemantic.vertex).FirstOrDefault();
-        if (pos == null) yield break;
-        var dir = b - a;
-        for (int e = 0; e < g.elements.Length; e++)
-        {
-            var tri = g.elements[e].TriangleList();
-            for (int i = 0; i + 2 < tri.Length; i += 3)
-            {
-                var p0 = Vec(pos, tri[i]); var p1 = Vec(pos, tri[i + 1]); var p2 = Vec(pos, tri[i + 2]);
-                var e1 = p1 - p0; var e2 = p2 - p0;
-                var pv = SCNVector3.Cross(dir, e2);
-                double det = SCNVector3.Dot(e1, pv);
-                if (cull ? det < 1e-12 : Math.Abs(det) < 1e-12) continue;
-                double inv = 1 / det;
-                var tv = a - p0;
-                double u = SCNVector3.Dot(tv, pv) * inv;
-                if (u < 0 || u > 1) continue;
-                var qv = SCNVector3.Cross(tv, e1);
-                double v = SCNVector3.Dot(dir, qv) * inv;
-                if (v < 0 || u + v > 1) continue;
-                double t = SCNVector3.Dot(e2, qv) * inv;
-                if (t < 0 || t > 1) continue;
-                yield return (a + dir * t, SCNVector3.Cross(e1, e2).Normalized(), i / 3, e);
-            }
-        }
-    }
-    private static SCNVector3 Vec(SCNGeometrySource s, int i) => new(s.Component(i, 0), s.Component(i, 1), s.Component(i, 2));
 
     // =====================================================================
     // Rotation maths (SceneKit conventions)

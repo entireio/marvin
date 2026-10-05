@@ -40,19 +40,27 @@ public static class Foundation
 /// </summary>
 public static class JSONSerialization
 {
-    [Flags] public enum WritingOptions { prettyPrinted = 1, sortedKeys = 2 }
-    /// <summary>The report text. PORT: only [.prettyPrinted, .sortedKeys] (the options every smoke report uses).</summary>
-    public static string prettyPrintedSortedKeys(object withJSONObject)
+    [Flags] public enum WritingOptions { none = 0, prettyPrinted = 1, sortedKeys = 2 }
+    /// <summary>The report text with [.prettyPrinted, .sortedKeys] (the options most smoke reports use).</summary>
+    public static string prettyPrintedSortedKeys(object withJSONObject) => @string(withJSONObject, WritingOptions.prettyPrinted | WritingOptions.sortedKeys);
+    /// <summary>
+    /// The JSON text for these options. Without <c>.prettyPrinted</c> the text is compact (<c>{"a":1,"b":[2,3]}</c>, as
+    /// Foundation writes it); without <c>.sortedKeys</c> keys keep the dictionary's insertion order. PORT: Swift
+    /// dictionaries have no defined order, so unsorted output was not deterministic on macOS either.
+    /// </summary>
+    public static string @string(object withJSONObject, WritingOptions options)
     {
-        var sb = new System.Text.StringBuilder(); write(sb, withJSONObject, 0); return sb.ToString();
+        var sb = new System.Text.StringBuilder(); write(sb, withJSONObject, 0, options); return sb.ToString();
     }
-    /// <summary>JSONSerialization.data(withJSONObject:options:) (UTF-8); write it with <c>.write(to: url)</c>.</summary>
+    /// <summary>JSONSerialization.data(withJSONObject:options:) (UTF-8); write it with <c>.write(to: url)</c>. PORT: the
+    /// default here is [.prettyPrinted, .sortedKeys] (Swift's is []); pass <c>WritingOptions.none</c> for compact text.</summary>
     public static byte[] data(object withJSONObject, WritingOptions options = WritingOptions.prettyPrinted | WritingOptions.sortedKeys) =>
-        System.Text.Encoding.UTF8.GetBytes(prettyPrintedSortedKeys(withJSONObject));
+        System.Text.Encoding.UTF8.GetBytes(@string(withJSONObject, options));
 
-    private static void write(System.Text.StringBuilder sb, object value, int depth)
+    private static void write(System.Text.StringBuilder sb, object value, int depth, WritingOptions options)
     {
         string pad(int d) => new string(' ', d * 2);
+        bool pretty = options.HasFlag(WritingOptions.prettyPrinted);
         switch (value)
         {
             case null: sb.Append("null"); break;
@@ -61,17 +69,25 @@ public static class JSONSerialization
             case int or long or uint or short or ulong or ushort or byte: sb.Append(Convert.ToString(value, CultureInfo.InvariantCulture)); break;
             case float f: sb.Append(number(f)); break;
             case double d: sb.Append(number(d)); break;
-            case Godot.Variant v: write(sb, v.Obj, depth); break;
+            case Godot.Variant v: write(sb, v.Obj, depth, options); break;
             case System.Collections.IDictionary dictionary:
             {
-                var keys = dictionary.Keys.Cast<object>().Select(k => Convert.ToString(k, CultureInfo.InvariantCulture)).OrderBy(k => k, keyOrder).ToList();
+                var names = dictionary.Keys.Cast<object>().Select(k => Convert.ToString(k, CultureInfo.InvariantCulture));
+                var keys = (options.HasFlag(WritingOptions.sortedKeys) ? names.OrderBy(k => k, keyOrder) : names).ToList();
                 var byName = dictionary.Keys.Cast<object>().ToDictionary(k => Convert.ToString(k, CultureInfo.InvariantCulture), k => dictionary[k]);
+                if (!pretty)
+                {
+                    sb.Append('{');
+                    for (var i = 0; i < keys.Count; i++) { if (i > 0) sb.Append(','); quote(sb, keys[i]); sb.Append(':'); write(sb, byName[keys[i]], depth + 1, options); }
+                    sb.Append('}');
+                    break;
+                }
                 if (keys.Count == 0) { sb.Append("{\n\n").Append(pad(depth)).Append('}'); break; }
                 sb.Append("{\n");
                 for (var i = 0; i < keys.Count; i++)
                 {
                     sb.Append(pad(depth + 1)); quote(sb, keys[i]); sb.Append(" : ");
-                    write(sb, byName[keys[i]], depth + 1);
+                    write(sb, byName[keys[i]], depth + 1, options);
                     sb.Append(i + 1 < keys.Count ? ",\n" : "\n");
                 }
                 sb.Append(pad(depth)).Append('}');
@@ -79,12 +95,20 @@ public static class JSONSerialization
             }
             case System.Collections.IEnumerable sequence:
             {
+                if (!pretty)
+                {
+                    sb.Append('[');
+                    bool first = true;
+                    foreach (var item in sequence) { if (!first) sb.Append(','); first = false; write(sb, item, depth + 1, options); }
+                    sb.Append(']');
+                    break;
+                }
                 var items = sequence.Cast<object>().ToList();
                 if (items.Count == 0) { sb.Append("[\n\n").Append(pad(depth)).Append(']'); break; }
                 sb.Append("[\n");
                 for (var i = 0; i < items.Count; i++)
                 {
-                    sb.Append(pad(depth + 1)); write(sb, items[i], depth + 1);
+                    sb.Append(pad(depth + 1)); write(sb, items[i], depth + 1, options);
                     sb.Append(i + 1 < items.Count ? ",\n" : "\n");
                 }
                 sb.Append(pad(depth)).Append(']');
@@ -166,8 +190,32 @@ public static class JSONSerialization
 public sealed class ProcessInfo
 {
     public static readonly ProcessInfo processInfo = new();
+    /// <summary>systemUptime. PORT: Godot's monotonic clock (seconds since the engine started), not the time since boot;
+    /// only differences and values from the same run are meaningful, as the game uses them.</summary>
     public double systemUptime => Time.GetTicksUsec() / 1e6;
     public string[] arguments => CommandLine.arguments;
+    public enum ThermalState { nominal = 0, fair = 1, serious = 2, critical = 3 }
+    /// <summary>thermalState: [NSProcessInfo processInfo].thermalState on macOS (through the Objective-C runtime).
+    /// PORT: other platforms report .nominal (no portable equivalent).</summary>
+    public ThermalState thermalState
+    {
+        get
+        {
+            if (!OperatingSystem.IsMacOS()) return ThermalState.nominal;
+            try
+            {
+                var info = ObjC.msgSend(ObjC.objc_getClass("NSProcessInfo"), ObjC.sel_registerName("processInfo"));
+                return info == IntPtr.Zero ? ThermalState.nominal : (ThermalState)(long)ObjC.msgSend(info, ObjC.sel_registerName("thermalState"));
+            }
+            catch (Exception) { return ThermalState.nominal; }
+        }
+    }
+    private static class ObjC
+    {
+        [System.Runtime.InteropServices.DllImport("/usr/lib/libobjc.A.dylib")] internal static extern IntPtr objc_getClass(string name);
+        [System.Runtime.InteropServices.DllImport("/usr/lib/libobjc.A.dylib")] internal static extern IntPtr sel_registerName(string name);
+        [System.Runtime.InteropServices.DllImport("/usr/lib/libobjc.A.dylib", EntryPoint = "objc_msgSend")] internal static extern IntPtr msgSend(IntPtr receiver, IntPtr selector);
+    }
     public Dictionary<string, string> environment
     {
         get
@@ -289,6 +337,14 @@ public readonly struct URL
     public URL deletingLastPathComponent() => new(System.IO.Path.GetDirectoryName(path) ?? path);
     public string lastPathComponent => System.IO.Path.GetFileName(path);
     public override string ToString() => "file://" + path;
+}
+
+/// <summary>FileHandle.standardOutput: <c>write(_ data:)</c> puts UTF-8 bytes on stdout unchanged (no added newline).</summary>
+public sealed class FileHandle
+{
+    public static readonly FileHandle standardOutput = new();
+    private FileHandle() { }
+    public void write(byte[] data) => GD.PrintRaw(System.Text.Encoding.UTF8.GetString(data));
 }
 
 /// <summary>FileManager.default (<c>FileManager.@default</c>): directory creation and existence checks.</summary>

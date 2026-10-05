@@ -59,7 +59,22 @@ public partial class SceneKitRuntime : Node
         foreach (var h in pendingHosts) if (h.GetParent() == null) AddChild(h);
         pendingHosts.Clear();
     }
-    public override void _Process(double delta) { SceneTime += delta; DispatchQueue.Drain(); Flush(); }
+    public override void _Process(double delta)
+    {
+        long begin = System.Diagnostics.Stopwatch.GetTimestamp();
+        SceneTime += delta; DispatchQueue.Drain();
+        long drained = System.Diagnostics.Stopwatch.GetTimestamp();
+        int meshes = SCNGeometry.MeshesBuilt;
+        Flush();
+        long end = System.Diagnostics.Stopwatch.GetTimestamp();
+        LastDispatchMS = (drained - begin) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        LastFlushMS = (end - drained) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        LastMeshesBuilt = SCNGeometry.MeshesBuilt - meshes;
+    }
+    /// <summary>Diagnostics for the frame just processed (Godot-only benchmark telemetry): time in queued main-queue blocks,
+    /// in Flush (dirty materials, nodes, meshes, constraints, views) and the Godot meshes it built.</summary>
+    internal static double LastDispatchMS, LastFlushMS;
+    internal static int LastMeshesBuilt;
 
     internal static void AttachHost(SubViewport host)
     {
@@ -192,7 +207,7 @@ public partial class SceneKitRuntime : Node
     /// <summary>Applies all pending SceneKit changes to Godot. Called before every frame and by snapshot().</summary>
     public static void Flush()
     {
-        if (flushing || !OnMainThread) return;
+        if (flushing || isolating || !OnMainThread) return;
         flushing = true;
         try
         {
@@ -219,7 +234,6 @@ public partial class SceneKitRuntime : Node
             if (dirtyTextures.Count > 0) { foreach (var t in dirtyTextures) t.Refresh(); dirtyTextures.Clear(); }
             foreach (var node in constrained.ToArray()) ApplyConstraints(node);
             foreach (var view in LiveViews()) view.SyncCamera();
-            SnapshotRig?.Sync();
             if (ActiveScene != null && (sceneStateDirty || ActiveScene != uniformsScene || ActiveScene.stateVersion != uniformsSceneVersion))
                 UpdateSceneUniforms(ActiveScene);
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateWillRender();
@@ -228,6 +242,7 @@ public partial class SceneKitRuntime : Node
     }
     private static void PostDraw()
     {
+        if (isolating) return;
         foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateDidRender();
     }
     /// <summary>Views that still exist (freed views are dropped from the list).</summary>
@@ -293,16 +308,7 @@ public partial class SceneKitRuntime : Node
         node.constraintsApplied = true;
     }
 
-    /// <summary>
-    /// The rig a snapshot is capturing (set by SCNView.snapshot and SCNRenderer.snapshot for the duration of their
-    /// draws). Flush() syncs every visible view, and the last one decides the global scene uniforms (fog, ambient
-    /// lights, sky light); during a snapshot the captured rig is synced last, so its scene's uniforms are the ones
-    /// drawn. Before this, an SCNRenderer capture of its own scene while the main menu showed was lit by the menu's
-    /// 650-lumen ambient light instead of the scene's own (debris check's rendered clod colours).
-    /// </summary>
-    internal static ViewRig SnapshotRig;
-
-    /// <summary>Renders all viewports now (used by snapshot()). Must be called on the main thread.</summary>
+    /// <summary>Renders all viewports now. Must be called on the main thread.</summary>
     internal static void RenderNow(Node extra = null)
     {
         Flush();
@@ -310,6 +316,47 @@ public partial class SceneKitRuntime : Node
         if (instance != null && instance.IsInsideTree()) ForceTransforms(instance);
         if (extra != null && extra.IsInsideTree()) ForceTransforms(extra);
         RenderingServer.ForceDraw(false, 0.0);
+    }
+
+    private static bool isolating;
+    /// <summary>
+    /// Renders one view's or renderer's viewport now (snapshot()), with its own scene's global uniforms (fog, ambient,
+    /// sky light, deferred shadows, shadow boxes). The other views do not render in this draw: they would overwrite the
+    /// scene uniforms with their own scene's (a renderer showing a QA scene while the window's view shows the race, as
+    /// in VisualRegressionSmoke), and SceneKit's offscreen snapshot does not draw them either. The views' delegates are
+    /// not called for these draws (they report the window's frames only). <paramref name="sync"/> applies the rig's camera
+    /// and environment before each draw.
+    /// </summary>
+    internal static void RenderIsolated(SubViewport target, Action sync, int draws = 1)
+    {
+        Flush();
+        var paused = new List<(SubViewport viewport, SubViewport.UpdateMode mode)>();
+        isolating = true;
+        try
+        {
+            foreach (var view in LiveViews())
+            {
+                var vp = view.rig.viewport;
+                if (vp != target && vp.RenderTargetUpdateMode != SubViewport.UpdateMode.Disabled) { paused.Add((vp, vp.RenderTargetUpdateMode)); vp.RenderTargetUpdateMode = SubViewport.UpdateMode.Disabled; }
+            }
+            for (int i = 0; i < draws; i++)
+            {
+                sync();
+                if (ActiveScene != null) UpdateSceneUniforms(ActiveScene);
+                // Godot defers Node3D transform notifications to the end of the frame; apply them now.
+                if (instance != null && instance.IsInsideTree()) ForceTransforms(instance);
+                if (target.IsInsideTree()) ForceTransforms(target);
+                if (target.RenderTargetUpdateMode != SubViewport.UpdateMode.Always) target.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
+                RenderingServer.ForceDraw(false, 0.0);
+            }
+        }
+        finally
+        {
+            foreach (var (vp, mode) in paused) if (GodotObject.IsInstanceValid(vp)) vp.RenderTargetUpdateMode = mode;
+            isolating = false;
+            // The next frame's Flush restores the uniforms of the scene the window shows.
+            sceneStateDirty = true;
+        }
     }
     private static void ForceTransforms(Node node)
     {

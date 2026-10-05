@@ -25,7 +25,17 @@ public struct MTLClearColor { public double red, green, blue, alpha; public MTLC
 public sealed class MTLDevice
 {
     internal static readonly MTLDevice Shared = new();
-    public string name => RenderingServer.GetVideoAdapterName();
+    /// <summary>name: the adapter name; Godot's Metal driver appends the GPU family ("Apple M2 (Apple8)"), MTLDevice's
+    /// name does not ("Apple M2"), so the suffix is dropped.</summary>
+    public string name
+    {
+        get
+        {
+            var adapter = RenderingServer.GetVideoAdapterName();
+            var family = System.Text.RegularExpressions.Regex.Match(adapter, @"^(.*) \(Apple\d+\)$");
+            return family.Success && RenderingServer.GetCurrentRenderingDriverName() == "metal" ? family.Groups[1].Value : adapter;
+        }
+    }
     public MTLBuffer makeBuffer(int length, MTLResourceOptions options = MTLResourceOptions.storageModeShared) => new(length);
     public MTLTexture makeTexture(MTLTextureDescriptor descriptor) => new(descriptor);
     public bool supportsFamily(MTLGPUFamily family) => true;
