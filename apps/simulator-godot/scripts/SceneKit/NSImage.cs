@@ -191,6 +191,18 @@ public sealed class NSImage
     public string accessibilityDescription;
     /// <summary>NSImage(data:).</summary>
     public static NSImage data(byte[] bytes) { var img = Decode(bytes); return img == null ? null : new NSImage(img, null); }
+    /// <summary>
+    /// A rendered snapshot's pixels. Snapshots used to be returned as NSImage.data(image.SavePngToBuffer()); PNG keeps the
+    /// 8-bit formats unchanged (RGBA8 is written as RGBA and decoded to RGBA8), so for those the image itself is the same
+    /// NSImage without the encode and decode (0.3 s of the loading screen's freeze for revealDirtTrack's discarded snapshot).
+    /// Other formats still take the PNG path, which converts them.
+    /// </summary>
+    internal static NSImage Snapshot(Image image)
+    {
+        if (image == null || image.IsEmpty()) return null;
+        if (image.GetFormat() is Image.Format.Rgba8 or Image.Format.Rgb8 && !image.HasMipmaps()) return new NSImage(image, null);
+        return data(image.SavePngToBuffer());
+    }
 
     public void addRepresentation(NSBitmapImageRep rep) { reps.Add(rep); }
 
