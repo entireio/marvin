@@ -213,6 +213,7 @@ public partial class SceneKitRuntime : Node
         {
             foreach (var view in LiveViews()) view.scene?.EnsureAttached();
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateUpdate();
+            SCNGeometry.RecheckTangents();
             if (masksDirty)
             {
                 masksDirty = false;
@@ -228,6 +229,7 @@ public partial class SceneKitRuntime : Node
                 if (dirtyNodes.Count > 0)
                 {
                     var nodes = dirtyNodes.ToArray(); dirtyNodes.Clear();
+                    PrepareMeshes(nodes);
                     foreach (var (node, flags) in nodes) if (GodotObject.IsInstanceValid(node)) node.Flush(flags);
                 }
             }
@@ -240,6 +242,34 @@ public partial class SceneKitRuntime : Node
         }
         finally { flushing = false; }
     }
+    /// <summary>
+    /// When a flush rebuilds many meshes (a scene shown for the first time: the race world has thousands), their vertex
+    /// and index arrays are computed on all cores first (SCNGeometry.PrepareMesh); the nodes' flush then only hands them to
+    /// Godot. Same arrays as the serial path, so the meshes are identical. Small flushes (the per-frame batches) stay serial.
+    /// </summary>
+    private static void PrepareMeshes(KeyValuePair<SCNNode, int>[] nodes)
+    {
+        const int MinimumGeometries = 16;
+        int candidates = 0;
+        foreach (var (node, flags) in nodes) if ((flags & SCNNode.DirtyGeometry) != 0 && node.geometry != null) candidates++;
+        if (candidates < MinimumGeometries) return;
+        var geometries = new HashSet<SCNGeometry>();
+        foreach (var (node, flags) in nodes)
+        {
+            if ((flags & SCNNode.DirtyGeometry) == 0 || node.geometry is not SCNGeometry g || !GodotObject.IsInstanceValid(node)) continue;
+            geometries.Add(g);
+            if (g.levelsOfDetail is SCNLevelOfDetail[] lods) foreach (var l in lods) if (l?.geometry != null) geometries.Add(l.geometry);
+        }
+        var work = new List<SCNGeometry>();
+        foreach (var g in geometries)
+        {
+            g.EnsureBuilt(); // primitives build their sources on the main thread
+            if (g.NeedsMeshBuild) work.Add(g);
+        }
+        if (work.Count < MinimumGeometries) return;
+        System.Threading.Tasks.Parallel.ForEach(work, g => g.PrepareMesh());
+    }
+
     private static void PostDraw()
     {
         if (isolating) return;
@@ -258,6 +288,7 @@ public partial class SceneKitRuntime : Node
         return live;
     }
 
+    private static readonly string[] ShNames = { "scn_sh0", "scn_sh1", "scn_sh2", "scn_sh3", "scn_sh4", "scn_sh5", "scn_sh6", "scn_sh7", "scn_sh8" };
     private static int uniformsSceneVersion = -1;
     private static SCNScene uniformsScene;
     /// <summary>Scene-wide state the composer reads from global uniforms (fog, ambient lights, IBL SH, deferred shadows).</summary>
@@ -269,8 +300,8 @@ public partial class SceneKitRuntime : Node
         var fog = scene.fogColor as NSColor ?? NSColor.white;
         bool fogOn = scene.fogEndDistance > 0 && scene.fogEndDistance > scene.fogStartDistance;
         var fogLinear = fog.GodotLinear;
-        RenderingServer.GlobalShaderParameterSet("scn_fog_color", new Vector4(fogLinear.R, fogLinear.G, fogLinear.B, 1));
-        RenderingServer.GlobalShaderParameterSet("scn_fog_range", new Vector4((float)scene.fogStartDistance, (float)scene.fogEndDistance, (float)Math.Max(1e-3, scene.fogDensityExponent), fogOn ? 1 : 0));
+        ShaderNames.SetGlobal(ShaderNames.Of("scn_fog_color"), new Vector4(fogLinear.R, fogLinear.G, fogLinear.B, 1));
+        ShaderNames.SetGlobal(ShaderNames.Of("scn_fog_range"), new Vector4((float)scene.fogStartDistance, (float)scene.fogEndDistance, (float)Math.Max(1e-3, scene.fogDensityExponent), fogOn ? 1 : 0));
         var ambient = Vector3.Zero;
         int shadowMask = 0;
         double deferredAlpha = 0, deferredRadius = 0;
@@ -286,20 +317,24 @@ public partial class SceneKitRuntime : Node
             }
         });
         if (ShadowLightMask != (shadowMask == 0 ? -1 : shadowMask)) { ShadowLightMask = shadowMask == 0 ? -1 : shadowMask; masksDirty = true; }
-        RenderingServer.GlobalShaderParameterSet("scn_ambient", new Vector4(ambient.X, ambient.Y, ambient.Z, 1));
+        ShaderNames.SetGlobal(ShaderNames.Of("scn_ambient"), new Vector4(ambient.X, ambient.Y, ambient.Z, 1));
         var (selfPlateau, selfOnset) = SceneKitCalibration.DeferredSelfShadow(deferredRadius);
-        RenderingServer.GlobalShaderParameterSet("scn_deferred", new Vector4((float)deferredAlpha, (float)selfPlateau, (float)selfOnset, 0));
+        ShaderNames.SetGlobal(ShaderNames.Of("scn_deferred"), new Vector4((float)deferredAlpha, (float)selfPlateau, (float)selfOnset, 0));
         bool ibl = scene.HasLightingEnvironment;
         // scn_ibl.z: the view renders LDR (SceneKit's 8-bit target; the composer's light() clamps each draw to 1).
-        RenderingServer.GlobalShaderParameterSet("scn_ibl", new Vector4(ibl ? (float)scene.lightingEnvironment.intensity : 0, ibl ? 1 : 0, activeLdr ? 1 : 0, 0));
-        if (ibl) RenderingServer.GlobalShaderParameterSet("scn_radiance", scene.RadianceTexture());
+        ShaderNames.SetGlobal(ShaderNames.Of("scn_ibl"), new Vector4(ibl ? (float)scene.lightingEnvironment.intensity : 0, ibl ? 1 : 0, activeLdr ? 1 : 0, 0));
+        if (ibl) ShaderNames.SetGlobal(ShaderNames.Of("scn_radiance"), scene.RadianceTexture());
         var sh = scene.IrradianceSH();
-        for (int i = 0; i < 9; i++) RenderingServer.GlobalShaderParameterSet($"scn_sh{i}", new Vector4((float)sh[i * 3], (float)sh[i * 3 + 1], (float)sh[i * 3 + 2], 0));
+        for (int i = 0; i < 9; i++) ShaderNames.SetGlobal(ShaderNames.Of(ShNames[i]), new Vector4((float)sh[i * 3], (float)sh[i * 3 + 1], (float)sh[i * 3 + 2], 0));
     }
 
     private static void ApplyConstraints(SCNNode node)
     {
-        if (!GodotObject.IsInstanceValid(node) || node.constraints == null || !node.IsInsideTree()) return;
+        // A hidden node is not drawn, and constraints only move the rendered transform: evaluate them once it shows
+        // again (in the flush that shows it). The race's 1,067 billboarded dust slots stay hidden (their particles are
+        // drawn as one batch) and each cost engine round trips every frame before.
+        if (!GodotObject.IsInstanceValid(node) || node.HiddenInHierarchy) return;
+        if (node.constraints == null || !node.IsInsideTree()) return;
         var world = node.RenderWorld();
         foreach (var c in node.constraints)
             if (c.isEnabled) world = c.Apply(node, world, ActiveCamera);
@@ -392,7 +427,7 @@ public partial class SceneKitRuntime : Node
         {
             if (shadowBoxes[i] == boxes[i]) continue;
             shadowBoxes[i] = boxes[i];
-            RenderingServer.GlobalShaderParameterSet(i == 0 ? "scn_shadow_box0" : "scn_shadow_box1", boxes[i]);
+            ShaderNames.SetGlobal(ShaderNames.Of(i == 0 ? "scn_shadow_box0" : "scn_shadow_box1"), boxes[i]);
         }
         if (lights.Count == 0) return;
         int splitH = 1, splitV = 1;

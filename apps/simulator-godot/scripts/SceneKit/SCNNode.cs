@@ -456,7 +456,18 @@ public partial class SCNNode : Node3D
         if ((flags & DirtyGeometry) != 0) RebuildMeshes();
         if ((flags & (DirtyGeometry | DirtyVisual)) != 0) ApplyVisuals();
         if ((flags & DirtyLight) != 0) SyncLight();
-        if ((flags & (DirtyVisual | DirtyTransform)) != 0) Visible = !_isHidden;
+        if ((flags & (DirtyVisual | DirtyTransform)) != 0)
+        {
+            // Only push changes: setting Node3D.Visible costs an engine call even when the value is unchanged.
+            bool visible = !_isHidden;
+            if (appliedVisible != visible) { Visible = visible; appliedVisible = visible; }
+        }
+    }
+    private bool? appliedVisible;
+    /// <summary>The node or one of its ancestors is hidden (SceneKit's isHidden, without engine calls).</summary>
+    internal bool HiddenInHierarchy
+    {
+        get { for (var n = this; n != null; n = n._parent) if (n._isHidden) return true; return false; }
     }
 
     private void RebuildMeshes()
