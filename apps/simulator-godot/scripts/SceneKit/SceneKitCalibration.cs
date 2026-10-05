@@ -13,6 +13,8 @@ namespace Marvin.SceneKit;
 /// For experiments every field can be overridden without rebuilding:
 ///   MARVIN_SCN_CAL="ShadowKernelScale=1;ShadowBlurPerRadius=0.4" tools/godot -- --calibration DIR
 /// (MARVIN_BLOOM="scale,hdrScale,levelOffset,levelWeight" is still honoured for the bloom fields.)
+/// The game trades two small look changes for GPU time (hard shadow filtering, mesh LODs for the robots' camera
+/// images); MARVIN_SCN_CAL=Exact restores the exact-SceneKit configuration (ApplyExact).
 /// </summary>
 internal static class SceneKitCalibration
 {
@@ -61,10 +63,29 @@ internal static class SceneKitCalibration
     public static double SplitNormalBiasExponent = 1.0;
     /// <summary>SceneKit's shadow map size when shadowMapSize is zero.</summary>
     public static double DefaultShadowMapSize = 2048;
-    /// <summary>Directional shadow atlas (one atlas shared by all directional lights) and its filter quality (0 hard .. 5 ultra).</summary>
-    public static int DirectionalShadowAtlas = 8192, ShadowFilterQuality = 4;
+    /// <summary>
+    /// Directional shadow atlas (one atlas shared by all directional lights) and its filter quality (0 hard .. 5 ultra).
+    /// The game uses the hard filter (0: one bilinear depth comparison, no PCF kernel), about 4 ms less GPU time per
+    /// 1080p frame than SoftHigh (4: 16 taps, quality radius 3), whose kernel reproduces SceneKit's penumbra width; hard
+    /// shadow edges are about one Godot texel wide instead (docs/performance.md, "Hard shadows"). The exact-SceneKit
+    /// look is MARVIN_SCN_CAL=Exact (ApplyExact).
+    /// </summary>
+    public static int DirectionalShadowAtlas = 8192, ShadowFilterQuality = 0;
     /// <summary>Godot's PCF radius multiplier for ShadowFilterQuality (RendererSceneRenderRD::directional_soft_shadow_filter_set_quality).</summary>
     internal static double ShadowQualityRadius => ShadowFilterQuality switch { 0 => 1.0, 1 => 1.5, 2 => 2.0, 3 => 2.0, 4 => 3.0, _ => 4.0 };
+    /// <summary>The hard filter has no kernel (ShadowFilterQuality 0).</summary>
+    internal static bool HardShadows => ShadowFilterQuality == 0;
+    /// <summary>
+    /// Biases of the hard filter, in Godot shadow texels of the camera's fit (SCNLight.FitShadow): the world depth bias and
+    /// Godot's ShadowNormalBias. The soft filter's biases grow with the kernel (ShadowBiasPerKernel, ShadowNormalBiasPerKernel)
+    /// so its taps do not self-shadow lit slopes; one bilinear comparison needs no kernel term, and the kernel-sized normal
+    /// offset moved hard shadow edges towards their casters as much as soft ones (the race sun at 10 degrees: 24 cm,
+    /// SceneKit 8 cm; with these biases 7 cm, CAL_EXP=penumbra CAL_PENUMBRA_ELEV=1). Measured with --ground-bias-probe
+    /// (no wall self-shadowing at 0-85 degrees, sunlit walls on a casting ground clean, thin plates cast from gaps of
+    /// 8 / 16 / 4 / 2 cm where SceneKit's half-shadow gap is 7.5 / 15 / 4.8 / 2.4 cm) and the game's captures: a normal bias
+    /// of 2 (Godot's default) was closest to macOS of 1, 2, 4 and 6; depth biases of 0.5 to 2 texels gave identical probe values.
+    /// </summary>
+    public static double HardShadowBiasTexels = 1.0, HardShadowNormalBias = 2.0;
 
     /// <summary>
     /// SceneKit deferred shadows with a large shadowRadius darken lit curved and sloped surfaces through the kernel's
@@ -80,15 +101,27 @@ internal static class SceneKitCalibration
     }
     public static double DeferredSelfShadowPlateau = 0.44;
 
-    // ---- Godot mesh LODs of shadow casters (SCNGeometry.godotAutomaticLevelsOfDetail): a level casts while its geometric
-    // error stays below this many pixels of the camera's view (Viewport.MeshLodThreshold of every SCNView and SCNRenderer);
-    // the camera always draws the full mesh. Measured on the robots: drawn by the camera too, Godot's default of 1 pixel
+    // ---- Godot mesh LODs of the robots (SCNGeometry.godotAutomaticLevelsOfDetail): a level is used while its geometric
+    // error stays below this many pixels of the camera's view (Viewport.MeshLodThreshold of every SCNView and SCNRenderer),
+    // by the shadow maps and, with MeshLodForCamera, by the camera. Measured on the robots: drawn by the camera too, Godot's default of 1 pixel
     // changed the close-ups by 0.03/255 on average and half a pixel by 0.01 (town view: 2.2 and 2.4 M primitives per frame
     // instead of 3.8 M); as shadow casters only, half a pixel changes them by at most 0.003/255.
     public static double MeshLodThreshold = 0.5;
-    /// <summary>Let the camera draw the levels too (no shadow-only twin): about 0.5 ms less GPU time per 1080p frame than
-    /// shadows alone, but the robots' silhouettes move by up to MeshLodThreshold (MARVIN_SCN_CAL="MeshLodForCamera=1").</summary>
-    public static bool MeshLodForCamera = false;
+    /// <summary>Let the camera draw the levels too (no shadow-only twin, the game's default): 0.5-1 ms less GPU time per
+    /// 1080p frame than shadows alone, but the robots' silhouettes move by up to MeshLodThreshold pixels. False draws the
+    /// full meshes for the camera, as SceneKit does (MARVIN_SCN_CAL=Exact or "MeshLodForCamera=0").</summary>
+    public static bool MeshLodForCamera = true;
+
+    /// <summary>
+    /// The exact-SceneKit configuration: SoftHigh shadow filtering with the soft biases (penumbrae of SceneKit's width) and
+    /// the robots' full meshes for the camera, at the GPU cost measured in docs/performance.md ("Hard shadows").
+    /// MARVIN_SCN_CAL=Exact applies it; settings after it in the list still override it ("Exact;ShadowNormalBias=3").
+    /// </summary>
+    public static void ApplyExact()
+    {
+        ShadowFilterQuality = 4;
+        MeshLodForCamera = false;
+    }
 
     // ---- Direct specular (GGX in the composer's light()).
     // Measured (tools/scenekit-reference/robots/SpecularHighlight.swift: highlight profiles of roughness 0 .. 0.2 spheres
@@ -143,8 +176,10 @@ internal static class SceneKitCalibration
         }
         var o = System.Environment.GetEnvironmentVariable("MARVIN_SCN_CAL");
         if (string.IsNullOrEmpty(o)) return;
-        foreach (var item in o.Split(';', StringSplitOptions.RemoveEmptyEntries))
+        // Items are separated by ';' or ','; numbers use '.'. "Exact" is the named exact-SceneKit preset.
+        foreach (var item in o.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
         {
+            if (item.Trim().Equals("Exact", StringComparison.OrdinalIgnoreCase)) { ApplyExact(); continue; }
             var kv = item.Split('=', 2);
             var field = typeof(SceneKitCalibration).GetField(kv[0].Trim(), BindingFlags.Public | BindingFlags.Static);
             if (field == null || kv.Length < 2) { Godot.GD.PushWarning($"MARVIN_SCN_CAL: unknown setting '{item}'"); continue; }

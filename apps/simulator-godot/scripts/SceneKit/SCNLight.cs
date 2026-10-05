@@ -111,7 +111,12 @@ public sealed class SCNLight
         double kernel = _shadowRadius * skTexel * SceneKitCalibration.ShadowKernelScale;
         double blur = Math.Clamp(kernel / (qr * texel), SceneKitCalibration.ShadowBlurMin, SceneKitCalibration.ShadowBlurMax);
         double kernelTexels = blur * qr;
-        double biasWorld = (SceneKitCalibration.ShadowBiasTexels + SceneKitCalibration.ShadowBiasPerKernel * kernelTexels) * texel;
+        // The hard filter (one bilinear comparison, no PCF kernel) has its own biases without the kernel terms
+        // (SceneKitCalibration.HardShadowBiasTexels / HardShadowNormalBias); the blur then only scales Godot's depth bias,
+        // which the division below cancels.
+        bool hard = SceneKitCalibration.HardShadows;
+        double biasWorld = (hard ? SceneKitCalibration.HardShadowBiasTexels
+            : SceneKitCalibration.ShadowBiasTexels + SceneKitCalibration.ShadowBiasPerKernel * kernelTexels) * texel;
         double bias = biasWorld * 100 / Math.Max(1e-6, depthRange * blur * qr);
         if (Math.Abs(light.ShadowBlur - blur) > 1e-4) light.ShadowBlur = (float)blur;
         if (Math.Abs(light.ShadowBias - bias) > 1e-6) light.ShadowBias = (float)bias;
@@ -120,7 +125,8 @@ public sealed class SCNLight
         // normalBiasScale: Godot's normal-bias texel is 2 x radius / the light's shadow size, which halves for split maps
         // (FitShadows passes the ratio so the world offset stays calibrated).
         // Fixed boxes also get SceneKit's caster slope bias in the shadow pass (ShaderComposer.ShadowSlopeBias).
-        double normalBias = (SceneKitCalibration.ShadowNormalBias + SceneKitCalibration.ShadowNormalBiasPerKernel * kernelTexels) * normalBiasScale;
+        double normalBias = (hard ? SceneKitCalibration.HardShadowNormalBias
+            : SceneKitCalibration.ShadowNormalBias + SceneKitCalibration.ShadowNormalBiasPerKernel * kernelTexels) * normalBiasScale;
         if (Math.Abs(light.ShadowNormalBias - normalBias) > 1e-4) light.ShadowNormalBias = (float)normalBias;
     }
 
@@ -232,7 +238,7 @@ public sealed class SCNLight
         if (_shadowMode == SCNShadowMode.deferred) alpha = 1;
         light.ShadowOpacity = (float)alpha;
         light.ShadowBias = (float)Math.Max(SceneKitCalibration.ShadowBiasMin, SceneKitCalibration.ShadowBiasPerUnit * _shadowBias);
-        light.ShadowNormalBias = (float)SceneKitCalibration.ShadowNormalBias;
+        light.ShadowNormalBias = (float)(SceneKitCalibration.HardShadows ? SceneKitCalibration.HardShadowNormalBias : SceneKitCalibration.ShadowNormalBias);
         light.ShadowBlur = (float)Math.Clamp(_shadowRadius * SceneKitCalibration.ShadowBlurPerRadius, SceneKitCalibration.ShadowBlurMin, SceneKitCalibration.ShadowBlurMax);
         if (light is DirectionalLight3D d)
         {
