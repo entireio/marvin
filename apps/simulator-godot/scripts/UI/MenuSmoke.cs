@@ -196,8 +196,9 @@ public partial class AppController
     /// <summary>
     /// DrivingAssistSmoke.swift checkDrivingAssistSettings(at:).
     /// PORT: on the Mac, layoutSubtreeIfNeeded re-applies the overlay's Auto Layout constraints, so the 900x550
-    /// frame reverts to the 1280x792 content size before the check and the capture. Here there are no
-    /// constraints: the check and driving-assist-settings-900x550.png use the intended 900x550 frame, and
+    /// frame reverts to the 1280x792 content size before the check and the capture. The facade re-solves
+    /// constraints only when the content layout guide changes (NSLayoutConstraint.cs), so the frame stays:
+    /// the check and driving-assist-settings-900x550.png use the intended 900x550 frame, and
     /// driving-assist-settings.png is captured at the content size like the Mac's.
     /// </summary>
     public bool checkDrivingAssistSettings(string at)
