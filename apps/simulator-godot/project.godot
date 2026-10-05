@@ -15,6 +15,9 @@ project/assembly_name="MarvinGodot"
 
 [rendering]
 renderer/rendering_method="forward_plus"
+rendering_device/driver.windows="d3d12"
+rendering_device/fallback_to_vulkan=true
+rendering_device/fallback_to_d3d12=true
 textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
