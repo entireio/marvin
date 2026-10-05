@@ -94,6 +94,7 @@ internal sealed class ViewRig
         world.Basis = world.Basis.Orthonormalized();
         camera.Transform = world;
         pov.camera.ApplyLens(camera);
+        SceneKitRuntime.SortTransparent(world, pov.camera.usesOrthographicProjection);
         pov.camera.ApplyEnvironment(env, attributes, viewport.Size.Y);
         ssao.Configure(pov.camera);
         SceneKitRuntime.FitShadows(scene, camera, viewport.Size);

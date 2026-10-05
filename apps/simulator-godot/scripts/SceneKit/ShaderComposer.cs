@@ -721,6 +721,12 @@ internal sealed class MaterialGpu
         SceneKitRuntime.MaterialDirty(this);
     }
 
+    /// <summary>Whether the variant Variant() returned for these arguments blends (is drawn in the transparent pass).</summary>
+    internal bool IsTransparentVariant(SCNGeometry geometry, int renderingOrder, ShaderComposer.VariantFlags flags)
+    {
+        var g = geometry != null && geometry.HasOwnShading ? geometry : null;
+        return variants.TryGetValue((g, Math.Clamp(renderingOrder, -128, 127), flags), out var v) && v.plan.transparent;
+    }
     internal ShaderMaterial Variant(SCNGeometry geometry, int renderingOrder, ShaderComposer.VariantFlags flags)
     {
         var g = geometry != null && geometry.HasOwnShading ? geometry : null;

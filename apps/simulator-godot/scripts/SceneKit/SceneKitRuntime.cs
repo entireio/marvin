@@ -405,6 +405,36 @@ public partial class SceneKitRuntime : Node
     private static Vector4 shadowSlope;
     internal static void RegisterShadowLight(SCNNode node, bool on) { if (on) shadowLights.Add(node); else shadowLights.Remove(node); }
 
+    // ---- Order of transparent geometry.
+    // Measured (Swift probe): SceneKit draws transparent geometry back to front by the view-space depth of its world bounding
+    // box centre (a box whose centre is 13 m deep but 29.5 m to the side is drawn after one 15 m deep on the axis), ties in
+    // scene-graph order. Godot sorts by the Euclidean distance from the camera to the AABB centre, so large overlays came out
+    // in another order: the town's street ribbon (centre 94.6 m away, 55 m deep) was drawn over the trampled-sand overlay
+    // (96.6 m away, 35 m deep), which SceneKit draws last and which hides the streets there (--dust-visibility-test town
+    // view 14% too dark). Each view therefore sets every transparent instance's sorting offset to distance - depth.
+    private static readonly HashSet<SCNNode> transparentNodes = new();
+    internal static void RegisterTransparent(SCNNode node, bool on) { if (on) transparentNodes.Add(node); else transparentNodes.Remove(node); }
+    internal static void SortTransparent(Transform3D camera, bool orthographic)
+    {
+        var eye = camera.Origin; var forward = -camera.Basis.Z.Normalized();
+        transparentNodes.RemoveWhere(node => !GodotObject.IsInstanceValid(node));
+        foreach (var node in transparentNodes)
+        {
+            if (!node.IsInsideTree() || node.HiddenInHierarchy) continue;
+            foreach (var mi in node.MeshInstances)
+            {
+                if (mi.Mesh == null) continue;
+                var box = mi.CustomAabb.Size != Vector3.Zero ? mi.CustomAabb : mi.Mesh.GetAabb();
+                var center = mi.GlobalTransform * (box.Position + box.Size * 0.5f);
+                var d = center - eye;
+                // Godot: perspective depth = |centre - eye| - offset; orthographic: distance of the nearest box corner to
+                // the near plane - offset (left as Godot has it).
+                float offset = orthographic ? 0 : d.Length() - d.Dot(forward);
+                if (Math.Abs(mi.SortingOffset - offset) > 0.01f) mi.SortingOffset = offset;
+            }
+        }
+    }
+
     /// <summary>
     /// Godot fits a directional shadow map to the camera frustum (up to DirectionalShadowMaxDistance), and both its
     /// PCF kernel (blur x quality radius x texel) and its depth bias (bias x blur x quality radius x depth range) scale
