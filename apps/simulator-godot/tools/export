@@ -1,0 +1,81 @@
+#!/bin/bash
+# Export release builds of the Godot port and check their layout.
+#
+#   tools/export                  # both presets: build/macos/Marvin Simulator.app and build/windows/MarvinSimulator.exe
+#   tools/export macos            # one preset (macos | windows)
+#   tools/export windows --zip    # also pack build/MarvinSimulator-windows-x86_64.zip to copy to a Windows PC
+#   tools/export macos --debug    # debug engine template (same C#, ExportDebug configuration)
+#
+# Needs: the assets (tools/sync-assets.py), the Godot 4.7.2 .NET editor ($GODOT, tools/env.sh), the matching .NET export
+# templates (Godot: Editor > Manage Export Templates, or the .tpz unpacked into the templates folder below) and the
+# .NET 8 SDK. The C# is published by Godot itself (ExportRelease / ExportDebug; MarvinGodot.csproj optimises every
+# configuration). After exporting, tools/export-verify.py checks the bundle: executables, .NET runtime and assemblies,
+# and that the pack holds every raw asset the game reads with FileAccess.
+set -e
+source "$(dirname "$0")/env.sh"
+cd "$MARVIN_GODOT_ROOT"
+
+platforms=(); mode=release; zip=0
+for arg in "$@"; do
+    case "$arg" in
+        macos|windows) platforms+=("$arg");;
+        --debug) mode=debug;;
+        --zip) zip=1;;
+        -h|--help) sed -n '2,13p' "$0"; exit 0;;
+        *) echo "tools/export: unknown argument $arg" >&2; exit 2;;
+    esac
+done
+[ ${#platforms[@]} -eq 0 ] && platforms=(macos windows)
+
+python="$(command -v python3 || command -v python || true)"
+if [ -z "$python" ]; then echo "tools/export: Python 3 not found" >&2; exit 1; fi
+if [ ! -f assets/Marvin/geometry.bin ]; then
+    echo "tools/export: assets/ is missing; run tools/sync-assets.py first" >&2; exit 1
+fi
+if [ ! -x "$GODOT" ] && [ ! -f "$GODOT" ]; then
+    echo "tools/export: Godot not found at \$GODOT=$GODOT" >&2; exit 1
+fi
+
+# Export templates for this exact engine version (4.7.2.stable.mono).
+version=$("$GODOT" --headless --version 2>/dev/null | tail -n 1 | tr -d '\r')
+template_version=$(echo "$version" | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?\.[a-z0-9]+\.mono).*/\1/')
+case "$(uname -s)" in
+    Darwin) templates="$HOME/Library/Application Support/Godot/export_templates/$template_version";;
+    MINGW*|MSYS*|CYGWIN*)
+        appdata="${APPDATA:-$HOME/AppData/Roaming}"
+        command -v cygpath > /dev/null && appdata="$(cygpath -u "$appdata")"
+        templates="$appdata/Godot/export_templates/$template_version";;
+    *) templates="${XDG_DATA_HOME:-$HOME/.local/share}/godot/export_templates/$template_version";;
+esac
+if [ ! -d "$templates" ]; then
+    echo "tools/export: export templates for $version not found in $templates" >&2
+    echo "  install Godot_v${template_version%.mono}_mono_export_templates.tpz (Editor > Manage Export Templates)" >&2
+    exit 1
+fi
+
+# Imports first: the export packs the imported textures and the raw .wav files (importer "keep", tools/sync-assets.py).
+mkdir -p build
+"$GODOT" --headless --path "$MARVIN_GODOT_ROOT" --import > build/import.log 2>&1 || { cat build/import.log >&2; exit 1; }
+
+status=0
+for platform in "${platforms[@]}"; do
+    case "$platform" in
+        macos) preset="macOS"; out="build/macos/Marvin Simulator.app";;
+        windows) preset="Windows Desktop"; out="build/windows/MarvinSimulator.exe";;
+    esac
+    dir=$(dirname "$out")
+    rm -rf "$dir"; mkdir -p "$dir"
+    log="build/export-$platform.log"
+    echo "Exporting $preset ($mode) -> $out"
+    if ! "$GODOT" --headless --path "$MARVIN_GODOT_ROOT" "--export-$mode" "$preset" "$MARVIN_GODOT_ROOT/$out" > "$log" 2>&1; then
+        echo "tools/export: $preset export failed, see $log" >&2; status=1; continue
+    fi
+    if grep -E "(^|m)(ERROR|SCRIPT ERROR):" "$log" >&2; then echo "tools/export: $preset export logged errors, see $log" >&2; status=1; fi
+    "$python" tools/export-verify.py "$dir" || status=1
+    if [ "$zip" = 1 ] && [ "$platform" = windows ]; then
+        rm -f build/MarvinSimulator-windows-x86_64.zip
+        (cd build && "$python" -c "import shutil; shutil.make_archive('MarvinSimulator-windows-x86_64', 'zip', 'windows')")
+        echo "Packed build/MarvinSimulator-windows-x86_64.zip"
+    fi
+done
+exit $status
