@@ -39,6 +39,11 @@ The editor runs the game from the project folder; release builds are exported (b
 arrows drive, Shift boosts, Space brakes, C changes the camera, P or Esc pauses, ? shows the key guide; ⌘M / ⌘R /
 ⌘P / ⌘1 (Ctrl on Windows) are the Simulation menu's Main Menu, Reset, Pause and Camera.
 
+The port trades two small differences from the macOS game for frame rate at high resolutions: shadows have hard
+edges, and the robots are drawn from simplified meshes where that changes less than half a pixel. Set
+`MARVIN_SCN_CAL=Exact` (an environment variable, for the editor runtime and the release builds alike) for the exact
+macOS look at a higher GPU cost (PORTING.md, "Known deviations"; `docs/performance.md`).
+
 ## Release builds
 
 ```sh
