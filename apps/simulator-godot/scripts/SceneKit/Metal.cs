@@ -93,6 +93,7 @@ public sealed class MTLTexture
             _ => (Image.Format.Rgba8, 4),
         };
         data = new byte[width * height * bytesPerPixel];
+        FrameProfile.MetalTexturesCreated++; FrameProfile.TotalMetalTexturesCreated++;
     }
     public void replace(MTLRegion region, int mipmapLevel, ReadOnlySpan<byte> withBytes, int bytesPerRow)
     {
@@ -129,7 +130,9 @@ public sealed class MTLTexture
             {
                 // The texture copies the texels; release the temporary image now rather than on the finalizer thread.
                 using var image = Image.CreateFromData(width, height, false, format, data);
-                if (texture == null) texture = ImageTexture.CreateFromImage(image); else texture.Update(image);
+                if (texture == null) { texture = ImageTexture.CreateFromImage(image); FrameProfile.ImageTexturesCreated++; FrameProfile.TotalImageTexturesCreated++; }
+                else { texture.Update(image); FrameProfile.ImageTextureUpdates++; }
+                FrameProfile.ImageTextureBytes += data.Length;
                 dirty = false;
             }
             return texture;

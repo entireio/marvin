@@ -83,6 +83,7 @@ internal sealed class NSGraphicsCanvas : IDisposable
         if (polys.Count == 1 && IsSimple(polys[0])) { FeatherFill(item, polys[0], c); return; }
         var image = NSGraphicsContext.RasterizeImage(polys.Select(p => p.Select(q => new CGPoint(q.X, q.Y)).ToList()).ToList(), evenOdd, color, out var rect);
         var texture = ImageTexture.CreateFromImage(image);
+        FrameProfile.ImageTexturesCreated++; FrameProfile.TotalImageTexturesCreated++;
         keepAlive.Add(texture);
         RenderingServer.CanvasItemAddTextureRect(item, new Rect2(rect.Position, rect.Size), texture.GetRid(), false, new Color(1, 1, 1, 1));
     }

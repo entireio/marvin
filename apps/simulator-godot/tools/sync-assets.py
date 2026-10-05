@@ -28,6 +28,13 @@ type="CompressedTexture2D"
 compress/mode=0
 mipmaps/generate=true
 """
+# Audio is read as raw .wav bytes by the AVAudioFile facade (FileAccess), in the editor and in exports alike: keep the
+# files as they are instead of importing them as AudioStreamWAV (Godot's default import compresses them with QOA, which
+# an export would then ship instead of the .wav, and the facade cannot decode).
+KEEP_IMPORT = """[remap]
+
+importer="keep"
+"""
 
 if not (src / "Marvin/geometry.bin").exists():
     sys.exit(f"missing {src}/Marvin/geometry.bin - run apps/simulator-macos/build-app.sh in the main checkout")
@@ -45,4 +52,8 @@ for folder in FOLDERS:
             imp = target.with_name(target.name + ".import")
             if not imp.exists():
                 imp.write_text(TEXTURE_IMPORT)
+        if path.suffix.lower() == ".wav":
+            imp = target.with_name(target.name + ".import")
+            if not imp.exists() or 'importer="keep"' not in imp.read_text():
+                imp.write_text(KEEP_IMPORT)
 print(f"assets: {copied} files updated from {src}")

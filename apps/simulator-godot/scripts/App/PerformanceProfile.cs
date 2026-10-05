@@ -26,10 +26,21 @@ public sealed class GodotFrameTelemetry
     private readonly List<double> gpu = new(), cpu = new(), process = new(), flush = new(), dispatch = new(), meshes = new();
     private readonly List<double> secondGpu = new(), secondCpu = new(), secondProcess = new(), secondFlush = new();
     private long drawCalls, objects, primitives, shadowDrawCalls, shadowPrimitives, visibleDrawCalls, visiblePrimitives; private int frames, current = -1;
+    // Facade CPU per Flush stage (FrameProfile), per second and over the run, and the resource counters.
+    private readonly double[] secondStages = new double[FrameProfile.FlushStages.Length], runStages = new double[FrameProfile.FlushStages.Length];
+    private readonly List<double> setup = new(), secondSetup = new();
+    private long secondMaterials, secondNodes, secondConstraints, secondMetalTextures, secondImageCreated, secondImageUpdates, secondImageBytes;
+    private int runFrames;
+    private int gc0, gc1, gc2; private TimeSpan gcPause;
     public GodotFrameTelemetry(SubViewport viewport)
     {
         this.viewport = viewport;
         RenderingServer.ViewportSetMeasureRenderTime(viewport.GetViewportRid(), true);
+        ResetGc();
+    }
+    private void ResetGc()
+    {
+        gc0 = GC.CollectionCount(0); gc1 = GC.CollectionCount(1); gc2 = GC.CollectionCount(2); gcPause = GC.GetTotalPauseDuration();
     }
     static double Percentile(List<double> values, double p) { if (values.Count == 0) return 0; var s = values.OrderBy(v => v).ToList(); return s[Math.Min(s.Count - 1, (int)((s.Count - 1) * p))]; }
     private void Close()
@@ -46,15 +57,56 @@ public sealed class GodotFrameTelemetry
             ["view"] = new Dictionary<string, object> { ["visibleDrawCalls"] = visibleDrawCalls / frames, ["visiblePrimitives"] = visiblePrimitives / frames, ["shadowDrawCalls"] = shadowDrawCalls / frames, ["shadowPrimitives"] = shadowPrimitives / frames },
             ["nodes"] = (long)Performance.GetMonitor(Performance.Monitor.ObjectNodeCount),
             ["videoMemoryMB"] = Performance.GetMonitor(Performance.Monitor.RenderVideoMemUsed) / 1048576.0,
+            // Memory and object counts at the end of the second (Godot monitors, .NET GC, process working set).
+            ["memory"] = new Dictionary<string, object>
+            {
+                ["objects"] = (long)Performance.GetMonitor(Performance.Monitor.ObjectCount),
+                ["resources"] = (long)Performance.GetMonitor(Performance.Monitor.ObjectResourceCount),
+                ["orphanNodes"] = (long)Performance.GetMonitor(Performance.Monitor.ObjectOrphanNodeCount),
+                ["textureMB"] = Performance.GetMonitor(Performance.Monitor.RenderTextureMemUsed) / 1048576.0,
+                ["bufferMB"] = Performance.GetMonitor(Performance.Monitor.RenderBufferMemUsed) / 1048576.0,
+                ["staticMB"] = Performance.GetMonitor(Performance.Monitor.MemoryStatic) / 1048576.0,
+                ["managedHeapMB"] = GC.GetTotalMemory(false) / 1048576.0,
+                ["workingSetMB"] = System.Environment.WorkingSet / 1048576.0,
+                ["gcCollections"] = new[] { GC.CollectionCount(0) - gc0, GC.CollectionCount(1) - gc1, GC.CollectionCount(2) - gc2 },
+                ["gcPauseMS"] = (GC.GetTotalPauseDuration() - gcPause).TotalMilliseconds,
+                ["metalTexturesTotal"] = FrameProfile.TotalMetalTexturesCreated, ["imageTexturesTotal"] = FrameProfile.TotalImageTexturesCreated,
+            },
+            // Facade CPU per frame (mean ms per Flush stage) and what it flushed per second.
+            ["flushStagesMS"] = Enumerable.Range(0, secondStages.Length).ToDictionary(i => FrameProfile.FlushStages[i], i => (object)(secondStages[i] / frames)),
+            ["frameSetupCpuMS"] = secondSetup.Count == 0 ? 0 : secondSetup.Average(),
+            ["flushed"] = new Dictionary<string, object>
+            {
+                ["materials"] = secondMaterials, ["nodes"] = secondNodes, ["constraintsPerFrame"] = (double)secondConstraints / frames,
+                ["metalTexturesCreated"] = secondMetalTextures, ["imageTexturesCreated"] = secondImageCreated,
+                ["imageTextureUpdates"] = secondImageUpdates, ["imageTextureMB"] = secondImageBytes / 1048576.0,
+            },
         });
         secondGpu.Clear(); secondCpu.Clear(); secondProcess.Clear(); secondFlush.Clear(); drawCalls = objects = primitives = 0; shadowDrawCalls = shadowPrimitives = visibleDrawCalls = visiblePrimitives = 0; frames = 0;
+        Array.Clear(secondStages); secondSetup.Clear(); ResetGc();
+        secondMaterials = secondNodes = secondConstraints = secondMetalTextures = secondImageCreated = secondImageUpdates = secondImageBytes = 0;
+    }
+    /// <summary>Takes the facade counters of the frame just processed (FrameProfile) and resets them.</summary>
+    private void TakeProfile(bool keep)
+    {
+        if (keep)
+        {
+            for (int i = 0; i < secondStages.Length; i++) { double ms = FrameProfile.Milliseconds(FrameProfile.FlushTicks[i]); secondStages[i] += ms; runStages[i] += ms; }
+            secondMaterials += FrameProfile.MaterialsFlushed; secondNodes += FrameProfile.NodesFlushed; secondConstraints += FrameProfile.ConstraintsEvaluated;
+            secondMetalTextures += FrameProfile.MetalTexturesCreated; secondImageCreated += FrameProfile.ImageTexturesCreated;
+            secondImageUpdates += FrameProfile.ImageTextureUpdates; secondImageBytes += FrameProfile.ImageTextureBytes;
+            runFrames++;
+        }
+        FrameProfile.Reset();
     }
     /// <summary>Called once per tick with the benchmark's elapsed time (samples taken during the 3 s warm-up are dropped).</summary>
     public void sample(double elapsed)
     {
-        if (elapsed < 3) { gpu.Clear(); cpu.Clear(); process.Clear(); flush.Clear(); dispatch.Clear(); meshes.Clear(); secondFlush.Clear(); seconds.Clear(); current = -1; frames = 0; secondGpu.Clear(); secondCpu.Clear(); secondProcess.Clear(); drawCalls = objects = primitives = 0; return; }
+        if (elapsed < 3) { gpu.Clear(); cpu.Clear(); process.Clear(); flush.Clear(); dispatch.Clear(); meshes.Clear(); secondFlush.Clear(); seconds.Clear(); current = -1; frames = 0; secondGpu.Clear(); secondCpu.Clear(); secondProcess.Clear(); drawCalls = objects = primitives = 0; TakeProfile(false); Array.Clear(runStages); runFrames = 0; setup.Clear(); return; }
         int second = (int)elapsed;
         if (second != current) { Close(); current = second; }
+        TakeProfile(true);
+        double frameSetup = RenderingServer.GetFrameSetupTimeCpu(); setup.Add(frameSetup); secondSetup.Add(frameSetup);
         var rid = viewport.GetViewportRid();
         double g = RenderingServer.ViewportGetMeasuredRenderTimeGpu(rid), c = RenderingServer.ViewportGetMeasuredRenderTimeCpu(rid);
         double p = Performance.GetMonitor(Performance.Monitor.TimeProcess) * 1000;
@@ -80,6 +132,8 @@ public sealed class GodotFrameTelemetry
             ["metric"] = "Godot RenderingServer viewport render-time measurement of the 3D view (GPU timestamps and CPU submission) per tick; process time of Godot's frame",
             ["gpuMS"] = stats(gpu), ["cpuRenderMS"] = stats(cpu), ["processMS"] = stats(process), ["seconds"] = seconds,
             ["flushMS"] = stats(flush), ["dispatchMS"] = stats(dispatch), ["meshesBuiltPerFrame"] = stats(meshes),
+            ["flushStagesMS"] = Enumerable.Range(0, runStages.Length).ToDictionary(i => FrameProfile.FlushStages[i], i => (object)(runFrames == 0 ? 0 : runStages[i] / runFrames)),
+            ["frameSetupCpuMS"] = stats(setup),
         };
     }
 }

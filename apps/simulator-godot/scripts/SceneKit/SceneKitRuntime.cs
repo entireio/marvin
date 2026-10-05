@@ -211,17 +211,30 @@ public partial class SceneKitRuntime : Node
         flushing = true;
         try
         {
+            // FrameProfile: per-stage CPU time for the benchmark telemetry (measurement only).
+            long t = FrameProfile.Now;
             foreach (var view in LiveViews()) view.scene?.EnsureAttached();
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateUpdate();
+            FrameProfile.Add(FrameProfile.Attach, t); t = FrameProfile.Now;
             SCNGeometry.RecheckTangents();
+            FrameProfile.Add(FrameProfile.Tangents, t); t = FrameProfile.Now;
             ApplyMasks(null);
+            FrameProfile.Add(FrameProfile.Masks, t);
             FlushDirty();
-            if (dirtyTextures.Count > 0) { foreach (var t in dirtyTextures) t.Refresh(); dirtyTextures.Clear(); }
-            foreach (var node in constrained.ToArray()) ApplyConstraints(node);
+            t = FrameProfile.Now;
+            if (dirtyTextures.Count > 0) { foreach (var t2 in dirtyTextures) t2.Refresh(); dirtyTextures.Clear(); }
+            FrameProfile.Add(FrameProfile.Textures, t); t = FrameProfile.Now;
+            var constrainedNodes = constrained.ToArray();
+            foreach (var node in constrainedNodes) ApplyConstraints(node);
+            FrameProfile.ConstraintsEvaluated += constrainedNodes.Length;
+            FrameProfile.Add(FrameProfile.Constraints, t); t = FrameProfile.Now;
             foreach (var view in LiveViews()) view.SyncCamera();
+            FrameProfile.Add(FrameProfile.Cameras, t); t = FrameProfile.Now;
             if (ActiveScene != null && (sceneStateDirty || ActiveScene != uniformsScene || ActiveScene.stateVersion != uniformsSceneVersion))
                 UpdateSceneUniforms(ActiveScene);
+            FrameProfile.Add(FrameProfile.SceneUniforms, t); t = FrameProfile.Now;
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateWillRender();
+            FrameProfile.Add(FrameProfile.WillRender, t);
         }
         finally { flushing = false; }
     }
@@ -359,14 +372,21 @@ public partial class SceneKitRuntime : Node
         {
             if (dirtyMaterials.Count > 0)
             {
+                long t = FrameProfile.Now;
                 var mats = dirtyMaterials.ToArray(); dirtyMaterials.Clear();
                 foreach (var m in mats) m.Flush();
+                FrameProfile.MaterialsFlushed += mats.Length;
+                FrameProfile.Add(FrameProfile.Materials, t);
             }
             if (dirtyNodes.Count > 0)
             {
+                long t = FrameProfile.Now;
                 var nodes = dirtyNodes.ToArray(); dirtyNodes.Clear();
                 PrepareMeshes(nodes);
+                FrameProfile.Add(FrameProfile.PrepareMeshes, t); t = FrameProfile.Now;
                 foreach (var (node, flags) in nodes) if (GodotObject.IsInstanceValid(node)) node.Flush(flags);
+                FrameProfile.NodesFlushed += nodes.Length;
+                FrameProfile.Add(FrameProfile.Nodes, t);
             }
         }
     }

@@ -57,7 +57,46 @@ public sealed class Playthrough
     private readonly object[] savedSettings = new object[settingKeys.Length];
     private bool keepActive = true;
 
-    public Playthrough(string directory, SceneTree tree) { this.directory = directory; this.tree = tree; }
+    public Playthrough(string directory, SceneTree tree)
+    {
+        this.directory = directory; this.tree = tree;
+        RenderingServer.FramePostDraw += recordFrame;
+    }
+
+    // ---- Frame intervals (performance diagnostics): every drawn frame's interval, attributed to the step in progress
+    // (the last step reported), written to playthrough-frames.json with a per-step summary (transition hitches).
+    private readonly List<double[]> frameLog = new();
+    private readonly List<string> frameStages = new();
+    private ulong lastFrameUs;
+    private void recordFrame()
+    {
+        ulong us = Time.GetTicksUsec();
+        if (lastFrameUs != 0) { frameLog.Add(new[] { Math.Round(us / 1e6 - started, 4), Math.Round((us - lastFrameUs) / 1000.0, 3) }); frameStages.Add(stage); }
+        lastFrameUs = us;
+    }
+    private void writeFrames()
+    {
+        RenderingServer.FramePostDraw -= recordFrame;
+        var summary = new List<object>();
+        int i = 0;
+        while (i < frameLog.Count)
+        {
+            int j = i;
+            while (j < frameLog.Count && frameStages[j] == frameStages[i]) j++;
+            var intervals = frameLog.GetRange(i, j - i).Select(f => f[1]).ToList();
+            double seconds = intervals.Sum() / 1000.0;
+            summary.Add(new Dictionary<string, object>
+            {
+                ["stage"] = frameStages[i], ["start"] = frameLog[i][0], ["frames"] = intervals.Count, ["seconds"] = Math.Round(seconds, 3),
+                ["fps"] = seconds > 0 ? Math.Round(intervals.Count / seconds, 2) : 0, ["worstMS"] = intervals.Max(),
+                ["over25MS"] = intervals.Count(v => v > 25), ["over50MS"] = intervals.Count(v => v > 50), ["over100MS"] = intervals.Count(v => v > 100),
+            });
+            i = j;
+        }
+        var report = new Dictionary<string, object> { ["columns"] = new[] { "t", "intervalMS" }, ["frames"] = frameLog, ["stages"] = frameStages, ["steps"] = summary };
+        try { File.WriteAllText(Path.Combine(directory, "playthrough-frames.json"), JSONSerialization.prettyPrintedSortedKeys(report)); }
+        catch (Exception error) { GD.PrintErr($"playthrough-frames.json: {error.Message}"); }
+    }
 
     // ---- Report
     public void note(string key, object value) => report[key] = value;
@@ -75,6 +114,7 @@ public sealed class Playthrough
         report["passed"] = passed;
         report["steps"] = steps;
         report["telemetry"] = telemetry;
+        writeFrames();
         report["platform"] = OS.GetName();
         report["commandKey"] = KeyEquivalent.command;
         try { File.WriteAllText(Path.Combine(directory, "playthrough.json"), JSONSerialization.prettyPrintedSortedKeys(report)); }

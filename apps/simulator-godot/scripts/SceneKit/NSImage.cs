@@ -290,6 +290,7 @@ public sealed class NSImage
             img = (Image)img.Duplicate();
             if (!img.HasMipmaps()) img.GenerateMipmaps();
             texture = ImageTexture.CreateFromImage(img);
+            FrameProfile.ImageTexturesCreated++; FrameProfile.TotalImageTexturesCreated++;
             textureVersion = v;
             return texture;
         }
