@@ -166,10 +166,40 @@ public sealed class NSWindow
         if (!HasWindow) return;
         int screen = DisplayServer.WindowGetCurrentScreen(WindowId);
         var area = DisplayServer.ScreenGetUsableRect(screen);
-        var size = DisplayServer.WindowGetSize(WindowId);
-        DisplayServer.WindowSetPosition(area.Position + (area.Size - size) / 2, WindowId);
+        if (Platform.macUI)
+        {
+            var size = DisplayServer.WindowGetSize(WindowId);
+            DisplayServer.WindowSetPosition(area.Position + (area.Size - size) / 2, WindowId);
+            return;
+        }
+        // Windows: the system title bar and borders are outside the client area; centre the whole frame and keep its
+        // top on the screen.
+        constrainToScreen(area);
+        var outer = DisplayServer.WindowGetSizeWithDecorations(WindowId);
+        var inset = DisplayServer.WindowGetPosition(WindowId) - DisplayServer.WindowGetPositionWithDecorations(WindowId);
+        var origin = area.Position + ((area.Size - outer) / 2).Max(Vector2I.Zero);
+        DisplayServer.WindowSetPosition(origin + inset, WindowId);
     }
-    public void makeKeyAndOrderFront(object sender) { if (HasWindow) DisplayServer.WindowMoveToForeground(WindowId); }
+    /// <summary>
+    /// AppKit keeps a titled window on its screen (constrainFrameRect): a resizable window larger than the screen's
+    /// usable area is made smaller, down to its minSize. macOS does that to the Godot window too; Windows does not
+    /// (a 1280 x 820-point window is 1025 pixels tall at 125 % display scaling, 1230 at 150 %), so the facade does it
+    /// there, decorations included. PORT: the views lay out to the smaller content area as when the user resizes.
+    /// </summary>
+    private void constrainToScreen(Rect2I area)
+    {
+        if (Platform.macUI || !styleMask.HasFlag(StyleMask.resizable)) return;
+        var size = DisplayServer.WindowGetSize(WindowId);
+        var decorations = DisplayServer.WindowGetSizeWithDecorations(WindowId) - size;
+        var fitted = size.Min(area.Size - decorations).Max(Pixels(_minSize));
+        if (fitted != size) { DisplayServer.WindowSetSize(fitted, WindowId); layoutConstraints(); }
+    }
+    public void makeKeyAndOrderFront(object sender)
+    {
+        if (!HasWindow) return;
+        constrainToScreen(DisplayServer.ScreenGetUsableRect(DisplayServer.WindowGetCurrentScreen(WindowId)));
+        DisplayServer.WindowMoveToForeground(WindowId);
+    }
     /// <summary>setContentSize(_:): the client area in points (the title bar is drawn over a full-size content view,
     /// so the content size is the window size). Constraints follow through the resize notification.</summary>
     public void setContentSize(CGSize size)
