@@ -51,7 +51,7 @@ import SimulationCore
             world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0.70
             world.camera.camera?.screenSpaceAmbientOcclusionRadius = 1.6
             world.camera.camera?.screenSpaceAmbientOcclusionBias = 0.025
-            // CLOSEUP_EXP=noibl,noamb,nosun,nossao switches single light terms off (to isolate shading differences).
+            // CLOSEUP_EXP=noibl,noamb,nosun,nossao switches single light terms off (to isolate shading differences); nonormal below.
             let exp = ProcessInfo.processInfo.environment["CLOSEUP_EXP"] ?? ""
             if exp.contains("noibl") { world.scene.lightingEnvironment.intensity = 0 }
             if exp.contains("noamb") { world.scene.rootNode.enumerateChildNodes { n, _ in if n.light?.type == .ambient { n.light?.intensity = 0 } } }
@@ -124,6 +124,17 @@ import SimulationCore
             updateModel(character, state: states[character]!)
         }
         world.update(states[.marvin]!)
+        // CLOSEUP_EXP=nonormal removes the robots' normal maps (to see what SSAO and shading take from them).
+        if (ProcessInfo.processInfo.environment["CLOSEUP_EXP"] ?? "").contains("nonormal") {
+            for character in RacePerformance.Character.allCases {
+                modelRoot(character).enumerateHierarchy { n, _ in n.geometry?.materials.forEach { $0.normal.contents = nil } }
+            }
+        }
+        if (ProcessInfo.processInfo.environment["CLOSEUP_EXP"] ?? "").contains("nomod") {
+            for character in RacePerformance.Character.allCases {
+                modelRoot(character).enumerateHierarchy { n, _ in n.geometry?.shaderModifiers = nil; n.geometry?.materials.forEach { $0.shaderModifiers = nil } }
+            }
+        }
         func stage(_ character: RacePerformance.Character) {
             for other in RacePerformance.Character.allCases { modelRoot(other).removeFromParentNode() }
             world.scene.rootNode.addChildNode(modelRoot(character))

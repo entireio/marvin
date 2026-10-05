@@ -22,7 +22,7 @@ namespace Marvin.SceneKit;
 /// Focused experiments print numbers instead (each mirrors a Swift twin, see PORTING.md):
 /// CAL_EXP=sphere (deferred/forward self-shadowing vs angle), pane (alpha and transparency per
 /// lighting model), penumbra (shadow edge width), mirror (pre-filtered reflections vs roughness;
-/// CAL_MIRROR_AMB=intensity, CAL_MIRROR_GRAY=1), ssao (SceneKit's SSAO on and off, SsaoProbe), overlay (vertex-alpha overlay
+/// CAL_MIRROR_AMB=intensity, CAL_MIRROR_GRAY=1), ssao (SceneKit's SSAO on and off, SsaoProbe; SSAO_AA=none/4x), overlay (vertex-alpha overlay
 /// idiom of TownGround, OverlayProbe); CAL_PENUMBRA_ELEV=1 measures the race suns' shadow edges at 60/35/20/10 degrees.
 /// </summary>
 public static class Calibration
@@ -742,7 +742,7 @@ ALBEDO = cityTint * (0.62 + grain * 0.65);
                 lens.screenSpaceAmbientOcclusionIntensity = on ? ssaoIntensity : 0;
                 lens.screenSpaceAmbientOcclusionRadius = ssaoRadius; lens.screenSpaceAmbientOcclusionBias = 0.025;
                 renderer.scene = scene; renderer.pointOfView = cam;
-                var aa = System.Environment.GetEnvironmentVariable("SSAO_AA") == "none" ? SCNAntialiasingMode.none : SCNAntialiasingMode.multisampling2X;
+                var aa = System.Environment.GetEnvironmentVariable("SSAO_AA") switch { "none" => SCNAntialiasingMode.none, "4x" => SCNAntialiasingMode.multisampling4X, _ => SCNAntialiasingMode.multisampling2X };
                 renderer.SnapshotImage(new Vector2I(W, H), aa);
                 var img = renderer.SnapshotImage(new Vector2I(W, H), aa);
                 img.SavePng(dir.PathJoin($"ssao_{name}_{(on ? "on" : "off")}.png"));

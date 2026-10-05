@@ -78,7 +78,7 @@ public static class RobotCloseups
             world.camera.camera.screenSpaceAmbientOcclusionIntensity = 0.70;
             world.camera.camera.screenSpaceAmbientOcclusionRadius = 1.6;
             world.camera.camera.screenSpaceAmbientOcclusionBias = 0.025;
-            // CLOSEUP_EXP=noibl,noamb,nosun,nossao switches single light terms off (to isolate shading differences).
+            // CLOSEUP_EXP=noibl,noamb,nosun,nossao switches single light terms off (to isolate shading differences); nonormal below.
             var exp = System.Environment.GetEnvironmentVariable("CLOSEUP_EXP") ?? "";
             if (exp.Contains("noibl")) world.scene.lightingEnvironment.intensity = 0;
             if (exp.Contains("noamb")) world.scene.rootNode.enumerateChildNodes((n, _) => { if (n.light?.type == SCNLight.LightType.ambient) n.light.intensity = 0; });
@@ -124,6 +124,12 @@ public static class RobotCloseups
             updateModel(character, states[character]);
         }
         world.update(states[RacePerformance.Character.marvin]);
+        // CLOSEUP_EXP=nonormal removes the robots' normal maps (to see what SSAO and shading take from them).
+        if ((System.Environment.GetEnvironmentVariable("CLOSEUP_EXP") ?? "").Contains("nonormal"))
+        {
+            foreach (var character in RacePerformance.CharacterAllCases)
+                modelRoot(character).enumerateHierarchy((n, _) => { if (n.geometry != null) foreach (var m in n.geometry.materials) m.normal.contents = null; });
+        }
         void stage(RacePerformance.Character character)
         {
             foreach (var other in RacePerformance.CharacterAllCases) { modelRoot(other).removeFromParentNode(); }
