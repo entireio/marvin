@@ -41,18 +41,44 @@ public static class Foundation
 public static class JSONSerialization
 {
     [Flags] public enum WritingOptions { prettyPrinted = 1, sortedKeys = 2 }
-    /// <summary>The report text. PORT: only [.prettyPrinted, .sortedKeys] (the options every smoke report uses).</summary>
+    /// <summary>The report text with [.prettyPrinted, .sortedKeys] (the options every smoke report uses).</summary>
     public static string prettyPrintedSortedKeys(object withJSONObject)
     {
         var sb = new System.Text.StringBuilder(); write(sb, withJSONObject, 0); return sb.ToString();
     }
+    /// <summary>
+    /// The text without .prettyPrinted: no whitespace (<c>{"key":value}</c>, empty containers <c>{}</c> / <c>[]</c>).
+    /// PORT: keys are always sorted; without .sortedKeys Foundation writes them in the dictionary's (unspecified) order.
+    /// </summary>
+    public static string compact(object withJSONObject)
+    {
+        var sb = new System.Text.StringBuilder(); write(sb, withJSONObject, -1); return sb.ToString();
+    }
     /// <summary>JSONSerialization.data(withJSONObject:options:) (UTF-8); write it with <c>.write(to: url)</c>.</summary>
     public static byte[] data(object withJSONObject, WritingOptions options = WritingOptions.prettyPrinted | WritingOptions.sortedKeys) =>
-        System.Text.Encoding.UTF8.GetBytes(prettyPrintedSortedKeys(withJSONObject));
+        System.Text.Encoding.UTF8.GetBytes(options.HasFlag(WritingOptions.prettyPrinted) ? prettyPrintedSortedKeys(withJSONObject) : compact(withJSONObject));
 
+    /// <summary>Writes one value; depth -1 selects the compact (not pretty-printed) layout.</summary>
     private static void write(System.Text.StringBuilder sb, object value, int depth)
     {
         string pad(int d) => new string(' ', d * 2);
+        if (depth < 0 && value is System.Collections.IDictionary compactDictionary)
+        {
+            var keys = compactDictionary.Keys.Cast<object>().Select(k => Convert.ToString(k, CultureInfo.InvariantCulture)).OrderBy(k => k, keyOrder).ToList();
+            var byName = compactDictionary.Keys.Cast<object>().ToDictionary(k => Convert.ToString(k, CultureInfo.InvariantCulture), k => compactDictionary[k]);
+            sb.Append('{');
+            for (var i = 0; i < keys.Count; i++) { if (i > 0) { sb.Append(','); } quote(sb, keys[i]); sb.Append(':'); write(sb, byName[keys[i]], -1); }
+            sb.Append('}');
+            return;
+        }
+        if (depth < 0 && value is System.Collections.IEnumerable compactSequence && value is not string)
+        {
+            sb.Append('[');
+            var first = true;
+            foreach (var item in compactSequence) { if (!first) { sb.Append(','); } first = false; write(sb, item, -1); }
+            sb.Append(']');
+            return;
+        }
         switch (value)
         {
             case null: sb.Append("null"); break;
@@ -167,6 +193,10 @@ public sealed class ProcessInfo
 {
     public static readonly ProcessInfo processInfo = new();
     public double systemUptime => Time.GetTicksUsec() / 1e6;
+    /// <summary>ProcessInfo.ThermalState (raw values as Foundation's).</summary>
+    public enum ThermalState { nominal = 0, fair = 1, serious = 2, critical = 3 }
+    /// <summary>thermalState. PORT: .NET and Godot expose no thermal pressure; always .nominal.</summary>
+    public ThermalState thermalState => ThermalState.nominal;
     public string[] arguments => CommandLine.arguments;
     public Dictionary<string, string> environment
     {

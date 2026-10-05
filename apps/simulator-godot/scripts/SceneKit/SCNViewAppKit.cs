@@ -63,6 +63,15 @@ public partial class SCNView : NSResponder
         var local = GetGlobalTransform().AffineInverse() * AppKitLayout.ToGlobal(point, from, this);
         return new CGPoint(local.X, Size.Y - local.Y);
     }
+    /// <summary>
+    /// convertToBacking(_:): points to backing-store pixels (the window's backingScaleFactor). PORT: the 3D view itself
+    /// renders at one pixel per point (PORTING.md, window chrome), so on a HiDPI screen this is larger than the 3D render.
+    /// </summary>
+    public CGRect convertToBacking(CGRect rect)
+    {
+        var scale = window?.backingScaleFactor ?? 1;
+        return new CGRect(rect.minX * scale, rect.minY * scale, rect.width * scale, rect.height * scale);
+    }
 
     public override void _Notification(int what)
     {

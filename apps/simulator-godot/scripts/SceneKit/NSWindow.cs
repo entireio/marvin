@@ -154,6 +154,12 @@ public sealed class NSWindow
             return new CGRect(p.X, p.Y, size.X, size.Y);
         }
     }
+    /// <summary>setContentSize(_:): the content (client) size in points; the position is kept.</summary>
+    public void setContentSize(CGSize size)
+    {
+        if (!HasWindow) return;
+        DisplayServer.WindowSetSize(Pixels(size), WindowId);
+    }
     public void setFrame(CGRect frameRect, bool display)
     {
         if (!HasWindow) return;

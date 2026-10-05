@@ -95,11 +95,18 @@ public sealed class NSBitmapImageRep
         }
         return (0, 0, 0, 1);
     }
-    /// <summary>representation(using: .png/.jpeg, properties: [:]).</summary>
+    /// <summary>NSBitmapImageRep.PropertyKey (the keys of <c>representation(using:properties:)</c>).</summary>
+    public static class PropertyKey
+    {
+        /// <summary>.compressionFactor: JPEG quality 0...1.</summary>
+        public const string compressionFactor = "NSImageCompressionFactor";
+    }
+    /// <summary>representation(using: .png/.jpeg, properties: [:]); JPEG honours .compressionFactor (default 0.9).</summary>
     public byte[] representation(NSBitmapImageFileType @using, Dictionary<string, object> properties = null)
     {
         var img = ToGodotImage(straightAlpha: true);
-        return @using == NSBitmapImageFileType.jpeg ? img.SaveJpgToBuffer(0.9f) : img.SavePngToBuffer();
+        var quality = properties != null && properties.TryGetValue(PropertyKey.compressionFactor, out var value) ? Convert.ToSingle(value, System.Globalization.CultureInfo.InvariantCulture) : 0.9f;
+        return @using == NSBitmapImageFileType.jpeg ? img.SaveJpgToBuffer(quality) : img.SavePngToBuffer();
     }
     public NSImage cgImage => new NSImage(this);
 

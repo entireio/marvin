@@ -322,4 +322,6 @@ public sealed class SCNRenderer : SCNSceneRenderer
     public SCNVector3 projectPoint(SCNVector3 point) => rig.Project(point, rig.viewport.Size.X, rig.viewport.Size.Y);
     public SCNVector3 unprojectPoint(SCNVector3 point) => rig.Unproject(point, rig.viewport.Size.X, rig.viewport.Size.Y);
     public void prepare(object[] objects, Action<bool> completionHandler) { SceneKitRuntime.Flush(); completionHandler?.Invoke(true); }
+    /// <summary>prepare(_:shouldAbortBlock:) (SCNSceneRenderer), as SCNView's: flushes pending changes; Godot compiles on first draw.</summary>
+    public bool prepare(object @object, Func<bool> shouldAbortBlock) { SceneKitRuntime.Flush(); return true; }
 }
