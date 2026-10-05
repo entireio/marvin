@@ -83,8 +83,8 @@ Settings, scores and logs live in `~/Library/Application Support/Godot/app_userd
 
 The Windows build has not been run on Windows: no Windows machine was available. Everything that can be checked on a
 Mac was (PORTING.md, "Release builds and Windows"): the export and its layout (above), the Windows user-interface
-paths (in-window menu bar, Control shortcuts), Godot's Vulkan renderer (through MoltenVK), the portable maths and
-Windows' smaller thread stacks.
+paths (in-window menu bar, Control shortcuts, a window fitted to a scaled screen), Godot's Vulkan renderer (through
+MoltenVK), the portable maths and the thread stacks.
 
 ### Getting a build
 
@@ -138,8 +138,8 @@ runtime is inside.
 ### What differs from macOS
 
 - **Fonts.** SF Pro, SF Mono and Avenir Next Condensed are Apple's and are not shipped; Windows draws the HUD in
-  Segoe UI and Consolas and the town signs in Bahnschrift. The layout measures the strings, so text fits, but it looks
-  different.
+  Segoe UI and Consolas and the town signs in Bahnschrift. Text is measured and laid out as on the Mac (the key guide
+  grows with its text, the signs shrink theirs to fit), but it looks different and has not been checked on Windows.
 - **Window chrome.** The system title bar above the client area instead of the Mac's unified title bar; the menu bar
   is in the window (Windows has no global menu bar).
 - **Last-digit maths.** `hypot` runs a managed copy of Darwin's algorithm that returns the same bits as macOS
@@ -147,7 +147,7 @@ runtime is inside.
   the Windows C runtime and can differ from Darwin's in the last bit, so long chaotic simulations (a three-lap race
   with contacts) can drift in their last digits from a macOS run, as the macOS release and debug builds do from each
   other. Smoke reports that are byte-identical between the macOS game and the port on a Mac may therefore differ in
-  some numbers on Windows; the checks themselves do not depend on it.
+  some numbers on Windows (the macOS release and debug builds drift like this and both pass every check).
 - **Untested there:** the Direct3D 12 renderer, Windows audio output (WASAPI) and real display scaling.
 
 ## Layout
