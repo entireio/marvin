@@ -6,5 +6,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>Marvin.Core</RootNamespace>
     <AssemblyName>MarvinCore</AssemblyName>
+    <!-- Optimised in every configuration (the game's Debug build too, see MarvinGodot.csproj). -->
+    <Optimize>true</Optimize>
   </PropertyGroup>
 </Project>

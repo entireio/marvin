@@ -6,6 +6,10 @@
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>Marvin</RootNamespace>
+    <!-- Godot runs the game from the editor binary with the Debug configuration. Without optimisation the JIT compiles
+         every method unoptimised (the race world built 4x slower: 32 s instead of 7 s); keep the game optimised in every
+         configuration, as an export is. Floating-point results are unchanged (no fast-math or FMA contraction). -->
+    <Optimize>true</Optimize>
   </PropertyGroup>
   <ItemGroup>
     <!-- Core and checks are separate projects; Godot must not compile their sources twice. -->

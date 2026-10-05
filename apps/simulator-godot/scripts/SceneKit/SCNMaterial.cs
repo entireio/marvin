@@ -118,10 +118,26 @@ public sealed class SCNMaterialProperty
     {
         NSImage img => img.GodotTexture,
         MTLTexture t => t.GodotTexture,
-        string path => NSImage.contentsOf(path)?.GodotTexture,
+        string path => PathTexture(path),
         Texture2D t => t,
         _ => null,
     };
+    /// <summary>
+    /// A path's texture, loaded once: materials name the same image files many times (city scans, clay), and every
+    /// material flush resolves its contents (ResourceLoader.Load and a CPU read-back of the image to test for grayscale
+    /// cost 2.7 s when the race world was first shown). Image files do not change while the game runs.
+    /// </summary>
+    private static Texture2D PathTexture(string path)
+    {
+        lock (pathTextures)
+        {
+            if (pathTextures.TryGetValue(path, out var cached)) return cached;
+        }
+        var texture = NSImage.contentsOf(path)?.GodotTexture;
+        lock (pathTextures) { pathTextures[path] = texture; }
+        return texture;
+    }
+    private static readonly Dictionary<string, Texture2D> pathTextures = new();
     /// <summary>Linear RGBA for colour/scalar contents (scalars are linear values: measured).</summary>
     internal Color LinearColor(Color fallback) => LinearColorOf(_contents, fallback);
     internal static Color LinearColorOf(object contents, Color fallback) => contents switch
