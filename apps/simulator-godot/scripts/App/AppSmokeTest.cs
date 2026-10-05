@@ -277,8 +277,9 @@ public partial class AppController
             // SCNView.snapshot excludes AppKit subviews; capture the HUD
             // separately for layout QA at the minimum supported window size.
             // PORT: on the Mac the overlay's Auto Layout constraints keep it at the 1280 x 792 content size while the
-            // bitmap is 900 x 550, so dirt-hud.png is the top-left 900 x 550 of the full-size HUD; the facade has no
-            // constraints, so the HUD keeps its frame and that rectangle is cached (as UISmoke's dirt-hud.png).
+            // bitmap is 900 x 550, so dirt-hud.png is the top-left 900 x 550 of the full-size HUD; the facade does not
+            // re-solve constraints when it displays a view, so the HUD keeps its constrained frame and that rectangle is
+            // cached (as UISmoke's dirt-hud.png).
             var hudRect = new NSRect(0, 0, 900, 550);
             if (raceHUD.bitmapImageRepForCachingDisplay(hudRect) is NSBitmapImageRep hudBitmap)
             {

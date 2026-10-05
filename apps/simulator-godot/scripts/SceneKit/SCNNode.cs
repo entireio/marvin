@@ -56,34 +56,53 @@ public partial class SCNNode : Node3D
 
     // =====================================================================
     // Transform (ref properties; see class summary)
-    public ref SCNVector3 position { get { Touch(); return ref _position; } }
-    public ref SCNVector3 scale { get { Touch(); return ref _scale; } }
+    public ref SCNVector3 position { get { Quantize(); Touch(); return ref _position; } }
+    public ref SCNVector3 scale { get { Quantize(); Touch(); return ref _scale; } }
     public ref SCNVector3 eulerAngles { get { SyncRotation(); Touch(); return ref _euler; } }
     public ref SCNVector4 orientation { get { SyncRotation(); Touch(); return ref _orientation; } }
     public ref SCNVector4 rotation { get { SyncRotation(); Touch(); return ref _rotation; } }
-    public ref SCNMatrix4 pivot { get { Touch(); return ref _pivot; } }
+    public ref SCNMatrix4 pivot { get { Quantize(); Touch(); return ref _pivot; } }
 
     private void Touch() => SceneKitRuntime.NodeDirty(this, DirtyTransform);
 
+    // Measured (Swift probe on macOS 27): SceneKit keeps a node's position, scale, eulerAngles, orientation, rotation,
+    // pivot, transform and opacity in single precision, and answers world-space queries (worldPosition,
+    // convertPosition) in single precision: position 0.1 reads back 0.10000000149011612, eulerAngles.y = 0.7 reads
+    // 0.699999988079071 (4 reads 4), a Double scale of 0.5555555555555555 reads 0.5555555820465088 (so the smoke
+    // test's marvinToR2D2HeightRatio is 0.5555555673827447 on macOS). The ref properties cannot round a write, so
+    // every read path rounds the stored values first (Quantize); the rotation is derived from the rounded values.
+    private static double F(double v) => (float)v;
+    private static SCNVector3 F(SCNVector3 v) => new(F(v.x), F(v.y), F(v.z));
+    private static SCNVector4 F(SCNVector4 v) => new(F(v.x), F(v.y), F(v.z), F(v.w));
+    private static SCNMatrix4 F(SCNMatrix4 m) => new(F(m.m11), F(m.m12), F(m.m13), F(m.m14), F(m.m21), F(m.m22), F(m.m23), F(m.m24),
+        F(m.m31), F(m.m32), F(m.m33), F(m.m34), F(m.m41), F(m.m42), F(m.m43), F(m.m44));
+    private void Quantize()
+    {
+        _position = F(_position); _scale = F(_scale);
+        _euler = F(_euler); _orientation = F(_orientation); _rotation = F(_rotation);
+        if (!_pivot.IsIdentity) _pivot = F(_pivot);
+    }
+
     private void SyncRotation()
     {
+        Quantize();
         if (_euler != _eulerSeen)
         {
             _quat = QuaternionFromEuler(_euler);
-            _orientation = _quat;
-            _rotation = AxisAngleFromQuaternion(_quat);
+            _orientation = F(_quat);
+            _rotation = F(AxisAngleFromQuaternion(_quat));
         }
         else if (_orientation != _orientationSeen)
         {
             _quat = Normalize(_orientation);
-            _euler = EulerFromQuaternion(_quat);
-            _rotation = AxisAngleFromQuaternion(_quat);
+            _euler = F(EulerFromQuaternion(_quat));
+            _rotation = F(AxisAngleFromQuaternion(_quat));
         }
         else if (_rotation != _rotationSeen)
         {
             _quat = QuaternionFromAxisAngle(_rotation);
-            _euler = EulerFromQuaternion(_quat);
-            _orientation = _quat;
+            _euler = F(EulerFromQuaternion(_quat));
+            _orientation = F(_quat);
         }
         _eulerSeen = _euler; _orientationSeen = _orientation; _rotationSeen = _rotation;
     }
@@ -91,7 +110,7 @@ public partial class SCNNode : Node3D
     /// <summary>transform: T * R * S (excludes the pivot, as SceneKit's model API).</summary>
     public SCNMatrix4 transform
     {
-        get { SyncRotation(); return TRS(); }
+        get { SyncRotation(); return F(TRS()); }
         set
         {
             var (p, q, s) = Decompose(value);
@@ -110,12 +129,12 @@ public partial class SCNNode : Node3D
 
     public SCNMatrix4 worldTransform
     {
-        get => ModelWorld();
+        get => F(ModelWorld());
         set => transform = _parent == null ? SCNMatrix4.Mul(_pivot, value) : SCNMatrix4.Mul(_pivot, SCNMatrix4.Mul(SCNMatrix4.Inverse(_parent.ModelWorld()), value));
     }
     public SCNVector3 worldPosition
     {
-        get => ModelWorld().Column(3);
+        get => F(ModelWorld().Column(3));
         set
         {
             var parentWorld = _parent == null ? SCNMatrix4.Identity : _parent.ModelWorld();
@@ -125,23 +144,23 @@ public partial class SCNNode : Node3D
     }
     public SCNVector4 worldOrientation
     {
-        get => QuaternionFromMatrix(ModelWorld());
+        get => F(QuaternionFromMatrix(ModelWorld()));
         set
         {
             var parentRot = _parent == null ? new SCNVector4(0, 0, 0, 1) : QuaternionFromMatrix(_parent.ModelWorld());
             orientation = QMul(QConj(parentRot), Normalize(value));
         }
     }
-    public SCNVector3 worldFront => ModelWorld().TransformVector(new SCNVector3(0, 0, -1)).Normalized();
-    public SCNVector3 worldUp => ModelWorld().TransformVector(new SCNVector3(0, 1, 0)).Normalized();
-    public SCNVector3 worldRight => ModelWorld().TransformVector(new SCNVector3(1, 0, 0)).Normalized();
+    public SCNVector3 worldFront => F(ModelWorld().TransformVector(new SCNVector3(0, 0, -1)).Normalized());
+    public SCNVector3 worldUp => F(ModelWorld().TransformVector(new SCNVector3(0, 1, 0)).Normalized());
+    public SCNVector3 worldRight => F(ModelWorld().TransformVector(new SCNVector3(1, 0, 0)).Normalized());
     public static SCNVector3 localFront => new(0, 0, -1);
     public static SCNVector3 localUp => new(0, 1, 0);
     public static SCNVector3 localRight => new(1, 0, 0);
 
     // ---- simd variants (types aliased in SimdBridge.cs)
-    public SCNFloat3 simdPosition { get => _position.simd; set => position = new SCNVector3(value); }
-    public SCNFloat3 simdScale { get => _scale.simd; set => scale = new SCNVector3(value); }
+    public SCNFloat3 simdPosition { get { Quantize(); return _position.simd; } set => position = new SCNVector3(value); }
+    public SCNFloat3 simdScale { get { Quantize(); return _scale.simd; } set => scale = new SCNVector3(value); }
     public SCNFloat3 simdEulerAngles { get { SyncRotation(); return _euler.simd; } set => eulerAngles = new SCNVector3(value); }
     public SCNQuatF simdOrientation
     {
@@ -150,7 +169,7 @@ public partial class SCNNode : Node3D
     }
     public SCNFloat4 simdRotation { get { SyncRotation(); return _rotation.simd; } set => rotation = new SCNVector4(value); }
     public SCNFloat4x4 simdTransform { get => SimdBridge.M(transform); set => transform = SimdBridge.M(value); }
-    public SCNFloat4x4 simdPivot { get => SimdBridge.M(_pivot); set => pivot = SimdBridge.M(value); }
+    public SCNFloat4x4 simdPivot { get { Quantize(); return SimdBridge.M(_pivot); } set => pivot = SimdBridge.M(value); }
     public SCNFloat4x4 simdWorldTransform { get => SimdBridge.M(worldTransform); set => worldTransform = SimdBridge.M(value); }
     public SCNFloat3 simdWorldPosition { get => worldPosition.simd; set => worldPosition = new SCNVector3(value); }
     public SCNQuatF simdWorldOrientation
@@ -167,17 +186,17 @@ public partial class SCNNode : Node3D
 
     // ---- coordinate conversion. Swift `convertX(_:from:)` is `convertXFrom(_, node)` here (same types as `to:`).
     public SCNVector3 convertPosition(SCNVector3 position, SCNNode to) =>
-        to == null ? ModelWorld().TransformPoint(position) : SCNMatrix4.Inverse(to.ModelWorld()).TransformPoint(ModelWorld().TransformPoint(position));
+        F(to == null ? ModelWorld().TransformPoint(position) : SCNMatrix4.Inverse(to.ModelWorld()).TransformPoint(ModelWorld().TransformPoint(position)));
     public SCNVector3 convertPositionFrom(SCNVector3 position, SCNNode from) =>
-        SCNMatrix4.Inverse(ModelWorld()).TransformPoint(from == null ? position : from.ModelWorld().TransformPoint(position));
+        F(SCNMatrix4.Inverse(ModelWorld()).TransformPoint(from == null ? position : from.ModelWorld().TransformPoint(position)));
     public SCNVector3 convertVector(SCNVector3 vector, SCNNode to) =>
-        to == null ? ModelWorld().TransformVector(vector) : SCNMatrix4.Inverse(to.ModelWorld()).TransformVector(ModelWorld().TransformVector(vector));
+        F(to == null ? ModelWorld().TransformVector(vector) : SCNMatrix4.Inverse(to.ModelWorld()).TransformVector(ModelWorld().TransformVector(vector)));
     public SCNVector3 convertVectorFrom(SCNVector3 vector, SCNNode from) =>
-        SCNMatrix4.Inverse(ModelWorld()).TransformVector(from == null ? vector : from.ModelWorld().TransformVector(vector));
+        F(SCNMatrix4.Inverse(ModelWorld()).TransformVector(from == null ? vector : from.ModelWorld().TransformVector(vector)));
     public SCNMatrix4 convertTransform(SCNMatrix4 transform, SCNNode to) =>
-        to == null ? SCNMatrix4.Mul(ModelWorld(), transform) : SCNMatrix4.Mul(SCNMatrix4.Inverse(to.ModelWorld()), SCNMatrix4.Mul(ModelWorld(), transform));
+        F(to == null ? SCNMatrix4.Mul(ModelWorld(), transform) : SCNMatrix4.Mul(SCNMatrix4.Inverse(to.ModelWorld()), SCNMatrix4.Mul(ModelWorld(), transform)));
     public SCNMatrix4 convertTransformFrom(SCNMatrix4 transform, SCNNode from) =>
-        SCNMatrix4.Mul(SCNMatrix4.Inverse(ModelWorld()), from == null ? transform : SCNMatrix4.Mul(from.ModelWorld(), transform));
+        F(SCNMatrix4.Mul(SCNMatrix4.Inverse(ModelWorld()), from == null ? transform : SCNMatrix4.Mul(from.ModelWorld(), transform)));
     public SCNFloat3 simdConvertPosition(SCNFloat3 position, SCNNode to) => convertPosition(new SCNVector3(position), to).simd;
     public SCNFloat3 simdConvertPositionFrom(SCNFloat3 position, SCNNode from) => convertPositionFrom(new SCNVector3(position), from).simd;
     public SCNFloat3 simdConvertVector(SCNFloat3 vector, SCNNode to) => convertVector(new SCNVector3(vector), to).simd;
