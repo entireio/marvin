@@ -23,6 +23,16 @@ public static class CommandLine
         return list.ToArray();
     });
     public static string[] arguments => _arguments.Value;
+    private static readonly Lazy<string[]> _userArguments = new(() =>
+    {
+        var user = OS.GetCmdlineUserArgs();
+        // An exported build also takes the game's flags without "--": Windows PowerShell drops a bare "--" before a
+        // native program, and Godot passes arguments it does not know through to the game.
+        return user.Length > 0 || OS.HasFeature("editor") ? user : OS.GetCmdlineArgs();
+    });
+    /// <summary>The game's arguments: those after "--" (<c>tools/godot -- --smoke-test DIR</c>); in an exported build
+    /// all arguments when none follow "--" (<c>MarvinSimulator.console.exe --smoke-test DIR</c>).</summary>
+    public static string[] userArguments => _userArguments.Value;
     /// <summary>The game's own command line as the macOS app receives it: the executable and the game arguments
     /// (after "--"), without Godot's engine arguments. For reports that record the invocation (benchmarkArguments).</summary>
     public static string[] gameArguments
@@ -30,7 +40,7 @@ public static class CommandLine
         get
         {
             var list = new List<string> { OS.GetExecutablePath() };
-            list.AddRange(OS.GetCmdlineUserArgs());
+            list.AddRange(userArguments);
             return list.ToArray();
         }
     }

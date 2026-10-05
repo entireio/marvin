@@ -566,7 +566,9 @@ public sealed class NSGraphicsContext
 /// <summary>
 /// NSFont. System fonts resolve to the platform font through Godot SystemFont: SF Pro (".AppleSystemUIFont")
 /// and SF Mono (".SF NS Mono"; plain "SF Mono" is not a resolvable family name) on macOS, Segoe UI /
-/// Consolas on Windows. AppKit behaviour reproduced (measured against the game's captures):
+/// Consolas on Windows (Apple's fonts may not be redistributed). Named fonts fall back the same way; the town signs'
+/// Avenir Next Condensed falls back to Windows' narrow Bahnschrift (the signs shrink their text to fit, TownSigns.swift).
+/// AppKit behaviour reproduced (measured against the game's captures):
 /// - weights select the fonts' named instances: SF Pro wght 400/510/590/700/860/1000 (regular, medium,
 ///   semibold, bold, heavy, black), SF Mono wght + YAXS pairs (e.g. bold 683.3/335.8);
 /// - SF Pro's optical size follows the point size (opsz = size, clamped to the axis' 17...96);
@@ -726,7 +728,7 @@ public sealed class NSFont
             {
                 Family.System => SystemNames,
                 Family.Monospaced => MonospacedNames,
-                _ => new[] { name.Split('-')[0] == "AvenirNextCondensed" ? "Avenir Next Condensed" : name.Split('-')[0], "Avenir Next Condensed", "SF Pro Text", "Segoe UI", "sans-serif" },
+                _ => new[] { name.Split('-')[0] == "AvenirNextCondensed" ? "Avenir Next Condensed" : name.Split('-')[0], "Avenir Next Condensed", "Bahnschrift", "SF Pro Text", "Segoe UI", "sans-serif" },
             };
             string baseKey = string.Join(",", names) + "|" + weight;
             if (!bases.TryGetValue(baseKey, out var systemFont))

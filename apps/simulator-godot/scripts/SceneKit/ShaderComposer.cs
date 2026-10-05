@@ -26,6 +26,8 @@ internal static class ShaderComposer
 
     internal static Shader GetShader(string code)
     {
+        // StringBuilder.AppendLine writes "\r\n" on Windows: the same shaders on every platform.
+        if (code.Contains('\r')) code = code.Replace("\r\n", "\n");
         if (cache.TryGetValue(code, out var s)) return s;
         s = new Shader { Code = code };
         cache[code] = s;
