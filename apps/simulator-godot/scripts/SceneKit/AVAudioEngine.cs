@@ -961,6 +961,14 @@ public sealed class AVAudioEngine
             {
                 var p = playback;
                 if (p == null) { Thread.Sleep(4); continue; }
+                // exit() quits Godot while the engine may still run (macOS ends the process, and Core Audio with it):
+                // the tree frees the generator's playback under this thread. Stop feeding it instead of crashing.
+                if (!GodotObject.IsInstanceValid(p)) { if (playback == p) { playback = null; } Thread.Sleep(4); continue; }
+                try { Feed(p); }
+                catch (ObjectDisposedException) { if (playback == p) { playback = null; } }
+            }
+            void Feed(AudioStreamGeneratorPlayback p)
+            {
                 if (p != watched) { watched = p; seenSkips = 0; settleAt = System.Diagnostics.Stopwatch.GetTimestamp() + System.Diagnostics.Stopwatch.Frequency / 4; }
                 // Godot's generator plays silence when it runs dry. After start-up, each new underrun raises
                 // the queued target (bursty consumers such as the headless Dummy driver), up to 100 ms.
@@ -971,10 +979,10 @@ public sealed class AVAudioEngine
                     seenSkips = skips;
                 }
                 int available = p.GetFramesAvailable();
-                if (emptyAvailable - available >= target || available < Chunk) { Thread.Sleep(1); continue; }
+                if (emptyAvailable - available >= target || available < Chunk) { Thread.Sleep(1); return; }
                 lock (engine.gate)
                 {
-                    if (!engine.isRunning || playback != p) continue;
+                    if (!engine.isRunning || playback != p) return;
                     engine.RenderGraph(Chunk, left, right);
                 }
                 engine.RunCompletions();
