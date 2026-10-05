@@ -98,7 +98,7 @@ public sealed class NSWindow
         if (HasWindow)
         {
             var id = WindowId;
-            if (styleMask.HasFlag(StyleMask.fullSizeContentView) && OS.GetName() == "macOS")
+            if (styleMask.HasFlag(StyleMask.fullSizeContentView) && Platform.macUI)
                 DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.ExtendToTitle, true, id);
             DisplayServer.WindowSetFlag(DisplayServer.WindowFlags.ResizeDisabled, !styleMask.HasFlag(StyleMask.resizable), id);
             // Points, as in AppKit: on a HiDPI screen the window has backingScaleFactor pixels per point and the views

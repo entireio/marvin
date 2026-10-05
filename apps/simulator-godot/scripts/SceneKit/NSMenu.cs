@@ -42,7 +42,7 @@ public sealed class NSMenu
     }
 
     /// <summary>True when the menu bar is the system's global menu (macOS) rather than drawn in the window.</summary>
-    internal static bool usesGlobalMenu => NativeMenu.HasFeature(NativeMenu.Feature.GlobalMenu);
+    internal static bool usesGlobalMenu => Platform.globalMenu;
 
     /// <summary>performKeyEquivalent: the first enabled item, depth first, whose key equivalent and modifiers match.</summary>
     internal static bool performKeyEquivalent(NSMenu menu, InputEventKey key)
@@ -88,7 +88,7 @@ public sealed class NSMenu
     /// <summary>The Godot menu bar for a main menu: one PopupMenu per top-level item with a submenu.</summary>
     internal static MenuBar makeMenuBar(NSMenu main)
     {
-        var bar = new MenuBar { Name = "MenuBar", PreferGlobalMenu = true, Flat = true };
+        var bar = new MenuBar { Name = "MenuBar", PreferGlobalMenu = usesGlobalMenu, Flat = true };
         bar.AddThemeFontSizeOverride("font_size", 13);
         bar.AddThemeColorOverride("font_color", new Color(0.15f, 0.15f, 0.15f));
         bar.AddThemeColorOverride("font_hover_color", new Color(0.05f, 0.05f, 0.05f));
@@ -140,7 +140,7 @@ public sealed class NSMenu
         var c = item.keyEquivalent[0];
         Key key = char.ToUpperInvariant(c) switch { >= 'A' and <= 'Z' and var u => (Key)u, >= '0' and <= '9' and var d => (Key)d, _ => Key.None };
         if (key == Key.None) return Key.None;
-        var mask = OS.GetName() == "macOS" ? KeyModifierMask.MaskMeta : KeyModifierMask.MaskCtrl;
+        var mask = Platform.macUI ? KeyModifierMask.MaskMeta : KeyModifierMask.MaskCtrl;
         if (char.IsUpper(c)) mask |= KeyModifierMask.MaskShift;
         return (Key)((long)key | (long)mask);
     }
@@ -209,5 +209,5 @@ public sealed class NSMenuItem
 /// </summary>
 public static class KeyEquivalent
 {
-    public static readonly string command = OS.GetName() == "macOS" ? "⌘" : "Ctrl+";
+    public static readonly string command = Platform.macUI ? "⌘" : "Ctrl+";
 }

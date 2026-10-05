@@ -91,7 +91,7 @@ public sealed class NSEvent
     /// equivalents, the views' "modifierFlags.contains(.command)" checks) become Control shortcuts on Windows and Linux,
     /// where the Windows/Super key is reported as <c>.control</c> instead.
     /// </summary>
-    public static readonly bool commandIsControlKey = OS.GetName() != "macOS";
+    public static readonly bool commandIsControlKey = !Platform.macUI;
     private static ModifierFlags Modifiers(InputEventWithModifiers e)
     {
         ModifierFlags f = 0;
