@@ -106,6 +106,10 @@ public partial class SCNView : NSResponder
                     lastAppKitSize = Size;
                     if (old.width > 0 || old.height > 0) foreach (var child in GetChildren()) if (child is NSView v) v.resizeWithOldSuperviewSize(old);
                     AppKitLayout.ReapplyChildren(this);
+                    // AppKit's layout pass follows the superview's resize: re-solve Auto Layout subviews (the overlays pinned to
+                    // the content layout guide) against the new size. The window's own resize handler ran before this view had
+                    // its new size and placed them for the old one.
+                    if (IsInsideTree() && GetChildren().Any(c => c is NSView { translatesAutoresizingMaskIntoConstraints: false })) window?.layoutConstraints();
                     if (IsInsideTree()) resetCursorRects();
                 }
                 break;

@@ -122,6 +122,8 @@ public partial class NSView : Control, NSResponder
     }
     public virtual void resizeWithOldSuperviewSize(CGSize oldSize)
     {
+        // Auto Layout views ignore their autoresizing mask; the window's constraints place them (NSLayoutConstraint.Solve).
+        if (!translatesAutoresizingMaskIntoConstraints) return;
         if (GetParent() is not Control parent) return;
         var f = AppKitLayout.Autoresize(_frame, autoresizingMask, oldSize, new CGSize(parent.Size.X, parent.Size.Y));
         if (f != _frame) frame = f;
@@ -159,6 +161,8 @@ public partial class NSView : Control, NSResponder
                     lastSize = Size;
                     if (old.width > 0 || old.height > 0) resizeSubviews(old);
                     AppKitLayout.ReapplyChildren(this);
+                    // AppKit's layout pass follows the superview's resize: re-solve Auto Layout subviews against the new size.
+                    if (IsInsideTree() && GetChildren().Any(c => c is NSView { translatesAutoresizingMaskIntoConstraints: false })) window?.layoutConstraints();
                     needsLayout = true;
                     QueueRedraw();
                     if (IsInsideTree()) { updateTrackingAreas(); resetCursorRects(); }
