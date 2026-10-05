@@ -318,6 +318,18 @@ public partial class AppController
         townBenchmarkDirectory = directory;
         godotTelemetry = new GodotFrameTelemetry(view.GodotViewport);
         dirtWorld.town.root.isHidden = args.Contains("--without-town");
+        // Godot-only diagnostics: MARVIN_BENCHMARK_HIDE="part;part" hides every node whose name contains one of the parts,
+        // to measure the GPU cost of a class of geometry (tools/perf/run-benchmark.py --env).
+        if (environmentValue("MARVIN_BENCHMARK_HIDE") is string hide && hide.Length > 0)
+        {
+            var parts = hide.Split(';', StringSplitOptions.RemoveEmptyEntries);
+            var hidden = 0;
+            dirtWorld.scene.rootNode.enumerateChildNodes((node, _) =>
+            {
+                if (node.name is string n && parts.Any(part => n.Contains(part))) { node.isHidden = true; hidden += 1; }
+            });
+            print($"MARVIN_BENCHMARK_HIDE: {hidden} nodes hidden");
+        }
     }
 
     /// Godot-only render telemetry of the benchmark (godot-render.json).
@@ -341,6 +353,13 @@ public partial class AppController
         if ((int)elapsed >= lastSecond + 1)
         {
             townBenchmarkResourceSamples.Add(new Dictionary<string, object> { ["second"] = (int)elapsed, ["uptime"] = now, ["thermalState"] = (int)ProcessInfo.processInfo.thermalState, ["trailsHidden"] = trailsHidden, ["shadowCasters"] = dirtWorld.town.shadowCasterCount, ["trails"] = dirtWorld.trailDiagnostics(), ["shadowBatch"] = dirtWorld.town.shadowBatchTelemetry });
+        }
+        // Godot-only measurement hook: MARVIN_BENCHMARK_FREEZE=SECONDS stops the drive, the racers, the effects, the camera
+        // and the town at that benchmark time and keeps drawing the same view until the benchmark ends, so a GPU trace
+        // compares one fixed frame across builds (tools/perf/run-benchmark.py --env MARVIN_BENCHMARK_FREEZE=S).
+        if (double.TryParse(environmentValue("MARVIN_BENCHMARK_FREEZE") ?? "", System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var freezeAt) && elapsed >= freezeAt)
+        {
+            goto benchmarkEnd;
         }
         var input = DirtOpponent.driveInput(simulation);
         if (townBenchmarkRoute.Count > 0)
@@ -395,6 +414,7 @@ public partial class AppController
         allocation[0] -= allocationBegin;
         godotTelemetry?.sample(elapsed, allocation);
         townBenchmarkTimeline.Add(new[] { now, elapsed, dt * 1000, (physicsEnd - begin) * 1000, (modelsEnd - physicsEnd) * 1000, (effectsEnd - modelsEnd) * 1000, (cameraEnd - effectsEnd) * 1000, (finish - cameraEnd) * 1000, (finish - begin) * 1000, simulation.x, simulation.z, aerial ? 1 : 0 });
+    benchmarkEnd:
         var duration = double.TryParse(environmentValue("MARVIN_BENCHMARK_SECONDS") ?? "45", System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : 45;
         if (elapsed >= max(10, duration))
         {

@@ -130,6 +130,9 @@ def main():
             if part not in parts:
                 parts.append(part)
         clean = ' & '.join(parts)
+        # Blit labels count operations and bytes (metal-labels.m), which vary from frame to frame: keep the kinds.
+        if clean.startswith('B#'):
+            clean = re.sub(r' x\d+| \d+\.\dMB', '', clean)
         by_label[clean][ch] += d / 1e6
         if ch != 'Vertex':
             count[clean] += 1
