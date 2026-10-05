@@ -277,9 +277,9 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         long t1 = FrameProfile.Now.Ticks;
         var img = rig.viewport.GetTexture().GetImage();
         long t2 = FrameProfile.Now.Ticks;
-        var png = img.SavePngToBuffer();
+        var image = NSImage.Snapshot(img);
         FrameProfile.Snapshot(t0, t1, t2);
-        return NSImage.data(png);
+        return image;
     }
     /// <summary>prepare(_:completionHandler:): shaders compile on first use in Godot; completes immediately.</summary>
     public void prepare(object[] objects, Action<bool> completionHandler) { SceneKitRuntime.Flush(); completionHandler?.Invoke(true); }
@@ -330,7 +330,7 @@ public sealed class SCNRenderer : SCNSceneRenderer
     public NSImage snapshot(double atTime, CGSize with, SCNAntialiasingMode antialiasingMode)
     {
         var img = SnapshotImage(new Vector2I((int)Math.Round(with.width), (int)Math.Round(with.height)), antialiasingMode);
-        return NSImage.data(img.SavePngToBuffer());
+        return NSImage.Snapshot(img);
     }
     /// <summary>Facade helper: the rendered Godot image (sRGB, RGBA8).</summary>
     public Image SnapshotImage(Vector2I size, SCNAntialiasingMode antialiasingMode)

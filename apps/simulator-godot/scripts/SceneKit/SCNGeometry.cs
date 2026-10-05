@@ -55,18 +55,31 @@ public sealed class SCNGeometrySource
     public static SCNGeometrySource normals(IReadOnlyList<SCNVector3> n) => new(PackF3(n), SCNGeometrySourceSemantic.normal, n.Count, true, 3, 4, 0, 12);
     public static SCNGeometrySource textureCoordinates(IReadOnlyList<CGPoint> uv)
     {
-        var f = new float[uv.Count * 2];
-        for (int i = 0; i < uv.Count; i++) { f[i * 2] = (float)uv[i].x; f[i * 2 + 1] = (float)uv[i].y; }
-        return new(Bytes(f), SCNGeometrySourceSemantic.texcoord, uv.Count, true, 2, 4, 0, 8);
+        var bytes = new byte[uv.Count * 8];
+        var f = MemoryMarshal.Cast<byte, float>(bytes.AsSpan());
+        if (uv is List<CGPoint> list)
+        {
+            var points = CollectionsMarshal.AsSpan(list);
+            for (int i = 0; i < points.Length; i++) { f[i * 2] = (float)points[i].x; f[i * 2 + 1] = (float)points[i].y; }
+        }
+        else for (int i = 0; i < uv.Count; i++) { f[i * 2] = (float)uv[i].x; f[i * 2 + 1] = (float)uv[i].y; }
+        return new(bytes, SCNGeometrySourceSemantic.texcoord, uv.Count, true, 2, 4, 0, 8);
     }
     /// <summary>Data(bytes of a value array): `values.withUnsafeBytes { Data($0) }`.</summary>
     public static byte[] Bytes<T>(T[] values) where T : unmanaged => MemoryMarshal.AsBytes(values.AsSpan()).ToArray();
     public static byte[] Bytes<T>(List<T> values) where T : unmanaged => MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(values)).ToArray();
+    /// <summary>Float32 x3 bytes, written straight into the source's byte array (per-frame batches build several per frame).</summary>
     private static byte[] PackF3(IReadOnlyList<SCNVector3> v)
     {
-        var f = new float[v.Count * 3];
-        for (int i = 0; i < v.Count; i++) { f[i * 3] = (float)v[i].x; f[i * 3 + 1] = (float)v[i].y; f[i * 3 + 2] = (float)v[i].z; }
-        return Bytes(f);
+        var bytes = new byte[v.Count * 12];
+        var f = MemoryMarshal.Cast<byte, float>(bytes.AsSpan());
+        if (v is List<SCNVector3> list)
+        {
+            var vectors = CollectionsMarshal.AsSpan(list);
+            for (int i = 0; i < vectors.Length; i++) { f[i * 3] = (float)vectors[i].x; f[i * 3 + 1] = (float)vectors[i].y; f[i * 3 + 2] = (float)vectors[i].z; }
+        }
+        else for (int i = 0; i < v.Count; i++) { f[i * 3] = (float)v[i].x; f[i * 3 + 1] = (float)v[i].y; f[i * 3 + 2] = (float)v[i].z; }
+        return bytes;
     }
     /// <summary>The raw bytes (Swift Data).</summary>
     public byte[] data => _buffer != null ? _buffer.bytes : _data;
@@ -95,6 +108,49 @@ public sealed class SCNGeometrySource
         };
     }
     internal Vector3 V3(int i) => new((float)Component(i, 0), componentsPerVector > 1 ? (float)Component(i, 1) : 0, componentsPerVector > 2 ? (float)Component(i, 2) : 0);
+    /// <summary>V3 of vectors 0..count-1 into dst; float32 sources are read directly (Component's double round trip of a
+    /// float is exact, so the values are the same).</summary>
+    internal void ReadV3(Vector3[] dst, int count)
+    {
+        if (usesFloatComponents && bytesPerComponent == 4 && componentsPerVector >= 3)
+        {
+            var bytes = data;
+            for (int i = 0; i < count; i++)
+            {
+                int o = dataOffset + i * dataStride;
+                dst[i] = new Vector3(BitConverter.ToSingle(bytes, o), BitConverter.ToSingle(bytes, o + 4), BitConverter.ToSingle(bytes, o + 8));
+            }
+        }
+        else for (int i = 0; i < count; i++) dst[i] = V3(i);
+    }
+    /// <summary>V2 of vectors 0..count-1 into dst (float32 sources read directly).</summary>
+    internal void ReadV2(Vector2[] dst, int count)
+    {
+        if (usesFloatComponents && bytesPerComponent == 4 && componentsPerVector >= 2)
+        {
+            var bytes = data;
+            for (int i = 0; i < count; i++)
+            {
+                int o = dataOffset + i * dataStride;
+                dst[i] = new Vector2(BitConverter.ToSingle(bytes, o), BitConverter.ToSingle(bytes, o + 4));
+            }
+        }
+        else for (int i = 0; i < count; i++) dst[i] = V2(i);
+    }
+    /// <summary>C4 of vectors 0..count-1 into dst (float32 RGBA sources read directly).</summary>
+    internal void ReadC4(Color[] dst, int count)
+    {
+        if (usesFloatComponents && bytesPerComponent == 4 && componentsPerVector >= 4)
+        {
+            var bytes = data;
+            for (int i = 0; i < count; i++)
+            {
+                int o = dataOffset + i * dataStride;
+                dst[i] = new Color(BitConverter.ToSingle(bytes, o), BitConverter.ToSingle(bytes, o + 4), BitConverter.ToSingle(bytes, o + 8), BitConverter.ToSingle(bytes, o + 12));
+            }
+        }
+        else for (int i = 0; i < count; i++) dst[i] = C4(i);
+    }
     internal Vector2 V2(int i) => new((float)Component(i, 0), componentsPerVector > 1 ? (float)Component(i, 1) : 0);
     internal Color C4(int i) => new((float)Component(i, 0), componentsPerVector > 1 ? (float)Component(i, 1) : 0,
         componentsPerVector > 2 ? (float)Component(i, 2) : 0, componentsPerVector > 3 ? (float)Component(i, 3) : 1);
@@ -111,9 +167,16 @@ public sealed class SCNGeometryElement
     public SCNGeometryElement(byte[] data, SCNGeometryPrimitiveType primitiveType, int primitiveCount, int bytesPerIndex)
     { this.data = data; this.primitiveType = primitiveType; this.primitiveCount = primitiveCount; this.bytesPerIndex = bytesPerIndex; }
     public SCNGeometryElement(IReadOnlyList<int> indices, SCNGeometryPrimitiveType primitiveType)
-        : this(SCNGeometrySource.Bytes(indices.ToArray()), primitiveType, Count(indices.Count, primitiveType), 4) { }
+        : this(IndexBytes(indices), primitiveType, Count(indices.Count, primitiveType), 4) { }
     public SCNGeometryElement(IReadOnlyList<uint> indices, SCNGeometryPrimitiveType primitiveType)
-        : this(SCNGeometrySource.Bytes(indices.ToArray()), primitiveType, Count(indices.Count, primitiveType), 4) { }
+        : this(IndexBytes(indices), primitiveType, Count(indices.Count, primitiveType), 4) { }
+    /// <summary>The indices' bytes with a single copy for lists and arrays (the same bytes as Bytes(indices.ToArray())).</summary>
+    private static byte[] IndexBytes<T>(IReadOnlyList<T> indices) where T : unmanaged => indices switch
+    {
+        List<T> list => SCNGeometrySource.Bytes(list),
+        T[] array => SCNGeometrySource.Bytes(array),
+        _ => SCNGeometrySource.Bytes(indices.ToArray()),
+    };
     public SCNGeometryElement(IReadOnlyList<short> indices, SCNGeometryPrimitiveType primitiveType)
         : this(SCNGeometrySource.Bytes(indices.ToArray()), primitiveType, Count(indices.Count, primitiveType), 2) { }
     public SCNGeometryElement(IReadOnlyList<ushort> indices, SCNGeometryPrimitiveType primitiveType)
@@ -144,6 +207,8 @@ public sealed class SCNGeometryElement
         int n = IndexCount;
         if (primitiveType == SCNGeometryPrimitiveType.triangles)
         {
+            // 32-bit indices reinterpret as int exactly like Index() ((int)ToUInt32).
+            if (bytesPerIndex == 4) return MemoryMarshal.Cast<byte, int>(data.AsSpan(0, n * 4)).ToArray();
             var r = new int[n];
             for (int i = 0; i < n; i++) r[i] = Index(i);
             return r;
@@ -185,7 +250,14 @@ public class SCNGeometry : IPropertyOwner
     public string name;
     private SCNGeometrySource[] _sources;
     private SCNGeometryElement[] _elements;
-    private List<SCNMaterial> _materials = new();
+    /// <summary>The material list; null while the geometry still has SceneKit's default material (one new SCNMaterial),
+    /// which is created when first read: per-frame batch geometries replace it at once, and it built 16 properties each.</summary>
+    private List<SCNMaterial> _materialList;
+    private List<SCNMaterial> _materials
+    {
+        get => _materialList ??= new List<SCNMaterial> { new SCNMaterial() };
+        set => _materialList = value;
+    }
     private SCNLevelOfDetail[] _levelsOfDetail;
     private (SCNVector3 min, SCNVector3 max)? _customBounds;
     private Dictionary<SCNShaderModifierEntryPoint, string> _shaderModifiers;
@@ -200,11 +272,10 @@ public class SCNGeometry : IPropertyOwner
     internal readonly HashSet<SCNNode> users = new();
     internal readonly List<ShaderMaterial> argumentVariants = new();
 
-    protected SCNGeometry() { _sources = Array.Empty<SCNGeometrySource>(); _elements = Array.Empty<SCNGeometryElement>(); _materials.Add(new SCNMaterial()); }
+    protected SCNGeometry() { _sources = Array.Empty<SCNGeometrySource>(); _elements = Array.Empty<SCNGeometryElement>(); }
     public SCNGeometry(IEnumerable<SCNGeometrySource> sources, IEnumerable<SCNGeometryElement> elements)
     {
         _sources = sources.ToArray(); _elements = elements?.ToArray() ?? Array.Empty<SCNGeometryElement>();
-        _materials.Add(new SCNMaterial());
     }
     /// <summary>copy(): shares sources and elements; copies the material list, LODs and shader modifiers.
     /// A primitive (SCNBox, SCNCylinder, ...) copies to the same class with the same parameters, as in
@@ -492,32 +563,43 @@ public class SCNGeometry : IPropertyOwner
     private PreparedMesh Prepare(int[] runStarts, bool needsTangents)
     {
         var result = new PreparedMesh { dataVersion = meshDataVersion, runs = runStarts, tangents = true };
-        var pos = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.vertex);
+        // The first source of each semantic, and up to eight texture coordinate channels in order.
+        SCNGeometrySource pos = null, nrm = null, tan = null, col = null;
+        var texcoords = new List<SCNGeometrySource>(2);
+        foreach (var source in _sources)
+            switch (source.semantic)
+            {
+                case SCNGeometrySourceSemantic.vertex: pos ??= source; break;
+                case SCNGeometrySourceSemantic.normal: nrm ??= source; break;
+                case SCNGeometrySourceSemantic.tangent: tan ??= source; break;
+                case SCNGeometrySourceSemantic.color: col ??= source; break;
+                case SCNGeometrySourceSemantic.texcoord: if (texcoords.Count < 8) texcoords.Add(source); break;
+            }
         if (pos == null || pos.vectorCount == 0) return result;
         int n = pos.vectorCount;
-        var nrm = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.normal);
-        var tan = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.tangent);
-        var col = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.color);
-        var tcs = _sources.Where(s => s.semantic == SCNGeometrySourceSemantic.texcoord).Take(8).ToArray();
+        var tcs = texcoords;
 
         var P = new Vector3[n];
-        for (int i = 0; i < n; i++) P[i] = pos.V3(i);
+        pos.ReadV3(P, n);
         // Without a normal source SceneKit shades flat face normals (measured); the composer derives them per pixel
         // (VariantFlags.NoNormals). The +Z placeholder only feeds tangent generation and .geometry modifiers.
         var N = new Vector3[n];
-        if (nrm != null) { for (int i = 0; i < Math.Min(n, nrm.vectorCount); i++) N[i] = nrm.V3(i); }
+        if (nrm != null) nrm.ReadV3(N, Math.Min(n, nrm.vectorCount));
         else for (int i = 0; i < n; i++) N[i] = new Vector3(0, 0, 1);
         Color[] C = null;
         if (col != null)
         {
             C = new Color[n];
-            for (int i = 0; i < n; i++) C[i] = i < col.vectorCount ? col.C4(i) : new Color(1, 1, 1, 1);
+            int known = Math.Min(n, col.vectorCount);
+            col.ReadC4(C, known);
+            for (int i = known; i < n; i++) C[i] = new Color(1, 1, 1, 1);
         }
-        var UV = new Vector2[tcs.Length][];
-        for (int t = 0; t < tcs.Length; t++) { UV[t] = new Vector2[n]; for (int i = 0; i < Math.Min(n, tcs[t].vectorCount); i++) UV[t][i] = tcs[t].V2(i); }
+        var UV = new Vector2[tcs.Count][];
+        for (int t = 0; t < tcs.Count; t++) { UV[t] = new Vector2[n]; tcs[t].ReadV2(UV[t], Math.Min(n, tcs[t].vectorCount)); }
 
         // All triangle lists (SceneKit CCW order) per element.
-        var elementLists = _elements.Select(e => e.TriangleList()).ToArray();
+        var elementLists = new int[_elements.Length][];
+        for (int e = 0; e < _elements.Length; e++) elementLists[e] = _elements[e].TriangleList();
         float[] T = null;
         if (tan != null)
         {
@@ -531,29 +613,36 @@ public class SCNGeometry : IPropertyOwner
         for (int r = 0; r < runStarts.Length; r++)
         {
             int end = r + 1 < runStarts.Length ? runStarts[r + 1] : elementLists.Length;
-            var merged = new List<int>();
-            for (int e = runStarts[r]; e < end; e++) { var t = elementLists[e]; merged.AddRange(t.AsSpan(0, t.Length - t.Length % 3).ToArray()); }
-            lists[r] = merged.ToArray();
+            if (end - runStarts[r] == 1 && elementLists[runStarts[r]].Length % 3 == 0) { lists[r] = elementLists[runStarts[r]]; continue; }
+            int total = 0;
+            for (int e = runStarts[r]; e < end; e++) total += elementLists[e].Length - elementLists[e].Length % 3;
+            var merged = new int[total];
+            int at = 0;
+            for (int e = runStarts[r]; e < end; e++) { var t = elementLists[e]; int k = t.Length - t.Length % 3; Array.Copy(t, 0, merged, at, k); at += k; }
+            lists[r] = merged;
         }
 
+        // remap[source vertex] = surface vertex + 1 (0: not used yet); reset after each surface.
+        var remap = new int[n];
         for (int e = 0; e < lists.Length; e++)
         {
             var tri = lists[e];
             if (tri.Length < 3) continue;
-            // Compact to the vertices this element uses (bounded memory for multi-element geometry).
-            var remap = new Dictionary<int, int>();
-            var order = new List<int>();
+            // Compact to the vertices this element uses (bounded memory for multi-element geometry), in first-use order.
             var idx = new int[tri.Length - tri.Length % 3];
+            var order = new int[Math.Min(idx.Length, n)];
+            int m = 0;
             for (int i = 0; i < idx.Length; i++)
             {
                 int src = tri[i];
                 if (src < 0 || src >= n) src = 0;
-                if (!remap.TryGetValue(src, out int dst)) { dst = order.Count; remap[src] = dst; order.Add(src); }
+                int dst = remap[src] - 1;
+                if (dst < 0) { dst = m++; remap[src] = dst + 1; order[dst] = src; }
                 idx[i] = dst;
             }
+            for (int i = 0; i < m; i++) remap[order[i]] = 0;
             // SceneKit front faces are counter-clockwise, Godot's clockwise: swap 2nd and 3rd index.
             for (int i = 0; i + 2 < idx.Length; i += 3) (idx[i + 1], idx[i + 2]) = (idx[i + 2], idx[i + 1]);
-            int m = order.Count;
             var s = new PreparedSurface { indices = idx, element = runStarts[e], flags = Mesh.ArrayFormat.FormatVertex };
             s.vertices = new Vector3[m];
             for (int i = 0; i < m; i++) s.vertices[i] = P[order[i]];
