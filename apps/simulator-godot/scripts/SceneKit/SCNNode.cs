@@ -212,6 +212,12 @@ public partial class SCNNode : Node3D
     public void look(SCNVector3 at, SCNVector3 up, SCNVector3 localFront)
     {
         var eye = worldPosition;
+        // Measured (Swift probe, macOS 27): SceneKit takes the target in Float and leaves the orientation unchanged
+        // when it lies within 1e-5 of the node's world position on every axis ((8e-6, 8e-6, 8e-6) keeps it, 1.05e-5
+        // on one axis turns the node). EntranceSmoke's market-vendor camera, clipped onto its own aim point, keeps
+        // the previous capture's orientation on macOS.
+        double dx = (float)at.x - (float)eye.x, dy = (float)at.y - (float)eye.y, dz = (float)at.z - (float)eye.z;
+        if (Math.Abs(dx) < 1e-5 && Math.Abs(dy) < 1e-5 && Math.Abs(dz) < 1e-5) return;
         var d = (at - eye).Normalized();
         if (d.Length < 1e-12) return;
         var f = localFront.Normalized();
