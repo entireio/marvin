@@ -212,11 +212,17 @@ public partial class SceneKitRuntime : Node
         return total;
     }
 
-    /// <summary>Applies all pending SceneKit changes to Godot. Called before every frame and by snapshot().</summary>
-    public static void Flush()
+    /// <summary>Applies pending SceneKit changes to Godot before every frame. A scene being prepared asynchronously
+    /// (<see cref="PrepareAsync"/>) is flushed over several frames.</summary>
+    public static void Flush() => Flush(complete: false);
+    /// <summary>Applies all pending SceneKit changes now, including all of a scene being prepared (snapshots, synchronous
+    /// prepare, SCNTransaction.flush).</summary>
+    internal static void FlushAll() => Flush(complete: true);
+    private static void Flush(bool complete)
     {
         if (flushing || isolating || !OnMainThread) return;
         flushing = true;
+        completeFlush = complete;
         try
         {
             // FrameProfile: per-stage CPU time for the benchmark telemetry (measurement only).
@@ -245,7 +251,137 @@ public partial class SceneKitRuntime : Node
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateWillRender();
             FrameProfile.Add(FrameProfile.WillRender, t);
         }
-        finally { flushing = false; }
+        finally { flushing = false; completeFlush = false; }
+        // Every node of the scenes being prepared reached Godot: SceneKit's completion handlers run now (after the flush,
+        // so a handler may flush or snapshot itself).
+        if (preparations.Count > 0 && preparingNodes.Count == 0)
+        {
+            var done = preparations.ToArray(); preparations.Clear();
+            foreach (var p in done) p.completion?.Invoke(true);
+        }
+    }
+
+    // ---- SCNView.prepare(_:completionHandler:)
+    // SceneKit prepares a scene on a background thread and calls the handler when it is done, so the game's loading screen
+    // keeps drawing meanwhile (macOS: 0.75 s at "Getting ready to race"). The facade's preparation is the scene's first
+    // flush (meshes, material variants, textures), which froze the loading screen for 2.8 s. Now the CPU half (mesh arrays
+    // and mipmapped procedural textures, SCNGeometry.PrepareMesh and NSImage.PrepareTexture) runs on worker threads, and
+    // each frame the main thread hands the nodes whose arrays are ready to Godot for at most PrepareBudgetMs, in order; the
+    // handler runs once all of them are flushed. Nothing draws the scene meanwhile (the game shows its view in the
+    // handler), and a snapshot or a synchronous prepare flushes everything at once. Other scenes flush every frame as usual.
+    private sealed class Preparation
+    {
+        internal HashSet<SCNScene> scenes; internal Action<bool> completion;
+        internal System.Threading.Tasks.Task work;
+    }
+    private static readonly List<Preparation> preparations = new();
+    /// <summary>Dirty nodes of scenes being prepared that a frame's budget left for the next frames.</summary>
+    private static readonly Dictionary<SCNNode, int> preparingNodes = new();
+    private static bool completeFlush;
+    private const double PrepareBudgetMs = 10;
+    private static ulong prepareFrame = ulong.MaxValue;
+    private static long prepareSpentTicks;
+    internal static void PrepareAsync(IEnumerable<SCNScene> scenes, Action<bool> completion)
+    {
+        var set = new HashSet<SCNScene>();
+        foreach (var s in scenes) if (s != null) { s.EnsureAttached(); set.Add(s); }
+        if (set.Count == 0 || !OnMainThread) { FlushAll(); completion?.Invoke(true); return; }
+        preparations.Add(new Preparation { scenes = set, completion = completion });
+    }
+    private static Preparation PreparationOf(SCNNode node)
+    {
+        var scene = node.sceneOwner;
+        if (scene == null) return null;
+        foreach (var p in preparations) if (p.scenes.Contains(scene)) return p;
+        return null;
+    }
+    /// <summary>Flushes the dirty nodes: all of them, except that nodes of scenes being prepared are flushed only when their
+    /// arrays are ready and while this frame's budget lasts; the rest wait in preparingNodes.</summary>
+    private static void FlushNodes(KeyValuePair<SCNNode, int>[] nodes)
+    {
+        if (preparations.Count == 0 || completeFlush)
+        {
+            // Everything now: the background preparation finishes first (its results are used, nothing is computed twice).
+            foreach (var p in preparations) p.work?.Wait();
+            FlushNodeBatch(nodes);
+            return;
+        }
+        var regular = new List<KeyValuePair<SCNNode, int>>();
+        var preparing = new List<KeyValuePair<SCNNode, int>>();
+        foreach (var entry in nodes) (PreparationOf(entry.Key) != null ? preparing : regular).Add(entry);
+        if (regular.Count > 0) FlushNodeBatch(regular.ToArray());
+        if (preparing.Count == 0) return;
+        foreach (var p in preparations) if (p.work == null) p.work = StartPreparation(preparing.Where(e => PreparationOf(e.Key) == p));
+        bool allPrepared = preparations.All(p => p.work.IsCompleted);
+        ulong frame = Engine.GetProcessFrames();
+        if (frame != prepareFrame) { prepareFrame = frame; prepareSpentTicks = 0; }
+        long budget = (long)(PrepareBudgetMs / 1000 * System.Diagnostics.Stopwatch.Frequency);
+        int at = 0, flushed = 0;
+        for (; at < preparing.Count && prepareSpentTicks < budget; at++)
+        {
+            var (node, flags) = preparing[at];
+            if (!allPrepared && !Prepared(node, flags)) break; // keep the order: the workers prepare in this order too
+            long start = System.Diagnostics.Stopwatch.GetTimestamp();
+            if (GodotObject.IsInstanceValid(node)) { var t = FrameProfile.Now; node.Flush(flags); FrameProfile.Add(FrameProfile.Nodes, t); }
+            FrameProfile.NodesFlushed++; flushed++;
+            prepareSpentTicks += System.Diagnostics.Stopwatch.GetTimestamp() - start;
+        }
+        for (; at < preparing.Count; at++)
+        {
+            var (node, flags) = preparing[at];
+            preparingNodes[node] = preparingNodes.TryGetValue(node, out var f) ? f | flags : flags;
+        }
+    }
+    /// <summary>The geometries a node's flush builds (its own and its levels of detail).</summary>
+    private static IEnumerable<SCNGeometry> BuiltGeometries(SCNNode node, int flags)
+    {
+        if ((flags & SCNNode.DirtyGeometry) == 0 || node.sceneOwner == null || node.geometry is not SCNGeometry g) yield break;
+        yield return g;
+        if (g.levelsOfDetail is SCNLevelOfDetail[] lods) foreach (var l in lods) if (l?.geometry != null) yield return l.geometry;
+    }
+    /// <summary>Main thread: starts preparing the meshes and procedural textures of these nodes on worker threads, in node
+    /// order (each node's textures, then its geometries).</summary>
+    private static System.Threading.Tasks.Task StartPreparation(IEnumerable<KeyValuePair<SCNNode, int>> nodes)
+    {
+        var items = new List<object>();
+        var seen = new HashSet<object>();
+        var images = new HashSet<NSImage>();
+        foreach (var (node, flags) in nodes)
+            foreach (var g in BuiltGeometries(node, flags))
+            {
+                g.EnsureBuilt(); // primitives build their sources on the main thread
+                images.Clear();
+                foreach (var m in g.MaterialList) m?.CollectImages(images);
+                SCNMaterial.CollectArgumentImages(g.arguments, images);
+                foreach (var image in images) if (image.NeedsTexture && seen.Add(image)) items.Add(image);
+                if (g.NeedsMeshBuild && seen.Add(g)) items.Add(g);
+            }
+        if (items.Count == 0) return System.Threading.Tasks.Task.CompletedTask;
+        return System.Threading.Tasks.Task.Run(() => System.Threading.Tasks.Parallel.ForEach(
+            System.Collections.Concurrent.Partitioner.Create(items, System.Collections.Concurrent.EnumerablePartitionerOptions.NoBuffering),
+            item => { if (item is NSImage image) image.PrepareTexture(); else ((SCNGeometry)item).PrepareMesh(); }));
+    }
+    /// <summary>A node's flush would only hand prepared arrays and images to Godot.</summary>
+    private static bool Prepared(SCNNode node, int flags)
+    {
+        var images = new HashSet<NSImage>();
+        foreach (var g in BuiltGeometries(node, flags))
+        {
+            if (!g.MeshReady) return false;
+            foreach (var m in g.MaterialList) m?.CollectImages(images);
+            SCNMaterial.CollectArgumentImages(g.arguments, images);
+        }
+        foreach (var image in images) if (image.NeedsTexture) return false;
+        return true;
+    }
+    private static void FlushNodeBatch(KeyValuePair<SCNNode, int>[] nodes)
+    {
+        var t = FrameProfile.Now;
+        PrepareMeshes(nodes);
+        FrameProfile.Add(FrameProfile.PrepareMeshes, t); t = FrameProfile.Now;
+        foreach (var (node, flags) in nodes) if (GodotObject.IsInstanceValid(node)) node.Flush(flags);
+        FrameProfile.NodesFlushed += nodes.Length;
+        FrameProfile.Add(FrameProfile.Nodes, t);
     }
     /// <summary>
     /// When a flush rebuilds many meshes (a scene shown for the first time: the race world has thousands), their vertex
@@ -266,11 +402,18 @@ public partial class SceneKitRuntime : Node
             if (g.levelsOfDetail is SCNLevelOfDetail[] lods) foreach (var l in lods) if (l?.geometry != null) geometries.Add(l.geometry);
         }
         var work = new List<SCNGeometry>();
+        var images = new HashSet<NSImage>();
         foreach (var g in geometries)
         {
             g.EnsureBuilt(); // primitives build their sources on the main thread
             if (g.NeedsMeshBuild) work.Add(g);
+            foreach (var m in g.MaterialList) m?.CollectImages(images);
+            SCNMaterial.CollectArgumentImages(g.arguments, images);
         }
+        // The procedural textures these nodes' materials bind are converted and mipmapped on all cores too (NSImage.
+        // PrepareTexture); binding them in the node flush then only uploads them (the race world's took 1.7 s serially).
+        images.RemoveWhere(image => !image.NeedsTexture);
+        if (images.Count > 1) System.Threading.Tasks.Parallel.ForEach(images, image => image.PrepareTexture());
         if (work.Count < MinimumGeometries) return;
         System.Threading.Tasks.Parallel.ForEach(work, g => g.PrepareMesh());
     }
@@ -352,7 +495,7 @@ public partial class SceneKitRuntime : Node
     /// <summary>Renders all viewports now. Must be called on the main thread.</summary>
     internal static void RenderNow(Node extra = null)
     {
-        Flush();
+        FlushAll();
         // Godot defers Node3D transform notifications to the end of the frame; apply them now.
         if (instance != null && instance.IsInsideTree()) ForceTransforms(instance);
         if (extra != null && extra.IsInsideTree()) ForceTransforms(extra);
@@ -378,6 +521,12 @@ public partial class SceneKitRuntime : Node
     }
     private static void FlushDirty()
     {
+        // Nodes of a scene being prepared that an earlier frame's budget left over (FlushNodes) are due again.
+        if (preparingNodes.Count > 0)
+        {
+            foreach (var (node, flags) in preparingNodes) NodeDirty(node, flags);
+            preparingNodes.Clear();
+        }
         for (int pass = 0; pass < 4 && (dirtyMaterials.Count > 0 || dirtyNodes.Count > 0); pass++)
         {
             if (dirtyMaterials.Count > 0)
@@ -390,20 +539,15 @@ public partial class SceneKitRuntime : Node
             }
             if (dirtyNodes.Count > 0)
             {
-                var t = FrameProfile.Now;
                 var nodes = dirtyNodes.ToArray(); dirtyNodes.Clear();
                 foreach (var (node, _) in nodes) node.dirtyFlags = 0;
-                PrepareMeshes(nodes);
-                FrameProfile.Add(FrameProfile.PrepareMeshes, t); t = FrameProfile.Now;
-                foreach (var (node, flags) in nodes) if (GodotObject.IsInstanceValid(node)) node.Flush(flags);
-                FrameProfile.NodesFlushed += nodes.Length;
-                FrameProfile.Add(FrameProfile.Nodes, t);
+                FlushNodes(nodes);
             }
         }
     }
     internal static void RenderIsolated(SubViewport target, Action sync, int draws = 1, SCNScene scene = null)
     {
-        Flush();
+        FlushAll();
         var paused = new List<(SubViewport viewport, SubViewport.UpdateMode mode)>();
         isolating = true;
         try
@@ -419,7 +563,7 @@ public partial class SceneKitRuntime : Node
                 // A camera with another categoryBitMask than the window's (the town's shadow-batch proxies are hidden
                 // from the race camera only) changes which nodes are visible: apply that before drawing, not at the
                 // next frame (VisualRegressionSmoke's first track close-up after its QA scene showed the proxies white).
-                if (masksDirty) { ApplyMasks(scene); FlushDirty(); }
+                if (masksDirty) { ApplyMasks(scene); completeFlush = true; try { FlushDirty(); } finally { completeFlush = false; } }
                 if (ActiveScene != null) UpdateSceneUniforms(ActiveScene);
                 // Godot defers Node3D transform notifications to the end of the frame; apply them now.
                 if (instance != null && instance.IsInsideTree()) ForceTransforms(instance);
@@ -611,7 +755,7 @@ public static class SCNTransaction
 {
     public static void begin() { }
     public static void commit() { }
-    public static void flush() => SceneKitRuntime.Flush();
+    public static void flush() => SceneKitRuntime.FlushAll();
     public static void @lock() { }
     public static void unlock() { }
     public static bool disableActions { get; set; }

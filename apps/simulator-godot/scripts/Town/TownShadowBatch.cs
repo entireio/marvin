@@ -109,7 +109,8 @@ public sealed class TownShadowBatch : IDisposable
         if (!(materials.Count != 0 && materials.All(m => allowed.Any(a => ReferenceEquals(a, m))) &&
               geometry.sourcesFor(SCNGeometrySourceSemantic.vertex).FirstOrDefault() is SCNGeometrySource source && source.usesFloatComponents &&
               source.componentsPerVector == 3 && new[] { 4, 8 }.Contains(source.bytesPerComponent))) { throw Failure.unsupportedGeometry; }
-        List<SCNVector3> vertices = new(); var lookup = new Dictionary<Float3, int>(); var remap = new List<int>();
+        // Capacity hints only (the weld visits 1.8 million vertices while the race world is shown): same contents.
+        List<SCNVector3> vertices = new(source.vectorCount); var lookup = new Dictionary<Float3, int>(source.vectorCount); var remap = new List<int>(source.vectorCount);
         var bytes = source.data;
         for (var i = 0; i < source.vectorCount; i++)
         {

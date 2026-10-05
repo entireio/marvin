@@ -32,10 +32,11 @@ public sealed class SCNMaterialProperty
     internal readonly List<WeakReference<IPropertyOwner>> owners = new();
 
     public SCNMaterialProperty() { }
-    public SCNMaterialProperty(object contents) { _contents = Normalize(contents); }
-    internal SCNMaterialProperty(object contents, IPropertyOwner owner) { _contents = contents; AddOwner(owner); }
+    public SCNMaterialProperty(object contents) { _contents = Normalize(contents); NSImage.Preload(_contents as string); }
+    internal SCNMaterialProperty(object contents, IPropertyOwner owner) { _contents = contents; AddOwner(owner); NSImage.Preload(_contents as string); }
 
-    public object contents { get => _contents; set { _contents = Normalize(value); Changed(); } }
+    /// <summary>contents. An image path starts loading in the background at once (NSImage.Preload).</summary>
+    public object contents { get => _contents; set { _contents = Normalize(value); NSImage.Preload(_contents as string); Changed(); } }
     public double intensity { get => _intensity; set { _intensity = value; Changed(); } }
     public SCNMatrix4 contentsTransform { get => _contentsTransform; set { _contentsTransform = value; Changed(); } }
     public SCNWrapMode wrapS { get => _wrapS; set { _wrapS = value; Changed(); } }
@@ -191,6 +192,22 @@ public sealed class SCNMaterial : IPropertyOwner
     private Dictionary<SCNShaderModifierEntryPoint, string> _shaderModifiers;
     internal readonly Dictionary<string, object> arguments = new();
     internal readonly MaterialGpu gpu;
+
+    /// <summary>The procedural images this material binds (property contents and shader arguments), for
+    /// SceneKitRuntime's parallel texture preparation.</summary>
+    internal void CollectImages(HashSet<NSImage> into)
+    {
+        foreach (var p in new[] { diffuse, ambient, specular, reflective, emission, transparent, multiply, normal, displacement,
+                     ambientOcclusion, selfIllumination, metalness, roughness, clearCoat, clearCoatRoughness, clearCoatNormal })
+            if (p.contents is NSImage image) into.Add(image);
+        CollectArgumentImages(arguments, into);
+    }
+    internal static void CollectArgumentImages(Dictionary<string, object> arguments, HashSet<NSImage> into)
+    {
+        foreach (var value in arguments.Values)
+            if (value is NSImage image) into.Add(image);
+            else if (value is SCNMaterialProperty { contents: NSImage contents }) into.Add(contents);
+    }
 
     public SCNMaterial()
     {

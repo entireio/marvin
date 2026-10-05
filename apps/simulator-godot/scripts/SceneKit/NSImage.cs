@@ -157,13 +157,31 @@ public sealed class NSImage
     private NSImage(Texture2D texture, string path) { loaded = texture; this.path = path; size = new CGSize(texture.GetWidth(), texture.GetHeight()); }
     private NSImage(Image image, string path) { loadedImage = image; this.path = path; size = new CGSize(image.GetWidth(), image.GetHeight()); }
 
+    /// <summary>res:// textures whose loading was started on Godot's loader threads (Preload) and not yet taken.</summary>
+    private static readonly HashSet<string> threadedLoads = new();
+    /// <summary>
+    /// Starts loading an imported texture on Godot's loader threads (ResourceLoader.LoadThreadedRequest), so the first
+    /// material that binds it (contentsOf, on the main thread) only takes the finished resource. Material properties
+    /// whose contents are res:// paths call this when the contents are set: the town's scanned 2048² textures are
+    /// assigned while the race world is built on a background queue and cost 30-140 ms each to decode, which froze the
+    /// loading screen when the world was first shown. The resource is the one ResourceLoader.Load returns.
+    /// </summary>
+    internal static void Preload(string path)
+    {
+        if (path == null || !path.StartsWith("res://")) return;
+        lock (threadedLoads) { if (!threadedLoads.Add(path)) return; }
+        if (!ResourceLoader.Exists(path) || ResourceLoader.LoadThreadedRequest(path, "Texture2D") != Error.Ok)
+            lock (threadedLoads) threadedLoads.Remove(path);
+    }
     /// <summary>NSImage(contentsOf:) / NSImage(contentsOfFile:). res:// paths load the imported texture. Returns null when missing.</summary>
     public static NSImage contentsOf(string path)
     {
         if (path == null) return null;
         if (path.StartsWith("res://") && ResourceLoader.Exists(path))
         {
-            var tex = ResourceLoader.Load<Texture2D>(path);
+            bool requested;
+            lock (threadedLoads) requested = threadedLoads.Remove(path);
+            var tex = (requested ? ResourceLoader.LoadThreadedGet(path) as Texture2D : null) ?? ResourceLoader.Load<Texture2D>(path);
             // Grayscale images (L8/LA8) keep a single colour channel in Godot, and Godot's source_color samplers do not
             // sRGB-decode them (measured: an R2-D2 panel line of 148 rendered as 200 by a constant material, 148 in
             // SceneKit, which decodes gray images like RGB ones). Give them RGB channels so every sampler sees SceneKit's values.
@@ -289,6 +307,42 @@ public sealed class NSImage
     private int translucencyVersion = -2;
     private int Version { get { int v = 0; foreach (var r in reps) v += r.version + 1; return v; } }
 
+    /// <summary>The image GodotTexture uploads: a copy of GodotImage with mipmaps.</summary>
+    private Image MipmappedImage()
+    {
+        var img = GodotImage;
+        if (img == null) return null;
+        img = (Image)img.Duplicate();
+        if (!img.HasMipmaps()) img.GenerateMipmaps();
+        return img;
+    }
+    private volatile Image prepared;
+    private int preparedVersion = -1;
+    private Image TakePrepared(int version)
+    {
+        var ready = prepared;
+        if (ready == null) return null;
+        prepared = null;
+        return preparedVersion == version ? ready : null;
+    }
+    /// <summary>The texture would be (re)built at its next use (a procedural image not uploaded at its current version).</summary>
+    internal bool NeedsTexture => loaded == null && !(texture != null && textureVersion == Version) && !(prepared != null && preparedVersion == Version);
+    /// <summary>
+    /// Any thread: computes the mipmapped image of a procedural texture (the per-pixel conversion and the mipmaps are most
+    /// of a texture's cost), so the main thread only uploads it when a material first binds it. SceneKitRuntime prepares
+    /// the textures of a large flush (a scene shown for the first time) on all cores; the image is the one GodotTexture
+    /// would compute itself. Do not draw into the image meanwhile.
+    /// </summary>
+    internal void PrepareTexture()
+    {
+        if (!NeedsTexture) return;
+        int v = Version;
+        var img = MipmappedImage();
+        if (img == null) return;
+        preparedVersion = v;
+        prepared = img;
+    }
+
     /// <summary>Mipmapped texture for sampling. Built once per bitmap version.</summary>
     internal Texture2D GodotTexture
     {
@@ -297,10 +351,8 @@ public sealed class NSImage
             if (loaded != null) return loaded;
             int v = Version;
             if (texture != null && textureVersion == v) return texture;
-            var img = GodotImage;
+            var img = TakePrepared(v) ?? MipmappedImage();
             if (img == null) return null;
-            img = (Image)img.Duplicate();
-            if (!img.HasMipmaps()) img.GenerateMipmaps();
             texture = ImageTexture.CreateFromImage(img);
             FrameProfile.ImageTexturesCreated++; FrameProfile.TotalImageTexturesCreated++;
             textureVersion = v;

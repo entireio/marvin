@@ -559,6 +559,16 @@ public class SCNGeometry : IPropertyOwner
         bool tangents = NeedsTangents;
         prepared = Prepare(runs, tangents);
     }
+    /// <summary>Building the mesh now would only hand prepared arrays to Godot (or nothing is to be built).</summary>
+    internal bool MeshReady
+    {
+        get
+        {
+            if (!NeedsMeshBuild) return true;
+            var ready = prepared;
+            return ready != null && ready.dataVersion == meshDataVersion && ready.runs.SequenceEqual(MaterialRuns()) && (ready.tangents || !NeedsTangents);
+        }
+    }
 
     private PreparedMesh Prepare(int[] runStarts, bool needsTangents)
     {
