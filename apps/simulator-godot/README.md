@@ -117,7 +117,9 @@ runtime is inside.
 
 - Double-click `MarvinSimulator.exe`. The window has the system title bar; the game's menu bar (Marvin Simulator,
   Simulation) sits in the bar below it, and the shortcuts use Ctrl: Ctrl+M main menu, Ctrl+R reset, Ctrl+P pause,
-  Ctrl+1 camera, Ctrl+Q quit. On a scaled display the window keeps the game's 1280 x 820 points at the display's scale.
+  Ctrl+1 camera, Ctrl+Q quit. On a scaled display the window keeps the game's 1280 x 820 points at the display's scale,
+  made smaller (down to 900 x 640) when that does not fit the screen, as macOS does: at 125 % or 150 % on a 1080p
+  display the game lays out to the shorter window.
 - From a terminal use the console wrapper, which prints the log and returns the exit code:
 
   ```bat
