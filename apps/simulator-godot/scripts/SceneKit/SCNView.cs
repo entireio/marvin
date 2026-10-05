@@ -96,7 +96,7 @@ internal sealed class ViewRig
         pov.camera.ApplyLens(camera);
         SceneKitRuntime.SortTransparent(world, pov.camera.usesOrthographicProjection);
         pov.camera.ApplyEnvironment(env, attributes, viewport.Size.Y);
-        ssao.Configure(pov.camera);
+        ssao.Configure(pov.camera, SceneKitRuntime.HasSsaoSky(scene));
         SceneKitRuntime.FitShadows(scene, camera, viewport.Size);
         // Background.
         var bg = scene.background.contents;

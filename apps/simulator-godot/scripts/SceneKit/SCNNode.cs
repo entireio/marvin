@@ -523,7 +523,7 @@ public partial class SCNNode : Node3D
             }
             lodBounds = new Aabb(-extent, extent * 2);
         }
-        bool transparent = false;
+        bool transparent = false, ssaoSky = false;
         for (int i = 0; i < levels.Count; i++)
         {
             var (g, from, to) = levels[i];
@@ -543,9 +543,11 @@ public partial class SCNNode : Node3D
                 if (!material.readsFromDepthBuffer && _renderingOrder < 0) flags |= ShaderComposer.VariantFlags.Background;
                 mi.SetSurfaceOverrideMaterial(s, material.gpu.Variant(g, _renderingOrder, flags));
                 transparent |= material.gpu.IsTransparentVariant(g, _renderingOrder, flags);
+                ssaoSky |= material.gpu.IsSsaoSkyVariant(g, _renderingOrder, flags);
             }
         }
         SceneKitRuntime.RegisterTransparent(this, transparent && meshes.Count > 0);
+        SceneKitRuntime.RegisterSsaoSky(this, ssaoSky && meshes.Count > 0);
     }
     /// <summary>The Godot instances of this node's geometry (one per level of detail).</summary>
     internal IReadOnlyList<MeshInstance3D> MeshInstances => meshes;

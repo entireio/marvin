@@ -424,6 +424,18 @@ public partial class SceneKitRuntime : Node
     // in another order: the town's street ribbon (centre 94.6 m away, 55 m deep) was drawn over the trampled-sand overlay
     // (96.6 m away, 35 m deep), which SceneKit draws last and which hides the streets there (--dust-visibility-test town
     // view 14% too dark). Each view therefore sets every transparent instance's sorting offset to distance - depth.
+    private static readonly HashSet<SCNNode> ssaoSkyNodes = new();
+    internal static void RegisterSsaoSky(SCNNode node, bool on) { if (on) ssaoSkyNodes.Add(node); else ssaoSkyNodes.Remove(node); }
+    /// <summary>Whether a sky drawn behind everything with a .geometry modifier is visible in this scene (SCNSsao: its
+    /// pixels are at view z +1 in SceneKit's SSAO pass).</summary>
+    internal static bool HasSsaoSky(SCNScene scene)
+    {
+        if (scene == null || ssaoSkyNodes.Count == 0) return false;
+        ssaoSkyNodes.RemoveWhere(node => !GodotObject.IsInstanceValid(node));
+        foreach (var node in ssaoSkyNodes)
+            if (node.IsInsideTree() && !node.HiddenInHierarchy && scene.rootNode.IsAncestorOf(node)) return true;
+        return false;
+    }
     private static readonly HashSet<SCNNode> transparentNodes = new();
     internal static void RegisterTransparent(SCNNode node, bool on) { if (on) transparentNodes.Add(node); else transparentNodes.Remove(node); }
     internal static void SortTransparent(Transform3D camera, bool orthographic)

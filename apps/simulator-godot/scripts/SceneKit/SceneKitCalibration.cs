@@ -92,8 +92,6 @@ internal static class SceneKitCalibration
     // ---- Image-based lighting (lightingEnvironment), as polynomials in roughness r (fitted to SceneKit).
     public static double IblDiffuse1 = -0.1757, IblDiffuse2 = 0.3455, IblDiffuse3 = -0.3623;
     public static double IblSpecular0 = 0.9358, IblSpecular1 = 1.1768, IblSpecular2 = -2.5492, IblSpecular3 = 0.7755;
-    /// <summary>Share of sky specular that SSAO occludes: smoothstep(From, To, roughness) (SceneKit: roughness 0.1 ~none, 0.3+ full).</summary>
-    public static double SpecularOcclusionFrom = 0.08, SpecularOcclusionTo = 0.3;
     /// <summary>Pre-filtered radiance band used for roughness r: clamp(IblBlurScale x r^IblBlurPower, 0, 1) (bands are GGX alpha = band^2).</summary>
     public static double IblBlurScale = 1.0, IblBlurPower = 1.0;
 

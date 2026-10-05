@@ -10,9 +10,9 @@ namespace Marvin.SceneKit;
 /// AIR bitcode) and the uniforms SceneKit binds for them (logged with a Metal API probe). It is McGuire et al.'s Scalable
 /// Ambient Obscurance:
 /// - a full-resolution view-space depth/normal texture with box-filtered mips (SceneKit renders its own pass; here it is
-///   built from Godot's depth prepass: normal from the normal-roughness buffer, or from depth for materials that bend their
-///   normal, because SceneKit's pass ignores normal maps and .surface modifiers; materials with a .geometry modifier and
-///   transparent ones are left out, as in SceneKit, see ShaderComposer's ROUGHNESS tag);
+///   built from Godot's depth prepass: the normal-roughness buffer holds the vertex normal, because SceneKit's pass ignores
+///   normal maps and .surface modifiers (ShaderComposer lights with the bent normal through a varying); materials with a
+///   .geometry modifier and transparent ones are left out, as in SceneKit, see ShaderComposer's ROUGHNESS tag);
 /// - SCNCamera.screenSpaceAmbientOcclusionDownSample 2 and SampleCount 9 (SceneKit's defaults; the game sets neither): a
 ///   checkerboard of the nearest / farthest of each 2x2 block, 9 taps on a 7-turn spiral rotated per pixel, disk radius
 ///   1000 x radius / depth full-resolution pixels (independent of the field of view and the drawable size: the uniform
@@ -38,8 +38,11 @@ public partial class SCNSsaoEffect : CompositorEffect
         AccessResolvedDepth = true;
     }
 
-    internal void Configure(SCNCamera camera)
+    private bool skyBehindCamera;
+    /// <param name="sky">The scene shows a sky dome with a .geometry modifier (SceneKitRuntime.HasSsaoSky).</param>
+    internal void Configure(SCNCamera camera, bool sky = false)
     {
+        skyBehindCamera = sky;
         intensity = (float)camera.screenSpaceAmbientOcclusionIntensity;
         radius = (float)camera.screenSpaceAmbientOcclusionRadius;
         bias = (float)camera.screenSpaceAmbientOcclusionBias;
@@ -92,7 +95,7 @@ public partial class SCNSsaoEffect : CompositorEffect
             pc.Add(inv.W.X, inv.W.Y, inv.W.Z, inv.W.W);
             pc.Add(inv.X.Z, inv.Y.Z, inv.X.W, inv.Y.W); // x/y contributions to view z and w
             pc.Add(full.X, full.Y, projInfo.X, projInfo.Y);
-            pc.Add(projInfo.Z, projInfo.W, ortho ? 1 : 0, 0);
+            pc.Add(projInfo.Z, projInfo.W, ortho ? 1 : 0, skyBehindCamera ? 1 : 0);
             var set = UniformSetCacheRD.GetCache(SCNSsao.CszShader, 0u, new Godot.Collections.Array<RDUniform>
             {
                 SCNSsao.SampledUniform(0, SCNSsao.NearestSampler, depth),
@@ -284,8 +287,10 @@ internal static class SCNSsao
     private const string Header = "#version 450\nlayout(local_size_x = 8, local_size_y = 8, local_size_z = 1) in;\n";
 
     // View-space normal (xyz) and view z (w, negative in front of the camera), like SceneKit's SSAO depth/normal texture.
-    // ShaderComposer tags each opaque material in ROUGHNESS: 0 = normal from the buffer, 0.6 = normal from depth (normal map
-    // or .surface normal), 1 = not in SceneKit's SSAO pass (.geometry modifier, transparent): stored as the far plane.
+    // ShaderComposer tags each material in ROUGHNESS: 0 = in SceneKit's SSAO pass (the buffer holds its vertex normal, also
+    // for normal-mapped materials), 0.6 = .geometry modifier (SceneKit writes its colour and alpha: z +1), 1 = not in it
+    // (transparent, depth only): stored as the far plane. info2.w: pixels nothing was drawn to show a .geometry-modified
+    // sky dome (z +1) instead of the cleared texture.
     // Godot stores roughness x 127/255 (1 - that for dynamic instances) and its roughness limiter only raises it.
     private const string CszSource = Header + @"
 layout(set = 0, binding = 0) uniform sampler2D depth_buffer;
@@ -300,10 +305,6 @@ float view_z(ivec2 px) {
     float w = p.inv_xy.z * h.x + p.inv_xy.w * h.y + p.inv_z.w * h.z + p.inv_w.w;
     return z / w;
 }
-vec3 view_pos(ivec2 px, float z) {
-    vec2 xy = p.info2.z > 0.5 ? p.size_info.zw * vec2(px) + p.info2.xy : (p.size_info.zw * vec2(px) + p.info2.xy) * -z;
-    return vec3(xy, z);
-}
 void main() {
     ivec2 px = ivec2(gl_GlobalInvocationID.xy);
     ivec2 sz = ivec2(p.size_info.xy);
@@ -311,26 +312,19 @@ void main() {
     float z = view_z(px);
     vec4 nr = texelFetch(normal_buffer, px, 0);
     float r = (nr.a < 0.5 ? nr.a : 1.0 - nr.a) * (255.0 / 127.0);
-    if (r > 0.85 || texelFetch(depth_buffer, px, 0).r <= 0.0) {
-        // Not in SceneKit's SSAO pass: nothing occludes from here (the far plane).
+    bool empty = texelFetch(depth_buffer, px, 0).r <= 0.0;
+    if (empty ? p.info2.w > 0.5 : r > 0.5 && r <= 0.85) {
+        // SceneKit draws .geometry-modified materials (and the sky dome behind everything) with their own shader, which
+        // writes colour and alpha 1 here: view z +1, behind the camera (the colour is never read as a normal by a tap).
+        imageStore(csz, px, vec4(0.0, 0.0, 1.0, 1.0));
+        return;
+    }
+    if (empty || r > 0.85) {
+        // Not in SceneKit's SSAO pass (transparent, depth only, nothing drawn): cleared to z = -infinity.
         imageStore(csz, px, vec4(0.0, 0.0, 1.0, -1.0e4));
         return;
     }
-    vec3 n;
-    if (r > 0.5) {
-        // Geometric normal from depth: the flatter of the two neighbours on each axis.
-        vec3 c = view_pos(px, z);
-        ivec2 xl = clamp(px - ivec2(1, 0), ivec2(0), sz - 1), xr = clamp(px + ivec2(1, 0), ivec2(0), sz - 1);
-        ivec2 yu = clamp(px - ivec2(0, 1), ivec2(0), sz - 1), yd = clamp(px + ivec2(0, 1), ivec2(0), sz - 1);
-        vec3 l = view_pos(xl, view_z(xl)), rr = view_pos(xr, view_z(xr)), u = view_pos(yu, view_z(yu)), dn = view_pos(yd, view_z(yd));
-        vec3 dx = abs(rr.z - c.z) < abs(c.z - l.z) ? rr - c : c - l;
-        vec3 dy = abs(dn.z - c.z) < abs(c.z - u.z) ? dn - c : c - u;
-        n = normalize(cross(dy, dx));
-        if (dot(n, -c) < 0.0) n = -n;
-    } else {
-        n = normalize(nr.rgb * 2.0 - 1.0);
-    }
-    imageStore(csz, px, vec4(n, z));
+    imageStore(csz, px, vec4(normalize(nr.rgb * 2.0 - 1.0), z));
 }
 ";
 
