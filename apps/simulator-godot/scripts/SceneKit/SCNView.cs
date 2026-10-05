@@ -349,4 +349,6 @@ public sealed class SCNRenderer : SCNSceneRenderer
         return SCNHitTest.Run(scene.rootNode, a, b, options, renderTransforms: true);
     }
     public void prepare(object[] objects, Action<bool> completionHandler) { SceneKitRuntime.Flush(); completionHandler?.Invoke(true); }
+    /// <summary>prepare(_:shouldAbortBlock:) (SCNSceneRenderer), as SCNView's: flushes pending changes; Godot compiles on first draw.</summary>
+    public bool prepare(object @object, Func<bool> shouldAbortBlock) { SceneKitRuntime.Flush(); return true; }
 }

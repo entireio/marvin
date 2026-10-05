@@ -52,6 +52,8 @@ public static class JSONSerialization
     {
         var sb = new System.Text.StringBuilder(); write(sb, withJSONObject, 0, options); return sb.ToString();
     }
+    /// <summary>The text without .prettyPrinted (<c>{"key":value}</c>), keys sorted: <c>@string(x, .sortedKeys)</c>.</summary>
+    public static string compact(object withJSONObject) => @string(withJSONObject, WritingOptions.sortedKeys);
     /// <summary>JSONSerialization.data(withJSONObject:options:) (UTF-8); write it with <c>.write(to: url)</c>. PORT: the
     /// default here is [.prettyPrinted, .sortedKeys] (Swift's is []); pass <c>WritingOptions.none</c> for compact text.</summary>
     public static byte[] data(object withJSONObject, WritingOptions options = WritingOptions.prettyPrinted | WritingOptions.sortedKeys) =>
