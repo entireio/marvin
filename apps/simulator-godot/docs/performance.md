@@ -197,8 +197,9 @@ where the camera is close (race-light robot close-ups at about 1 mm per pixel sh
 grazing angle); the weaker sun's shadow as a lighter band beside the dark core where SceneKit's penumbrae blend the two
 suns' shadows; crisp outlines of the menu's and sandbox's faint deferred shadows (menu 0.53 -> 0.51). No acne in the captures
 looked at close up (track and town walls, roofs, dunes, robots, sandbox, menu): the saw-tooth edges along walls at
-grazing angles are the shadow texels (identical with normal biases 1 and 2). Robot silhouettes from the mesh LODs move by up to half a pixel. Reports that count rendered pixels move
-towards macOS (visual regression's robot shadow samples 512 -> 569, macOS 598); every check gives the merged build's result.
+grazing angles are the shadow texels (identical with normal biases 1 and 2). Robot silhouettes from the mesh LODs move by up to half a pixel. Of the reports that count
+rendered pixels, visual regression's robot shadow samples move towards macOS (512 -> 569, macOS 598) and dune contact's
+changed coating samples away from it (1,319 -> 1,094, macOS 1,448); every check gives the merged build's result.
 `MARVIN_SCN_CAL=Exact` renders the merged build's captures pixel for pixel (calibration, menu, close-ups, visual
 regression, the deterministic smoke and town captures), in the editor runtime and in the export.
 
