@@ -241,8 +241,14 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         // The container resizes its SubViewport on a deferred notification; apply the size now.
         var size = new Vector2I(Math.Max(1, (int)Size.X / Math.Max(1, StretchShrink)), Math.Max(1, (int)Size.Y / Math.Max(1, StretchShrink)));
         if (rig.viewport.Size != size) rig.viewport.Size = size;
-        rig.Sync();
-        SceneKitRuntime.RenderNow(rig.viewport);
+        var previous = SceneKitRuntime.SnapshotRig;
+        SceneKitRuntime.SnapshotRig = rig;
+        try
+        {
+            rig.Sync();
+            SceneKitRuntime.RenderNow(rig.viewport);
+        }
+        finally { SceneKitRuntime.SnapshotRig = previous; }
         var img = rig.viewport.GetTexture().GetImage();
         return NSImage.data(img.SavePngToBuffer());
     }
@@ -303,11 +309,17 @@ public sealed class SCNRenderer : SCNSceneRenderer
         rig.viewport.Size = size;
         rig.viewport.Msaa3D = ViewRig.Msaa(antialiasingMode);
         rig.viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
-        rig.Sync();
-        SceneKitRuntime.RenderNow();
-        rig.Sync();
-        rig.viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
-        RenderingServer.ForceDraw(false, 0.0);
+        var previous = SceneKitRuntime.SnapshotRig;
+        SceneKitRuntime.SnapshotRig = rig;
+        try
+        {
+            rig.Sync();
+            SceneKitRuntime.RenderNow();
+            rig.Sync();
+            rig.viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
+            RenderingServer.ForceDraw(false, 0.0);
+        }
+        finally { SceneKitRuntime.SnapshotRig = previous; }
         return rig.viewport.GetTexture().GetImage();
     }
     /// <summary>render(withViewport:commandBuffer:passDescriptor:) is Metal-specific. PORT: unsupported (diagnostics only).</summary>
