@@ -6,6 +6,7 @@
 // SceneKit (the macOS smoke test takes its close-ups on the dirt track, which a sandbox port cannot match).
 // Keep the two files in step.
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Godot;
 using Marvin.Core;
@@ -58,6 +59,32 @@ public static class RobotCloseups
         world.camera.camera.zFar = 80;
         world.camera.camera.wantsHDR = false; world.camera.camera.bloomIntensity = 0;
         world.camera.camera.screenSpaceAmbientOcclusionIntensity = 0;
+        // CLOSEUP_LIGHT=race[,FRACTION,PHASE]: DirtWorld's light instead of the sandbox's (BinarySky: sky dome and probe, two
+        // forward-shadow suns, ambient, fog) and the race camera (App.swift startDirtTrack: zFar 250, SSAO 0.70 / 1.6 / 0.025),
+        // to compare the robots' shading under the race light. Keep in step with RobotCloseups.swift.
+        var spec = System.Environment.GetEnvironmentVariable("CLOSEUP_LIGHT");
+        BinarySky sky = null;
+        if (spec != null && spec.StartsWith("race"))
+        {
+            var lights = new List<SCNNode>();
+            world.scene.rootNode.enumerateChildNodes((n, _) => { if (n.light != null) lights.Add(n); });
+            foreach (var n in lights) n.removeFromParentNode();
+            sky = new BinarySky(world.scene);
+            sky.attach(world.camera);
+            var parts = spec.Split(',').Skip(1).Select(x => double.Parse(x, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            sky.apply(new BinaryDaylight(parts.Length > 0 ? parts[0] : 0.5, parts.Length > 1 ? parts[1] : 1.2));
+            sky.updateShadowCenter(new Double3(0, 0, 0));
+            world.camera.camera.zFar = 250;
+            world.camera.camera.screenSpaceAmbientOcclusionIntensity = 0.70;
+            world.camera.camera.screenSpaceAmbientOcclusionRadius = 1.6;
+            world.camera.camera.screenSpaceAmbientOcclusionBias = 0.025;
+            // CLOSEUP_EXP=noibl,noamb,nosun,nossao switches single light terms off (to isolate shading differences).
+            var exp = System.Environment.GetEnvironmentVariable("CLOSEUP_EXP") ?? "";
+            if (exp.Contains("noibl")) world.scene.lightingEnvironment.intensity = 0;
+            if (exp.Contains("noamb")) world.scene.rootNode.enumerateChildNodes((n, _) => { if (n.light?.type == SCNLight.LightType.ambient) n.light.intensity = 0; });
+            if (exp.Contains("nosun")) foreach (var sun in sky.suns) sun.light.intensity = 0;
+            if (exp.Contains("nossao")) world.camera.camera.screenSpaceAmbientOcclusionIntensity = 0;
+        }
         var renderer = new SCNRenderer(null, null);
         renderer.scene = world.scene; renderer.pointOfView = world.camera;
 

@@ -34,6 +34,31 @@ import SimulationCore
         world.camera.camera?.zFar = 80
         world.camera.camera?.wantsHDR = false; world.camera.camera?.bloomIntensity = 0
         world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0
+        // CLOSEUP_LIGHT=race[,FRACTION,PHASE]: DirtWorld's light instead of the sandbox's (BinarySky: sky dome and probe, two
+        // forward-shadow suns, ambient, fog) and the race camera (App.swift startDirtTrack: zFar 250, SSAO 0.70 / 1.6 / 0.025),
+        // to compare the robots' shading under the race light. Keep in step with RobotCloseups.cs.
+        var sky: BinarySky? = nil
+        if let spec = ProcessInfo.processInfo.environment["CLOSEUP_LIGHT"], spec.hasPrefix("race") {
+            var lights: [SCNNode] = []
+            world.scene.rootNode.enumerateChildNodes { n, _ in if n.light != nil { lights.append(n) } }
+            lights.forEach { $0.removeFromParentNode() }
+            let b = BinarySky(scene: world.scene); sky = b
+            b.attach(camera: world.camera)
+            let parts = spec.split(separator: ",").dropFirst().compactMap { Double($0) }
+            b.apply(BinaryDaylight(fraction: parts.first ?? 0.5, phase: parts.count > 1 ? parts[1] : 1.2))
+            b.updateShadowCenter(SIMD3(0, 0, 0))
+            world.camera.camera?.zFar = 250
+            world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0.70
+            world.camera.camera?.screenSpaceAmbientOcclusionRadius = 1.6
+            world.camera.camera?.screenSpaceAmbientOcclusionBias = 0.025
+            // CLOSEUP_EXP=noibl,noamb,nosun,nossao switches single light terms off (to isolate shading differences).
+            let exp = ProcessInfo.processInfo.environment["CLOSEUP_EXP"] ?? ""
+            if exp.contains("noibl") { world.scene.lightingEnvironment.intensity = 0 }
+            if exp.contains("noamb") { world.scene.rootNode.enumerateChildNodes { n, _ in if n.light?.type == .ambient { n.light?.intensity = 0 } } }
+            if exp.contains("nosun") { b.suns.forEach { $0.light?.intensity = 0 } }
+            if exp.contains("nossao") { world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0 }
+        }
+        _ = sky
         let renderer = SCNRenderer(device: MTLCreateSystemDefaultDevice()!, options: nil)
         renderer.scene = world.scene; renderer.pointOfView = world.camera
 

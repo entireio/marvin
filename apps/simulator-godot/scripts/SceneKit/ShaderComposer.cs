@@ -225,6 +225,14 @@ internal static class ShaderComposer
         bool diffuseIsTexture = m.diffuse.Kind == SCNMaterialProperty.ContentKind.Texture;
         string diffuseUv = diffuseIsTexture ? PropUvExpr(m.diffuse) : "scn_uv0";
         string emission = depthOnly ? "vec4(0.0)" : Value(m.emission, "emission", true, "vec4(0.0)");
+        // Measured (Swift probe, macOS 27): a physically based material whose selfIllumination is set, or whose shader
+        // modifier merely mentions _surface.selfIllumination (translated as scn_self_illumination), takes its diffuse
+        // image-based light from selfIllumination (black by default: DirtCoating's robots get no diffuse sky light) instead
+        // of the lightingEnvironment's irradiance; ambient lights and the specular reflection are unchanged.
+        bool materialSelfIllumination = !(m.selfIllumination.contents is NSColor sic && sic.redComponent == 0 && sic.greenComponent == 0 && sic.blueComponent == 0) && m.selfIllumination.contents != null;
+        bool mentionsSelfIllumination = all.Any(snippet => snippet.body.Contains("scn_self_illumination"));
+        bool usesSelfIllumination = pbr && (materialSelfIllumination || mentionsSelfIllumination);
+        string selfIllumination = pbr && materialSelfIllumination ? Value(m.selfIllumination, "self_illumination", true, "vec4(0.0)") : "vec4(0.0)";
         bool hasMultiply = !(m.multiply.contents is NSColor mc && mc.Equals(NSColor.white)) && m.multiply.Kind != SCNMaterialProperty.ContentKind.None;
         string multiply = hasMultiply ? Value(m.multiply, "multiply", true, "vec4(1.0)") : null;
         string normalMap = m.normal.Kind == SCNMaterialProperty.ContentKind.Texture && !constant ? Value(m.normal, "normal", false, null) : null;
@@ -397,6 +405,7 @@ internal static class ShaderComposer
             sb.AppendLine("    NORMAL = normalize(mix(NORMAL, normalize(TANGENT * scn_nm.x + BINORMAL * scn_nm.y + NORMAL * scn_nm.z), scn_normal_intensity));");
         }
         if (transparent) sb.AppendLine("    ALPHA = scn_alpha; // _surface.diffuse.a (a .surface modifier may change it)");
+        if (usesSelfIllumination || mentionsSelfIllumination) sb.AppendLine($"    vec3 scn_self_illumination = ({selfIllumination}).rgb; // _surface.selfIllumination");
         foreach (var snip in mods[SCNShaderModifierEntryPoint.surface])
         {
             sb.AppendLine("    { // .surface");
@@ -425,7 +434,9 @@ internal static class ShaderComposer
                 sb.AppendLine("    float scn_r = ROUGHNESS;");
                 sb.AppendLine("    // SceneKit's diffuse IBL falls with roughness (fit to SceneKit renders, see PORTING.md).");
                 sb.AppendLine("    float scn_ibl_k = " + IblDiffuseResponse + ";");
-                sb.AppendLine("    vec3 scn_amb_diffuse = scn_irradiance(scn_wn) * scn_ibl.x * scn_ibl_k;");
+                sb.AppendLine(usesSelfIllumination
+                    ? "    vec3 scn_amb_diffuse = scn_self_illumination; // selfIllumination replaces the sky's diffuse light (measured)"
+                    : "    vec3 scn_amb_diffuse = scn_irradiance(scn_wn) * scn_ibl.x * scn_ibl_k;");
                 sb.AppendLine("    // Specular IBL from the same SH (exact for the game's smooth gradient probe), with SceneKit's");
                 sb.AppendLine("    // roughness response; replaces Godot's sky radiance and offsets its multi-scatter compensation.");
                 sb.AppendLine("    vec3 scn_refl = normalize((INV_VIEW_MATRIX * vec4(reflect(-VIEW, NORMAL), 0.0)).xyz);");

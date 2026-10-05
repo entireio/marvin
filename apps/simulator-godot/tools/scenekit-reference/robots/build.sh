@@ -11,6 +11,6 @@ swiftc -O -parse-as-library -emit-module -emit-library -static -module-name Simu
 app="$sources/MarvinSimulator"
 swiftc -O -I "$out" -L "$out" -lSimulationCore \
   "$app/Robot.swift" "$app/R2D2.swift" "$app/ImportedRacer.swift" "$app/TrackBelt.swift" \
-  "$app/DirtCoating.swift" "$app/World.swift" "$app/FloorGroove.swift" \
+  "$app/DirtCoating.swift" "$app/World.swift" "$app/FloorGroove.swift" "$app/BinarySky.swift" \
   "$here/RobotCloseups.swift" -o "$out/RobotCloseups"
 echo "Built $out/RobotCloseups"

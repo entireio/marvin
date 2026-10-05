@@ -99,7 +99,8 @@ public sealed class DirtCoating
     // MSL .surface modifier translated to Godot shading language (PORTING.md, "Shader modifier translation guide"):
     // scn_node.inverseModelViewTransform -> inverse(MODEL_MATRIX) * INV_VIEW_MATRIX, scn_node.modelTransform -> MODEL_MATRIX,
     // duneContact.read(uint2(...)) -> texelFetch, _surface.diffuse/roughness/metalness -> ALBEDO/ROUGHNESS/METALLIC.
-    // _surface.selfIllumination is dropped: it is black by default and does not affect emission (measured).
+    // _surface.selfIllumination -> scn_self_illumination: mentioning it makes SceneKit take the diffuse sky light from it
+    // (black here), see ShaderComposer.
     private const string shader = @"
 #pragma arguments
 mat4 dirtToBody;
@@ -132,6 +133,7 @@ vec3 soil = mix(vec3(0.19, 0.105, 0.045), vec3(0.42, 0.29, 0.16), patches);
 ALBEDO = mix(ALBEDO, soil, coverage);
 ROUGHNESS = mix(ROUGHNESS, 1.0, coverage);
 METALLIC *= 1.0 - coverage;
+scn_self_illumination *= 1.0 - coverage;
 vec4 dunePlane = texelFetch(duneContact, ivec2(0), 0);
 if (dunePlane.w > 0.5) {
 vec3 world = (MODEL_MATRIX * vec4(local, 1.0)).xyz;
@@ -142,6 +144,7 @@ vec3 sand = vec3(0.64, 0.43, 0.23) * (0.84 + 0.25 * sandGrain);
 ALBEDO = mix(ALBEDO, sand, rim * 0.88);
 ROUGHNESS = mix(ROUGHNESS, 0.96, rim);
 METALLIC *= 1.0 - rim;
+scn_self_illumination *= 1.0 - rim;
 }
 ";
 }
