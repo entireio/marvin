@@ -22,7 +22,8 @@ namespace Marvin.SceneKit;
 /// Focused experiments print numbers instead (each mirrors a Swift twin, see PORTING.md):
 /// CAL_EXP=sphere (deferred/forward self-shadowing vs angle), pane (alpha and transparency per
 /// lighting model), penumbra (shadow edge width), mirror (pre-filtered reflections vs roughness;
-/// CAL_MIRROR_AMB=intensity, CAL_MIRROR_GRAY=1).
+/// CAL_MIRROR_AMB=intensity, CAL_MIRROR_GRAY=1), ssao (SceneKit's SSAO on and off, SsaoProbe), overlay (vertex-alpha overlay
+/// idiom of TownGround, OverlayProbe); CAL_PENUMBRA_ELEV=1 measures the race suns' shadow edges at 60/35/20/10 degrees.
 /// </summary>
 public static class Calibration
 {
@@ -43,6 +44,8 @@ public static class Calibration
         if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "penumbra") { Penumbra(); tree.Quit(); return; }
         if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "mirror") { Mirror(); tree.Quit(); return; }
         if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "ssao") { SsaoProbe(); tree.Quit(); return; }
+        if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "overlay") { OverlayProbe(); tree.Quit(); return; }
+        if (System.Environment.GetEnvironmentVariable("CAL_EXP") == "deferredview") { DeferredViewProbe(); tree.Quit(); return; }
         Race(0.5, "race_midday");
         Race(0.96, "race_evening");
         Sandbox();
@@ -614,8 +617,9 @@ ALBEDO = cityTint * (0.62 + grain * 0.65);
     }
 
     // ---- Penumbra experiment (mirrors exp/penumbra.swift): 10-90% shadow edge width of a 3 m box edge, light 60 deg up.
-    private static void PenumbraRun(string label, bool auto, double ortho, double map, double radius, int samples, SCNShadowMode mode = SCNShadowMode.forward, double height = 3)
+    private static void PenumbraRun(string label, bool auto, double ortho, double map, double radius, int samples, SCNShadowMode mode = SCNShadowMode.forward, double height = 3, double elevation = 60)
     {
+        double er = elevation * Math.PI / 180;
         var scene = new SCNScene(); scene.background.contents = NSColor.black;
         var fm = new SCNMaterial { lightingModel = SCNMaterial.LightingModel.physicallyBased }; fm.diffuse.contents = NSColor.white; fm.roughness.contents = 1.0;
         var floor = new SCNPlane(40, 40); floor.materials = new() { fm };
@@ -626,11 +630,11 @@ ALBEDO = cityTint * (0.62 + grain * 0.65);
         l.light.castsShadow = true; l.light.shadowMode = mode; l.light.shadowColor = NSColor.black; l.light.shadowRadius = radius; l.light.shadowSampleCount = samples;
         l.light.shadowMapSize = new CGSize(map, map); l.light.orthographicScale = ortho; l.light.automaticallyAdjustsShadowProjection = auto;
         l.light.zNear = 0.1; l.light.zFar = 220; l.light.maximumShadowDistance = 500; l.light.shadowBias = 0.6;
-        var d = new SCNVector3(-Math.Cos(Math.PI / 3), Math.Sin(Math.PI / 3), 0);
+        var d = new SCNVector3(-Math.Cos(er), Math.Sin(er), 0);
         l.position = d * 80; l.look(SCNVector3Zero, new SCNVector3(0, 1, 0), new SCNVector3(0, 0, -1));
         scene.rootNode.addChildNode(l);
         var cam = new SCNNode { camera = new SCNCamera { fieldOfView = 10, zNear = 1, zFar = 250 } };
-        double edge = height / Math.Tan(Math.PI / 3);
+        double edge = height / Math.Tan(er);
         cam.position = new SCNVector3(edge, 10, 0); cam.look(new SCNVector3(edge, 0, 0), new SCNVector3(0, 0, -1), new SCNVector3(0, 0, -1));
         scene.rootNode.addChildNode(cam);
         renderer.scene = scene; renderer.pointOfView = cam;
@@ -648,6 +652,16 @@ ALBEDO = cityTint * (0.62 + grain * 0.65);
     }
     private static void Penumbra()
     {
+        if (System.Environment.GetEnvironmentVariable("CAL_PENUMBRA_ELEV") != null)
+        {
+            // The two race suns' fixed boxes at several sun elevations (edge offset: + = shadow edge further from the caster).
+            foreach (var e in new[] { 60.0, 35.0, 20.0, 10.0 })
+            {
+                PenumbraRun($"sunA r3 map4096 elev {e}", false, 58, 4096, 3, 8, elevation: e);
+                PenumbraRun($"sunB r2 map2048 elev {e}", false, 58, 2048, 2, 8, elevation: e);
+            }
+            return;
+        }
         PenumbraRun("sunA ortho58 map4096 r3 s8", false, 58, 4096, 3, 8);
         PenumbraRun("sunB ortho58 map2048 r2 s8", false, 58, 2048, 2, 8);
         PenumbraRun("ortho58 map4096 r1 s8", false, 58, 4096, 1, 8);
@@ -734,6 +748,79 @@ ALBEDO = cityTint * (0.62 + grain * 0.65);
                 img.SavePng(dir.PathJoin($"ssao_{name}_{(on ? "on" : "off")}.png"));
                 GD.Print($"rendered ssao_{name}_{(on ? "on" : "off")}");
             }
+        }
+    }
+
+    // ---- Vertex-alpha overlay probe (Swift twin ovl.swift): TownGround's trampled-sand idiom (vertex alpha, .surface that
+    // replaces the diffuse from its luminance, .fragment alpha) over a lit base, for vertex alpha 0 .. 1.
+    private static void OverlayProbe()
+    {
+        static double lin(double v) => v <= 0.04045 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+        float[] alphas = { 0, 0.25f, 0.5f, 0.75f, 1 };
+        foreach (var variant in new[] { "surface", "nosurface", "nofragment", "texsurface", "texnosurface" })
+        {
+            var scene = new SCNScene(); scene.background.contents = NSColor.black;
+            var baseM = new SCNMaterial { lightingModel = SCNMaterial.LightingModel.physicallyBased }; baseM.diffuse.contents = NSColor.srgbRed(0.8, 0.6, 0.4, 1); baseM.roughness.contents = 1.0;
+            var bp = new SCNPlane(20, 20); bp.materials = new() { baseM }; var bn = new SCNNode(bp); bn.eulerAngles.x = -Math.PI / 2; scene.rootNode.addChildNode(bn);
+            var m = new SCNMaterial { lightingModel = SCNMaterial.LightingModel.physicallyBased }; m.roughness.contents = 1.0; m.diffuse.contents = variant.StartsWith("tex") ? NSImage.contentsOf("/private/tmp/claude-501/fullcmp/exp/ovl/gray180.png") : NSColor.white; m.writesToDepthBuffer = false; m.transparencyMode = SCNTransparencyMode.aOne; m.isDoubleSided = true;
+            var mods = new Dictionary<SCNShaderModifierEntryPoint, string> { [SCNShaderModifierEntryPoint.geometry] = "#pragma varyings\nfloat groundBlend;\n#pragma body\ngroundBlend = COLOR.a;\n" };
+            if (variant != "nosurface" && variant != "texnosurface") mods[SCNShaderModifierEntryPoint.surface] = "#pragma body\nfloat grain = dot(ALBEDO, vec3(0.2126, 0.7152, 0.0722));\nALBEDO = vec3(0.4, 0.3, 0.2) * (0.52 + 2.5 * grain);\n";
+            if (variant != "nofragment") mods[SCNShaderModifierEntryPoint.fragment] = "#pragma transparent\n#pragma body\nfloat blend = 1.0;\nALPHA = blend;\n";
+            m.shaderModifiers = mods;
+            var v = new List<SCNVector3>(); var c = new List<float>(); var idx = new List<int>();
+            for (int k = 0; k < alphas.Length; k++)
+            {
+                float x0 = k - alphas.Length / 2f; int b0 = v.Count;
+                foreach (var (dx, dz) in new[] { (0f, 0f), (1f, 0f), (1f, 1f), (0f, 1f) }) { v.Add(new SCNVector3(x0 + dx * 0.9, 0.01, dz - 0.5)); c.AddRange(new[] { 1f, 1f, 1f, alphas[k] }); }
+                idx.AddRange(new[] { b0, b0 + 2, b0 + 1, b0, b0 + 3, b0 + 2 });
+            }
+            var g = new SCNGeometry(new[] { SCNGeometrySource.vertices(v), SCNGeometrySource.normals(Enumerable.Repeat(new SCNVector3(0, 1, 0), v.Count).ToList()), colorSource(c, v.Count), SCNGeometrySource.textureCoordinates(v.Select(q => new CGPoint(q.x / 4, q.z / 4)).ToList()) },
+                new[] { new SCNGeometryElement(idx, SCNGeometryPrimitiveType.triangles) });
+            g.materials = new() { m }; scene.rootNode.addChildNode(new SCNNode(g));
+            var sun = new SCNNode { light = new SCNLight { type = SCNLight.LightType.directional, intensity = 1000 } }; sun.eulerAngles = new SCNVector3(-1.0, 0.3, 0); scene.rootNode.addChildNode(sun);
+            scene.rootNode.addChildNode(new SCNNode { light = new SCNLight { type = SCNLight.LightType.ambient, intensity = 200 } });
+            var cam = new SCNNode { camera = new SCNCamera { usesOrthographicProjection = true, orthographicScale = 3 } }; cam.position = new SCNVector3(0, 10, 0); cam.eulerAngles.x = -Math.PI / 2; scene.rootNode.addChildNode(cam);
+            renderer.scene = scene; renderer.pointOfView = cam;
+            renderer.SnapshotImage(new Vector2I(600, 600), SCNAntialiasingMode.none);
+            var img = renderer.SnapshotImage(new Vector2I(600, 600), SCNAntialiasingMode.none);
+            var line = variant.PadRight(12);
+            for (int k = 0; k < alphas.Length; k++) { var px = img.GetPixel(300 + (int)((k - 2.05) * 100), 300); line += $" a{alphas[k]:0.00}: {lin(px.R):0.000} {lin(px.G):0.000} {lin(px.B):0.000}"; }
+            var bpx = img.GetPixel(300, 100); line += $"  base {lin(bpx.R):0.000} {lin(bpx.G):0.000} {lin(bpx.B):0.000}";
+            GD.Print(line);
+        }
+    }
+
+    // ---- Deferred shadow at grazing views (Swift twin sb.swift): World.swift's floor, sun and ambient seen from the smoke
+    // test's neck-pan camera, deferred shadow alpha 1 (0.24 in the game), for each antialiasing mode.
+    private static void DeferredViewProbe()
+    {
+        static double lin(double v) => v <= 0.04045 ? v / 12.92 : Math.Pow((v + 0.055) / 1.055, 2.4);
+        foreach (var (label, shadows, alpha, aa) in new[] { ("no shadows", false, 0.24, SCNAntialiasingMode.multisampling4X), ("deferred 0.24 msaa4", true, 0.24, SCNAntialiasingMode.multisampling4X),
+            ("deferred 1.0 msaa4", true, 1.0, SCNAntialiasingMode.multisampling4X), ("deferred 1.0 msaa2", true, 1.0, SCNAntialiasingMode.multisampling2X), ("deferred 1.0 no aa", true, 1.0, SCNAntialiasingMode.none) })
+        {
+            var scene = new SCNScene(); scene.background.contents = color(0xdbe4df);
+            var m = material(0xb49470, roughness: 0.98);
+            var g = new SCNShape(new NSBezierPath(new NSRect(-6, -5, 12, 10)), 0); g.materials = new() { m };
+            var n = new SCNNode(g); n.eulerAngles.x = -Math.PI / 2; scene.rootNode.addChildNode(n);
+            var b = new SCNBox(12, 0.05, 10, 0.04); b.materials = new() { m }; add(scene.rootNode, b, new SCNVector3(0, -0.05, 0));
+            scene.rootNode.addChildNode(new SCNNode { light = new SCNLight { type = SCNLight.LightType.ambient, intensity = 550, color = color(0xe7f4ff) } });
+            var sun = new SCNNode { light = new SCNLight { type = SCNLight.LightType.directional, intensity = 1400, color = color(0xfff1df) } };
+            sun.eulerAngles = new SCNVector3(-0.85, -0.45, -0.25);
+            sun.light.castsShadow = shadows; sun.light.shadowMode = SCNShadowMode.deferred; sun.light.shadowMapSize = new CGSize(4096, 4096); sun.light.shadowSampleCount = 16;
+            sun.light.shadowColor = NSColor.black.withAlphaComponent(alpha); sun.light.orthographicScale = 10; sun.light.maximumShadowDistance = 22;
+            scene.rootNode.addChildNode(sun);
+            var cam = camera(scene, new SCNVector3(0.85, 0.8, -1.1), new SCNVector3(0, 0.37, -2.6), 48, 0.02, 80);
+            renderer.scene = scene; renderer.pointOfView = cam;
+            renderer.SnapshotImage(new Vector2I(W, H), aa);
+            var img = renderer.SnapshotImage(new Vector2I(W, H), aa);
+            var line = label.PadRight(40);
+            foreach (var (x, y) in new[] { (70, 320), (130, 740), (1175, 740), (640, 600) })
+            {
+                double sum = 0;
+                for (int dy = -3; dy <= 3; dy++) for (int dx = -3; dx <= 3; dx++) { var c = img.GetPixel(x + dx, y + dy); sum += 0.2126 * lin(c.R) + 0.7152 * lin(c.G) + 0.0722 * lin(c.B); }
+                line += $" ({x},{y}) {sum / 49:0.0000}";
+            }
+            GD.Print(line);
         }
     }
 
