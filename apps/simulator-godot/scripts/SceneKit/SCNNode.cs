@@ -371,7 +371,8 @@ public partial class SCNNode : Node3D
     }
     public SCNCamera camera { get => _camera; set => _camera = value; }
     public bool isHidden { get => _isHidden; set { if (_isHidden != value) { _isHidden = value; SceneKitRuntime.NodeDirty(this, DirtyVisual); if (_light != null) SceneKitRuntime.SceneStateDirty(); } } }
-    public double opacity { get => _opacity; set { if (_opacity != value) { _opacity = value; MarkSubtree(DirtyVisual); } } }
+    /// <summary>opacity. Measured: SceneKit stores it in single precision (CGFloat 0.48 reads back 0.47999998927116394).</summary>
+    public double opacity { get => _opacity; set { double v = (float)value; if (_opacity != v) { _opacity = v; MarkSubtree(DirtyVisual); } } }
     public bool castsShadow { get => _castsShadow; set { if (_castsShadow != value) { _castsShadow = value; SceneKitRuntime.NodeDirty(this, DirtyVisual); } } }
     public int categoryBitMask { get => _categoryBitMask; set { if (_categoryBitMask != value) { _categoryBitMask = value; SceneKitRuntime.NodeDirty(this, DirtyVisual); } } }
     public int renderingOrder { get => _renderingOrder; set { if (_renderingOrder != value) { _renderingOrder = value; SceneKitRuntime.NodeDirty(this, DirtyGeometry); } } }

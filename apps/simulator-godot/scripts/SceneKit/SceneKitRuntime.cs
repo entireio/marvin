@@ -219,6 +219,7 @@ public partial class SceneKitRuntime : Node
             if (dirtyTextures.Count > 0) { foreach (var t in dirtyTextures) t.Refresh(); dirtyTextures.Clear(); }
             foreach (var node in constrained.ToArray()) ApplyConstraints(node);
             foreach (var view in LiveViews()) view.SyncCamera();
+            SnapshotRig?.Sync();
             if (ActiveScene != null && (sceneStateDirty || ActiveScene != uniformsScene || ActiveScene.stateVersion != uniformsSceneVersion))
                 UpdateSceneUniforms(ActiveScene);
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateWillRender();
@@ -291,6 +292,15 @@ public partial class SceneKitRuntime : Node
         node.Transform = SCNMatrix4.Mul(SCNMatrix4.Inverse(parentWorld), world).ToGodot();
         node.constraintsApplied = true;
     }
+
+    /// <summary>
+    /// The rig a snapshot is capturing (set by SCNView.snapshot and SCNRenderer.snapshot for the duration of their
+    /// draws). Flush() syncs every visible view, and the last one decides the global scene uniforms (fog, ambient
+    /// lights, sky light); during a snapshot the captured rig is synced last, so its scene's uniforms are the ones
+    /// drawn. Before this, an SCNRenderer capture of its own scene while the main menu showed was lit by the menu's
+    /// 650-lumen ambient light instead of the scene's own (debris check's rendered clod colours).
+    /// </summary>
+    internal static ViewRig SnapshotRig;
 
     /// <summary>Renders all viewports now (used by snapshot()). Must be called on the main thread.</summary>
     internal static void RenderNow(Node extra = null)
