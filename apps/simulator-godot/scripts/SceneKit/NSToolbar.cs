@@ -88,7 +88,7 @@ internal sealed partial class NSWindowFrame : NSView
     private bool pressedInside;
     private Control menuBarHost;
     private bool wasKey = true;
-    internal static readonly bool drawsTitle = OS.GetName() == "macOS";
+    internal static readonly bool drawsTitle = Platform.macUI;
     public override bool isFlipped => true;
 
     internal NSWindowFrame(NSWindow owner)
@@ -113,7 +113,7 @@ internal sealed partial class NSWindowFrame : NSView
         var size = owner.godotWindow.GetVisibleRect().Size;
         frame = new CGRect(0, 0, size.X, height);
         if (menuBarHost != null) layoutMenuBar();
-        if (OS.GetName() == "macOS" && DisplayServer.GetName() != "headless")
+        if (Platform.macUI && DisplayServer.GetName() != "headless")
         {
             // Centre of the first traffic light, measured: (16, 14) in the 28-point bar, (26, 26) with the toolbar.
             var offset = (unified ? new Vector2(26, 26) : new Vector2(16, 14)) * (float)owner.backingScaleFactor;
@@ -274,7 +274,7 @@ internal sealed partial class NSWindowFrame : NSView
         if (pressed != null) { QueueRedraw(); return; }
         if (DisplayServer.GetName() == "headless") return;
         // The title bar moves the window (macOS: the system title bar is hidden by extend_to_title) and zooms on a double click.
-        if (OS.GetName() == "macOS")
+        if (Platform.macUI)
         {
             var id = (int)owner.godotWindow.GetWindowId();
             if (@event.clickCount >= 2)

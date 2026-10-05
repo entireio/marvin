@@ -116,6 +116,7 @@ public sealed class Playthrough
         report["telemetry"] = telemetry;
         writeFrames();
         report["platform"] = OS.GetName();
+        report["platformUI"] = Platform.macUI ? "macOS" : "windows";
         report["commandKey"] = KeyEquivalent.command;
         try { File.WriteAllText(Path.Combine(directory, "playthrough.json"), JSONSerialization.prettyPrintedSortedKeys(report)); }
         catch (Exception error) { GD.PrintErr($"playthrough.json: {error.Message}"); }
@@ -165,7 +166,7 @@ public sealed class Playthrough
         return true;
     }
 
-    private static readonly bool mac = OS.GetName() == "macOS";
+    private static readonly bool mac = Platform.macUI;
     /// <summary>A physical key press or release as Godot delivers it (layout-independent physical code, US key label).</summary>
     private static void key(Key physical, bool pressed, bool command = false, bool shift = false)
     {
@@ -501,6 +502,14 @@ public sealed class Playthrough
             var titles = new List<object>();
             for (int i = 0; i < NativeMenu.GetItemCount(main); i++) titles.Add(NativeMenu.GetItemText(main, i));
             note("globalMenuTitles", titles);
+        }
+        else
+        {
+            // The menu bar drawn in the window's title bar (Windows, or MARVIN_PLATFORM_UI=windows on a Mac).
+            var rect = bar.GetGlobalRect();
+            bool shown = bar.IsVisibleInTree() && rect.Size.X > 0 && rect.Size.Y > 0 && bar.GetMenuCount() > 0;
+            note("inWindowMenuBar", new Dictionary<string, object> { ["visible"] = shown, ["rect"] = new[] { (double)rect.Position.X, rect.Position.Y, rect.Size.X, rect.Size.Y } });
+            if (!check("menu bar: drawn in the window", shown)) return false;
         }
         if (simulation == null) return check("Simulation menu", false);
         int index = Enumerable.Range(0, simulation.ItemCount).FirstOrDefault(i => simulation.GetItemText(i) == "Mute race sound", -1);
