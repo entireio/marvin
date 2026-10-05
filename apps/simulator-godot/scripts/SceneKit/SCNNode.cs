@@ -458,6 +458,11 @@ public partial class SCNNode : Node3D
     internal bool constraintsApplied;
     internal int dirtyFlags;
     private readonly List<MeshInstance3D> meshes = new();
+    /// <summary>Shadow-only instance of a geometry with Godot mesh LODs (SCNGeometry.godotAutomaticLevelsOfDetail): it casts
+    /// the node's shadows from the levels of detail while meshes[0] draws the full mesh for the camera.</summary>
+    private MeshInstance3D shadowTwin;
+    /// <summary>LOD bias that keeps Godot at the full-detail level whatever the distance (screen error x bias).</summary>
+    private const float FullDetailLodBias = 1e20f;
     private Light3D godotLight;
     internal Light3D GodotLight => godotLight;
 
@@ -548,6 +553,22 @@ public partial class SCNNode : Node3D
         }
         SceneKitRuntime.RegisterTransparent(this, transparent && meshes.Count > 0);
         SceneKitRuntime.RegisterSsaoSky(this, ssaoSky && meshes.Count > 0);
+        // Godot-only (SCNGeometry.godotAutomaticLevelsOfDetail): the camera keeps the full mesh, a shadow-only twin with the
+        // same mesh and materials casts from the levels of detail.
+        bool twin = levels.Count == 1 && _geometry.godotAutomaticLevelsOfDetail && _geometry.MeshHasLods && !SceneKitCalibration.MeshLodForCamera;
+        if (twin)
+        {
+            if (shadowTwin == null) { shadowTwin = new MeshInstance3D(); AddChild(shadowTwin, false, InternalMode.Front); }
+            var primary = meshes[0];
+            if (shadowTwin.Mesh != primary.Mesh) shadowTwin.Mesh = primary.Mesh;
+            for (int s = 0; s < primary.Mesh.GetSurfaceCount(); s++) shadowTwin.SetSurfaceOverrideMaterial(s, primary.GetSurfaceOverrideMaterial(s));
+            primary.LodBias = FullDetailLodBias;
+        }
+        else if (shadowTwin != null)
+        {
+            RemoveChild(shadowTwin); shadowTwin.QueueFree(); shadowTwin = null;
+            foreach (var mi in meshes) mi.LodBias = 1;
+        }
     }
     /// <summary>The Godot instances of this node's geometry (one per level of detail).</summary>
     internal IReadOnlyList<MeshInstance3D> MeshInstances => meshes;
@@ -573,6 +594,17 @@ public partial class SCNNode : Node3D
             mi.Layers = layers == 0 ? 1u : layers;
             mi.Transparency = (float)Math.Clamp(1 - opacity, 0, 1);
             mi.Visible = visibleToCamera || cast == GeometryInstance3D.ShadowCastingSetting.ShadowsOnly;
+        }
+        if (shadowTwin != null)
+        {
+            // The full mesh draws for the camera, the twin casts the shadow (a geometry only the lights see keeps casting
+            // from the full mesh).
+            bool split = cast == GeometryInstance3D.ShadowCastingSetting.On;
+            if (split) meshes[0].CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+            shadowTwin.CastShadow = GeometryInstance3D.ShadowCastingSetting.ShadowsOnly;
+            shadowTwin.Layers = layers == 0 ? 1u : layers;
+            shadowTwin.Transparency = (float)Math.Clamp(1 - opacity, 0, 1);
+            shadowTwin.Visible = split;
         }
     }
 

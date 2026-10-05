@@ -44,6 +44,10 @@ public sealed class DirtCoating
             }
             else { geometry = source.copy(); }
             node.geometry = geometry;
+            // PORT: Godot-only. The robots' CAD and scanned meshes (Marvin 695,000 triangles) cast their shadows from Godot's
+            // screen-space mesh LODs (SCNGeometry.godotAutomaticLevelsOfDetail): drawn at full detail into every shadow map
+            // they were the most expensive geometry of a frame. The camera still draws the full mesh, as SceneKit does.
+            geometry.godotAutomaticLevelsOfDetail = true;
             geometry.shaderModifiers = new() { [SCNShaderModifierEntryPoint.surface] = shader };
             geometry.setValue(NSValue.scnMatrix4(node.convertTransform(SCNMatrix4Identity, to: root)), "dirtToBody");
             geometry.setValue(height, "dirtHeight");
