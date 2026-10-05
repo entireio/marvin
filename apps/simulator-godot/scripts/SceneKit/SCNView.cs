@@ -270,7 +270,7 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         var size = DrawableSize;
         if (rig.viewport.Size != size) rig.viewport.Size = size;
         // Rendered alone with this view's scene uniforms (a hidden view, which does not render each frame, renders once).
-        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync);
+        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, scene: rig.scene);
         var img = rig.viewport.GetTexture().GetImage();
         return NSImage.data(img.SavePngToBuffer());
     }
@@ -332,7 +332,7 @@ public sealed class SCNRenderer : SCNSceneRenderer
         rig.viewport.Msaa3D = ViewRig.Msaa(antialiasingMode);
         rig.viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
         // Two draws, as before the isolation (the first one after a size or scene change is not used).
-        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, draws: 2);
+        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, draws: 2, scene: rig.scene);
         return rig.viewport.GetTexture().GetImage();
     }
     /// <summary>render(withViewport:commandBuffer:passDescriptor:) is Metal-specific. PORT: unsupported (diagnostics only).</summary>

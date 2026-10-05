@@ -214,25 +214,8 @@ public partial class SceneKitRuntime : Node
             foreach (var view in LiveViews()) view.scene?.EnsureAttached();
             foreach (var view in LiveViews()) if (view.IsVisibleInTree()) view.CallDelegateUpdate();
             SCNGeometry.RecheckTangents();
-            if (masksDirty)
-            {
-                masksDirty = false;
-                foreach (var view in LiveViews()) if (view.scene != null) view.scene.rootNode.MarkSubtree(SCNNode.DirtyVisual | SCNNode.DirtyLight);
-            }
-            for (int pass = 0; pass < 4 && (dirtyMaterials.Count > 0 || dirtyNodes.Count > 0); pass++)
-            {
-                if (dirtyMaterials.Count > 0)
-                {
-                    var mats = dirtyMaterials.ToArray(); dirtyMaterials.Clear();
-                    foreach (var m in mats) m.Flush();
-                }
-                if (dirtyNodes.Count > 0)
-                {
-                    var nodes = dirtyNodes.ToArray(); dirtyNodes.Clear();
-                    PrepareMeshes(nodes);
-                    foreach (var (node, flags) in nodes) if (GodotObject.IsInstanceValid(node)) node.Flush(flags);
-                }
-            }
+            ApplyMasks(null);
+            FlushDirty();
             if (dirtyTextures.Count > 0) { foreach (var t in dirtyTextures) t.Refresh(); dirtyTextures.Clear(); }
             foreach (var node in constrained.ToArray()) ApplyConstraints(node);
             foreach (var view in LiveViews()) view.SyncCamera();
@@ -362,7 +345,32 @@ public partial class SceneKitRuntime : Node
     /// not called for these draws (they report the window's frames only). <paramref name="sync"/> applies the rig's camera
     /// and environment before each draw.
     /// </summary>
-    internal static void RenderIsolated(SubViewport target, Action sync, int draws = 1)
+    /// <summary>Re-applies node visibility and shadow casting after a camera or light mask change (MasksChanged).</summary>
+    private static void ApplyMasks(SCNScene extra)
+    {
+        if (!masksDirty) return;
+        masksDirty = false;
+        foreach (var view in LiveViews()) if (view.scene != null) view.scene.rootNode.MarkSubtree(SCNNode.DirtyVisual | SCNNode.DirtyLight);
+        extra?.rootNode.MarkSubtree(SCNNode.DirtyVisual | SCNNode.DirtyLight);
+    }
+    private static void FlushDirty()
+    {
+        for (int pass = 0; pass < 4 && (dirtyMaterials.Count > 0 || dirtyNodes.Count > 0); pass++)
+        {
+            if (dirtyMaterials.Count > 0)
+            {
+                var mats = dirtyMaterials.ToArray(); dirtyMaterials.Clear();
+                foreach (var m in mats) m.Flush();
+            }
+            if (dirtyNodes.Count > 0)
+            {
+                var nodes = dirtyNodes.ToArray(); dirtyNodes.Clear();
+                PrepareMeshes(nodes);
+                foreach (var (node, flags) in nodes) if (GodotObject.IsInstanceValid(node)) node.Flush(flags);
+            }
+        }
+    }
+    internal static void RenderIsolated(SubViewport target, Action sync, int draws = 1, SCNScene scene = null)
     {
         Flush();
         var paused = new List<(SubViewport viewport, SubViewport.UpdateMode mode)>();
@@ -377,6 +385,10 @@ public partial class SceneKitRuntime : Node
             for (int i = 0; i < draws; i++)
             {
                 sync();
+                // A camera with another categoryBitMask than the window's (the town's shadow-batch proxies are hidden
+                // from the race camera only) changes which nodes are visible: apply that before drawing, not at the
+                // next frame (VisualRegressionSmoke's first track close-up after its QA scene showed the proxies white).
+                if (masksDirty) { ApplyMasks(scene); FlushDirty(); }
                 if (ActiveScene != null) UpdateSceneUniforms(ActiveScene);
                 // Godot defers Node3D transform notifications to the end of the frame; apply them now.
                 if (instance != null && instance.IsInsideTree()) ForceTransforms(instance);
