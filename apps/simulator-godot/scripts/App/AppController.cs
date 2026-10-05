@@ -11,10 +11,10 @@
 // toolbar and the menu bar are the facade's (NSWindow.cs, NSToolbar.cs, NSMenu.cs): the Godot window is the
 // NSWindow, the title bar and toolbar are drawn over the full-size content view, the menu bar is the macOS global
 // menu (in the title bar elsewhere), and Command shortcuts are Control shortcuts outside macOS. tick() runs from
-// _Process while `timer` is valid (PORTING.md: Timer -> _Process). Game modes are dispatched by GameModes (each flag
-// once) instead of tick's smoke branch; their entry points run the same 20 main-menu frames first. Not ported (marked
-// "PORT"): the display link, BenchmarkGPUCapture, TownFrameMeter and the town benchmark, the renderer study and the
-// display-link lifecycle check.
+// _Process while `timer` is valid (PORTING.md: Timer -> _Process); the display-link variant ticks from the facade's
+// CADisplayLink (Godot's vsync'd frame loop). Game modes are dispatched by GameModes (each flag once) instead of tick's
+// smoke branch; their entry points run the same 20 main-menu frames first. Not ported (marked "PORT"): the Apple-GPU
+// diagnostics BenchmarkGPUCapture, LoadedGPUProbe, AOPreparationProbe, AOMaterialBinding and the renderer study.
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -46,7 +46,8 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
     public readonly LevelLoadingView loadingView = new LevelLoadingView();
     public readonly RaceHUD raceHUD = new RaceHUD();
     public readonly FrameRateHUD frameRateHUD = new FrameRateHUD();
-    // PORT: `let benchmarkGPUCapture = BenchmarkGPUCapture()` (Metal GPU capture for the town benchmark) is not ported.
+    // PORT: `let benchmarkGPUCapture = BenchmarkGPUCapture()` (an Xcode Metal GPU trace of the town benchmark,
+    // MARVIN_GPU_CAPTURE_SECONDS) is Apple-GPU-only and not ported.
     public DirtRace race = new DirtRace();
     public DirtRacePhysics racePhysics = new DirtRacePhysics();
     public DirtOpponent opponent = new DirtOpponent();
@@ -104,8 +105,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
     public NSToolbarItem pauseItem;
     public NSKeyValueObservation appearanceObservation;
     public string appliedIconName = "";
-    // PORT: `let townMeter = TownFrameMeter()` (TownSmoke.swift: the town benchmark's frame meter, which also feeds the
-    // FPS HUD) is not ported; the frame rate HUD is the view's renderer delegate directly.
+    public readonly TownFrameMeter townMeter = new TownFrameMeter();
     public object rendererStudy;
     public double? townBenchmarkStart;
     public string townBenchmarkRunID = Guid.NewGuid().ToString().ToUpperInvariant();
@@ -114,7 +114,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
     public List<double[]> townBenchmarkTimeline = new();
     public List<Dictionary<string, object>> townBenchmarkHUDSamples = new();
     public List<Dictionary<string, object>> townBenchmarkResourceSamples = new();
-    public object frameDisplayLink;
+    public CADisplayLink frameDisplayLink;
     public List<Double2> townBenchmarkRoute = new();
     public int townBenchmarkWaypoint = 0;
     public RaceAudio raceAudio;
@@ -212,8 +212,8 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         frameRateHUD.isHidden = true; installContentOverlay(frameRateHUD);
         // Keep the delegate's optional callback capabilities stable while
         // SceneKit renders on its background queue.
-        // PORT: townMeter.fpsHUD = frameRateHUD; view.delegate = townMeter (TownFrameMeter is not ported).
-        view.@delegate = frameRateHUD;
+        townMeter.fpsHUD = frameRateHUD;
+        view.@delegate = townMeter;
         mainMenu.onSandbox = () => startSandbox();
         mainMenu.onDirtTrack = () => loadDirtTrack();
         makeMenu();
@@ -222,10 +222,25 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         robot.update(simulation); showMainMenu(null);
         // Retain display-synchronised updates as an explicit diagnostic option:
         // native comparisons have not established a repeatable stutter reduction.
-        // PORT: the display-link variant (--display-link-updates, --benchmark-display-link) and
-        // --display-link-lifecycle-check are not ported: the 1/60 s timer ticks from Godot's frame loop, which is
-        // display-synchronised (vsync) and capped at the view's preferredFramesPerSecond.
-        timer = new Marvin.SceneKit.Timer(1.0 / 60);
+        // PORT: both drivers tick from Godot's frame loop (vsync'd, capped at the view's preferredFramesPerSecond): the
+        // timer from _Process, the display link from the facade's CADisplayLink (paused while the window is minimised).
+        var timerDrivenSmoke = smokeDirectory != null && !CommandLine.arguments.Contains("--town-benchmark");
+        var displayLinked = new[] { "--display-link-updates", "--benchmark-display-link", "--display-link-lifecycle-check" }.Any(CommandLine.arguments.Contains);
+        if (!timerDrivenSmoke && displayLinked && !CommandLine.arguments.Contains("--benchmark-timer"))
+        {
+            var link = view.displayLink(target: this, selector: displayTick);
+            link.preferredFrameRateRange = new CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60);
+            link.add(to: RunLoop.main, forMode: RunLoop.Mode.common); frameDisplayLink = link;
+        }
+        else
+        {
+            timer = new Marvin.SceneKit.Timer(1.0 / 60);
+        }
+        var args = CommandLine.arguments; var i = Array.IndexOf(args, "--display-link-lifecycle-check");
+        if (i >= 0 && i + 1 < args.Length)
+        {
+            checkDisplayLinkLifecycle(at: URL.fileURLWithPath(GameModes.OutputDirectory(args[i + 1], args[i + 1])));
+        }
     }
 
     public void updateApplicationIcon(NSAppearance appearance)
@@ -285,7 +300,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         var wallDelta = max(0, now - lastTime);
         var dt = min(wallDelta, 0.1); lastTime = now;
         if (isLoadingDirt) { loadingHeartbeats += 1; return; }
-        // PORT: if townBenchmarkStart != nil { tickTownBenchmark(now:dt:) } (the town benchmark is not ported).
+        if (townBenchmarkStart != null) { tickTownBenchmark(now: now, dt: dt); return; }
         if (!inSandbox)
         {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt);
@@ -673,7 +688,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
     public void applicationWillTerminate(Notification notification)
     {
         timer?.invalidate();
-        // PORT: (frameDisplayLink as? CADisplayLink)?.invalidate(): no display link (see applicationDidFinishLaunching).
+        frameDisplayLink?.invalidate();
         raceAudio?.stop();
     }
     public string[] toolbarAllowedItemIdentifiers(NSToolbar toolbar) =>

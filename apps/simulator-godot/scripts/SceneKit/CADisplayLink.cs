@@ -57,7 +57,13 @@ public sealed class CADisplayLink
     {
         if (!valid || isPaused) return;
         if (!view.TryGetTarget(out var v) || !GodotObject.IsInstanceValid(v) || !v.IsInsideTree()) return;
-        if (NSWindow.Of(v.GetWindow()) is NSWindow window && !window.occlusionState.contains(NSWindow.OcclusionState.visible)) return;
+        if (NSWindow.Of(v.GetWindow()) is NSWindow window)
+        {
+            // AppKit delivers windowDidDeminiaturize before the display link resumes: let the delegate see the state
+            // change first (the game resets its clock there, so the hidden interval is not caught up).
+            window.pollState();
+            if (!window.occlusionState.contains(NSWindow.OcclusionState.visible)) return;
+        }
         timestamp = now; targetTimestamp = now + duration;
         selector(this);
     }
