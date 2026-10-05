@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace Marvin.SceneKit;
@@ -88,7 +89,10 @@ public sealed class SCNMaterialProperty
     // setValue on a material or on a custom SCNGeometry, changes reach every program. The facade keys programs by scene.
     // (DirtCoating: Marvin's and R2-D2's last coated part is an SCNBox spoke, so their dirt never appears once drawn.)
     private WeakReference<object> argumentOwner;
-    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<SCNScene, Box> argumentBindings = new();
+    // Created on first use: every material has eleven properties and every new SCNGeometry a default material, so
+    // eager tables were allocated (and finalized) for each per-frame batch geometry.
+    private System.Runtime.CompilerServices.ConditionalWeakTable<SCNScene, Box> _argumentBindings;
+    private System.Runtime.CompilerServices.ConditionalWeakTable<SCNScene, Box> argumentBindings => _argumentBindings ??= new();
     private sealed class Box { public object contents; }
     internal void ArgumentOwner(object owner) => argumentOwner = new WeakReference<object>(owner);
     private bool ArgumentFrozen => argumentOwner != null && argumentOwner.TryGetTarget(out var o) && o is SCNGeometry g && g.GetType() != typeof(SCNGeometry);
@@ -97,7 +101,7 @@ public sealed class SCNMaterialProperty
     internal object ArgumentContents(SCNScene scene, bool draw)
     {
         if (scene == null) return _contents;
-        if (argumentBindings.TryGetValue(scene, out var bound) && ArgumentFrozen) return bound.contents;
+        if (_argumentBindings != null && _argumentBindings.TryGetValue(scene, out var bound) && ArgumentFrozen) return bound.contents;
         if (draw) argumentBindings.AddOrUpdate(scene, new Box { contents = _contents });
         return _contents;
     }
@@ -270,7 +274,18 @@ public sealed class SCNMaterial : IPropertyOwner
         property.appliedConfigKey = key;
         Changed(structural);
     }
-    private void Changed(bool structural) => gpu.MarkDirty(structural);
+    private void Changed(bool structural)
+    {
+        if (structural) System.Threading.Interlocked.Increment(ref StructureVersion);
+        gpu.MarkDirty(structural);
+    }
+    /// <summary>Bumped by every structural material change (lighting model, content kinds such as a new normal map,
+    /// shader modifiers): geometries built without tangents re-check whether a material now needs them.</summary>
+    internal static int StructureVersion;
+    /// <summary>The composed shader reads TANGENT/BINORMAL: a normal map on a lit material, or a modifier that uses them.</summary>
+    internal bool NeedsTangents =>
+        (normal.Kind == SCNMaterialProperty.ContentKind.Texture && _lightingModel != LightingModel.constant)
+        || (_shaderModifiers != null && _shaderModifiers.Values.Any(s => s != null && (s.Contains("TANGENT") || s.Contains("BINORMAL"))));
 
     internal IEnumerable<(string slot, SCNMaterialProperty property)> Slots()
     {

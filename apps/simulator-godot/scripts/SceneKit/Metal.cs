@@ -127,7 +127,8 @@ public sealed class MTLTexture
         {
             if (texture == null || dirty)
             {
-                var image = Image.CreateFromData(width, height, false, format, data);
+                // The texture copies the texels; release the temporary image now rather than on the finalizer thread.
+                using var image = Image.CreateFromData(width, height, false, format, data);
                 if (texture == null) texture = ImageTexture.CreateFromImage(image); else texture.Update(image);
                 dirty = false;
             }

@@ -625,6 +625,30 @@ internal static class ShaderComposer
 /// GPU state of one SCNMaterial: the ShaderMaterial variants it is drawn with
 /// (one per render priority / geometry with its own modifiers / mesh traits).
 /// </summary>
+/// <summary>
+/// Cached StringNames for shader parameter names. Passing a string to SetShaderParameter/GlobalShaderParameterSet creates
+/// a finalizable StringName per call; with materials and scene uniforms updated every frame, the finalizer thread was
+/// busy releasing them and contended with the main thread.
+/// </summary>
+internal static class ShaderNames
+{
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, StringName> names = new();
+    internal static StringName Of(string name) => names.GetOrAdd(name, n => new StringName(n));
+    /// <summary>Sets a material parameter and releases the temporary Variant at once (Variants holding objects, such as
+    /// textures, otherwise wait for the finalizer thread). The material keeps its own reference.</summary>
+    internal static void Set(ShaderMaterial material, StringName name, Variant value)
+    {
+        material.SetShaderParameter(name, value);
+        value.Dispose();
+    }
+    /// <summary>RenderingServer.GlobalShaderParameterSet, releasing the temporary Variant at once.</summary>
+    internal static void SetGlobal(StringName name, Variant value)
+    {
+        RenderingServer.GlobalShaderParameterSet(name, value);
+        value.Dispose();
+    }
+}
+
 internal sealed class MaterialGpu
 {
     private readonly SCNMaterial m;
@@ -700,18 +724,18 @@ internal sealed class MaterialGpu
         {
             switch (what)
             {
-                case "texture": sm.SetShaderParameter(uniform, p.Texture); break;
-                case "transform": sm.SetShaderParameter(uniform, p.contentsTransform.ToGodotProjection()); break;
-                case "color": sm.SetShaderParameter(uniform, V4(p.LinearColor(new Color(1, 1, 1, 1)))); break;
+                case "texture": ShaderNames.Set(sm, ShaderNames.Of(uniform), p.Texture); break;
+                case "transform": ShaderNames.Set(sm, ShaderNames.Of(uniform), p.contentsTransform.ToGodotProjection()); break;
+                case "color": ShaderNames.Set(sm, ShaderNames.Of(uniform), V4(p.LinearColor(new Color(1, 1, 1, 1)))); break;
             }
         }
-        sm.SetShaderParameter("scn_diffuse_intensity", (float)m.diffuse.intensity);
-        sm.SetShaderParameter("scn_emission_intensity", (float)m.emission.intensity);
-        sm.SetShaderParameter("scn_multiply_intensity", (float)m.multiply.intensity);
-        sm.SetShaderParameter("scn_normal_intensity", (float)m.normal.intensity);
-        sm.SetShaderParameter("scn_ao_intensity", (float)m.ambientOcclusion.intensity);
-        sm.SetShaderParameter("scn_transparency", (float)(ShaderComposer.IgnoresTransparency(m) ? 1.0 : m.transparency));
-        sm.SetShaderParameter("scn_shininess", (float)m.shininess);
+        ShaderNames.Set(sm, ShaderNames.Of("scn_diffuse_intensity"), (float)m.diffuse.intensity);
+        ShaderNames.Set(sm, ShaderNames.Of("scn_emission_intensity"), (float)m.emission.intensity);
+        ShaderNames.Set(sm, ShaderNames.Of("scn_multiply_intensity"), (float)m.multiply.intensity);
+        ShaderNames.Set(sm, ShaderNames.Of("scn_normal_intensity"), (float)m.normal.intensity);
+        ShaderNames.Set(sm, ShaderNames.Of("scn_ao_intensity"), (float)m.ambientOcclusion.intensity);
+        ShaderNames.Set(sm, ShaderNames.Of("scn_transparency"), (float)(ShaderComposer.IgnoresTransparency(m) ? 1.0 : m.transparency));
+        ShaderNames.Set(sm, ShaderNames.Of("scn_shininess"), (float)m.shininess);
         foreach (var name in plan.arguments)
         {
             object value = null;
@@ -732,8 +756,8 @@ internal sealed class MaterialGpu
         {
             var contents = property.ArgumentContents(scene, SceneKitRuntime.Flushing);
             if (SCNMaterialProperty.KindOf(contents) != SCNMaterialProperty.ContentKind.Texture)
-                sm.SetShaderParameter(name, V4(SCNMaterialProperty.LinearColorOf(contents, new Color(0, 0, 0, 0))));
-            else if (SCNMaterialProperty.TextureOf(contents) is { } texture) sm.SetShaderParameter(name, texture);
+                ShaderNames.Set(sm, ShaderNames.Of(name), V4(SCNMaterialProperty.LinearColorOf(contents, new Color(0, 0, 0, 0))));
+            else if (SCNMaterialProperty.TextureOf(contents) is { } texture) ShaderNames.Set(sm, ShaderNames.Of(name), texture);
             return;
         }
         Godot.Variant v = value switch
@@ -760,6 +784,6 @@ internal sealed class MaterialGpu
             NSImage img => img.GodotTexture,
             _ => default,
         };
-        if (v.VariantType != Godot.Variant.Type.Nil) sm.SetShaderParameter(name, v);
+        if (v.VariantType != Godot.Variant.Type.Nil) ShaderNames.Set(sm, ShaderNames.Of(name), v);
     }
 }

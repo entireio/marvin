@@ -344,11 +344,52 @@ public class SCNGeometry : IPropertyOwner
         {
             EnsureBuilt();
             var runs = MaterialRuns();
-            if (mesh != null && meshVersion == meshDataVersion && runs.SequenceEqual(meshRuns)) return mesh;
+            bool tangents = NeedsTangents;
+            if (mesh != null && meshVersion == meshDataVersion && runs.SequenceEqual(meshRuns) && (meshTangents || !tangents)) return mesh;
             meshRuns = runs;
-            mesh = BuildMesh();
+            var old = mesh;
+            mesh = BuildMesh(tangents);
             meshVersion = meshDataVersion;
+            // Release the replaced mesh's wrapper now instead of through the finalizer thread (per-frame batches replace
+            // theirs every frame; finalizing them contended with the main thread). Mesh instances that still show it keep
+            // the engine object alive until their nodes rebuild.
+            old?.Dispose();
             return mesh;
+        }
+    }
+    /// <summary>
+    /// Tangents feed only normal maps (the composer's TANGENT/BINORMAL), so they are generated only when a material of
+    /// the geometry, or its own shader modifiers, uses them; generating them for every textured mesh cost 1.3 s when the
+    /// race world was first shown and was repeated for every per-frame batch (dust, clods, trails). A geometry built
+    /// without them is rebuilt when a material later needs them (see RecheckTangents).
+    /// </summary>
+    internal bool NeedsTangents
+    {
+        get
+        {
+            if (_shaderModifiers != null && _shaderModifiers.Values.Any(s => s != null && (s.Contains("TANGENT") || s.Contains("BINORMAL")))) return true;
+            foreach (var m in _materials) if (m != null && m.NeedsTangents) return true;
+            return false;
+        }
+    }
+    private bool meshTangents;
+    private bool registeredWithoutTangents;
+    private static readonly List<WeakReference<SCNGeometry>> withoutTangents = new();
+    private static int checkedStructureVersion = -1;
+    /// <summary>Main thread, once per flush: after a structural material change, geometries whose mesh was built without
+    /// tangents and whose materials now need them are marked changed, so their nodes rebuild the mesh.</summary>
+    internal static void RecheckTangents()
+    {
+        int version = SCNMaterial.StructureVersion;
+        if (version == checkedStructureVersion) return;
+        checkedStructureVersion = version;
+        lock (withoutTangents)
+        {
+            for (int i = withoutTangents.Count - 1; i >= 0; i--)
+            {
+                if (!withoutTangents[i].TryGetTarget(out var g)) { withoutTangents.RemoveAt(i); continue; }
+                if (g.mesh != null && !g.meshTangents && g.NeedsTangents) g.Changed();
+            }
         }
     }
     internal bool HasNormals => sources.Any(s => s.semantic == SCNGeometrySourceSemantic.normal);
@@ -374,18 +415,46 @@ public class SCNGeometry : IPropertyOwner
 
     /// <summary>Godot meshes built so far (diagnostics).</summary>
     internal static int MeshesBuilt;
-    private ArrayMesh BuildMesh()
+
+    /// <summary>The CPU half of a mesh build: one entry per Godot surface (see BuildMesh).</summary>
+    private sealed class PreparedMesh
     {
-        MeshesBuilt++;
-        var result = new ArrayMesh();
-        surfaceElements.Clear();
-        var pos = sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.vertex);
+        internal int dataVersion; internal int[] runs; internal bool tangents;
+        internal readonly List<(Godot.Collections.Array arrays, Mesh.ArrayFormat flags, int element)> surfaces = new();
+        internal List<PreparedSurface> pending = new();
+    }
+    private sealed class PreparedSurface
+    {
+        internal Vector3[] vertices, normals; internal float[] tangents, colors; internal Vector2[] uv0, uv1;
+        internal float[][] custom; internal int[] indices; internal Mesh.ArrayFormat flags; internal int element;
+    }
+    private volatile PreparedMesh prepared;
+
+    /// <summary>The mesh still has to be (re)built for the current data, material runs and tangent needs.</summary>
+    internal bool NeedsMeshBuild => mesh == null || meshVersion != meshDataVersion || !MaterialRuns().SequenceEqual(meshRuns) || (!meshTangents && NeedsTangents);
+
+    /// <summary>
+    /// Any thread (the facade prepares many geometries in parallel when a large scene is flushed, see
+    /// SceneKitRuntime.PrepareMeshes): computes the vertex and index arrays of every surface, as BuildMesh would.
+    /// Call EnsureBuilt() on the main thread first. The main thread then only hands the arrays to Godot.
+    /// </summary>
+    internal void PrepareMesh()
+    {
+        var runs = MaterialRuns();
+        bool tangents = NeedsTangents;
+        prepared = Prepare(runs, tangents);
+    }
+
+    private PreparedMesh Prepare(int[] runStarts, bool needsTangents)
+    {
+        var result = new PreparedMesh { dataVersion = meshDataVersion, runs = runStarts, tangents = true };
+        var pos = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.vertex);
         if (pos == null || pos.vectorCount == 0) return result;
         int n = pos.vectorCount;
-        var nrm = sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.normal);
-        var tan = sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.tangent);
-        var col = sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.color);
-        var tcs = sources.Where(s => s.semantic == SCNGeometrySourceSemantic.texcoord).Take(8).ToArray();
+        var nrm = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.normal);
+        var tan = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.tangent);
+        var col = _sources.FirstOrDefault(s => s.semantic == SCNGeometrySourceSemantic.color);
+        var tcs = _sources.Where(s => s.semantic == SCNGeometrySourceSemantic.texcoord).Take(8).ToArray();
 
         var P = new Vector3[n];
         for (int i = 0; i < n; i++) P[i] = pos.V3(i);
@@ -404,16 +473,16 @@ public class SCNGeometry : IPropertyOwner
         for (int t = 0; t < tcs.Length; t++) { UV[t] = new Vector2[n]; for (int i = 0; i < Math.Min(n, tcs[t].vectorCount); i++) UV[t][i] = tcs[t].V2(i); }
 
         // All triangle lists (SceneKit CCW order) per element.
-        var elementLists = elements.Select(e => e.TriangleList()).ToArray();
+        var elementLists = _elements.Select(e => e.TriangleList()).ToArray();
         float[] T = null;
         if (tan != null)
         {
             T = new float[n * 4];
             for (int i = 0; i < n; i++) { var v = tan.V3(i); T[i * 4] = v.X; T[i * 4 + 1] = v.Y; T[i * 4 + 2] = v.Z; T[i * 4 + 3] = tan.componentsPerVector > 3 ? (float)tan.Component(i, 3) : 1; }
         }
-        else if (N != null && UV.Length > 0) T = GenerateTangents(P, N, UV[0], elementLists);
+        else if (UV.Length > 0 && needsTangents) T = GenerateTangents(P, N, UV[0], elementLists);
+        result.tangents = T != null || UV.Length == 0;
         // One surface per run of elements sharing a material (see MaterialRuns), triangles in element order.
-        var runStarts = meshRuns.Length > 0 ? meshRuns : MaterialRuns();
         var lists = new int[runStarts.Length][];
         for (int r = 0; r < runStarts.Length; r++)
         {
@@ -423,8 +492,6 @@ public class SCNGeometry : IPropertyOwner
             lists[r] = merged.ToArray();
         }
 
-        Aabb aabb = default;
-        bool first = true;
         for (int e = 0; e < lists.Length; e++)
         {
             var tri = lists[e];
@@ -443,25 +510,21 @@ public class SCNGeometry : IPropertyOwner
             // SceneKit front faces are counter-clockwise, Godot's clockwise: swap 2nd and 3rd index.
             for (int i = 0; i + 2 < idx.Length; i += 3) (idx[i + 1], idx[i + 2]) = (idx[i + 2], idx[i + 1]);
             int m = order.Count;
-            var arrays = new Godot.Collections.Array();
-            arrays.Resize((int)Mesh.ArrayType.Max);
-            var vp = new Vector3[m];
-            for (int i = 0; i < m; i++) vp[i] = P[order[i]];
-            arrays[(int)Mesh.ArrayType.Vertex] = vp;
-            foreach (var p in vp) { if (first) { aabb = new Aabb(p, Vector3.Zero); first = false; } else aabb = aabb.Expand(p); }
-            if (N != null) { var vn = new Vector3[m]; for (int i = 0; i < m; i++) vn[i] = N[order[i]]; arrays[(int)Mesh.ArrayType.Normal] = vn; }
-            if (T != null) { var vt = new float[m * 4]; for (int i = 0; i < m; i++) for (int k = 0; k < 4; k++) vt[i * 4 + k] = T[order[i] * 4 + k]; arrays[(int)Mesh.ArrayType.Tangent] = vt; }
+            var s = new PreparedSurface { indices = idx, element = runStarts[e], flags = Mesh.ArrayFormat.FormatVertex };
+            s.vertices = new Vector3[m];
+            for (int i = 0; i < m; i++) s.vertices[i] = P[order[i]];
+            s.normals = new Vector3[m]; for (int i = 0; i < m; i++) s.normals[i] = N[order[i]];
+            if (T != null) { s.tangents = new float[m * 4]; for (int i = 0; i < m; i++) for (int k = 0; k < 4; k++) s.tangents[i * 4 + k] = T[order[i] * 4 + k]; }
             // Vertex colours go to CUSTOM3 as RGBA floats: Godot's COLOR attribute is 8-bit unorm, and the
             // game stores data there (trail birth times > 1, signed slopes). The composer copies CUSTOM3 to COLOR.
             if (C != null)
             {
-                var vc = new float[m * 4];
-                for (int i = 0; i < m; i++) { var c = C[order[i]]; vc[i * 4] = c.R; vc[i * 4 + 1] = c.G; vc[i * 4 + 2] = c.B; vc[i * 4 + 3] = c.A; }
-                arrays[(int)Mesh.ArrayType.Custom3] = vc;
+                s.colors = new float[m * 4];
+                for (int i = 0; i < m; i++) { var c = C[order[i]]; s.colors[i * 4] = c.R; s.colors[i * 4 + 1] = c.G; s.colors[i * 4 + 2] = c.B; s.colors[i * 4 + 3] = c.A; }
             }
-            if (UV.Length > 0) { var u = new Vector2[m]; for (int i = 0; i < m; i++) u[i] = UV[0][order[i]]; arrays[(int)Mesh.ArrayType.TexUV] = u; }
-            if (UV.Length > 1) { var u = new Vector2[m]; for (int i = 0; i < m; i++) u[i] = UV[1][order[i]]; arrays[(int)Mesh.ArrayType.TexUV2] = u; }
-            var flags = Mesh.ArrayFormat.FormatVertex;
+            if (UV.Length > 0) { s.uv0 = new Vector2[m]; for (int i = 0; i < m; i++) s.uv0[i] = UV[0][order[i]]; }
+            if (UV.Length > 1) { s.uv1 = new Vector2[m]; for (int i = 0; i < m; i++) s.uv1[i] = UV[1][order[i]]; }
+            s.custom = new float[3][];
             for (int c = 0; c < 3; c++)
             {
                 int a = 2 + c * 2, b = a + 1;
@@ -472,14 +535,53 @@ public class SCNGeometry : IPropertyOwner
                     var ua = UV[a][order[i]]; var ub = UV.Length > b ? UV[b][order[i]] : Vector2.Zero;
                     custom[i * 4] = ua.X; custom[i * 4 + 1] = ua.Y; custom[i * 4 + 2] = ub.X; custom[i * 4 + 3] = ub.Y;
                 }
-                arrays[(int)Mesh.ArrayType.Custom0 + c] = custom;
-                flags |= (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << ((int)Mesh.ArrayFormat.FormatCustom0Shift + c * (int)Mesh.ArrayFormat.FormatCustomBits));
+                s.custom[c] = custom;
+                s.flags |= (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << ((int)Mesh.ArrayFormat.FormatCustom0Shift + c * (int)Mesh.ArrayFormat.FormatCustomBits));
             }
             if (C != null)
-                flags |= (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << ((int)Mesh.ArrayFormat.FormatCustom0Shift + 3 * (int)Mesh.ArrayFormat.FormatCustomBits));
-            arrays[(int)Mesh.ArrayType.Index] = idx;
-            result.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays, null, null, flags);
-            surfaceElements.Add(runStarts[e]);
+                s.flags |= (Mesh.ArrayFormat)((long)Mesh.ArrayCustomFormat.RgbaFloat << ((int)Mesh.ArrayFormat.FormatCustom0Shift + 3 * (int)Mesh.ArrayFormat.FormatCustomBits));
+            result.pending.Add(s);
+        }
+        return result;
+    }
+
+    /// <summary>Empty blend shapes and LODs for AddSurfaceFromArrays (main thread): passing null makes the binding create
+    /// a new Array and Dictionary per surface, which the finalizer thread then had to release.</summary>
+    private static readonly Godot.Collections.Array<Godot.Collections.Array> NoBlendShapes = new();
+    private static readonly Godot.Collections.Dictionary NoLods = new();
+    /// <summary>Stores a packed array in a mesh array slot and releases the temporary Variant at once (the array keeps
+    /// its own copy; undisposed Variants of packed arrays waited for the finalizer thread).</summary>
+    private static void Put(Godot.Collections.Array arrays, int slot, Variant value)
+    {
+        arrays[slot] = value;
+        value.Dispose();
+    }
+
+    /// <summary>Builds the Godot mesh: the prepared arrays when PrepareMesh ran for this state, else prepared now.</summary>
+    private ArrayMesh BuildMesh(bool needsTangents = true)
+    {
+        MeshesBuilt++;
+        var ready = prepared; prepared = null;
+        if (ready == null || ready.dataVersion != meshDataVersion || !ready.runs.SequenceEqual(meshRuns) || (needsTangents && !ready.tangents))
+            ready = Prepare(meshRuns.Length > 0 ? meshRuns : MaterialRuns(), needsTangents);
+        meshTangents = ready.tangents;
+        if (!meshTangents && !registeredWithoutTangents) { registeredWithoutTangents = true; lock (withoutTangents) withoutTangents.Add(new WeakReference<SCNGeometry>(this)); }
+        var result = new ArrayMesh();
+        surfaceElements.Clear();
+        foreach (var s in ready.pending)
+        {
+            using var arrays = new Godot.Collections.Array();
+            arrays.Resize((int)Mesh.ArrayType.Max);
+            Put(arrays, (int)Mesh.ArrayType.Vertex, s.vertices);
+            Put(arrays, (int)Mesh.ArrayType.Normal, s.normals);
+            if (s.tangents != null) Put(arrays, (int)Mesh.ArrayType.Tangent, s.tangents);
+            if (s.colors != null) Put(arrays, (int)Mesh.ArrayType.Custom3, s.colors);
+            if (s.uv0 != null) Put(arrays, (int)Mesh.ArrayType.TexUV, s.uv0);
+            if (s.uv1 != null) Put(arrays, (int)Mesh.ArrayType.TexUV2, s.uv1);
+            for (int c = 0; c < 3; c++) if (s.custom[c] != null) Put(arrays, (int)Mesh.ArrayType.Custom0 + c, s.custom[c]);
+            Put(arrays, (int)Mesh.ArrayType.Index, s.indices);
+            result.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, arrays, NoBlendShapes, NoLods, s.flags);
+            surfaceElements.Add(s.element);
         }
         if (_customBounds.HasValue)
         {
