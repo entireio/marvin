@@ -23,8 +23,13 @@ splits"), paid for by no longer casting the race world's flat base terrain.
   camera moves; the race world's flat base terrain no longer casts (it shadows nothing visible), which pays for the extra
   splits. At 1920 x 1080 the race runs at 52.1 instead of 51.1 FPS and the town roam at 46.2 instead of 45.0, 0.5 and
   0.7 ms less GPU walltime per frame (measured after the MarvinSimulator that shared the GPU in the earlier sections had
-  exited). Close views lose their texel blocks and stair-steps but keep hard edges, sharper now than SceneKit's soft
-  penumbrae, so the full-game comparison moves from 1.98 to 2.06/255 from macOS. `MARVIN_SCN_CAL=Exact` is unchanged.
+  exited), on one build with the earlier fit selected. Against 38818a3 itself (the commit before) the roam's gain
+  reproduces (45.1 -> 46.2 FPS) but the moving race's does not: 53.4 -> 52.5 FPS over four interleaved rounds, within
+  their spread (section below). Close views lose the earlier fit's blurred 2.9 cm blocks; the texels next to the camera
+  are 2.4-4.8 times smaller but hard-edged, so where a pixel is a millimetre or two (race-light and dune-contact close-ups,
+  a walker's feet, the base of a wall) they still show as small crisp stair-steps. Edges are sharper than SceneKit's
+  soft penumbrae, so the full-game comparison moves from 1.98 to 2.06/255 from macOS. `MARVIN_SCN_CAL=Exact` is
+  unchanged.
 - **Hard shadows and camera mesh LODs** (the default since ef7b4e6; section below, like for like against 3cb6567, the
   exact-SceneKit configuration): at 1920 x 1080 the town roam runs at 39.2 FPS instead of 29.7 and the race at 46.9
   instead of 34.0 (editor runtime; the export 40.3 / 46.8 against 30.2 / 35.4), with 5.3-5.8 ms less GPU work per frame
@@ -145,6 +150,24 @@ So the new default is 0.5 ms (race) and 0.7 ms (roam) of GPU walltime per frame 
 (labelled traces 20-24 s after the start, `gpu-passes.py`), the shadow maps cost 2.41 instead of 2.29 ms per frame in the
 race and 2.12 instead of 2.47 in the roam; the other passes are the same within the runs' spread.
 
+**Against the commit before** (a separate check: 38818a3 built from its own tree next to this one, the same runner,
+`--wait-idle`, no other game process alive in any run, editor runtime at 1920 x 1080, interleaved B A A B; GPU walltime
+from `metalperftrace`):
+
+| 1920 x 1080, editor runtime | 38818a3 | near splits (233da48) |
+|---|---|---|
+| city roam, 45 s (two rounds) | 45.00, 45.14 FPS; 22.69, 22.65 ms | 46.17, 46.20 FPS; 22.12, 22.06 ms |
+| race, 45 s (four rounds) | 53.13, 53.96, 54.08, 52.29 FPS; 18.98, 18.66, 18.73, 19.42 ms | 53.06, 51.76, 53.58, 51.77 FPS; 18.96, 19.49, 18.90, 19.57 ms |
+| race start frozen at 1 s (28 s runs) | 18.31, 18.45 ms | 18.02, 17.82 ms |
+| aerial view frozen at 20 s | 19.33, 19.30 ms | 19.19, 20.01 ms |
+| town view frozen at 16 s | 21.58, 21.50 ms | 21.08, 21.22 ms |
+
+The roam (-0.58 ms, +1.1 FPS) and the frozen race start and town view (-0.46 and -0.39 ms) reproduce the gain above. The
+moving race does not: 53.4 -> 52.5 FPS and 18.95 -> 19.23 ms on average (its chase phases 18.32 -> 18.67 ms), within
+the 1.8 FPS spread of each build's four rounds, so the race is about as fast as before rather than 1 FPS faster. The
+roam's trace puts the shadow maps at 2.08 instead of 2.51 ms per frame; in the frozen race start they are 0.17 ms
+cheaper while the opaque pass is 0.2-0.35 ms dearer.
+
 Where a split's cost goes: it is what the split fills. In the race-start view, sun A's first split took 0.69 ms of
 fragment and 0.60 ms of vertex time with the earlier fit and 1.26 / 0.61 ms when it ended 15 m from the camera instead
 of 58 m: a split next to the camera is covered by the ground from edge to edge (4096 x 4096 texels per split with two
@@ -187,17 +210,29 @@ higher moved 10 cm per frame, each frame also rendered without the suns' shadows
 alone) the temporal second difference of the shadow factor is the same for both fits, 0.001-0.008 per pixel near and up
 to 0.029 in the far view's lower rows, where shadow edges cross several pixels per frame.
 
+Driven race (a separate check: the race at a fixed 1/60 s step with the AI's input and the chase camera, grid and sun
+pinned as above, 30 s): the last split's end changed in 44 frames for sun A and 37 for sun B (five and six distinct
+ends), against every frame with the earlier fit. The steps have no hysteresis, so near a step the end can go back and
+forth (sun B 72.5 -> 58 -> 72.5 m within four frames, sun A 90.6 -> 72.5 -> 90.6 m within 43). At driving speed
+(7.5 cm per frame on average) a frame with a step changes no more shadow pixels than its neighbours do, and the temporal
+second difference of the shadow factor per image band is the same for both fits; the frames looked at showed no seam at
+the split ends.
+
 **Look against macOS.** The same 21 capture modes, pins and macOS sets as the hard-shadow comparison (PORTING.md,
 "Full-game comparison"), 467 captures compared like for like with that run of the earlier fit: the mean |sRGB
-difference| from macOS goes from 1.98 to 2.06/255, and 213 captures change by less than 0.05/255. The texel blocks and
-stair-steps next to the camera are gone (`reference/compare/11-near-splits-close-range.png`, macOS | earlier fit | near
-splits): Marvin's head shadow crosses its body as a clean line, the robots' shadows on the ground follow their outlines,
-and the dune contact and race-light close-ups show the shadows' shapes instead of 2-3 cm blocks. What the per-pixel
+difference| from macOS goes from 1.98 to 2.06/255, and 213 captures change by less than 0.05/255. The earlier fit's
+blurred 2.9 cm blocks next to the camera are gone (`reference/compare/11-near-splits-close-range.png`, macOS | earlier
+fit | near splits): Marvin's head shadow crosses its body as a clean line and the robots' shadows on the ground follow
+their outlines more closely. The texels still show where a pixel is a millimetre or two: in the race-light and dune
+contact close-ups the 1.2 x 0.6 cm texels are crisp stair-steps 4-12 pixels wide (before, blurred blocks 2.4-4.8
+times larger), and a walker's feet, the base of a wall next to the camera (entrance household-2) and the track
+close-ups' ground shadows keep 1-3 pixel steps. What the per-pixel
 difference counts against them is that the edges are now as sharp as the texels are fine. SceneKit's penumbrae are
 11.5-16 cm wide (its 2.83 cm texels under a 3-texel kernel), so a crisp edge differs from them over a wider band than the
 earlier fit's 2.9 cm bilinear ramp did, and the finer map resolves thin casters that SceneKit's filtered map blurs away:
 R2-D2's feet and WALL-E's tread plates are shaded more, and a robot dome right in front of the camera at a 15 degree sun
-shows its rim's shadow (visual regression's shadow-angle-15, +0.95). Per area: dirt track 2.25 -> 2.38 (the track
+shows blotchy dark self-shadowing below its rim, fainter with the earlier fit and absent on macOS (visual regression's
+shadow-angle-15, +0.95). Per area: dirt track 2.25 -> 2.38 (the track
 close-ups +0.1-0.5), dunes 1.82 -> 1.89 (WALL-E's contact views +0.4-0.6), town 2.22 -> 2.31 (the overviews, whose far
 split now has 14 cm texels across the light instead of 7, +0.2-0.4), post-race and city escape 2.08 -> 2.19, robots
 close up 1.64 -> 1.75 (race-light close-ups 2.01 -> 2.23), sky 1.10 -> 1.14, calibration scenes 1.01 -> 1.04; menu,
