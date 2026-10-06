@@ -334,6 +334,7 @@ public partial class AppController
 
     /// Godot-only render telemetry of the benchmark (godot-render.json).
     public GodotFrameTelemetry godotTelemetry;
+    private bool townBenchmarkCensusDone;
 
     public void tickTownBenchmark(double now, double dt)
     {
@@ -353,6 +354,13 @@ public partial class AppController
         if ((int)elapsed >= lastSecond + 1)
         {
             townBenchmarkResourceSamples.Add(new Dictionary<string, object> { ["second"] = (int)elapsed, ["uptime"] = now, ["thermalState"] = (int)ProcessInfo.processInfo.thermalState, ["trailsHidden"] = trailsHidden, ["shadowCasters"] = dirtWorld.town.shadowCasterCount, ["trails"] = dirtWorld.trailDiagnostics(), ["shadowBatch"] = dirtWorld.town.shadowBatchTelemetry });
+        }
+        // Godot-only diagnostic: MARVIN_BENCHMARK_CENSUS=SECONDS prints what the view's draw calls are made of (DrawCensus).
+        if (!townBenchmarkCensusDone && double.TryParse(environmentValue("MARVIN_BENCHMARK_CENSUS") ?? "", System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var censusAt) && elapsed >= censusAt)
+        {
+            townBenchmarkCensusDone = true;
+            int.TryParse(environmentValue("MARVIN_BENCHMARK_CENSUS_DEPTH") ?? "1", out var censusDepth);
+            print(DrawCensus.Report(dirtWorld.scene.rootNode, view.GodotViewport.GetCamera3D(), Math.Max(1, censusDepth)));
         }
         // Godot-only measurement hook: MARVIN_BENCHMARK_FREEZE=SECONDS stops the drive, the racers, the effects, the camera
         // and the town at that benchmark time and keeps drawing the same view until the benchmark ends, so a GPU trace
