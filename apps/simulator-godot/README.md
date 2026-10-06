@@ -40,9 +40,11 @@ arrows drive, Shift boosts, Space brakes, C changes the camera, P or Esc pauses,
 ⌘P / ⌘1 (Ctrl on Windows) are the Simulation menu's Main Menu, Reset, Pause and Camera.
 
 The port trades two small differences from the macOS game for frame rate at high resolutions: shadows have hard
-edges, and the robots are drawn from simplified meshes where that changes less than half a pixel. Set
-`MARVIN_SCN_CAL=Exact` (an environment variable, for the editor runtime and the release builds alike) for the exact
-macOS look at a higher GPU cost (PORTING.md, "Known deviations"; `docs/performance.md`).
+edges, and the robots are drawn from simplified meshes where that changes less than half a pixel. Choose
+Settings > Shadow quality: Exact in the game for the exact macOS look at a higher GPU cost (Fast is the default; the
+choice is stored with the other settings and applies immediately; the macOS game has no such setting). For tests and
+experiments the environment variable `MARVIN_SCN_CAL=Exact` selects it for any game mode, in the editor runtime and
+the release builds alike, and overrides the setting (PORTING.md, "Known deviations"; `docs/performance.md`).
 
 ## Release builds
 

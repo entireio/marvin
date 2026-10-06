@@ -55,7 +55,10 @@ public partial class MainMenuView : NSView
     private readonly List<MenuButton> buttons = new List<MenuButton>();
     public Action onSandbox;
     public Action onDirtTrack;
-    private int optionCount => settings ? 6 : 4;
+    /// PORT: Godot-only, called after the Shadow quality row changed the stored choice (ShadowQualitySetting).
+    public Action onShadowQuality;
+    // PORT: seven settings rows on Godot (the Shadow quality row before Back); macOS has six.
+    private int optionCount => settings ? 7 : 4;
     public bool settings = false;
     public int selection = 0;
     public bool idleAnimation
@@ -84,6 +87,13 @@ public partial class MainMenuView : NSView
         set => UserDefaults.standard.set(!value, "disableRaceBrakingAssist");
     }
     public DirtDrivingAssists raceAssists => new DirtDrivingAssists(steering: steeringAssist, braking: brakingAssist);
+    /// PORT: Godot-only setting, the macOS Settings screen has no such row: Exact (soft shadows as in SceneKit) or Fast
+    /// (hard shadows, the default), stored with the other settings (ShadowQualitySetting).
+    public bool exactShadows
+    {
+        get => ShadowQualitySetting.exact;
+        set => ShadowQualitySetting.exact = value;
+    }
     private double clock = 0.0, nextLook = 1.8, nextBlink = 2.7, blinkStart = -10.0;
     private double yaw = -0.30, pitch = 0.0, targetYaw = -0.30, targetPitch = 0.0;
     private CGFloat modelYaw = 0.35;
@@ -131,7 +141,7 @@ public partial class MainMenuView : NSView
         subtitle.font = NSFont.systemFont(18, NSFont.Weight.regular);
         hint.font = NSFont.systemFont(12);
         foreach (var label in new[] { title, subtitle, hint }) { label.textColor = color(0x304e44); addSubview(label); }
-        foreach (var index in Enumerable.Range(0, 6))
+        foreach (var index in Enumerable.Range(0, 7))
         {
             var button = new MenuButton("", this, activateButton);
             button.tag = index; button.isBordered = false; button.wantsLayer = true;
@@ -149,18 +159,32 @@ public partial class MainMenuView : NSView
         var top = bounds.height / 2 + (settings ? 240 : 205);
         title.frame = new NSRect(split, top - 72, width, 76);
         subtitle.frame = new NSRect(split + 3, top - 108, width, 30);
+        // PORT: the seventh settings row (Shadow quality) goes below the Mac's six at the same spacing, the hint below it.
+        // Where that would reach the bottom edge (the 900 x 550 QA frame, the 900 x 612 content of the smallest window),
+        // the gap under the subtitle first narrows to the main menu's, then the rows move closer together.
+        CGFloat first = 198, spacing = settings ? 54 : 72, height = settings ? 46 : 58;
+        if (settings)
+        {
+            var excess = 40 - (top - first - 6 * spacing);
+            if (excess > 0)
+            {
+                first -= min(12.0, excess);
+                spacing = min(spacing, max(30.0, Math.Floor((top - first - 40) / 6)));
+                height = spacing - 8;
+            }
+        }
         for (int i = 0; i < buttons.Count; i++)
         {
             var button = buttons[i];
-            button.frame = new NSRect(split, top - (198) - (CGFloat)i * (settings ? 54 : 72), width, settings ? 46 : 58);
+            button.frame = new NSRect(split, top - first - (CGFloat)i * spacing, width, height);
         }
-        hint.frame = new NSRect(split + 3, max(4, top - (settings ? 504 : 458)), width, 24);
+        hint.frame = new NSRect(split + 3, max(4, settings ? top - first - 6 * spacing - 36 : top - 458), width, 24);
     }
     public void refresh()
     {
         title.stringValue = settings ? "Settings" : "Marvin";
         subtitle.stringValue = settings ? "Race assists still need your input." : "Beep, boop... just some fun.";
-        var names = settings ? new[] { $"Idle animation: {(idleAnimation ? "On" : "Off")}", $"Keyboard guide: {(showGuide ? "On" : "Off")}", $"Robot collisions: {(raceRobotCollisions ? "On" : "Off")}", $"Steering assist: {(steeringAssist ? "On" : "Off")}", $"Braking assist: {(brakingAssist ? "On" : "Off")}", "Back" } : new[] { "Sandbox", "Dirt Track", "Settings", "Quit" };
+        var names = settings ? new[] { $"Idle animation: {(idleAnimation ? "On" : "Off")}", $"Keyboard guide: {(showGuide ? "On" : "Off")}", $"Robot collisions: {(raceRobotCollisions ? "On" : "Off")}", $"Steering assist: {(steeringAssist ? "On" : "Off")}", $"Braking assist: {(brakingAssist ? "On" : "Off")}", $"Shadow quality: {(exactShadows ? "Exact" : "Fast")}", "Back" } : new[] { "Sandbox", "Dirt Track", "Settings", "Quit" };
         for (int i = 0; i < buttons.Count; i++)
         {
             var button = buttons[i];
@@ -172,6 +196,7 @@ public partial class MainMenuView : NSView
                 [2] = "Dirt Track only. Turn off to let racers pass through one another.",
                 [3] = "Dirt Track only. Gently smooths steering corrections while preserving your chosen direction. You remain in control.",
                 [4] = "Dirt Track only. Slows before tight corners and preserves turning grip. Space always applies full braking.",
+                [5] = "Exact draws soft shadows, as the macOS game does. Fast draws hard shadows for a higher frame rate. Applies immediately.",
             };
             button.toolTip = settings ? tips.GetValueOrDefault(i) : null;
             button.setAccessibilityHelp(button.toolTip);
@@ -192,6 +217,7 @@ public partial class MainMenuView : NSView
                 case 2: raceRobotCollisions = !raceRobotCollisions; break;
                 case 3: steeringAssist = !steeringAssist; break;
                 case 4: brakingAssist = !brakingAssist; break;
+                case 5: exactShadows = !exactShadows; onShadowQuality?.Invoke(); break;
                 default: settings = false; selection = 2; break;
             }
         }

@@ -19,6 +19,9 @@ public partial class Main : Node
         await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
         if (await Marvin.GameModes.TryRun(Marvin.SceneKit.CommandLine.userArguments, GetTree())) return;
         GD.Print($"Marvin Godot: {Engine.GetVersionInfo()["string"]}, renderer {RenderingServer.GetCurrentRenderingDriverName()}");
+        // The game starts with the Settings screen's stored Shadow quality (game modes keep the default; MARVIN_SCN_CAL,
+        // when set, overrides both).
+        Marvin.ShadowQualitySetting.apply();
         Marvin.AppController.launch(GetTree());
     }
 }

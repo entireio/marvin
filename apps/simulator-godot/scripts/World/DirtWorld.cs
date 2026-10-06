@@ -28,6 +28,8 @@ public sealed partial class DirtWorld
     private readonly SCNNode dustBatch = new SCNNode(), clodBatch = new SCNNode();
     // PORT: Swift `weak var camera`; the camera node outlives the world in every caller.
     public SCNNode camera;
+    /// PORT: Godot-only, the flat base terrain whose shadow follows SceneKitCalibration.BaseTerrainCastsShadow.
+    public SCNNode baseTerrain { get; private set; }
     private struct Fleck
     {
         public readonly SCNNode node;
@@ -103,8 +105,10 @@ public sealed partial class DirtWorld
         ground.materials = new() { earth };
         var terrain = new SCNNode(CommandLine.arguments.Contains("--benchmark-transparent-ground") ? ground : TownGround.coveredTerrain(material: earth)); terrain.name = "Town base terrain"; terrain.eulerAngles.x = -Math.PI / 2; terrain.position.y = -0.025;
         // PORT: the flat base terrain lies under every other surface, so no visible receiver gets its shadow; Godot would
-        // fill every shadow split of both suns with it (SceneKitCalibration.BaseTerrainCastsShadow, on with MARVIN_SCN_CAL=Exact).
+        // fill every shadow split of both suns with it (SceneKitCalibration.BaseTerrainCastsShadow, on with MARVIN_SCN_CAL=Exact
+        // and Shadow quality "Exact", which ShadowQualitySetting.apply also applies to a world already built).
         terrain.castsShadow = SceneKitCalibration.BaseTerrainCastsShadow;
+        baseTerrain = terrain;
         scene.rootNode.addChildNode(terrain);
         addDesertTerrain(earth: earth, progress: fraction => progress?.Invoke(0.50 + fraction * 0.34, "Building the dunes"));
         var clay = material(0x986441, roughness: 0.94);

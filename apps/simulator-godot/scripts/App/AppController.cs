@@ -218,6 +218,8 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         view.@delegate = townMeter;
         mainMenu.onSandbox = () => startSandbox();
         mainMenu.onDirtTrack = () => loadDirtTrack();
+        // PORT: Godot-only Settings row (ShadowQualitySetting): the new choice applies at once, also to the race world built.
+        mainMenu.onShadowQuality = () => ShadowQualitySetting.apply(cachedDirtWorld);
         makeMenu();
         window.center(); window.makeKeyAndOrderFront(null);
         window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true);

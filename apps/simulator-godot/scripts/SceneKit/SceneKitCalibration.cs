@@ -14,7 +14,8 @@ namespace Marvin.SceneKit;
 ///   MARVIN_SCN_CAL="ShadowKernelScale=1;ShadowBlurPerRadius=0.4" tools/godot -- --calibration DIR
 /// (MARVIN_BLOOM="scale,hdrScale,levelOffset,levelWeight" is still honoured for the bloom fields.)
 /// The game trades two small look changes for GPU time (hard shadow filtering, mesh LODs for the robots' camera
-/// images); MARVIN_SCN_CAL=Exact restores the exact-SceneKit configuration (ApplyExact).
+/// images); MARVIN_SCN_CAL=Exact restores the exact-SceneKit configuration (ApplyExact), and so does the game's
+/// Settings screen (Shadow quality "Exact", ShadowQualitySetting) unless MARVIN_SCN_CAL is set.
 /// </summary>
 internal static class SceneKitCalibration
 {
@@ -143,6 +144,7 @@ internal static class SceneKitCalibration
     /// its split fit, the robots' full meshes for the camera and the base terrain's shadow, at the GPU cost measured in
     /// docs/performance.md ("Hard shadows").
     /// MARVIN_SCN_CAL=Exact applies it; settings after it in the list still override it ("Exact;ShadowNormalBias=3").
+    /// The game's Settings screen selects it as Shadow quality "Exact" (ShadowQualitySetting).
     /// </summary>
     public static void ApplyExact()
     {
@@ -150,6 +152,19 @@ internal static class SceneKitCalibration
         MeshLodForCamera = false;
         BaseTerrainCastsShadow = true;
     }
+    /// <summary>
+    /// The default configuration, the reverse of ApplyExact: the hard filter with its near splits, the robots' mesh LODs
+    /// for the camera, no base terrain shadow (Shadow quality "Fast" on the game's Settings screen).
+    /// </summary>
+    public static void ApplyFast()
+    {
+        ShadowFilterQuality = 0;
+        MeshLodForCamera = true;
+        BaseTerrainCastsShadow = false;
+    }
+    /// <summary>Whether MARVIN_SCN_CAL is set: tests and experiments choose the configuration, and the game's Shadow quality
+    /// setting leaves it alone (ShadowQualitySetting.apply).</summary>
+    internal static readonly bool Overridden = !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("MARVIN_SCN_CAL"));
 
     // ---- Direct specular (GGX in the composer's light()).
     // Measured (tools/scenekit-reference/robots/SpecularHighlight.swift: highlight profiles of roughness 0 .. 0.2 spheres

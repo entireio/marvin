@@ -1,8 +1,9 @@
 // The main-menu check of App.swift's tick (smoke branch, menu frame 20) and DrivingAssistSmoke.swift
 // (AppController extensions). `--menu-smoke-test DIR` runs it alone; `--smoke-test DIR` runs it before the sandbox.
 // Same captures as macOS (main-menu.png, menu-b/r/w/m.png, driving-assist-settings.png) plus Godot-only checks:
-// real Godot input through the GUI (hover, click, portrait drag, character keys), main-menu-window.png (the window
-// as drawn on screen), driving-assist-settings-900x550.png and menu-smoke.json.
+// real Godot input through the GUI (hover, click, portrait drag, character keys), the Shadow quality row (a Godot-only
+// setting), main-menu-window.png (the window as drawn on screen), driving-assist-settings-900x550.png and
+// menu-smoke.json. The settings screens show seven rows where macOS shows six (the Shadow quality row before Back).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,13 +29,13 @@ public partial class AppController
     /// App.swift tick at menu frame 20 (the menu part of the smoke branch): sets menuSmokePassed and ends in the
     /// sandbox (mainMenu.activate()). PORT: asynchronous, because the Godot-only GUI input checks need frames; the
     /// timer is stopped meanwhile (on macOS the whole block runs inside one tick). The menu settings are at their
-    /// defaults (all On, as in the Mac captures) during the check and restored afterwards.
+    /// defaults (all On and Shadow quality Fast, as in the Mac captures) during the check and restored afterwards.
     /// </summary>
     public async Task checkMainMenu(string at, SceneTree tree)
     {
         var directory = at;
         FileManager.@default.createDirectory(directory, withIntermediateDirectories: true);
-        var settingKeys = new[] { "reduceMenuMotion", "hideKeyboardGuide", "disableRaceRobotCollisions", "disableRaceSteeringAssist", "disableRaceBrakingAssist" };
+        var settingKeys = new[] { "reduceMenuMotion", "hideKeyboardGuide", "disableRaceRobotCollisions", "disableRaceSteeringAssist", "disableRaceBrakingAssist", ShadowQualitySetting.key };
         var savedSettings = settingKeys.Select(k => UserDefaults.standard.@object(k)).ToArray();
         foreach (var k in settingKeys) UserDefaults.standard.removeObject(k);
         try
@@ -126,7 +127,7 @@ public partial class AppController
                 await frame(tree);
                 godotInput["clickActivates"] = mainMenu.settings;
                 mainMenu.layoutSubtreeIfNeeded(); await frame(tree);
-                var backAt = menuButtons[5].GetGlobalRect().GetCenter();
+                var backAt = menuButtons[6].GetGlobalRect().GetCenter(); // Back: the seventh settings row on Godot
                 Move(backAt, Godot.Vector2.Zero, 0); Button(backAt, true); Button(backAt, false);
                 await frame(tree);
                 godotInput["clickBack"] = !mainMenu.settings && mainMenu.selection == 2;
@@ -167,11 +168,15 @@ public partial class AppController
             mainMenu.keyDown(down); mainMenu.keyDown(down); mainMenu.keyDown(enter);
             bool keyboardPassed = mainMenu.settings;
             menuSmokePassed = menuSmokePassed && keyboardPassed;
+            bool shadowQualityPassed;
+            try { shadowQualityPassed = checkShadowQualitySetting(); }
+            catch (Exception e) { GD.PushError(e.ToString()); shadowQualityPassed = false; }
+            menuSmokePassed = shadowQualityPassed && menuSmokePassed;
             bool assistPassed;
             try { assistPassed = checkDrivingAssistSettings(at: directory); }
             catch (Exception e) { GD.PushError(e.ToString()); assistPassed = false; }
             menuSmokePassed = assistPassed && menuSmokePassed;
-            mainMenu.selection = 5; mainMenu.activate();
+            mainMenu.selection = 6; mainMenu.activate(); // Back (PORT: the sixth row on macOS)
             menuSmokePassed = menuSmokePassed && !mainMenu.settings;
             mainMenu.selection = 0; mainMenu.activate();
             menuSmokePassed = menuSmokePassed && inSandbox && mainMenu.isHidden && !hud.isHidden;
@@ -179,7 +184,7 @@ public partial class AppController
             {
                 ["menuPassed"] = menuSmokePassed, ["dragPassed"] = dragPassed, ["firstResponderPassed"] = responderPassed,
                 ["keyboardPassed"] = keyboardPassed, ["drivingAssistPassed"] = assistPassed, ["shortcutsPassed"] = shortcutsPassed,
-                ["godotInput"] = godotInput,
+                ["godotInput"] = godotInput, ["shadowQualityPassed"] = shadowQualityPassed,
             };
             System.IO.File.WriteAllText(URL.fileURLWithPath(directory).appendingPathComponent("menu-smoke.json").path, JSONSerialization.prettyPrintedSortedKeys(report));
         }
@@ -198,7 +203,7 @@ public partial class AppController
     /// overlay's Auto Layout constraints (installContentOverlay), so the 900x550 frame reverts to the 1280x792 content
     /// size before the button check and driving-assist-settings.png. Godot-only: driving-assist-settings-900x550.png
     /// lays the settings out at the intended 900x550 frame (layout() without the constraint pass) and checks that all
-    /// six buttons fit there too.
+    /// buttons fit there too. PORT: seven buttons (the Shadow quality row), six on macOS.
     /// </summary>
     public bool checkDrivingAssistSettings(string at)
     {
@@ -224,7 +229,7 @@ public partial class AppController
             mainMenu.frame = new NSRect(0, 0, 900, 550);
             mainMenu.layoutSubtreeIfNeeded();
             var buttons = mainMenu.subviews.OfType<NSButton>().Where(b => !b.isHidden).ToList();
-            passed = passed && buttons.Count == 6 && buttons.All(b => mainMenu.bounds.contains(b.frame));
+            passed = passed && buttons.Count == 7 && buttons.All(b => mainMenu.bounds.contains(b.frame));
             if (mainMenu.bitmapImageRepForCachingDisplay(mainMenu.bounds) is NSBitmapImageRep bitmap)
             {
                 mainMenu.cacheDisplay(mainMenu.bounds, bitmap);
@@ -235,7 +240,7 @@ public partial class AppController
             mainMenu.frame = new NSRect(0, 0, 900, 550);
             mainMenu.layout();
             buttons = mainMenu.subviews.OfType<NSButton>().Where(b => !b.isHidden).ToList();
-            passed = passed && buttons.Count == 6 && buttons.All(b => mainMenu.bounds.contains(b.frame));
+            passed = passed && buttons.Count == 7 && buttons.All(b => mainMenu.bounds.contains(b.frame));
             if (mainMenu.bitmapImageRepForCachingDisplay(mainMenu.bounds) is NSBitmapImageRep small)
             {
                 mainMenu.cacheDisplay(mainMenu.bounds, small);
@@ -252,6 +257,41 @@ public partial class AppController
                 else UserDefaults.standard.removeObject(keys[i]);
             }
             mainMenu.frame = frame; mainMenu.refresh(); mainMenu.needsLayout = true;
+        }
+    }
+
+    /// <summary>
+    /// Godot-only (the macOS Settings screen has no such row): the Shadow quality row reads Fast by default, switches to
+    /// Exact and back, stores the choice where a fresh settings view reads it, and applies it at once (unless
+    /// MARVIN_SCN_CAL chooses the configuration). It ends at Fast, the configuration every game mode runs with; the
+    /// stored choice is restored afterwards without applying it.
+    /// </summary>
+    public bool checkShadowQualitySetting()
+    {
+        var saved = UserDefaults.standard.@object(ShadowQualitySetting.key);
+        var selection = mainMenu.selection;
+        try
+        {
+            UserDefaults.standard.removeObject(ShadowQualitySetting.key);
+            mainMenu.refresh();
+            var row = mainMenu.subviews.OfType<NSButton>().ToList()[5];
+            var passed = !mainMenu.exactShadows && row.title == "Shadow quality: Fast" && ShadowQualitySetting.applied(false);
+            mainMenu.selection = 5; mainMenu.activate();
+            passed = passed && mainMenu.exactShadows && UserDefaults.standard.@string(ShadowQualitySetting.key) == "Exact"
+                && row.title == "Shadow quality: Exact" && ShadowQualitySetting.applied(true);
+            var reopened = new MainMenuView(NSRect.zero);
+            passed = passed && reopened.exactShadows;
+            reopened.Free();
+            mainMenu.selection = 5; mainMenu.activate();
+            passed = passed && !mainMenu.exactShadows && UserDefaults.standard.@string(ShadowQualitySetting.key) == "Fast"
+                && row.title == "Shadow quality: Fast" && ShadowQualitySetting.applied(false);
+            return passed;
+        }
+        finally
+        {
+            if (saved != null) UserDefaults.standard.set(saved, ShadowQualitySetting.key);
+            else UserDefaults.standard.removeObject(ShadowQualitySetting.key);
+            mainMenu.selection = selection; mainMenu.refresh();
         }
     }
 }

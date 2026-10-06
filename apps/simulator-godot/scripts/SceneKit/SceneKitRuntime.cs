@@ -614,6 +614,23 @@ public partial class SceneKitRuntime : Node
     private static readonly HashSet<SCNNode> transparentNodes = new();
     internal static void RegisterTransparent(SCNNode node, bool on) { if (on) transparentNodes.Add(node); else transparentNodes.Remove(node); }
     private static readonly Predicate<SCNNode> Freed = node => !GodotObject.IsInstanceValid(node);
+    /// <summary>Nodes whose geometry has Godot mesh LODs (SCNGeometry.godotAutomaticLevelsOfDetail): whether they get a
+    /// shadow-only twin depends on SceneKitCalibration.MeshLodForCamera (SCNNode.RebuildMeshes).</summary>
+    private static readonly HashSet<SCNNode> meshLodNodes = new();
+    internal static void RegisterMeshLod(SCNNode node, bool on) { if (on) meshLodNodes.Add(node); else meshLodNodes.Remove(node); }
+    /// <summary>
+    /// Applies SceneKitCalibration's shadow configuration after it changed at run time (the game's Shadow quality setting,
+    /// ShadowQualitySetting.apply; main thread): Godot's shadow filter quality now, and the mesh-LOD nodes' shadow-only
+    /// twins (MeshLodForCamera) at the next flush. The splits and biases follow at every view's next camera sync
+    /// (FitShadows runs on each one), so the next frame renders as a launch with that configuration would.
+    /// </summary>
+    internal static void ShadowConfigurationChanged()
+    {
+        RenderingServer.DirectionalSoftShadowFilterSetQuality((RenderingServer.ShadowQuality)SceneKitCalibration.ShadowFilterQuality);
+        RenderingServer.PositionalSoftShadowFilterSetQuality((RenderingServer.ShadowQuality)SceneKitCalibration.ShadowFilterQuality);
+        meshLodNodes.RemoveWhere(Freed);
+        foreach (var node in meshLodNodes) node.MarkGeometryDirty();
+    }
     /// <summary>Set whenever a Godot transform, the node hierarchy, a node's visibility or the set of transparent instances
     /// changes: the offsets depend on nothing else but the camera, so a sort for the same camera with nothing changed since
     /// (the second flush of a frame) would set the same offsets and is skipped.</summary>

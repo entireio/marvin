@@ -13,7 +13,10 @@ branch with all three replayed onto it against c19fd6f, like for like. After tha
 mesh LODs for the robots' camera images, two small look changes accepted for frame rate at 1080p ("Hard shadows and
 camera mesh LODs"); every measurement before that section is of the exact-SceneKit configuration, which
 `MARVIN_SCN_CAL=Exact` still selects. On 2026-10-06 the hard filter got finer splits next to the camera ("Near shadow
-splits"), paid for by no longer casting the race world's flat base terrain.
+splits"), paid for by no longer casting the race world's flat base terrain. The two configurations are now a setting
+(Settings > Shadow quality: Fast, the default, or Exact; PORTING.md, "Known deviations"), which applies to the game
+launched normally; game modes, the benchmarks included, ignore the stored choice and measure Fast unless
+`MARVIN_SCN_CAL` says otherwise.
 
 ## Summary
 
@@ -928,7 +931,8 @@ tools/perf/run-benchmark.py OUT ... --env "MARVIN_SCN_CAL=HardShadowSplit1=0;Bas
 tools/godot -- --shadow-motion-probe OUT        # MARVIN_SHADOW_MOTION=exact|race|casters
 # diagnostics: --env MARVIN_BENCHMARK_HIDE="Marvin CAD assembly;R2-D2 · ;BB-8 · ;WALL-E · " (no robots),
 # --env MARVIN_SCN_CAL=Exact (the exact-SceneKit look: SoftHigh shadows, full robot meshes for the camera; the game's
-# default is hard shadows and camera mesh LODs), -- --benchmark-no-shadows, -- --benchmark-no-ssao
+# default is hard shadows and camera mesh LODs, and its Settings > Shadow quality does not reach game modes),
+# -- --benchmark-no-shadows, -- --benchmark-no-ssao
 # before/after of a look option on one build: the same runs with and without --env MARVIN_SCN_CAL=..., interleaved
 # CPU: managed stacks (dotnet-trace) and a native sample of all threads
 tools/perf/profile-cpu.sh OUT 25 15 --sample -- --app godot --size 960x540

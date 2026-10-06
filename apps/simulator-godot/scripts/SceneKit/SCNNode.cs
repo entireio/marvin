@@ -614,8 +614,11 @@ public partial class SCNNode : Node3D
         SceneKitRuntime.RegisterTransparent(this, transparent && meshes.Count > 0); SceneKitRuntime.TransformsChanged();
         SceneKitRuntime.RegisterSsaoSky(this, ssaoSky && meshes.Count > 0);
         // Godot-only (SCNGeometry.godotAutomaticLevelsOfDetail): the camera keeps the full mesh, a shadow-only twin with the
-        // same mesh and materials casts from the levels of detail.
-        bool twin = levels.Count == 1 && _geometry.godotAutomaticLevelsOfDetail && _geometry.MeshHasLods && !SceneKitCalibration.MeshLodForCamera;
+        // same mesh and materials casts from the levels of detail. Registered so a run-time change of MeshLodForCamera
+        // (SceneKitRuntime.ShadowConfigurationChanged) rebuilds the node.
+        bool meshLods = levels.Count == 1 && _geometry.godotAutomaticLevelsOfDetail && _geometry.MeshHasLods;
+        SceneKitRuntime.RegisterMeshLod(this, meshLods);
+        bool twin = meshLods && !SceneKitCalibration.MeshLodForCamera;
         if (twin)
         {
             if (shadowTwin == null) { shadowTwin = new MeshInstance3D(); AddChild(shadowTwin, false, InternalMode.Front); appliedVisuals = null; }
