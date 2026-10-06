@@ -6,6 +6,7 @@ compared with the macOS game) and the [simulator rules](../../docs/simulator-age
 A Godot 4.7 (.NET, C#) port of the macOS game in [`apps/simulator-macos`](../simulator-macos), so that it runs on
 Windows as well as macOS. The macOS game is the reference: the port mirrors its Swift code file by file over a
 SceneKit/AppKit facade and is calibrated against its captures (PORTING.md). It is never modified from here.
+Status and what is left: [docs/plan.md](docs/plan.md).
 
 ## Requirements
 
