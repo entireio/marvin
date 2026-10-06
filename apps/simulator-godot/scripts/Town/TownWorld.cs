@@ -429,24 +429,31 @@ vec4 streetTint;
 streetTint = vec4(pow(max(COLOR.rgb, vec3(0.0)), vec3(2.2)), COLOR.a);
 ",
             [SCNShaderModifierEntryPoint.surface] = "ALBEDO = streetTint.rgb;",
+            // PORT (Godot-only, performance): radius lies between 102 and 158 m, so within 83 m of the centre edge < -18:
+            // exposure and the outer fade are exactly 0, remaining is exactly 1 and the wind tongues are not needed (the same
+            // alpha); beyond it the Swift code runs unchanged.
             [SCNShaderModifierEntryPoint.fragment] = TownGround.pigmentFunctions + "\n" + @"
 #pragma transparent
 #pragma body
 vec2 p = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xz;
-float angle = atan(p.y, p.x);
-float radius = 130.0 + 13.0 * sin(3.0 * angle + 0.4) + 9.0 * cos(5.0 * angle - 0.7) + 6.0 * sin(2.0 * angle);
-float edge = length(p) - radius;
-float exposure = smoothstep(-18.0, 22.0, edge);
-// Oblique wind-driven tongues eat through the road at different widths;
-// exposed remnants become smaller until the underlying sand covers all.
-vec2 wind = vec2(p.x * 0.86 + p.y * 0.51, -p.x * 0.51 + p.y * 0.86);
-float tongues = townNoise(wind / vec2(2.8, 0.75));
-float broken = smoothstep(0.28, 0.72, tongues * 0.65 + exposure * 0.70);
-float remaining = (1.0 - smoothstep(-4.0, 22.0, edge)) * (1.0 - exposure * broken);
-float alpha = streetTint.a * remaining;
+float alpha = streetTint.a;
+if (length(p) > 83.0) {
+    float angle = atan(p.y, p.x);
+    float radius = 130.0 + 13.0 * sin(3.0 * angle + 0.4) + 9.0 * cos(5.0 * angle - 0.7) + 6.0 * sin(2.0 * angle);
+    float edge = length(p) - radius;
+    float exposure = smoothstep(-18.0, 22.0, edge);
+    // Oblique wind-driven tongues eat through the road at different widths;
+    // exposed remnants become smaller until the underlying sand covers all.
+    vec2 wind = vec2(p.x * 0.86 + p.y * 0.51, -p.x * 0.51 + p.y * 0.86);
+    float tongues = townNoise(wind / vec2(2.8, 0.75));
+    float broken = smoothstep(0.28, 0.72, tongues * 0.65 + exposure * 0.70);
+    float remaining = (1.0 - smoothstep(-4.0, 22.0, edge)) * (1.0 - exposure * broken);
+    alpha = streetTint.a * remaining;
+}
 ALPHA = alpha;
 ",
         };
+        TownGround.useNoiseTable(material);
         var road = new SCNNode(mesh.geometry(material));
         road.name = name; road.castsShadow = false; root.addChildNode(road);
     }

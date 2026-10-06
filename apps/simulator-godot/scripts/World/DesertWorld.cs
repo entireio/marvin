@@ -17,6 +17,7 @@ public sealed partial class DirtWorld
         // Sharing world coordinates removes the visible 256 m square where
         // the original ground plane meets the surrounding terrain tiles.
         earth.shaderModifiers = sand.shaderModifiers;
+        TownGround.useNoiseTable(sand); TownGround.useNoiseTable(earth);
         duneSand.configure(material: sand, root: scene.rootNode);
         double tile = 64.0;
         SCNGeometry geometry(double x, double z, int stride)

@@ -499,10 +499,14 @@ ALPHA = redSoil;
         // so level 0 is sampled; clamp_to_zero is the inside-[0,1] test. SceneKit samples the premultiplied
         // bitmap as premultiplied linear colour; the facade's texture holds straight alpha (PORTING.md), so
         // the sample is premultiplied here.
+        // PORT (Godot-only, performance): outside the 60 m square scn_inside is 0 and the deposit nothing, so the earth
+        // material (the town's base terrain and the 4 km horizon plane) samples it only inside (the same colour; the
+        // sampler has no mipmaps, so textureLod 0 is what texture() samples).
         modifiers[SCNShaderModifierEntryPoint.surface] = "#pragma arguments\nsampler2D infieldDeposit : source_color, filter_linear, repeat_disable;\n#pragma declaration\n" + @base + "\n" + @"
 vec2 depositWorld = (INV_VIEW_MATRIX * vec4(VERTEX, 1.0)).xz;
 vec2 depositUV = (depositWorld + 30.0) / 60.0;
-vec4 deposit = texture(infieldDeposit, depositUV) * scn_inside(depositUV);
+vec4 deposit = vec4(0.0);
+if (depositUV.x >= 0.0 && depositUV.y >= 0.0 && depositUV.x <= 1.0 && depositUV.y <= 1.0) { deposit = textureLod(infieldDeposit, depositUV, 0.0); }
 deposit.rgb *= deposit.a;
 ALBEDO = ALBEDO * (1.0 - deposit.a) + deposit.rgb;
 ";
