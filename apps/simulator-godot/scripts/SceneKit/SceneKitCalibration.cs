@@ -86,6 +86,32 @@ internal static class SceneKitCalibration
     /// of 2 (Godot's default) was closest to macOS of 1, 2, 4 and 6; depth biases of 0.5 to 2 texels gave identical probe values.
     /// </summary>
     public static double HardShadowBiasTexels = 1.0, HardShadowNormalBias = 2.0;
+    /// <summary>
+    /// Near splits of the fixed-box suns under the hard filter (SceneKitRuntime.FitShadows, NearSplitDistances). With
+    /// HardShadowSplits = 4 (the default), Godot's four splits end HardShadowSplit1 and HardShadowSplit2 metres from the
+    /// camera, at the calibrated fit (orthographicScale) and at the box's farthest view depth, rounded up in steps of
+    /// HardShadowFarStep so the last split's texels stay put between steps (the composer clips every split to the box).
+    /// With the race camera at 1080p the texels are 1.2 / 2.8 / 5.3 / 14 cm across and half that along the light's y axis
+    /// (Godot gives four splits a quarter of the light's 4096 x 8192 atlas region each); the soft filter's fit had 2.9 cm
+    /// up to 58 m and 7 cm beyond. A first split ending at 8 m (0.8 cm texels) let thin parts of the robots shade
+    /// their own feet and domes, which SceneKit's coarser, filtered map does not, and moved the close-ups further from macOS. Split distances are fixed in metres, so Godot's texel snapping keeps the first three
+    /// splits from crawling while the camera moves. With 2, one split ends HardShadowTwoSplit metres from the camera
+    /// (HardShadowSecondaryTwoSplit for the secondary light, when set). A secondary light (a smaller SceneKit map than the
+    /// scene's largest fixed box: the second sun) has HardShadowSecondarySplits. HardShadowSplit1 = 0 keeps the soft
+    /// filter's fit (one split up to orthographicScale, a second to the box's farthest view depth).
+    /// Measured in docs/performance.md ("Near shadow splits").
+    /// </summary>
+    public static double HardShadowSplit1 = 12, HardShadowSplit2 = 30, HardShadowTwoSplit = 15, HardShadowSecondaryTwoSplit = 0, HardShadowFarStep = 1.25;
+    public static int HardShadowSplits = 4, HardShadowSecondarySplits = 4;
+    internal static bool NearShadowSplits => HardShadows && HardShadowSplit1 > 0;
+    /// <summary>
+    /// The race world's flat base terrain (DirtWorld's "Town base terrain": 256 m square at y = -0.025, under every other
+    /// surface) casts SceneKit shadows that no visible surface receives: the race, town, sky, dune, entrance and
+    /// ground-performance captures are identical with and without its casting (apart from their random state). Godot fills
+    /// every split of both suns with it: 1.6 ms per 1080p frame at the race start, 1.4 ms in the town. It casts only in
+    /// the exact configuration (docs/performance.md, "Near shadow splits").
+    /// </summary>
+    public static bool BaseTerrainCastsShadow = false;
 
     /// <summary>
     /// SceneKit deferred shadows with a large shadowRadius darken lit curved and sloped surfaces through the kernel's
@@ -114,13 +140,15 @@ internal static class SceneKitCalibration
 
     /// <summary>
     /// The exact-SceneKit configuration: SoftHigh shadow filtering with the soft biases (penumbrae of SceneKit's width) and
-    /// the robots' full meshes for the camera, at the GPU cost measured in docs/performance.md ("Hard shadows").
+    /// its split fit, the robots' full meshes for the camera and the base terrain's shadow, at the GPU cost measured in
+    /// docs/performance.md ("Hard shadows").
     /// MARVIN_SCN_CAL=Exact applies it; settings after it in the list still override it ("Exact;ShadowNormalBias=3").
     /// </summary>
     public static void ApplyExact()
     {
         ShadowFilterQuality = 4;
         MeshLodForCamera = false;
+        BaseTerrainCastsShadow = true;
     }
 
     // ---- Direct specular (GGX in the composer's light()).

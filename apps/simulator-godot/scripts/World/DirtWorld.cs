@@ -102,6 +102,9 @@ public sealed partial class DirtWorld
         }
         ground.materials = new() { earth };
         var terrain = new SCNNode(CommandLine.arguments.Contains("--benchmark-transparent-ground") ? ground : TownGround.coveredTerrain(material: earth)); terrain.name = "Town base terrain"; terrain.eulerAngles.x = -Math.PI / 2; terrain.position.y = -0.025;
+        // PORT: the flat base terrain lies under every other surface, so no visible receiver gets its shadow; Godot would
+        // fill every shadow split of both suns with it (SceneKitCalibration.BaseTerrainCastsShadow, on with MARVIN_SCN_CAL=Exact).
+        terrain.castsShadow = SceneKitCalibration.BaseTerrainCastsShadow;
         scene.rootNode.addChildNode(terrain);
         addDesertTerrain(earth: earth, progress: fraction => progress?.Invoke(0.50 + fraction * 0.34, "Building the dunes"));
         var clay = material(0x986441, roughness: 0.94);

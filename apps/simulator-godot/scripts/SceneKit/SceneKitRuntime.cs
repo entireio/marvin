@@ -683,14 +683,54 @@ public partial class SceneKitRuntime : Node
         int atlas = SceneKitCalibration.DirectionalShadowAtlas;
         double regionW = atlas / splitH, regionH = atlas / splitV, textureSize = Math.Max(regionW, regionH);
         double aspect = viewportSize.Y > 0 ? (double)viewportSize.X / viewportSize.Y : 1;
+        double largestBoxMap = 0;
+        foreach (var n in lights)
+            if (!n.light.automaticallyAdjustsShadowProjection) largestBoxMap = Math.Max(largestBoxMap, n.light.shadowMapSize.width);
         foreach (var n in lights)
         {
             var light = n.GodotLight as DirectionalLight3D;
             double near = camera.Near, far = camera.Far;
             bool ortho = camera.Projection == Camera3D.ProjectionType.Orthogonal;
             bool keepWidth = camera.KeepAspect == Camera3D.KeepAspectEnum.Width;
-            double rW = regionW, rH = regionH, tSize = textureSize;
-            if (!n.light.automaticallyAdjustsShadowProjection && n.light.shadowCascadeCount <= 1)
+            double rW = regionW, rH = regionH, tSize = textureSize, normalBiasScale = double.NaN;
+            if (!n.light.automaticallyAdjustsShadowProjection && n.light.shadowCascadeCount <= 1 && !ortho && SceneKitCalibration.NearShadowSplits)
+            {
+                // The hard filter's near splits (SceneKitCalibration.HardShadowSplit1): fixed split distances so Godot's
+                // texel snapping keeps every split but the last stable while the camera moves, the last one out to the
+                // farthest point of the box in view, rounded up in steps (the composer clips every split to the box).
+                double first = n.light.FixedShadowDistance;
+                double tv = Math.Tan(camera.Fov * Math.PI / 360);
+                double tx = keepWidth ? tv : tv * aspect, ty = keepWidth ? tv / aspect : tv;
+                double cap = Math.Min(n.light.maximumShadowDistance, far);
+                double need = Math.Min(n.light.ShadowBoxFarDepth(n.RenderWorld(), camera.Transform, tx, ty, near, far), cap);
+                bool secondary = n.light.shadowMapSize.width < largestBoxMap;
+                var (splits, ends) = NearSplitDistances(near, first, need, cap, secondary);
+                double end = ends[^1];
+                var mode = splits == 4 ? DirectionalLight3D.ShadowMode.Parallel4Splits
+                    : splits == 2 ? DirectionalLight3D.ShadowMode.Parallel2Splits : DirectionalLight3D.ShadowMode.Orthogonal;
+                if (light.DirectionalShadowMode != mode) light.DirectionalShadowMode = mode;
+                if (light.DirectionalShadowMaxDistance != (float)end) light.DirectionalShadowMaxDistance = (float)end;
+                if (splits > 1)
+                {
+                    float Ratio(int i) => (float)Math.Clamp((ends[i] - near) / (end - near), 0.001, 0.999);
+                    if (light.DirectionalShadowSplit1 != Ratio(0)) light.DirectionalShadowSplit1 = Ratio(0);
+                    if (splits == 4)
+                    {
+                        if (light.DirectionalShadowSplit2 != Ratio(1)) light.DirectionalShadowSplit2 = Ratio(1);
+                        if (light.DirectionalShadowSplit3 != Ratio(2)) light.DirectionalShadowSplit3 = Ratio(2);
+                    }
+                    if (light.DirectionalShadowBlendSplits) light.DirectionalShadowBlendSplits = false;
+                }
+                // Godot halves the light's atlas region per axis for four splits, vertically for two.
+                if (splits == 4) { rW /= 2; rH /= 2; } else if (splits == 2) rH /= 2;
+                tSize = Math.Max(rW, rH);
+                // Godot's normal bias is in texels of the split's longer side (2 x radius / tSize); scale it so its world
+                // offset stays the calibrated number of the split's coarser texels (across the light), as with the
+                // orthogonal fit (whose coarser side is 4096 texels per sun).
+                normalBiasScale = (tSize / Math.Min(rW, rH)) / (textureSize / Math.Min(regionW, regionH));
+                far = ends[0];
+            }
+            else if (!n.light.automaticallyAdjustsShadowProjection && n.light.shadowCascadeCount <= 1)
             {
                 // SceneKit's fixed box shadows everything inside it, however far from the camera; Godot's map ends at
                 // DirectionalShadowMaxDistance. Keep the calibrated fit (orthographicScale) as the first split and add a
@@ -738,8 +778,37 @@ public partial class SceneKitRuntime : Node
             // (e.g. 4096 x 8192), so size the kernel from the coarser axis, which is horizontal in light space and thus
             // runs across the shadows of thin vertical casters (legs, posts, robot parts).
             double texel = 2 * radius / Math.Min(rW, rH);
-            n.light.FitShadow(light, texel, 2 * radius + light.DirectionalShadowPancakeSize, Math.Pow(tSize / textureSize, SceneKitCalibration.SplitNormalBiasExponent));
+            if (double.IsNaN(normalBiasScale)) normalBiasScale = Math.Pow(tSize / textureSize, SceneKitCalibration.SplitNormalBiasExponent);
+            n.light.FitShadow(light, texel, 2 * radius + light.DirectionalShadowPancakeSize, normalBiasScale);
         }
+    }
+
+    /// <summary>
+    /// Split ends (metres from the camera) of a fixed-box light under the hard filter's near splits: HardShadowSplit1,
+    /// HardShadowSplit2 and the calibrated fit (orthographicScale), then the farthest view depth of the box (need) rounded
+    /// up to first x HardShadowFarStep^k and capped at the camera's far plane or maximumShadowDistance. Godot has one, two
+    /// or four splits: three become four with a boundary halfway through the last one. A secondary light (a smaller
+    /// SceneKit map than the scene's largest fixed box) gets HardShadowSecondarySplits.
+    /// </summary>
+    internal static (int splits, double[] ends) NearSplitDistances(double near, double first, double need, double cap, bool secondary)
+    {
+        double end = first;
+        if (need > first * 1.05)
+        {
+            double step = Math.Max(1.01, SceneKitCalibration.HardShadowFarStep);
+            end = first * Math.Pow(step, Math.Ceiling(Math.Log(need / first) / Math.Log(step) - 1e-9));
+        }
+        end = Math.Max(Math.Min(end, cap), near + 0.01);
+        int count = secondary ? SceneKitCalibration.HardShadowSecondarySplits : SceneKitCalibration.HardShadowSplits;
+        var wanted = count >= 4 ? new[] { SceneKitCalibration.HardShadowSplit1, SceneKitCalibration.HardShadowSplit2, first }
+            : count >= 2 ? new[] { secondary && SceneKitCalibration.HardShadowSecondaryTwoSplit > 0 ? SceneKitCalibration.HardShadowSecondaryTwoSplit : SceneKitCalibration.HardShadowTwoSplit }
+            : Array.Empty<double>();
+        var ends = new List<double>();
+        foreach (var d in wanted)
+            if (d > near * 1.05 && d * 1.05 < end && (ends.Count == 0 || d > ends[^1] * 1.05)) ends.Add(d);
+        if (ends.Count == 2) ends.Add((ends[1] + end) / 2);
+        ends.Add(end);
+        return (ends.Count, ends.ToArray());
     }
 
     internal static Node Host => instance;

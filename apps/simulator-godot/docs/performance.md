@@ -12,10 +12,19 @@ Three passes followed on the same day, each on its own branch from c19fd6f: the 
 branch with all three replayed onto it against c19fd6f, like for like. After that, the game switched to hard shadows and
 mesh LODs for the robots' camera images, two small look changes accepted for frame rate at 1080p ("Hard shadows and
 camera mesh LODs"); every measurement before that section is of the exact-SceneKit configuration, which
-`MARVIN_SCN_CAL=Exact` still selects.
+`MARVIN_SCN_CAL=Exact` still selects. On 2026-10-06 the hard filter got finer splits next to the camera ("Near shadow
+splits"), paid for by no longer casting the race world's flat base terrain.
 
 ## Summary
 
+- **Near shadow splits** (2026-10-06; section below, like for like against the earlier hard-shadow fit on one build):
+  under the hard filter the suns' shadow maps have four splits ending 12, 30 and 58 m from the camera and at the far end
+  of the suns' box, so the texels next to the camera are 1.2 x 0.6 cm instead of 2.9 cm and do not crawl while the
+  camera moves; the race world's flat base terrain no longer casts (it shadows nothing visible), which pays for the extra
+  splits. At 1920 x 1080 the race runs at 52.1 instead of 51.1 FPS and the town roam at 46.2 instead of 45.0, 0.5 and
+  0.7 ms less GPU walltime per frame (measured after the MarvinSimulator that shared the GPU in the earlier sections had
+  exited). Close views lose their texel blocks and stair-steps but keep hard edges, sharper now than SceneKit's soft
+  penumbrae, so the full-game comparison moves from 1.98 to 2.06/255 from macOS. `MARVIN_SCN_CAL=Exact` is unchanged.
 - **Hard shadows and camera mesh LODs** (the default since ef7b4e6; section below, like for like against 3cb6567, the
   exact-SceneKit configuration): at 1920 x 1080 the town roam runs at 39.2 FPS instead of 29.7 and the race at 46.9
   instead of 34.0 (editor runtime; the export 40.3 / 46.8 against 30.2 / 35.4), with 5.3-5.8 ms less GPU work per frame
@@ -82,6 +91,132 @@ sampling cost in row 1 (about 4.5-5 ms at 1080p, "Hard shadows and camera mesh L
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## Near shadow splits: finer hard shadows next to the camera
+
+Measured on 2026-10-06 on the same Mac. The hard filter's shadow edges are one Godot texel wide. With the split fit made
+for the soft filter (one split from the camera out to `orthographicScale`, 58 m for the race suns, over a 4096-texel
+side, and a second one out to the farthest point of the sun's box in view), that texel was 2-2.9 cm next to the camera,
+and close views showed it: Marvin's head cast a stair-stepped band across its body in the race-grid close-ups, the
+robots' shadows on the ground were saw-toothed, the race-light robot close-ups and the dune contact views showed blocks
+tens of pixels wide, and where the two suns' shadows meet both edges were stair-stepped. Now the fixed-box suns get four
+splits under the hard filter (`SceneKitRuntime.NearSplitDistances`, `SceneKitCalibration.HardShadowSplit1` and
+`HardShadowSplit2`), and the flat base terrain under the race world no longer casts (it shadows nothing visible, see
+"Cost"), which pays for them. `MARVIN_SCN_CAL=Exact` keeps the earlier fit and the terrain's shadow; its captures are
+pixel for pixel those of the build before (calibration, menu, both close-up sets, visual regression and the deterministic
+smoke and town captures; the others differ only where two runs of one build do).
+
+| split | ends at | texel, race camera at 1080p (across / along the light's y axis) | soft filter's fit (before) |
+|---|---|---|---|
+| 1 | 12 m | 1.2 / 0.61 cm | 2.9 cm (one split to 58 m, 4096 x 4096 texels) |
+| 2 | 30 m | 2.8 / 1.4 cm | 2.9 cm |
+| 3 | 58 m (`orthographicScale`) | 5.3 / 2.7 cm | 2.9 cm |
+| 4 | the box's farthest view depth, rounded up to 58 m x 1.25^k | 14 / 7.0 cm at 150 m | 7.0 cm |
+
+Godot gives each of four splits a quarter of the light's 4096 x 8192 atlas region (2048 x 4096), so the texels are twice
+as long across the light as along its y axis; on the ground that axis is stretched by 1 / sin(elevation), which evens
+them out at a 30 degree sun. The split distances are fixed in metres, so Godot's own stabilisation (each split's square
+light-space extent comes from the bounding sphere of its slice of the view frustum, which only depends on the lens, and
+is snapped to whole texels) keeps the first three splits from crawling while the camera moves or turns. Only the last
+split follows the view; its end is rounded up in steps of 25 %, so its texels stay put between steps (before, the second
+split's end followed the box's farthest view depth every frame). A first split ending 8 m from the camera (0.8 cm texels,
+second split to 24 m) was tried first: it let thin parts of the robots shade their own feet and domes where SceneKit's
+coarser, filtered map does not (R2-D2's feet in the race light, a dome's rim at a 15 degree sun) and put the close-ups
+further from macOS than 12 m does (race-light close-ups 2.29 against 2.23/255, dune contact 3.08 against 3.00, visual
+regression 1.23 against 1.20, smoke 2.62 against 2.58). A larger normal bias (3 texels instead of 2) did not help near
+and moved the far shadows (binary sky 1.15 -> 1.21/255).
+
+**Cost.** Like for like on one build, the earlier fit selected with `MARVIN_SCN_CAL="HardShadowSplit1=0;
+BaseTerrainCastsShadow=1"` (the same code path as before), editor runtime at 1920 x 1080, GPU walltime per frame from
+`metalperftrace` (the number that sets the frame rate while the GPU is the limit; trace busy times overlap passes and
+moved by up to ±0.7 ms between runs). The user's MarvinSimulator (PID 68407), which shared the GPU in every earlier
+measurement, exited on its own at 00:29; the rows below ran without it unless they say otherwise, so their absolute
+frame rates are higher than in the sections below.
+
+| 1920 x 1080, editor runtime | earlier fit | near splits, base terrain not casting (the default) |
+|---|---|---|
+| race, 45 s (two interleaved rounds) | 51.92, 50.32 FPS; 19.45, 20.13 ms | 52.99, 51.26 FPS; 18.97, 19.60 ms |
+| city roam, 45 s (two interleaved rounds) | 45.05, 44.97 FPS; 22.86, 22.83 ms | 46.23, 46.24 FPS; 22.11, 22.11 ms |
+| race start, frozen 1 s after the start (`MARVIN_BENCHMARK_FREEZE=1`) | 18.48 ms | 18.01 ms |
+| town view, frozen at 16 s | 21.54 ms | 21.25 ms |
+
+So the new default is 0.5 ms (race) and 0.7 ms (roam) of GPU walltime per frame faster than the earlier fit: +1.0 and
++1.2 FPS. `MARVIN_SCN_CAL=Exact` on the same build: race 40.5 FPS (25.39 ms), city roam 34.4 FPS (29.71 ms). By pass
+(labelled traces 20-24 s after the start, `gpu-passes.py`), the shadow maps cost 2.41 instead of 2.29 ms per frame in the
+race and 2.12 instead of 2.47 in the roam; the other passes are the same within the runs' spread.
+
+Where a split's cost goes: it is what the split fills. In the race-start view, sun A's first split took 0.69 ms of
+fragment and 0.60 ms of vertex time with the earlier fit and 1.26 / 0.61 ms when it ended 15 m from the camera instead
+of 58 m: a split next to the camera is covered by the ground from edge to edge (4096 x 4096 texels per split with two
+splits, 2048 x 4096 with four), while the earlier fit's splits were partly empty. The flat base terrain (`Town base
+terrain`, 256 m square at y = -0.025, under every other surface) filled every split of both suns; without it casting, the
+race start took 16.81 instead of 18.42 ms and the town view 20.39 instead of 21.80 ms with the earlier fit. It shadows
+nothing visible (it can only shade what lies below it, and nothing below it is seen): the visual regression, town,
+binary sky, dune contact, ground performance and entrance captures are identical with and without its casting, apart
+from the modes' random state. It casts only in the exact configuration (`BaseTerrainCastsShadow`).
+
+Configurations measured on the way (frozen views; differences against the earlier fit in interleaved runs, the
+first column while the MarvinSimulator still ran):
+
+| configuration, base terrain casting | town view | race start | near texel | why not |
+|---|---|---|---|---|
+| four splits per sun (8 / 24 / 58 m / box) | +1.12 ms; without the MarvinSimulator +0.94 | +1.41 ms | 0.81 / 0.41 cm | over the budget of +0.5 ms; with the terrain not casting -0.70 / -0.31 ms |
+| sun A four splits, sun B the earlier fit | +0.44 ms | | 0.81 cm (sun A), 2.9 cm (sun B) | sun B's lighter band stays blocky; the moving race +1.2 ms (sun B split at 24 m) |
+| two splits per sun, the first ending 15 / 24 / 32 m | +0.09 ms (15 m) | +1.07 / +0.87 / +0.50 ms | 0.76 / 1.2 / 1.6 cm | 15-58 m coarser than before (7.3 cm instead of 2.9) and over the budget in the race; at 32 m only 1.8 times finer near |
+| sun A two splits at 15 m, sun B the earlier fit | +0.24 ms | | 0.76 cm (sun A) | as above, and sun B blocky |
+| coarser robot shadow LODs (LOD bias 0.5 / 0.25), earlier fit | | -0.30 / -0.18 ms | | triangles are not what a split costs |
+| four splits with the robots hidden (`MARVIN_BENCHMARK_HIDE`) | | 16.60 -> 18.07 ms | | the robots are not what the extra splits cost either |
+
+**Stability.** `tools/godot -- --shadow-motion-probe DIR` (scripts/World/ShadowMotionProbe.cs) renders the race suns over a
+flat ground with shadow-only casters, seen straight down through the race camera's lens from 3, 14, 40 and 85 m (the
+first to the fourth split), and moves the camera by exactly 5 pixel footprints per frame along x or z for 16 frames, so
+each frame equals the previous one shifted by 5 pixels wherever the texels stayed put. Share of shadow-edge pixels that
+changed by more than 3/255 between consecutive frames, mean of 15 frame pairs (what remains is mostly short lines where
+the boxes touch the ground, with both fits):
+
+| height (split) | earlier fit | near splits |
+|---|---|---|
+| 3 m (1), along x / z | 8.6 % / 12.0 % (of fewer edge pixels: the 2.9 cm ramps are wide) | 1.1 % / 0.8 % |
+| 14 m (2) | 0.4 % / 0.8 % | 0.4 % / 0.2 % |
+| 40 m (3) | 0.3 % / 0.3 % | 0.0 % / 0.3 % |
+| 85 m (4) | 0.1 % / 0.3 % | 0.5 % / 0.4 % |
+| 85 m, the suns' boxes moved 2 m per frame along the light (the box's farthest view depth changes, as for a chase camera) | 61 % in every frame (16 shadow distances in 16 frames: the last split crawls) | 6.8 % (one step: 97 % in that frame, 0.4 % in the others) |
+
+In the race world (the same probe with a pinned grid at a low sun: the chase camera moved 2 cm per frame and a view 6 m
+higher moved 10 cm per frame, each frame also rendered without the suns' shadows so their ratio is the shadow factor
+alone) the temporal second difference of the shadow factor is the same for both fits, 0.001-0.008 per pixel near and up
+to 0.029 in the far view's lower rows, where shadow edges cross several pixels per frame.
+
+**Look against macOS.** The same 21 capture modes, pins and macOS sets as the hard-shadow comparison (PORTING.md,
+"Full-game comparison"), 467 captures compared like for like with that run of the earlier fit: the mean |sRGB
+difference| from macOS goes from 1.98 to 2.06/255, and 213 captures change by less than 0.05/255. The texel blocks and
+stair-steps next to the camera are gone (`reference/compare/11-near-splits-close-range.png`, macOS | earlier fit | near
+splits): Marvin's head shadow crosses its body as a clean line, the robots' shadows on the ground follow their outlines,
+and the dune contact and race-light close-ups show the shadows' shapes instead of 2-3 cm blocks. What the per-pixel
+difference counts against them is that the edges are now as sharp as the texels are fine. SceneKit's penumbrae are
+11.5-16 cm wide (its 2.83 cm texels under a 3-texel kernel), so a crisp edge differs from them over a wider band than the
+earlier fit's 2.9 cm bilinear ramp did, and the finer map resolves thin casters that SceneKit's filtered map blurs away:
+R2-D2's feet and WALL-E's tread plates are shaded more, and a robot dome right in front of the camera at a 15 degree sun
+shows its rim's shadow (visual regression's shadow-angle-15, +0.95). Per area: dirt track 2.25 -> 2.38 (the track
+close-ups +0.1-0.5), dunes 1.82 -> 1.89 (WALL-E's contact views +0.4-0.6), town 2.22 -> 2.31 (the overviews, whose far
+split now has 14 cm texels across the light instead of 7, +0.2-0.4), post-race and city escape 2.08 -> 2.19, robots
+close up 1.64 -> 1.75 (race-light close-ups 2.01 -> 2.23), sky 1.10 -> 1.14, calibration scenes 1.01 -> 1.04; menu,
+sandbox and sandstorm only within their runs' own spread (their lights have no fixed box). Of the reports that count
+shadow pixels, `visual-regression.json` counts 732 robot shadow samples (earlier fit 569, macOS 598; per robot
+502 / 582 / 140 / 467, macOS 515 / 552 / 147 / 450) and `dune-contact.json` 1,054 changed coating samples (earlier 1,094,
+macOS 1,448) and 4,455 opaque Marvin body samples (4,431; macOS 4,282); both checks pass.
+
+**Bias.** The hard filter's biases are unchanged in Godot texels (`HardShadowBiasTexels` 1, `HardShadowNormalBias` 2;
+with four splits the normal bias stays one of the split's coarser texels, as before), so in world units they shrink with
+the near texels. `--ground-bias-probe` gives the same values for its sunlit walls standing on a casting ground (A) and
+its walls at 0-85 degrees to the light (D): no acne. Its orthographic plate tests (B, C) keep the earlier fit; a new test
+E puts the plate under the game's 4096 sun at 20 degrees through the race camera's lens 3, 14 and 40 m away (the first,
+second and third split): its shadow is half there at a gap of about 7, 9 and 13.5 cm (the earlier fit 8.5, 9.7 and
+10.7 cm; SceneKit 7.5 cm; the exact configuration 14-15 cm), so thin casters next to the camera detach from their shadows
+about as in SceneKit. The penumbra probe (`CAL_EXP=penumbra CAL_PENUMBRA_ELEV=1`, a box edge seen close up) gives edges
+0.29 / 0.54 / 0.72 / 1.31 cm wide, 0.5 / 1.0 / 1.65 / 2.65 cm towards the caster at 60 / 35 / 20 / 10 degrees (earlier
+fit: 1.35 / 1.98 / 3.32 / 6.64 cm wide, 1.8 / 2.7 / 5.8 / 6.8 cm towards the caster; SceneKit sun A: penumbrae 11.5-58 cm
+wide, 0.7 / -0.1 / 6.1 / 7.8 cm towards the caster).
 
 ## Hard shadows and camera mesh LODs: before and after
 
@@ -750,6 +885,12 @@ tools/perf/mst-gpu.py OUT/metal-system.trace --process Godot
 MARVIN_PERF_IGNORE_PIDS=<pid of a game left running> tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 \
     --mode city-roam --seconds 28 --labels --trace 21:4 --trace-from-start --wait-idle --env MARVIN_BENCHMARK_FREEZE=16
 tools/perf/gpu-passes.py OUT_A OUT_B ...
+# one fixed race frame (the start, the robots next to the chase camera) for A/B: freeze 1 s after the start
+tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --mode race --seconds 28 --labels --trace 21:4 \
+    --trace-from-start --wait-idle --env MARVIN_BENCHMARK_FREEZE=1
+# the earlier hard-shadow fit for A/B on one build (and the near splits' stability probe)
+tools/perf/run-benchmark.py OUT ... --env "MARVIN_SCN_CAL=HardShadowSplit1=0;BaseTerrainCastsShadow=1"
+tools/godot -- --shadow-motion-probe OUT        # MARVIN_SHADOW_MOTION=exact|race|casters
 # diagnostics: --env MARVIN_BENCHMARK_HIDE="Marvin CAD assembly;R2-D2 · ;BB-8 · ;WALL-E · " (no robots),
 # --env MARVIN_SCN_CAL=Exact (the exact-SceneKit look: SoftHigh shadows, full robot meshes for the camera; the game's
 # default is hard shadows and camera mesh LODs), -- --benchmark-no-shadows, -- --benchmark-no-ssao

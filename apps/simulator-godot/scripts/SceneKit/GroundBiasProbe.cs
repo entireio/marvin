@@ -17,6 +17,9 @@ namespace Marvin.SceneKit;
 /// C: B at 20 degrees for several maps, radii and box sizes, normalised (0 lit, 1 shadowed). SceneKit's half-shadow gap
 ///    is about 1.3 cm + 2.2 of its texels (texel 0.49 / 1.42 / 2.83 / 5.66 cm: 2.4 / 4.8 / 7.5 / 15 cm).
 /// D: a lit wall at 0-85 degrees to the light and the ground: self-shadowing (SceneKit at most 0.007 at 75-85 degrees).
+/// E: C for the game's 4096 sun seen through the race camera's lens (fov 48, 960 x 540) from 3, 14 and 40 m, so the
+///    plate falls in the first, second and third split of the hard filter's near splits (B and C use orthographic
+///    cameras, which keep one split up to orthographicScale).
 ///   tools/godot -- --ground-bias-probe DIR      prints the tables and writes DIR/wall-eN.png, DIR/plate-e8-gG.png
 /// </summary>
 public static class GroundBiasProbe
@@ -77,6 +80,15 @@ public static class GroundBiasProbe
                 $"{g:F2}:{(lit - PlateValue(e, g, map, radius, scale)) / Math.Max(1e-6, lit - dark):F2}".Replace(',', '.'));
             GD.Print($"C map {map} radius {radius} scale {scale} lit {lit:F3} dark {dark:F3}: " + string.Join(" ", line));
         }
+        // E: the plate at 20 degrees through the race camera's lens, in the near splits.
+        foreach (var height in new[] { 3.0, 14.0, 40.0 })
+        {
+            double e = 20 * Math.PI / 180;
+            double lit = PlateValue(e, -1, 4096, 3, 58, height), dark = PlateValue(e, 0.34, 4096, 3, 58, height);
+            var line = new[] { 0.0, 0.01, 0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.16, 0.20, 0.26 }.Select(g =>
+                $"{g:F2}:{(lit - PlateValue(e, g, 4096, 3, 58, height)) / Math.Max(1e-6, lit - dark):F2}".Replace(',', '.'));
+            GD.Print($"E race lens from {height:F0} m lit {lit:F3} dark {dark:F3}: ".Replace(',', '.') + string.Join(" ", line));
+        }
         // D: self-shadowing of lit surfaces: a 2 x 2 m wall floating 1 m above the ground, turned by phi; the wall face with
         // the wall casting / not casting, and the ground in front of it with the ground casting / not casting.
         // SceneKit: at most 0.007 darker at phi 75-85, the ground 0.001 at 8 degrees.
@@ -107,7 +119,7 @@ public static class GroundBiasProbe
         return sum / 1600;
     }
 
-    private static double PlateValue(double e, double g, double map, double radius, double scale)
+    private static double PlateValue(double e, double g, double map, double radius, double scale, double lensHeight = 0)
     {
         var scene = new SCNScene();
         Ground(scene, true);
@@ -118,6 +130,15 @@ public static class GroundBiasProbe
         }
         Sun(scene, e, map, radius, scale);
         double shift = Math.Max(0, g) / Math.Tan(e), z = 0.5 + Math.Min(shift, 1.0) * 0.5;
+        if (lensHeight > 0)
+        {
+            // The race camera's lens straight down from lensHeight: the sample is the image centre (3 x 3 pixels).
+            var lens = new SCNNode { camera = new SCNCamera { fieldOfView = 48, zNear = 0.02, zFar = 250 } };
+            lens.position = new SCNVector3(0, lensHeight, z); lens.eulerAngles.x = -Math.PI / 2;
+            var view = Snapshot(scene, lens, 960, 540);
+            double total = 0; for (int y = 269; y <= 271; y++) for (int x = 479; x <= 481; x++) total += view.GetPixel(x, y).R;
+            return total / 9;
+        }
         var camera = new SCNNode { camera = new SCNCamera { usesOrthographicProjection = true, orthographicScale = 1.5, zNear = 0.1, zFar = 50 } };
         camera.position = new SCNVector3(0, 10, z); camera.eulerAngles.x = -Math.PI / 2;
         var image = Snapshot(scene, camera, 300);
@@ -146,12 +167,13 @@ public static class GroundBiasProbe
         scene.rootNode.addChildNode(node);
         scene.rootNode.addChildNode(new SCNNode { light = new SCNLight { type = SCNLight.LightType.ambient, intensity = 150 } });
     }
-    private static Image Snapshot(SCNScene scene, SCNNode camera, int size)
+    private static Image Snapshot(SCNScene scene, SCNNode camera, int size, int height = 0)
     {
         scene.rootNode.addChildNode(camera);
         var renderer = new SCNRenderer(null, null) { scene = scene, pointOfView = camera };
-        renderer.SnapshotImage(new Vector2I(size, size), SCNAntialiasingMode.none);
-        var image = renderer.SnapshotImage(new Vector2I(size, size), SCNAntialiasingMode.none);
+        var dims = new Vector2I(size, height > 0 ? height : size);
+        renderer.SnapshotImage(dims, SCNAntialiasingMode.none);
+        var image = renderer.SnapshotImage(dims, SCNAntialiasingMode.none);
         image.Convert(Image.Format.Rgba8);
         return image;
     }
