@@ -19,10 +19,24 @@ launched normally; game modes, the benchmarks included, ignore the stored choice
 `MARVIN_SCN_CAL` says otherwise. Later that day three passes, each on its own branch from eb73a04 and measured
 like for like against it, made frames cheaper without changing the look: the procedural ground and its overlays
 ("Ground and overlays"), the composer's shading ("Shading and post") and the robots' draw calls, now drawn as
-instances ("Draw calls"; half the draw calls, the GPU time measurably unchanged).
+instances ("Draw calls"; half the draw calls, the GPU time measurably unchanged). The three were then replayed onto this
+branch and measured together against eb73a04 ("The three passes merged"), with what still separates the default
+configuration from 60 FPS at 1080p, ranked.
 
 ## Summary
 
+- **The three passes merged** (2026-10-06; section below, like for like against eb73a04, editor runtime and export,
+  two interleaved rounds): at 1920 x 1080 in the default Fast configuration the town roam runs at 54.9 instead of 46.4
+  FPS (export 54.5 / 46.5) and the race at 58.1 instead of 52.3 (58.0 / 53.0), with 3.6 and 2.2-2.6 ms less GPU
+  walltime per frame and 1-2 instead of 46-61 frames over 25 ms per 45 s in the roam; in Exact the roam at 39.8
+  instead of 34.7 and the race at 48.4 instead of 41.8 FPS. The look is unchanged: deterministic captures identical or
+  a few pixels one 8-bit level off, every deterministic report byte-identical, every area of the full-game comparison
+  the same apart from random state, `tools/checks` byte-identical. **Fast is still short of 60 FPS**: the town roam by
+  about 3 ms of GPU time per frame (16.9 ms busy; frames hold 60 FPS at about 14 ms), the race by about 1 ms. Nothing
+  exact is left that the game can do on its own; ranked by what it would buy in a town view: the suns' shadows (3.4
+  ms), the trampled-sand overlay lit layer by layer (2.8 ms), the SSAO port (1.5 ms), the image-based specular (about
+  1.2 ms before the merge), Godot passes this game does not need (about 1.1 ms, an engine change), the robots'
+  small-part LODs (0.65 ms, a half-pixel option) and bilinear glow (0.1 ms).
 - **Ground and overlays** (2026-10-06; section below, like for like against eb73a04 built from its own tree): the
   town's world-space value noise reads its lattice hashes from a table the GPU fills once with the same expression
   instead of evaluating four sines per call, and the ground's shader modifiers skip work whose result is exactly known
@@ -134,6 +148,176 @@ sampling cost in row 1 (about 4.5-5 ms at 1080p, "Hard shadows and camera mesh L
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## The three passes merged: before and after
+
+The ground and overlays, shading and post, and draw-call passes (the three sections below) were developed on separate
+branches from eb73a04 and replayed onto this branch one commit at a time (nine commits, c58dbab to 64371ff). The code
+merged without conflicts; the shading and draw-call passes both change `ShaderComposer`, and a material variant is now
+keyed by the geometry's shading key (draw calls), the render priority and the variant flags, which include the scene's
+lighting features (shading). Only the documents were merged by hand.
+
+**Method.** As in "Hard shadows and camera mesh LODs": `tools/perf/run-benchmark.py --wait-idle`, 45 s per run, daylight
+0.5, a drawable of exactly 1920 x 1080 over the black backdrop, the editor runtime and an exported release build
+(`tools/export macos`) of each build. "eb73a04" is that commit (`git archive`) in a scratch tree with this tree's
+assets, import cache and `tools/perf`, built and exported there. Per scene and configuration the runs were interleaved
+(eb73a04 editor, merged editor, eb73a04 export, merged export; the second round merged first), two rounds. The editor
+runs recorded a labelled Metal System Trace 20-24 s after the benchmark start (GPU busy and passes). The export runs'
+traces, taken 31 s after launch, are not used: in round 1 the first launch of each freshly exported app took 52 s
+instead of 14 s to reach the benchmark, so they caught the loading screen; the exports' GPU time is `metalperftrace`'s
+walltime. No other game process ran during any run (`run.json` `contention` empty) and no trace shows other GPU work
+than WindowServer's.
+
+| scene | configuration | build | FPS | p99 ms | frames > 25 ms | GPU walltime ms/frame | GPU busy ms/frame |
+|---|---|---|---|---|---|---|---|
+| town roam | Fast | eb73a04 editor | 46.38, 46.37 | 26.5, 26.8 | 46, 58 | 22.04, 21.99 | 20.24, 20.52 |
+| town roam | Fast | merged editor | 54.85, 54.85 | 22.2, 21.7 | 2, 2 | 18.43, 18.40 | 17.07, 16.69 |
+| town roam | Fast | eb73a04 export | 46.60, 46.44 | 26.8, 26.5 | 61, 56 | 22.04, 22.06 | - |
+| town roam | Fast | merged export | 54.12, 54.91 | 21.8, 21.7 | 1, 1 | 18.45, 18.38 | - |
+| town roam | Exact | eb73a04 editor | 34.69, 34.67 | 35.9, 36.5 | 1333, 1330 | 29.49, 29.52 | 27.97, 27.50 |
+| town roam | Exact | merged editor | 39.75, 39.86 | 31.4, 31.1 | 902, 851 | 25.87, 25.87 | 23.28, 23.38 |
+| town roam | Exact | eb73a04 export | 34.59, 34.61 | 35.8, 36.3 | 1326, 1329 | 29.96, 30.08 | - |
+| town roam | Exact | merged export | 39.86, 39.83 | 31.5, 31.0 | 889, 880 | 25.78, 25.63 | - |
+| race | Fast | eb73a04 editor | 52.57, 51.98 | 23.4, 23.4 | 2, 4 | 19.14, 19.51 | 17.09, 17.31 |
+| race | Fast | merged editor | 58.02, 58.19 | 20.5, 20.6 | 2, 1 | 16.63, 16.75 | 15.02, 14.68 |
+| race | Fast | eb73a04 export | 54.29, 51.71 | 23.1, 23.4 | 4, 2 | 18.53, 19.48 | - |
+| race | Fast | merged export | 57.96, 57.94 | 20.5, 20.7 | 1, 2 | 16.70, 16.91 | - |
+| race | Exact | eb73a04 editor | 42.86, 40.83 | 28.8, 29.2 | 417, 583 | 23.88, 25.18 | 22.26, 23.02 |
+| race | Exact | merged editor | 48.78, 47.98 | 25.2, 25.3 | 35, 41 | 20.70, 21.14 | 19.06, 19.30 |
+| race | Exact | eb73a04 export | 39.47, 42.51 | 32.2, 29.2 | 841, 429 | 25.82, 24.07 | - |
+| race | Exact | merged export | 48.44, 46.95 | 25.0, 25.5 | 22, 53 | 20.89, 21.56 | - |
+
+Means of the two rounds:
+
+| 1920 x 1080 | Fast, editor | Fast, export | Exact, editor | Exact, export |
+|---|---|---|---|---|
+| town roam, FPS | 46.4 -> **54.9** (+18 %) | 46.5 -> **54.5** (+17 %) | 34.7 -> 39.8 (+15 %) | 34.6 -> 39.8 (+15 %) |
+| town roam, GPU walltime ms/frame | 22.0 -> 18.4 | 22.1 -> 18.4 | 29.5 -> 25.9 | 30.0 -> 25.7 |
+| race, FPS | 52.3 -> **58.1** (+11 %) | 53.0 -> **58.0** (+9 %) | 41.8 -> 48.4 (+16 %) | 41.0 -> 47.7 (+16 %) |
+| race, GPU walltime ms/frame | 19.3 -> 16.7 | 19.0 -> 16.8 | 24.5 -> 20.9 | 24.9 -> 21.2 |
+
+- **Fast** (the default): the town roam gains 8.5 FPS and 3.6 ms of GPU walltime per frame, its frames over 25 ms drop
+  from 46-61 to 1-2 per 45 s and its p99 from 26.5-26.8 to 21.7-22.2 ms; the race gains 5-6 FPS and 2.2-2.6 ms. The
+  passes add up: on their own the ground pass gave the roam 1.15 ms of walltime and the shading pass 2.3 ms (the draw
+  calls none), together 3.6 ms. The race stays just short of 60 FPS: its median frame is 16.8-16.9 ms, but its p95 is
+  19.1-19.3 ms.
+- **Exact**: the town roam gains 5.1-5.2 FPS (3.6-4.3 ms), the race 6.5-6.7 FPS (3.6-3.7 ms); frames over 25 ms roam
+  1,326-1,333 -> 851-902, race 417-841 -> 22-53.
+- **Editor runtime vs export**: the same within the runs' spread, for both builds.
+
+GPU busy per frame by pass (editor runtime, mean of the two rounds' traces, `gpu-passes.py`), ms:
+
+| pass | roam Fast eb73a04 | roam Fast merged | race Fast eb73a04 | race Fast merged | roam Exact eb73a04 | roam Exact merged | race Exact eb73a04 | race Exact merged |
+|---|---|---|---|---|---|---|---|---|
+| **total GPU busy** | **20.38** | **16.88** | **17.20** | **14.85** | **27.74** | **23.33** | **22.64** | **19.18** |
+| opaque pass | 5.67 | 4.26 | 7.88 | 6.04 | 8.15 | 6.69 | 11.71 | 9.48 |
+| transparent pass | 8.09 | 6.16 | 2.39 | 1.96 | 12.57 | 9.78 | 3.87 | 2.67 |
+| shadow maps (+ atlas clear) | 2.12 + 0.36 | 2.01 + 0.35 | 2.36 + 0.35 | 2.21 + 0.32 | 2.46 + 0.37 | 2.41 + 0.36 | 2.22 + 0.36 | 2.16 + 0.36 |
+| depth prepass | 1.04 | 0.97 | 1.16 | 1.12 | 1.21 | 1.21 | 1.41 | 1.40 |
+| depth/normal resolve + SSAO | 1.78 | 1.81 | 1.90 | 2.01 | 1.76 | 1.74 | 1.83 | 1.84 |
+| final depth resolve + glow, mid-frame depth resolve | 0.52 + 0.20 | 0.51 + 0.19 | 0.53 + 0.21 | 0.51 + 0.20 | 0.50 + 0.21 | 0.50 + 0.20 | 0.50 + 0.22 | 0.52 + 0.22 |
+| tonemap and 2D, window blit, uploads | 0.84, 0.39, 0.51 | 0.84, 0.35, 0.43 | 0.84, 0.36, 0.47 | 0.84, 0.24, 0.39 | 0.84, 0.36, 0.84 | 0.83, 0.38, 0.55 | 0.84, 0.39, 0.68 | 0.84, 0.36, 0.51 |
+
+Almost the whole gain is in the opaque and transparent passes (roam -3.35 of -3.50 ms, race -2.27 of -2.35), as each
+pass found on its own: the town's ground (its noise and early-outs) and the composer's variants and sky lookup. The
+passes Godot runs itself are unchanged.
+
+Frozen views (one run each, 28 s, trace 21-25 s; FPS, GPU walltime / busy ms per frame):
+
+| frozen view | Fast eb73a04 | Fast merged | Exact eb73a04 | Exact merged |
+|---|---|---|---|---|
+| town view at 16 s | 47.8; 21.17 / 19.05 | 56.5; 17.79 / 15.68 | 35.5; 28.75 / 26.33 | 41.3; 24.70 / 22.34 |
+| race start at 1 s, grid pinned | 55.9; 17.87 / 16.07 | 60.0; 15.91 / 14.11 | 43.7; 23.17 / 20.29 | 49.9; 20.13 / 17.36 |
+
+### What still separates Fast from 60 FPS at 1920 x 1080
+
+The GPU sets the frame rate. In the moving town roam Godot keeps the M2's GPU busy about 895 ms per second and
+WindowServer another 50; in the race 835-855 and 40. The frames that hold 60 FPS have at most about 14 ms of Godot GPU
+busy time (the frozen race start: 14.1-14.2 ms, 60.0 FPS; the frozen town view without SSAO: 14.2 ms, 59.4 FPS). So
+**the town roam (16.9 ms) is about 3 ms short of 60 FPS and the race (14.9 ms on average) about 1 ms**: its median frame
+already takes one vsync interval (16.8 ms), but 19-24 % of its frames take longer than 18 ms (the roam: 54 %).
+
+What the remaining candidates are worth, measured on the merged build where it could be measured: the frozen town view
+and race start, Fast, one run per variant against two runs of the unchanged view (town 15.83 and 15.61 ms busy, 56.4 and
+56.9 FPS; race start 14.21 and 14.12 ms, 60.0 FPS), ranked by what they buy in the town view:
+
+| # | what | town view: GPU busy without it (FPS) | race start | what it would take | look |
+|---|---|---|---|---|---|
+| 1 | directional shadows: maps 1.6 ms, atlas clear 0.36, and the sampling in the opaque and transparent passes | 12.29 ms (59.9): **3.4 ms** | 12.69 ms: 1.5 ms | casting less (only what can shade the view) and clearing only the used part of the 8192² atlas happen inside Godot's renderer (the clear is unconditional); fewer or coarser splits change the shadows ("Near shadow splits" has what each split costs) | engine change, or a look change |
+| 2 | the trampled-sand overlay, the town's largest ground layer: lit in full with both suns' shadows, three anisotropically filtered textures, the pigment | 12.95 ms (59.5): **2.8 ms**, all in the transparent pass (6.1 -> 3.3) | none | lighting the stacked ground layers once (their colours composited first, a deferred-decal scheme) instead of each layer in full (unlit, the layer cost 1.6 ms less before the merge), or fewer anisotropic taps (0.8 ms); hiding the streets where it covers them is exact only with per-sample depth and the sorted list in the shader ("Ground and overlays", "Tried and dropped") | changes (lighting order, filtering) |
+| 3 | the SSAO port (SceneKit's kernels at full resolution) | 14.20 ms (59.4): **1.5 ms** (its compute pass 1.75 -> 0.54) | 13.01 ms: 1.2 ms | half resolution with an edge-aware upsample, or fewer samples | changes |
+| 4 | the image-based specular of the ground and walls | not measured again (1.2 ms in the town view before the merge, "Shading and post") | | a cheaper or no sky reflection on rough surfaces | changes |
+| 5 | Godot passes this game does not need: the MSAA depth resolve between the opaque and transparent passes (0.19-0.20 ms), the final one (about 0.4 of the 0.51 ms encoder it shares with the glow), the 2D pass's copy of the 3D view (0.19) and the atlas clear (0.36, row 1) | about **1.1 ms** by their trace times (not removed in a run) | the same | a patched Godot 4.7.2 and export templates ("Shading and post": the resolves are unconditional once the normal-roughness buffer is used; the root viewport draws the 3D view as a texture) | none |
+| 6 | the robots' small parts at full detail (the belts' chamfered boxes, the wheels; the robots in all: 14.97 ms without them, 0.75 ms) | 15.08 ms (58.3): **0.65 ms** with `MARVIN_SCN_CAL=MeshLodMinTriangles=256` (shadow maps 1.63 -> 1.40, prepass 0.65 -> 0.55) | 13.64 ms: 0.55 ms | that setting as the Fast default | small parts' silhouettes move by up to half a pixel ("Draw calls") |
+| 7 | bicubic glow upsampling (`MARVIN_SCN_CAL=GlowBicubicUpscale=0` is bilinear) | 15.71 ms (56.6): about 0.1 ms (tonemap 0.84 -> 0.70) | 14.01 ms: 0.15 ms | that setting | glow around highlights by up to 5/255 |
+| - | draw calls | nothing on the GPU ("Draw calls": halving them changed nothing measurable) | | | |
+
+Nothing exact is left that the game can do on its own: the exact candidates (row 5) are inside Godot's renderer. **For
+the race** (about 1 ms short) the small look changes are enough on paper: the robots' small-part LODs and bilinear glow
+(rows 6 and 7, 0.7 ms at the race start) together with an engine build for row 5, or with any part of rows 1-4. **For
+the town roam** (about 3 ms short) rows 5, 6 and 7 together (about 1.9 ms) are not enough; it also needs one of rows
+1-4, and of those row 2 is the one specific to this game: the town's 15 ground overlays are lit layer by layer, where
+SceneKit's scene shading as a whole costs 5.7 ms ("Ranked costs", row 2). Exact (soft shadows, full robot meshes) takes
+6.5 ms more GPU busy time per frame than Fast in the roam and 4.3 ms in the race, most of it Godot's soft filter (4.5-5
+ms, "Hard shadows and camera mesh LODs"), which only a custom shadow sampler would make cheaper.
+
+**Look and checks** (the rule: the look must not change). The full-game comparison's 22 capture modes ran on eb73a04
+(from its own tree) and on the merged build with the comparison's pins, in Fast and in Exact (`MARVIN_SCN_CAL=Exact`),
+plus a second eb73a04 run of the modes with random state and both builds with the grid pinned
+(`MARVIN_GRID_SLOTS=0,1,2,3`, eb73a04 twice) for the five modes whose racers start on the random grid (passage,
+entrance, binary sky, dune contact, ground performance):
+
+- Deterministic captures are identical or a few pixels one 8-bit level off (the ground pass's reordered arithmetic and
+  the polynomial sky lookup, as each pass found on its own): calibration, both close-up sets, visual regression, menu,
+  trail material and weather reset (128 images in each configuration: 78 and 75 pixel-identical, the others at most 11
+  pixels one level off), and with the grid pinned passage, entrance, binary sky and ground performance (180 images, at
+  most 18 pixels one level off). The facade test, text calibration, window chrome, the shadow-box and ground-bias
+  probes and the town reference dump are pixel-identical.
+- Captures with random state (crowds, dust, dirt coatings, the sandbox course's rings, racer contacts) differ from
+  eb73a04 as much as two eb73a04 runs differ from each other: mean |difference| per capture, merged against eb73a04
+  (two eb73a04 runs): navigation 0.082 (0.071), town 0.089 (0.072), smoke 0.088 (0.082), character 0.38 (0.33), dust
+  0.20 (0.24), people 0.0006 (0.0008), post-race 0.0015 (0.0015), city escape, sandstorm and weather reset
+  0.0000-0.0004, pinned dune contact 0.009 (0.012) /255.
+- Every deterministic report is byte-identical to eb73a04's: smoke.json, full-race-trails.json, menu-smoke.json,
+  characters.json, binary-races.json, sandstorm.json, town-smoke.json, the entrance, people, navigation, passage,
+  post-race and city-escape reports, visual-regression.json, storm-grids.json, viewport.json, lifecycle.json, the town
+  mesh and people dumps, the facade test's and the text calibration's measurements, in both configurations where they
+  ran in both. What differs is what differs between two eb73a04 runs: timings (dune contact's `cpuUpdateP95MS`, the
+  HUD's FPS sample), weather reset's 100 random draws, the test scores' date, the unpinned ground-performance and
+  mesh-reuse comparisons' image errors (pinned: within 6e-9), the shadow-motion probe's race rows (random grid and
+  daylight).
+- `tools/checks` is byte-identical to `reference/simulation-checks-swift.txt`, also with `MARVIN_PORTABLE_MATH=1`.
+- Every game mode ran on the merged build (PORTING.md, "App and game modes"): all pass except
+  `--town-departure-movie`, which fails on macOS too (ground penetration 0.0195 m). One Exact `--calibration` run hung
+  at exit after writing its six images (as eb73a04's but for 1-2 pixels one level off) with
+  `System.InvalidOperationException: Handle is not initialized` in Godot's C# instance-binding free callback; 88 more
+  runs of the merged build (58 Exact, 30 Fast) exited normally, one of them after logging the same exception, and 46
+  runs of eb73a04 and 30 of each pass's own build never showed it. A shutdown race in Godot's .NET glue that the
+  merged build makes more likely is possible; it was not found.
+
+Against macOS (the full-game comparison, PORTING.md: the same areas, pins and macOS sets; mean |sRGB difference| /255,
+worst capture in brackets):
+
+| Area | captures | Fast, eb73a04 | Fast, merged | Exact, eb73a04 | Exact, merged |
+|---|---|---|---|---|---|
+| Main menu, portraits | 6 | 0.60 (1.13) | 0.60 (1.13) | 0.63 (1.24) | 0.63 (1.24) |
+| Sandbox | 13 | 3.40 (4.77) | 3.50 (4.86) | 3.18 (4.58) | 3.44 (4.75) |
+| Dirt track | 36 | 2.38 (3.70) | 2.38 (3.70) | 2.01 (3.14) | 2.01 (3.14) |
+| Sky at several daylights | 8 | 1.14 (2.27) | 1.14 (2.28) | 1.06 (2.14) | 1.06 (2.15) |
+| Sandstorm | 7 | 1.13 (1.36) | 1.13 (1.36) | 1.10 (1.35) | 1.10 (1.35) |
+| Dunes, deformable sand | 84 | 1.91 (4.19) | 1.91 (4.19) | 1.63 (2.77) | 1.65 (3.10) |
+| Town | 176 | 2.30 (5.37) | 2.30 (5.37) | 2.00 (5.84) | 1.99 (5.84) |
+| Post-race, city escape | 31 | 2.19 (2.63) | 2.19 (2.63) | 1.94 (2.25) | 1.94 (2.25) |
+| Robots close up and dirty | 100 | 1.75 (5.82) | 1.75 (5.82) | 1.45 (4.37) | 1.45 (4.32) |
+| Facade calibration scenes | 6 | 1.04 (2.24) | 1.04 (2.24) | 0.92 (2.26) | 0.92 (2.26) |
+| all | 467 | 2.07 | 2.07 | 1.78 | 1.79 |
+
+No area got worse beyond its random state. The sandbox's course is random (a second eb73a04 run in Fast: 3.48 (4.65));
+in Exact the two builds drew their rings elsewhere in sandbox-contact and w-sandbox, which moved those two captures by
+1.1-1.2/255. The Exact dunes' worst capture is the unpinned ground-performance infield, whose racers start on the random
+grid (pinned, the two builds render it alike but for single pixels one level off). The menu's 0.60 against 0.51 in the
+near-split comparison is the Shadow quality row the Settings screen gained in eb73a04 (driving-assist-settings.png 0.76
+instead of 0.18), not this merge.
 
 ## Ground and overlays: the same pixels with less work
 
@@ -1338,6 +1522,10 @@ intro 42, finish overview 36 (GPU-bound views of the whole town), sandbox and me
 
 ## What this means for optimisation
 
+*Current state (2026-10-06):* the list below is the outlook after the first measurement; what is left after the hard
+shadows, the near splits and the three passes of 2026-10-06, measured on today's build and ranked, is in "The three
+passes merged", "What still separates Fast from 60 FPS at 1920 x 1080".
+
 In order of payoff at 1080p, each to be checked against the captures (the rule for all optimisations: the look must not
 change). The GPU optimisation pass above did the SSAO mips and the robots' shadow casters; what it found for the rest
 (the hard filter and the camera mesh LODs that followed are look changes, accepted for frame rate; "Hard shadows and
@@ -1443,6 +1631,11 @@ git worktree add --detach BASE c19fd6f && cp -cR assets BASE/apps/simulator-godo
 cp tools/perf/*.py tools/perf/*.m BASE/apps/simulator-godot/tools/perf/ && (cd BASE/apps/simulator-godot && tools/build && \
     tools/godot --headless --export-release "macOS" "$PWD/build/macos/Marvin Simulator.app")
 BASE/apps/simulator-godot/tools/perf/run-benchmark.py OUT_BASE --app godot --size 1920x1080 --mode race --wait-idle   # then this tree's, interleaved
+# ("The three passes merged": the old commit from git archive instead of a worktree, so nothing is left to remove)
+git archive OLD_COMMIT apps/simulator-godot | tar -x -C BASE   # then assets, .godot import cache and tools/perf as above
+# its frozen-view diagnostics on one build: --env MARVIN_BENCHMARK_HIDE=Trampled,
+# --env MARVIN_SCN_CAL=MeshLodMinTriangles=256, --env MARVIN_SCN_CAL=GlowBicubicUpscale=0,
+# -- --benchmark-no-ssao, -- --benchmark-no-shadows
 ```
 
 `run-benchmark.py` needs `metalperftrace` (macOS 27) and, for `--trace`, Xcode's `xctrace`; `profile-cpu.sh` needs
