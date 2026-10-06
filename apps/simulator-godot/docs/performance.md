@@ -21,10 +21,23 @@ like for like against it, made frames cheaper without changing the look: the pro
 ("Ground and overlays"), the composer's shading ("Shading and post") and the robots' draw calls, now drawn as
 instances ("Draw calls"; half the draw calls, the GPU time measurably unchanged). The three were then replayed onto this
 branch and measured together against eb73a04 ("The three passes merged"), with what still separates the default
-configuration from 60 FPS at 1080p, ranked.
+configuration from 60 FPS at 1080p, ranked. The same evening a Graphics detail setting added three lighter levels below
+Max, the renderer as it was ("Graphics detail"), chosen by measurement from that ranking and from temporal upscaling.
 
 ## Summary
 
+- **Graphics detail** (2026-10-06; section below, like for like against 49ce6fb, editor runtime and export, two
+  interleaved rounds after a warm-up of every configuration): a Settings row with four levels. **Max**, the default, is
+  the renderer as before: the same composed shaders, every deterministic capture pixel-identical, the same frame rate
+  (town roam 54.9 FPS in both builds, the race within its run-to-run spread over eight rounds). **High** keeps full
+  resolution and leaves out SceneKit's SSAO and four small details: at 1920 x 1080 with Shadow quality Fast the town roam
+  runs at 59.7 instead of 54.9 FPS (GPU walltime 18.4 -> 15.2 ms per frame) and the race at 59.9 instead of 57.9; its
+  look changes on the robots and the track around them, which lose their ambient occlusion (frozen town view 0.33/255
+  from Max, race start 1.7/255). **Medium** adds MetalFX temporal upscaling from 0.6 of the resolution and diffuse-only
+  lighting of the ground layers and holds 60 FPS with Shadow quality Exact (town roam 39.8 -> 59.8 FPS, 25.6 -> 14.6
+  ms; race 47.4 -> 59.9); **Low** upscales from half the resolution with further savings (Fast: 12.4-13.1 ms of
+  walltime, 3.8-5.8 ms less than Max). The upscaled levels look softer (2.8-3.2/255 from Max in the frozen views:
+  small sign text, the sand's ripples). No level touches the shadows; Shadow quality stays independent.
 - **The three passes merged** (2026-10-06; section below, like for like against eb73a04, editor runtime and export,
   two interleaved rounds): at 1920 x 1080 in the default Fast configuration the town roam runs at 54.9 instead of 46.4
   FPS (export 54.5 / 46.5) and the race at 58.1 instead of 52.3 (58.0 / 53.0), with 3.6 and 2.2-2.6 ms less GPU
@@ -149,6 +162,324 @@ sampling cost in row 1 (about 4.5-5 ms at 1080p, "Hard shadows and camera mesh L
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
 
+## Graphics detail: four levels, Max as before
+
+Measured on 2026-10-06 on the same Mac (M2, nothing else on the GPU: `run-benchmark.py --wait-idle`, no other game
+process in any run). The Settings screen has a Graphics detail row next to Shadow quality (Godot-only; PORTING.md, "Known
+deviations"): **Max**, the default, is the renderer as it was; **High**, **Medium** and **Low** trade look for GPU time.
+The two settings are independent: no level touches the shadows. Game modes, the benchmarks included, keep Max unless
+`MARVIN_GRAPHICS_DETAIL` selects a level, as Shadow quality keeps Fast unless `MARVIN_SCN_CAL` says otherwise.
+
+| level | what it changes (each level contains the one above it) |
+|---|---|
+| Max | nothing: full resolution, 2x MSAA in the race world (4x in the sandbox and menu), SceneKit's SSAO, every effect as before |
+| High | full resolution; no SSAO (`SsaoEnabled`: the robots and the track walls lose their ambient occlusion, the town has almost none of it in SceneKit either, because its `.geometry`-modified materials receive none); mesh LODs for the robots' small parts (`MeshLodMinTriangles` 256: track shoes and ribs, wheels, within half a pixel); one bilinear tap per glow level instead of bicubic (`GlowBicubicUpscale`); the sky reflection of everything but the robots from the sky light's spherical harmonics instead of the pre-filtered radiance bands (`SimpleSkyReflection`); 2x instead of 4x anisotropic filtering |
+| Medium | the 3D view at 0.6 of the drawable's width and height, upscaled by MetalFX temporal (FSR 2 on Windows), which replaces MSAA; the ground's overlay layers (trampled sand, streets, doorway patches, aprons) lit with diffuse light only (`SimpleGroundLighting`: no direct specular, the sky reflection from the spherical harmonics) |
+| Low | the 3D view at half the drawable's width and height; no anisotropic filtering; SceneKit's levels of detail (buildings, crowd, dune tiles) switching at 0.6 of their distances (`LodDistanceScale`); the robots' mesh LODs at up to 2 pixels of error instead of half a pixel (`MeshLodThreshold`) |
+
+The HUD, menus and loading screen are AppKit views drawn over the 3D view's texture, at full resolution at every level.
+
+### What Godot 4.7.2 offers
+
+From its source (`servers/rendering/renderer_viewport.cpp`, `render_forward_clustered.cpp`, the Metal driver) and on
+this Mac: `Viewport.scaling_3d_mode` bilinear, nearest, FSR 1 (spatial), FSR 2.2 (temporal; Forward+ on every
+RenderingDevice driver: Metal, Direct3D 12, Vulkan), MetalFX spatial and MetalFX temporal (Metal driver only, when the
+device supports them; this M2 supports both, MetalFX temporal for input scales 0.333 to 1). Under MetalFX temporal Godot
+turns 3D MSAA off itself (with a warning); FSR 2 and MetalFX temporal replace TAA; both accumulate frames jittered over
+8 / scale^2 phases with a texture mipmap bias of log2(scale); their motion vectors are the depth buffer reprojected by the
+camera's motion plus a motion pass that draws the instances whose transform changed (the crowd's walk, which a
+`.geometry` modifier animates, and the particles have no motion vectors of their own). Godot upscales after the
+transparent pass, so glow and tone mapping run at the drawable's size. Where MetalFX temporal is unavailable (an older
+GPU, or a scale outside its limits) Godot would fall back to MetalFX spatial or FSR 2 with a warning; the facade chooses
+itself (`SCNView.Upscalers`): MetalFX temporal, else FSR 2, else bilinear (no RenderingDevice, the Compatibility
+renderer), and turns MSAA off for both temporal upscalers. FSR 2 on Direct3D 12 and Vulkan was not run (no Windows
+machine); on Metal it is selectable for measurements (`RenderUpscaler=4`).
+
+### Choosing the levels
+
+Every candidate was first measured on one fixed frame each, Fast, editor runtime: the town roam frozen at 16 s and the
+race frozen 1 s after its start (`MARVIN_BENCHMARK_FREEZE`) with the benchmark's new fixed clock
+(`MARVIN_BENCHMARK_FIXED_STEP=1`: 1/60 s of drive, racers, effects and camera per tick, as in the smoke runs, so the
+frozen frame is the same in every run; two runs of Max differ by 0.03/255 in the town view, the crowd, and by 0.29/255
+at the race start, dust and dirt), 28 s runs, a labelled trace 21-25 s after the start. GPU walltime per frame is
+`metalperftrace`'s, GPU busy the trace's union of encoders; a * marks traces in which Instruments put the transparent
+pass into the opaque pass's encoder (when SSAO is off Godot resolves nothing between the two passes and continues the
+render pass), where the busy figure misses work and the walltime is the number to use. "Look vs Max" compares the final
+1920 x 1080 frame (`final-fps.png`, a snapshot after 28 s, temporal upscalers converged) with Max's: mean |sRGB
+difference| and the share of pixels off by more than 8/255 (the FPS counter excluded).
+
+| variant | town: walltime / busy ms, FPS | town: look vs Max | race: walltime / busy ms, FPS | race: look vs Max |
+|---|---|---|---|---|
+| Max | 17.92 / 15.93, 56.0 | - | 15.95 / 14.33, 60.0 | - |
+| Max, second run | 17.86 / 15.85, 56.3 | 0.03/255, 0.1 % | 16.01 / 14.22, 60.0 | 0.29/255, 1.2 % |
+| MetalFX temporal 0.85 | 15.66 / 13.10, 58.1 | 1.31/255, 2.2 % | 14.53 / 12.88, 60.0 | 1.41/255, 3.8 % |
+| MetalFX temporal 0.8 | 14.76 / 12.98, 59.9 | 1.34/255, 2.3 % | 14.23 / 12.49, 60.0 | 1.44/255, 4.1 % |
+| MetalFX temporal 0.75 | 14.25 / 12.06, 59.9 | 1.41/255, 2.5 % | 14.04 / 12.11, 60.0 | 1.56/255, 4.6 % |
+| MetalFX temporal 0.67 | 13.86 / 11.87, 60.0 | 1.59/255, 3.1 % | 13.86 / 11.75, 60.0 | 1.79/255, 5.5 % |
+| MetalFX temporal 0.5 | 13.21 / 10.96, 60.0 | 3.64/255, 15.0 % | 13.81 / 11.15, 60.0 | 1.99/255, 6.2 % |
+| FSR 2 at 0.75 (on Metal) | 16.17 / 11.04*, 59.4 | 1.23/255, 1.8 % | 15.46 / 13.82*, 60.0 | 1.48/255, 3.6 % |
+| MetalFX spatial 0.75, MSAA 2x | 13.80 / 11.28, 60.0 | 4.77/255, 22.6 % | 13.83 / 11.87, 60.0 | 2.36/255, 7.0 % |
+| bilinear 0.75, MSAA 2x | 13.84 / 11.69, 60.0 | 1.20/255, 2.2 % | 13.73 / 11.84, 60.0 | 1.39/255, 4.2 % |
+| SSAO off | 15.33 / 8.05*, 59.8 | 0.10/255, 0.5 % | 13.89 / 11.83*, 60.0 | 1.71/255, 6.5 % |
+| small-part LODs + bilinear glow | 17.26 / 15.01, 58.5 | 0.02/255, 0.0 % | 15.24 / 13.53, 60.0 | 0.31/255, 1.5 % |
+| simple sky reflections | 17.42 / 15.35, 57.8 | 0.03/255, 0.0 % | 15.68 / 13.96, 60.0 | 0.25/255, 0.8 % |
+| ground layers diffuse only | 17.15 / 15.01, 58.5 | 2.45/255, 0.0 % | 15.89 / 14.13, 60.0 | 0.25/255, 0.8 % |
+| anisotropic 2x | 17.48 / 15.23, 57.8 | 0.26/255, 0.1 % | 15.87 / 14.18, 60.0 | 0.31/255, 0.7 % |
+| LOD distances x 0.6 | 17.59 / 15.49, 57.1 | 0.05/255, 0.2 % | 15.15 / 13.56, 60.0 | 0.23/255, 0.5 % |
+| mesh LOD threshold 2 px | 17.61 / 15.48, 57.2 | 0.04/255, 0.1 % | 15.49 / 13.65, 60.0 | 0.41/255, 1.8 % |
+| SSAO off + LODs + glow + sky | 14.62 / 7.50*, 59.9 | 0.10/255, 0.4 % | 13.76 / 11.66*, 60.0 | 1.70/255, 6.4 % |
+| High + MetalFX 0.6 | 13.44 / 11.02, 60.0 | 1.67/255, 3.4 % | 13.68 / 11.29, 59.8 | 2.83/255, 9.8 % |
+| Low candidate (0.5) | 12.11 / 9.71, 58.9 | 3.24/255, 6.4 % | 12.39 / 10.41, 60.0 | 3.20/255, 11.5 % |
+| Low candidate, MetalFX spatial | 11.11 / 6.31*, 60.0 | 3.67/255, 11.2 % | 11.55 / 9.06*, 59.9 | 3.50/255, 12.3 % |
+
+- **Temporal upscaling.** MetalFX temporal costs 2.2-2.5 ms per 1080p frame whatever the input scale (its pre-,
+  mid- and post-processing encoders, at the drawable's size), takes away MSAA (its resolves, 0.8 ms, and its fill) and
+  shrinks every per-pixel pass with the pixel count. In the town view it saves 2.3 ms of walltime at 0.85, 3.7 at 0.75,
+  4.7 at 0.5: below about 0.67 the fixed costs dominate (the shadow maps 2 ms, MetalFX, tone mapping with glow 0.8 ms at
+  the drawable's size). Its look: everything a little softer (sign text, the sand's ripples, robot edges and fine
+  parts), 1.3-1.6/255 from 0.85 to 0.67 and 2-3.6/255 at 0.5. The spatial upscalers keep MSAA: MetalFX spatial costs about what MetalFX
+  temporal does at 0.75 but sharpens into aliasing (4.8/255 in the town view, 23 % of the pixels off by more than
+  8/255); bilinear at 0.75 is cheaper and its mean difference a little lower, but it adds no anti-aliasing of its own and
+  softens edges as much (12.6/255 on the frame's edges against 12.4). FSR 2 on Metal keeps the most texture detail
+  (1.23/255) but takes about 2 ms more than MetalFX temporal on the M2 (16.2 against 14.3 ms of walltime in the town
+  view).
+- **Look-changing savings at full resolution.** SSAO off saves the most: 2.6 ms of walltime in the town view and 2.1 ms
+  at the race start (the SSAO port's compute, Godot's MSAA resolve of depth and normal-roughness, the depth resolve
+  between the opaque and transparent passes, and with neither resolve Godot keeps both passes in one render pass). In
+  the town it changes 0.10/255 (SceneKit applies SSAO only to physically based materials without a `.geometry`
+  modifier, and nearly everything in the town has one); at the race start 1.7/255: the robots and the track walls lose
+  their ambient occlusion (R2-D2's dome and Marvin's head 5.3 and 5.7/255 in their crops). The small ones, each within
+  or near the two Max runs' own difference: the robots' small-part LODs with bilinear glow (0.7 ms), simple sky reflections
+  (0.3-0.5 ms), 2x anisotropic filtering (0.1-0.4 ms; the town's ground at grazing angles 0.26/255), SceneKit's LOD
+  distances at 0.6 (0.3-0.8 ms), mesh LODs at 2 pixels (0.3-0.5 ms). The ground layers lit with diffuse light only save
+  0.8 ms in the town view but darken the sand uniformly by about 1 % (2.45/255 on average, no pixel by more than 8).
+- **High** needs about 3 ms of GPU time in the town roam (16.9 ms busy at Max, 54.9 FPS) and 1 ms in the race. Two
+  ways get there, and both were measured to the end: full resolution without SSAO plus the four small savings (the
+  robots' small-part LODs, bilinear glow, simple sky reflections, 2x anisotropy), or MetalFX temporal at 0.8-0.85 with
+  SSAO and the same four savings. Moving, 45 s after a warm-up run, Fast: without SSAO 59.64-59.69 FPS in the town roam
+  (walltime 15.1-15.2 ms) and 59.83-59.93 in the race; MetalFX 0.85 with SSAO 59.71 / 59.86 FPS (15.7 / 14.9 ms), at 0.8
+  59.93 / 59.91 (14.9 / 14.4 ms). Their looks against Max, over the fixed-clock frozen frames and three capture modes
+  run at each (mean |sRGB difference| over the captures; two runs of Max differ by 0.10, 0.05 and 0/255 in these modes):
+
+  | | town view | race start | `--smoke-test` (34 captures) | `--town-smoke-test` (21) | `--entrance-smoke-test`, pinned (38) |
+  |---|---|---|---|---|---|
+  | full resolution, no SSAO (**High**) | 0.33 | 1.70 | 0.74 (worst 5.23, r2d2-wheels) | 0.36 | 0.11 |
+  | MetalFX temporal 0.85 with SSAO | 1.35 | 1.50 | 1.31 (worst 2.54) | 1.47 | 1.32 |
+  | MetalFX temporal 0.8 with SSAO | 1.38 | 1.46 | 1.33 (worst 2.58) | 1.43 | 1.36 |
+
+  High takes the full-resolution way: it changes less on average in every set but the race start, and keeps edges,
+  text and textures sharp. Its change is concentrated where SceneKit's SSAO matters, the robots and the track around
+  them, which lose their ambient occlusion: up to 15/255 on R2-D2's underside in the smoke test's race-track close-up
+  (`capture-r2d2-wheels.png`), where the upscaled options soften the whole robot by 2-3/255 instead. Resolution is left to
+  the levels that need more.
+- **Medium** must hold 60 FPS with the soft shadows of Shadow quality Exact (23.3 ms busy in the moving town roam at
+  Max): the soft filter's per-pixel cost only falls with the pixel count. High's savings with MetalFX temporal at 0.6,
+  Exact: the frozen town view at 14.4 ms of walltime and the race start at 14.0; moving, with the ground's diffuse-only
+  lighting too, 59.88 FPS in the town roam (14.50 ms) and 59.86 in the race (14.15 ms); at 0.67 instead 59.71 FPS (15.28
+  ms) and 59.88 (14.57 ms). 0.6 and 0.67 look alike (the frozen town view 1.68 and 1.64/255 from Max, the race start
+  2.83 and 2.84), so Medium takes 0.6, with the ground's lighting, for margin.
+- **Low** adds half resolution, no anisotropic filtering, LOD distances at 0.6 and mesh LODs at 2 pixels: the frozen
+  town view at 12.1 ms of walltime (Fast; Max 17.9), moving 59.93 FPS at 12.6 ms. MetalFX spatial instead of temporal would
+  save another 1 ms on the M2 at a clearly worse look (11 % instead of 6 % of the pixels off by more than 8/255): the
+  levels keep the temporal upscaler.
+
+### 45 s at 1920 x 1080, every level in both shadow configurations
+
+**Method.** As in "The three passes merged": `tools/perf/run-benchmark.py --wait-idle`, 45 s per run, daylight 0.5,
+exactly 1920 x 1080 over the black backdrop, the editor runtime and an exported release build (`tools/export macos`) of
+this branch and of the commit before (49ce6fb, `git archive` into a scratch tree with this tree's assets and import
+cache, built and exported there). A level is selected with `MARVIN_GRAPHICS_DETAIL` (game modes use Max otherwise),
+Shadow quality Exact with `MARVIN_SCN_CAL=Exact`. Every level and configuration first ran a 12 s warm-up, so the runs
+below do not compile pipelines. Per scene, shadow configuration and build the runs were interleaved (before, Max,
+High, Medium, Low; the second round in reverse order). No other game process ran during any run (`run.json`
+`contention` empty). GPU walltime per frame is `metalperftrace`'s (the traces' busy times are unreliable at High, where
+Instruments files the transparent pass under the opaque encoder).
+
+| scene | shadows | level | build | FPS | p99 ms | frames > 25 ms | GPU walltime ms/frame |
+|---|---|---|---|---|---|---|---|
+| town roam | Fast | before (49ce6fb) | editor | 55.00, 54.78 | 22.3, 21.9 | 2, 4 | 18.36, 18.41 |
+| town roam | Fast | Max | editor | 54.90, 54.82 | 22.1, 22.5 | 2, 1 | 18.43, 18.40 |
+| town roam | Fast | High | editor | 59.69, 59.64 | 18.9, 19.5 | 1, 3 | 15.13, 15.18 |
+| town roam | Fast | Medium | editor | 59.93, 59.83 | 17.9, 18.0 | 1, 5 | 13.26, 13.31 |
+| town roam | Fast | Low | editor | 59.91, 59.88 | 18.2, 18.3 | 2, 3 | 12.64, 12.61 |
+| town roam | Fast | before (49ce6fb) | export | 54.81, 54.81 | 22.2, 22.1 | 4, 6 | 18.40, 18.38 |
+| town roam | Fast | Max | export | 54.93, 54.94 | 21.9, 21.8 | 3, 2 | 18.38, 18.40 |
+| town roam | Fast | High | export | 59.74, 59.74 | 18.6, 19.0 | 2, 3 | 15.07, 15.16 |
+| town roam | Fast | Medium | export | 59.91, 59.93 | 18.0, 17.9 | 2, 2 | 13.44, 13.53 |
+| town roam | Fast | Low | export | 59.93, 59.95 | 18.5, 18.3 | 5, 2 | 12.37, 12.58 |
+| town roam | Exact | before (49ce6fb) | editor | 39.84, 39.85 | 31.5, 30.8 | 898, 927 | 25.57, 25.59 |
+| town roam | Exact | Max | editor | 39.84, 39.80 | 30.3, 31.6 | 914, 898 | 25.64, 25.61 |
+| town roam | Exact | High | editor | 45.09, 45.25 | 27.9, 28.2 | 123, 83 | 23.23, 23.14 |
+| town roam | Exact | Medium | editor | 59.90, 59.76 | 17.9, 17.9 | 1, 4 | 14.59, 14.56 |
+| town roam | Exact | Low | editor | 59.88, 59.93 | 17.8, 17.8 | 3, 2 | 14.26, 14.24 |
+| town roam | Exact | before (49ce6fb) | export | 39.20, 39.77 | 31.1, 31.7 | 893, 939 | 25.64, 25.72 |
+| town roam | Exact | Max | export | 39.77, 39.58 | 30.8, 31.4 | 894, 920 | 25.68, 25.70 |
+| town roam | Exact | High | export | 45.09, 45.11 | 28.1, 28.2 | 100, 98 | 23.30, 23.36 |
+| town roam | Exact | Medium | export | 59.91, 59.86 | 17.9, 17.8 | 3, 3 | 14.63, 14.61 |
+| town roam | Exact | Low | export | 59.86, 59.88 | 17.8, 17.8 | 4, 3 | 14.37, 14.32 |
+| race | Fast | before (49ce6fb) | editor | 58.22, 58.24 | 20.6, 20.6 | 2, 3 | 16.65, 16.51 |
+| race | Fast | Max | editor | 58.10, 57.61 | 20.7, 20.5 | 4, 2 | 16.70, 16.93 |
+| race | Fast | High | editor | 59.91, 59.93 | 17.7, 17.8 | 1, 2 | 14.68, 14.38 |
+| race | Fast | Medium | editor | 59.90, 59.93 | 17.9, 17.9 | 1, 1 | 13.75, 13.58 |
+| race | Fast | Low | editor | 59.90, 59.93 | 17.9, 17.9 | 1, 1 | 12.86, 13.07 |
+| race | Fast | before (49ce6fb) | export | 57.93, 58.07 | 20.5, 20.5 | 3, 4 | 16.60, 16.61 |
+| race | Fast | Max | export | 57.60, 56.45 | 20.7, 20.8 | 3, 2 | 16.97, 17.48 |
+| race | Fast | High | export | 59.90, 59.83 | 17.8, 17.9 | 3, 4 | 14.20, 14.59 |
+| race | Fast | Medium | export | 59.95, 59.93 | 17.8, 18.7 | 2, 2 | 13.16, 12.96 |
+| race | Fast | Low | export | 59.90, 59.93 | 18.0, 17.9 | 2, 1 | 12.78, 12.81 |
+| race | Exact | before (49ce6fb) | editor | 48.69, 45.92 | 25.0, 26.2 | 25, 76 | 20.74, 22.10 |
+| race | Exact | Max | editor | 46.97, 47.91 | 32.3, 25.5 | 104, 59 | 21.60, 21.09 |
+| race | Exact | High | editor | 55.37, 54.68 | 22.3, 22.2 | 3, 3 | 18.00, 18.46 |
+| race | Exact | Medium | editor | 59.93, 59.93 | 17.8, 17.8 | 2, 1 | 14.45, 14.43 |
+| race | Exact | Low | editor | 59.88, 59.91 | 17.8, 17.8 | 2, 2 | 13.81, 14.15 |
+| race | Exact | before (49ce6fb) | export | 48.36, 48.09 | 25.1, 25.1 | 32, 32 | 20.86, 21.06 |
+| race | Exact | Max | export | 48.53, 47.97 | 25.1, 25.1 | 30, 25 | 20.81, 21.22 |
+| race | Exact | High | export | 54.06, 53.48 | 22.4, 23.2 | 4, 5 | 18.96, 19.19 |
+| race | Exact | Medium | export | 59.88, 59.86 | 17.7, 17.8 | 3, 4 | 14.52, 14.41 |
+| race | Exact | Low | export | 59.91, 59.88 | 17.8, 17.8 | 1, 4 | 14.18, 14.25 |
+
+Means of the two rounds, FPS / GPU walltime ms per frame:
+
+| 1920 x 1080 | Fast, editor | Fast, export | Exact, editor | Exact, export |
+|---|---|---|---|---|
+| town roam, before (49ce6fb) | 54.9 / 18.4 | 54.8 / 18.4 | 39.8 / 25.6 | 39.5 / 25.7 |
+| town roam, Max | 54.9 / 18.4 | 54.9 / 18.4 | 39.8 / 25.6 | 39.7 / 25.7 |
+| town roam, High | 59.7 / 15.2 | 59.7 / 15.1 | 45.2 / 23.2 | 45.1 / 23.3 |
+| town roam, Medium | 59.9 / 13.3 | 59.9 / 13.5 | 59.8 / 14.6 | 59.9 / 14.6 |
+| town roam, Low | 59.9 / 12.6 | 59.9 / 12.5 | 59.9 / 14.3 | 59.9 / 14.3 |
+| race, before (49ce6fb) | 58.2 / 16.6 | 58.0 / 16.6 | 47.3 / 21.4 | 48.2 / 21.0 |
+| race, Max | 57.9 / 16.8 | 57.0 / 17.2 | 47.4 / 21.3 | 48.3 / 21.0 |
+| race, High | 59.9 / 14.5 | 59.9 / 14.4 | 55.0 / 18.2 | 53.8 / 19.1 |
+| race, Medium | 59.9 / 13.7 | 59.9 / 13.1 | 59.9 / 14.4 | 59.9 / 14.5 |
+| race, Low | 59.9 / 13.0 | 59.9 / 12.8 | 59.9 / 14.0 | 59.9 / 14.2 |
+
+- **Max is as fast as the commit before.** Town roam 54.9 FPS in both (GPU walltime 18.4 ms), Exact 39.8 in both
+  (25.6 ms), the Exact race 47.4 / 47.3 (editor) and 48.5 / 48.4 (export). The Fast race, whose racers start on a random
+  grid and whose physics follow the frame time, spreads by about 1 FPS between runs of one build; with three more
+  interleaved rounds (five in all) and three rounds with the grid pinned (`MARVIN_GRID_SLOTS=0,1,2,3`), plus a launch
+  without `MARVIN_GRAPHICS_DETAIL` (the default path): random grid, editor, the commit before 57.60-58.24 FPS (mean 57.95),
+  Max 56.90-58.10 (57.61); export 57.30-58.20 (57.81) against 56.37-57.80 (57.07); pinned grid, editor 56.42-58.05
+  (57.01) against 57.47-58.37 (57.90), the default launch 56.82-57.68 (57.17); export 57.18-57.84 (57.60) against
+  57.39-57.97 (57.66). The per-pass GPU times of the traced runs are the same within the race's own variation (the
+  transparent pass, dust and trails, moves by 1.1 ms between runs of one build).
+- **High** holds 60 FPS with Fast: town roam 59.7 FPS (from 54.9; walltime 15.1-15.2 ms, p99 18.6-19.5 ms, 1-3 frames
+  over 25 ms per 45 s), race 59.8-59.9. With Exact it is not enough (town roam 45.2, race 54-55 FPS): the soft filter's
+  cost falls only with the pixel count.
+- **Medium** holds 60 FPS with Exact: town roam 59.8-59.9 FPS (walltime 14.6 ms, from 25.6), race 59.9 (14.4-14.5 ms,
+  from 21), p99 17.7-17.9 ms; with Fast it has 2.9-3.7 ms of headroom (13.0-13.8 ms).
+- **Low** runs at 12.4-13.1 ms of walltime per frame with Fast (5.8 ms less than Max in the town roam, 3.8-4.4 ms less in the race,
+  a 25 % margin to the 16.7 ms frame) and 14.2-14.4 ms with Exact. On the M2 the floor is the per-frame work that does
+  not scale with the pixel count: the shadow maps (2.2-2.9 ms), MetalFX (2.0-2.3 ms at the drawable's size), glow and
+  tone mapping (0.8 ms), uploads and the window blit; the per-pixel passes that a weaker GPU feels most (opaque,
+  transparent, prepass, SSAO: 12.4 ms at Max in the frozen town view) take 4.3 ms at Low.
+- **Editor runtime and export** give the same frame rates within the runs' spread at every level.
+
+### Look
+
+The same frozen frames at each level (the fixed clock, Fast and Exact; mean |sRGB difference| from Max of the same
+shadow configuration, share of pixels off by more than 8/255; the town view's crowd and the race start's dust differ
+by 0.03 and 0.29/255 between two runs of one level). Sheets with 2x crops of five regions per view and the whole frames
+are in `reference/compare/graphics-detail/` (`town-roam-fast.png`, `race-start-fast.png`, `town-roam-exact.png`,
+`race-start-exact.png`, and from the capture modes at 1280 x 820, `capture-r2d2-wheels.png` (the smoke test's race-track close-up), `capture-dirt-grid.png`, `capture-household-5.png` (the pinned entrance test) and `capture-sandbox.png` (whose course rings are random); gitignored like the other comparison sheets):
+
+| frozen frame | High | Medium | Low |
+|---|---|---|---|
+| town view, Fast | 0.33/255, 0.5 % | 3.12/255, 4.9 % | 3.24/255, 6.4 % |
+| town view, Exact | 0.32/255, 0.5 % | 3.09/255, 4.8 % | 3.19/255, 6.2 % |
+| race start, Fast | 1.70/255, 6.4 % | 2.84/255, 10.0 % | 3.15/255, 11.4 % |
+| race start, Exact | 1.70/255, 6.6 % | 2.85/255, 10.1 % | 3.01/255, 10.5 % |
+
+(Exact against Fast at Max: 0.38/255 in the town view and 1.47/255 at the race start, the soft shadow edges.)
+
+What changes, from the sheets and the capture modes run at each level (`--menu-smoke-test`, `--smoke-test` and `--town-smoke-test` with
+their pins, `--visual-regression-test`, the pinned `--entrance-smoke-test` and `--dune-contact-test`, each with
+`MARVIN_GRAPHICS_DETAIL` set, all passing; mean |difference| from Max over the captures, High / Medium / Low: smoke
+0.70 / 1.96 / 2.26 (two Max runs 0.10), town 0.36 / 3.06 / 3.35 (0.05), entrance 0.11 / 2.67 / 2.90, menu 0.01 / 0.46 /
+0.65; the visual regression and dune contact tests capture through an `SCNRenderer`, which keeps full resolution, so
+only their SSAO and small changes show, 0.6 and 1.2/255 at every level):
+
+- **High**: the robots and the ground around them lose SceneKit's ambient occlusion: Marvin's head no longer darkens
+  its body and the sand under it in the town view (3.1/255 in that crop), R2-D2's dome and Marvin's head are 5.3-5.7/255
+  lighter at the race start, the track around the robots and in their tread ruts up to 8/255 (the town's buildings and
+  ground keep their look, 0.03-0.3/255, because SceneKit gives their `.geometry`-modified materials no SSAO). The other
+  four changes stay within the two Max runs' difference: the robots' small parts (track shoes, ribs, wheels) drawn from
+  levels within half a pixel, the glow around highlights by up to a few levels, the rough surfaces' faint sky reflection
+  from the spherical harmonics, the sand's texture at grazing angles a little softer with 2x anisotropy. Edges, text and
+  textures are as sharp as at Max.
+- **Medium**: the 3D view is drawn at 1152 x 648 and MetalFX upscales it: fine detail softens (the sand's ripples and
+  tread marks, the signs' small text, which becomes hard to read at a distance: "GATES 1-2" at the race start), edges
+  are anti-aliased by the upscaler instead of MSAA (smooth at rest, the hard shadows' stair-steps a little coarser), and
+  the ground's overlay layers lose their direct specular: the sand about 1 % darker (most of the town view's 3.1/255).
+  In motion (the playthrough's live window captures at Medium and Low, racing and orbiting the camera) the moving
+  robots and the track show no trails and the image stays as soft as at rest; the crowd's walk and the dust, which have
+  no motion vectors of their own, were not examined frame by frame.
+- **Low**: 960 x 540 upscaled: everything softer again (the robots' panel lines, R2-D2's dome details), the ground's
+  textures without anisotropic filtering blur towards the horizon, the crowd and the town's buildings switch to their
+  coarser levels closer (at 0.6 of SceneKit's distances), the robots' silhouettes may move by up to 2 pixels.
+
+### Switching, loading and hitches
+
+The level **applies live**: activating the row stores the choice and calls `GraphicsDetailSetting.apply`, which sets
+the fields and `SceneKitRuntime.GraphicsDetailChanged`: every view's render scale, upscaler, MSAA, anisotropy and mesh
+LOD threshold at once, the glow filter at once, the robots' small-part meshes once their levels are prepared on worker
+threads (they draw their old meshes until then), the composer's variants and SceneKit's LOD distances when a scene is next
+drawn (`ObserveShading`) or prepared (`PrepareAsync`: a race world cached from an earlier race rebuilds behind the loading
+screen, spread over frames). The row is only on the Settings screen, so no race or sandbox frame waits for a switch, but
+the switch itself is not free: the frame after the click (menu check, frame times printed per switch, three runs) took
+95-106 ms to High (SSAO off: the prepass without the normal-roughness buffer; the anisotropy; the robots' meshes), 150-290
+ms to Medium and 155-172 ms to Low (Godot rebuilds the view's render buffers and MetalFX creates its scaler for the new
+input size) and 37-45 ms back to Max; every later frame took 16.7 ms. Once, on the first switch to Medium after the build
+had been exported, the switch took 0.63 s and the next frame 1.01 s, with one "timeout waiting for fence" from Godot's
+Metal driver (the GPU was still busy with MetalFX's first use); later runs did not repeat it. Before a view could be freed
+with MetalFX temporal configured but never drawn (the menu check's second settings view), every later frame timed out
+on a fence (1 s per frame); views outside the scene tree now get no upscaler (`SCNView.ApplyRenderScaling`), and the
+menu check passes without a timeout. The first run of a new configuration after a build also compiles pipelines while
+it draws (main-thread stalls of 50-400 ms over the first seconds in the frozen-view runs); the benchmarks below ran a
+short warm-up of every level and configuration first. Loading (`--loading-smoke-test` under the runner): Max and Medium
+both pass in 11.5 and 11.8 s with 458 and 463 responsive ticks and the same stalls (the longest, 1.8 and 2.0 s, at
+launch); a first run at Medium right after other configurations had run spent 41 s in main-thread stalls, 27 s of them at
+the race's reveal, compiling pipelines, and its repeat did not. At the reveal, the snapshot `revealDirtTrack` takes (and
+discards) draws the race view once per jitter phase under the temporal upscaler (23 draws at Medium, 32 at Low), which
+the loading screen covers.
+
+### Checks
+
+**Max is the renderer as before.** At the field defaults the facade leaves every viewport as it was (no property is
+written that does not change), composes byte-identical shaders (50 of 50 in a race benchmark run, `MARVIN_SHADER_DUMP`)
+and runs no new code per frame. The deterministic capture modes ran on the commit before (49ce6fb, from its own tree)
+and on this one, with the comparison's pins (22 modes, 501 captures: menu, smoke, the robot close-ups in both lights,
+calibration, visual regression, town, trail material, weather reset, binary sky, the pinned passage, entrance, binary
+sky, dune contact and ground performance, the facade test, text calibration, HUD, window chrome, the shadow-box and
+ground-bias probes, the town reference dump), and the modes with random state ran twice on each build:
+
+- Every capture that two runs of the commit before render identically is pixel-identical in this build, except the two
+  settings captures, which show the new row (`driving-assist-settings.png` 0.76 -> 1.13/255 from macOS,
+  `driving-assist-settings-900x550.png`). In two of three runs of this build (one Fast, one Exact) four smoke captures
+  (acting-curve, acting-passing, r2d2-front, robot-contact) had one pixel one 8-bit level off, at the same positions
+  (ground and wall pixels, not the robots), and the third run was identical; three runs of the commit before never
+  showed it. The smoke test's menu check switches the level through High, Medium and Low and back to Max before those
+  captures, which rebuilds the views' render buffers, the robots' small-part meshes and the scenes' nodes; a launch at
+  Max does none of that. Not traced further.
+- The captures with random state (smoke 16 of 36, town 9 of 21, the pinned dune contact's two WALL-E drive views, the
+  unpinned binary sky's racer views) differ from the commit before as much as its two runs differ from each other (town
+  robot POV 0.86-0.92/255 against 0.99 between two runs of the commit before; dirty BB-8 1.0-1.1 against 0.38-1.10).
+- Every deterministic report is byte-identical (smoke.json, full-race-trails.json, town-smoke.json, visual-regression.json,
+  binary-races.json, entrances, passages, the facade test's and text calibration's measurements, ...), except
+  `menu-smoke.json`, which gains `graphicsDetailPassed`; the differences are those between two runs of the commit before
+  (dune contact's `cpuUpdateP95MS`, the HUD's FPS sample, weather reset's random draws, the test scores' date).
+- With Shadow quality Exact (`MARVIN_SCN_CAL=Exact`) the menu, smoke, town, visual regression and both close-up sets
+  ran on both builds too: the same result (close-ups and visual regression pixel-identical, the rest as above).
+
+**Every game mode** ran on this build with the comparison's pins (the 22 capture modes above and 34 more: the character,
+sandstorm, dune contact, entrance, people, navigation, passage, post-race, city escape, dust, debris and ground
+performance checks, the audio facade, BB-8 motion, storm race (24 grids), mesh reuse, shadow culling, the town
+statistics and dumps, display-link lifecycle, race-world views, passage preflight, loading, audio, viewport, town
+benchmark, world-build profile, shadow-motion probe, playthrough and the three fit tools): all pass except
+`--town-departure-movie`, which fails on macOS too (ground penetration 0.0195 m). The playthrough passes 63 of 63 steps
+at Max, and also with `MARVIN_GRAPHICS_DETAIL=Medium` and `Low` (loading, race, results, post-race, sandbox, menus; no
+fence timeout); the menu, smoke, town, visual regression, pinned entrance and pinned dune contact checks pass at High,
+Medium and Low too. The fit tools find the same grids as before. {{CHECKS_TOOLS}}
+
 ## The three passes merged: before and after
 
 The ground and overlays, shading and post, and draw-call passes (the three sections below) were developed on separate
@@ -230,6 +561,9 @@ Frozen views (one run each, 28 s, trace 21-25 s; FPS, GPU walltime / busy ms per
 | race start at 1 s, grid pinned | 55.9; 17.87 / 16.07 | 60.0; 15.91 / 14.11 | 43.7; 23.17 / 20.29 | 49.9; 20.13 / 17.36 |
 
 ### What still separates Fast from 60 FPS at 1920 x 1080
+
+*Since then:* the Graphics detail setting's levels below Max use rows 2, 3, 4, 6 and 7 (and temporal upscaling) as look
+changes the player chooses; Max keeps the look and this frame rate ("Graphics detail").
 
 The GPU sets the frame rate. In the moving town roam Godot keeps the M2's GPU busy about 895 ms per second and
 WindowServer another 50; in the race 835-855 and 40. The frames that hold 60 FPS have at most about 14 ms of Godot GPU
@@ -1636,6 +1970,14 @@ git archive OLD_COMMIT apps/simulator-godot | tar -x -C BASE   # then assets, .g
 # its frozen-view diagnostics on one build: --env MARVIN_BENCHMARK_HIDE=Trampled,
 # --env MARVIN_SCN_CAL=MeshLodMinTriangles=256, --env MARVIN_SCN_CAL=GlowBicubicUpscale=0,
 # -- --benchmark-no-ssao, -- --benchmark-no-shadows
+# graphics detail ("Graphics detail"): a level for any run, the same frozen frame in every run (fixed clock), single
+# fields of a level for experiments (RenderScale, RenderUpscaler 0 temporal / 1 bilinear / 2 FSR 1 / 3 MetalFX spatial /
+# 4 FSR 2, SsaoEnabled, SimpleSkyReflection, SimpleGroundLighting, AnisotropicFiltering, LodDistanceScale,
+# MeshLodThreshold, MeshLodMinTriangles, GlowBicubicUpscale), and the look of a frozen frame against Max's
+tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --mode city-roam --wait-idle --env MARVIN_GRAPHICS_DETAIL=High
+tools/perf/run-benchmark.py OUT ... --seconds 28 --trace 21:4 --trace-from-start --env MARVIN_BENCHMARK_FREEZE=16 \
+    --env MARVIN_BENCHMARK_FIXED_STEP=1 "--env=MARVIN_SCN_CAL=RenderScale=0.75;SsaoEnabled=0"   # then compare OUT/final-fps.png
+MARVIN_GRAPHICS_DETAIL=Medium tools/godot -- --town-smoke-test DIR   # any capture mode at a level
 ```
 
 `run-benchmark.py` needs `metalperftrace` (macOS 27) and, for `--trace`, Xcode's `xctrace`; `profile-cpu.sh` needs

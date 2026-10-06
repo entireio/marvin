@@ -46,6 +46,16 @@ choice is stored with the other settings and applies immediately; the macOS game
 experiments the environment variable `MARVIN_SCN_CAL=Exact` selects it for any game mode, in the editor runtime and
 the release builds alike, and overrides the setting (PORTING.md, "Known deviations"; `docs/performance.md`).
 
+Settings > Graphics detail trades look for frame rate on GPUs that cannot run the full look at 60 FPS: **Max** (the
+default) draws everything as before; **High** leaves out the ambient occlusion (SSAO) and simplifies four small details at
+full resolution; **Medium** also draws the 3D view at 0.6 of the window's resolution and upscales it with MetalFX temporal
+upscaling on macOS (FSR 2 on Windows), and lights the ground's overlay layers more simply; **Low** draws it at half the
+resolution and simplifies further. The HUD and menus stay at full resolution. At 1920 x 1080 on an M2, High holds 60 FPS
+with Shadow quality Fast, Medium with Exact, and Low leaves a large margin (`docs/performance.md`, "Graphics detail").
+The choice is stored with the other settings and applies immediately; the two settings are independent; the macOS game
+has no such setting. `MARVIN_GRAPHICS_DETAIL=Low|Medium|High|Max` selects a level for any game mode (game modes otherwise
+use Max).
+
 ## Release builds
 
 ```sh
