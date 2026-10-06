@@ -22,12 +22,16 @@ public sealed class TrackBelt
         var shoe = new SCNBox(width, 0.008, pitch * 0.80, 0.001);
         shoe.materials = new() { rubber };
         shoes = Enumerable.Range(0, count).Select(_ => new SCNNode(shoe)).ToArray();
+        // PORT: Godot-only, the same look: the Swift code creates an equal rib box and rib material for every shoe; here
+        // the belt's ribs share one material (never changed afterwards), so Godot draws its 56 equal ribs as one instanced
+        // draw per pass instead of 56 (docs/performance.md, "Draw calls"). The rib box stays one per shoe.
+        var ribMaterial = material(0x2b3432, roughness: 0.95);
         for (int i = 0; i < shoes.Length; i++)
         {
             var shoeNode = shoes[i];
             // Offset center ribs break up the broad tread, making its motion legible.
             var rib = new SCNBox(width * 0.38, 0.003, pitch * 0.42, 0.0007);
-            rib.materials = new() { material(0x2b3432, roughness: 0.95) };
+            rib.materials = new() { ribMaterial };
             var ribNode = new SCNNode(rib);
             ribNode.position = new SCNVector3(i % 2 == 0 ? -width * 0.23 : width * 0.23, 0.004, 0);
             shoeNode.addChildNode(ribNode);

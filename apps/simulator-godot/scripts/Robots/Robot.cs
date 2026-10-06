@@ -203,6 +203,9 @@ public sealed class Robot
             root.addChildNode(belt.node); tracks.Add(belt);
         }
         // Hub markers rotate with the same signed travel as their belt.
+        // PORT: Godot-only, the same look: one material for the four equal spokes (Swift creates an equal one per spoke),
+        // so Godot draws them as one instanced draw (docs/performance.md, "Draw calls").
+        var spokeMaterial = material(0xb4c8c0, metal: 0.5);
         foreach (var x in new[] { -0.337, 0.337 })
         {
             foreach (var z in new[] { -0.247, 0.164 })
@@ -210,7 +213,7 @@ public sealed class Robot
                 var hub = new SCNNode();
                 hub.position = new SCNVector3(x, 0.112, z);
                 var spoke = new SCNBox(0.008, 0.10, 0.022, 0.004);
-                spoke.materials = new() { material(0xb4c8c0, metal: 0.5) };
+                spoke.materials = new() { spokeMaterial };
                 hub.addChildNode(new SCNNode(spoke));
                 root.addChildNode(hub); wheels.Add((hub, x > 0));
             }
