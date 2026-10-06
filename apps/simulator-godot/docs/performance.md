@@ -147,7 +147,8 @@ with runs of the unchanged build):
 | every `townNoise` hash without its sines (wrong values) | 4.92, 4.91 | 7.64, 7.55 | 18.65, 18.42 | 48.6, 49.3 |
 
 In this view the trampled sand costs about 3.5 ms (its lighting 1.6, its textures 1.1, of which anisotropic filtering
-0.8, its pigment 0.3-0.6) and the streets 1.8 ms; the noise's sines are about 0.5 ms over both passes. The red-soil aprons
+0.8, its pigment 0.1-1.0 in two noisy runs) and the streets 1.8 ms; the noise's sines are 0.5-1.1 ms of GPU busy (0.3-1.0 ms
+of walltime) over both passes. The red-soil aprons
 cost nothing measurable there (each hidden: within the runs' spread). Of the 2.6 ms left in the transparent pass with
 the four layers hidden, most is the pass itself (it loads and stores the 2x MSAA colour and depth targets) and the dust.
 
