@@ -1,7 +1,8 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From c8403cca8f5384a7076a54abde6ca47a931264f9 Mon Sep 17 00:00:00 2001
 From: Thomas Dohmke <thomas@dohmke.de>
 Date: Tue, 6 Oct 2026 12:00:00 +0000
-Subject: [PATCH 2/4] Forward+: Draw all directional shadow splits in one render pass
+Subject: [PATCH 2/4] Forward+: Draw all directional shadow splits in one
+ render pass
 
 New project setting rendering/lights_and_shadows/directional_shadow/single_render_pass (default false).
 
@@ -23,38 +24,39 @@ per-split load/store go away. Other shadow passes (positional atlas, cube maps) 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_011LFhRgmAGGsjqJRdhLgNJx
 ---
- doc/classes/ProjectSettings.xml                                              |    4 ++++
- servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp |   37 ++++++++++++++++++++++++++++++++++---
- servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h   |    2 ++
- servers/rendering/rendering_server.cpp                                       |    1 +
+ doc/classes/ProjectSettings.xml                                             |  4 ++++
+ .../rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp    | 37 ++++++++++++++++++++++++++++++++++---
+ servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h  |  2 ++
+ servers/rendering/rendering_server.cpp                                      |  1 +
  4 files changed, 41 insertions(+), 3 deletions(-)
 
 diff --git a/doc/classes/ProjectSettings.xml b/doc/classes/ProjectSettings.xml
+index 14e3133..bd741e6 100644
 --- a/doc/classes/ProjectSettings.xml
 +++ b/doc/classes/ProjectSettings.xml
-@@ -3142,6 +3142,10 @@
- 		</member>
+@@ -3143,6 +3143,10 @@
  		<member name="rendering/lights_and_shadows/directional_shadow/16_bits" type="bool" setter="" getter="" default="true">
  			Use 16 bits for the directional shadow depth map. Enabling this results in shadows having less precision and may result in shadow acne, but can lead to performance improvements on some devices.
-+		</member>
+ 		</member>
 +		<member name="rendering/lights_and_shadows/directional_shadow/single_render_pass" type="bool" setter="" getter="" default="false">
 +			If [code]true[/code], every split of every [DirectionalLight3D] shadow is drawn in one render pass that clears the whole directional shadow atlas with its load action and stores it once. If [code]false[/code], the atlas is cleared by a separate render pass and each split is drawn in its own render pass, which loads and stores the atlas again. The result is the same; the single pass avoids the extra clear and the repeated load/store of the atlas, which is significant on tile-based GPUs (Apple Silicon, mobile).
 +			[b]Note:[/b] Only supported by the Forward+ renderer.
- 		</member>
++		</member>
  		<member name="rendering/lights_and_shadows/directional_shadow/size" type="int" setter="" getter="" default="4096">
  			The directional shadow's size in pixels. Higher values will result in sharper shadows, at the cost of performance. The value is rounded up to the nearest power of 2.
+ 		</member>
 diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
+index 370d3b6..bce1722 100644
 --- a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
 +++ b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
-@@ -1565,12 +1565,18 @@
- 				_render_shadow_pass(p_render_data->render_shadows[index].light, p_render_data->shadow_atlas, p_render_data->render_shadows[index].pass, p_render_data->render_shadows[index].instances, lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, true, true, true, p_render_data->render_info, viewport_size, p_render_data->scene_data->cam_transform);
+@@ -1566,11 +1566,17 @@ void RenderForwardClustered::_pre_opaque_render(RenderDataRD *p_render_data, boo
  			}
  		}
-+
+ 
 +		// With rendering/lights_and_shadows/directional_shadow/single_render_pass, _render_shadow_end() draws every
 +		// directional split in one render pass whose load action clears the atlas, so no separate clear pass is needed.
 +		scene_state.directional_shadows_single_pass = GLOBAL_GET_CACHED(bool, "rendering/lights_and_shadows/directional_shadow/single_render_pass");
- 
++
  		if (p_render_data->directional_shadows.size()) {
  			//open the pass for directional shadows
  			light_storage->update_directional_shadow_atlas();
@@ -67,7 +69,7 @@ diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clus
  		}
  	}
  
-@@ -2898,9 +2904,34 @@
+@@ -2898,9 +2904,34 @@ void RenderForwardClustered::_render_shadow_process() {
  void RenderForwardClustered::_render_shadow_end() {
  	RD::get_singleton()->draw_command_begin_label("Shadow Render");
  
@@ -104,9 +106,10 @@ diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clus
  
  	RD::get_singleton()->draw_command_end_label();
 diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h
+index be97ee2..b94231a 100644
 --- a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h
 +++ b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h
-@@ -441,6 +441,8 @@
+@@ -441,6 +441,8 @@ private:
  		};
  
  		LocalVector<ShadowPass> shadow_passes;
@@ -116,9 +119,10 @@ diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clus
  		void grow_instance_buffer(RenderListType p_render_list, uint32_t p_req_element_count, bool p_append);
  	} scene_state;
 diff --git a/servers/rendering/rendering_server.cpp b/servers/rendering/rendering_server.cpp
+index d2b235f..f967cd0 100644
 --- a/servers/rendering/rendering_server.cpp
 +++ b/servers/rendering/rendering_server.cpp
-@@ -3675,6 +3675,7 @@
+@@ -3675,6 +3675,7 @@ void RenderingServer::init() {
  	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Very Low (Faster),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"), 2);
  	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile", 0);
  	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/16_bits", true);
@@ -128,3 +132,4 @@ diff --git a/servers/rendering/rendering_server.cpp b/servers/rendering/renderin
  	GLOBAL_DEF("rendering/lights_and_shadows/positional_shadow/soft_shadow_filter_quality.mobile", 0);
 -- 
 4.7.2-stable + Marvin patches
+

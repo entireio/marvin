@@ -5,7 +5,7 @@
 #
 #   engine/build-engine.sh all                # every step below, in order
 #   engine/build-engine.sh deps               # scons (venv), llvm-mingw, D3D12/AccessKit/WinRT deps, MoltenVK check
-#   engine/build-engine.sh source             # clone 4.7.2-stable into $GODOT_SRC and apply engine/patches (git am)
+#   engine/build-engine.sh source             # clone 4.7.2-stable into $GODOT_SRC, branch marvin-4.7.2 = tag + engine/patches
 #   engine/build-engine.sh editor             # macOS arm64 editor + C# glue + GodotSharp assemblies -> .app bundle
 #   engine/build-engine.sh templates-macos    # template_release/template_debug arm64 (+ x86_64) -> macos.zip
 #   engine/build-engine.sh templates-windows  # template_release/template_debug x86_64 (+ console wrappers)
@@ -135,25 +135,37 @@ step_source() {
         mkdir -p "$(dirname "$GODOT_SRC")"
         git clone --depth 1 --branch "$GODOT_TAG" "$GODOT_REPO" "$GODOT_SRC"
     fi
+    git -C "$GODOT_SRC" rev-parse -q --verify "refs/tags/$GODOT_TAG" > /dev/null || die "$GODOT_SRC has no tag $GODOT_TAG"
+
+    # Branch marvin-4.7.2 = the tag + exactly the series in engine/patches, one commit per patch, so `git log` shows what
+    # differs from the tag. Patches are matched by content (git patch-id), not by subject: an edited patch is applied
+    # again even when its subject is unchanged, and format-patch's folded subject lines do not matter.
+    local branch="marvin-4.7.2" patch commit id want="" have=""
+    for patch in "$PATCH_DIR"/*.patch; do
+        want+="$(git -C "$GODOT_SRC" patch-id --stable < "$patch" | cut -d' ' -f1)"$'\n'
+    done
+    if git -C "$GODOT_SRC" rev-parse -q --verify "refs/heads/$branch" > /dev/null; then
+        for commit in $(git -C "$GODOT_SRC" rev-list --reverse "$GODOT_TAG..$branch"); do
+            id=$(git -C "$GODOT_SRC" show "$commit" | git -C "$GODOT_SRC" patch-id --stable | cut -d' ' -f1)
+            have+="$id"$'\n'
+            # Never drop work done in the checkout: a commit there that is not in engine/patches must be exported first.
+            grep -qxF "$id" <<< "$want" \
+                || die "$branch has a commit that is not in engine/patches: $(git -C "$GODOT_SRC" log -1 --format='%h %s' "$commit") (README, 'Changing the patches')"
+        done
+    fi
+    if [ -n "$have" ] && [ "$want" = "$have" ]; then
+        git -C "$GODOT_SRC" checkout -q "$branch"
+        echo "up to date: $branch = $GODOT_TAG + engine/patches"
+    else
+        git -C "$GODOT_SRC" checkout -q -B "$branch" "$GODOT_TAG"
+        for patch in "$PATCH_DIR"/*.patch; do
+            echo "applying: $(basename "$patch")"
+            git -C "$GODOT_SRC" -c user.name="Marvin engine build" -c user.email="marvin@localhost" am --3way --keep-cr "$patch" \
+                || { git -C "$GODOT_SRC" am --abort || true; die "patch did not apply: $patch"; }
+        done
+    fi
     grep -q '^patch = 2$' "$GODOT_SRC/version.py" && grep -q '^minor = 7$' "$GODOT_SRC/version.py" \
         || die "$GODOT_SRC is not Godot 4.7.2"
-
-    # Apply the series once, on a branch, so `git log` shows exactly what differs from the tag.
-    local branch="marvin-4.7.2"
-    if [ "$(git -C "$GODOT_SRC" rev-parse --abbrev-ref HEAD)" != "$branch" ]; then
-        git -C "$GODOT_SRC" checkout -B "$branch"
-    fi
-    local patch subject
-    for patch in "$PATCH_DIR"/*.patch; do
-        subject=$(sed -n 's/^Subject: \[PATCH [0-9]*\/[0-9]*\] //p' "$patch" | head -n 1)
-        if git -C "$GODOT_SRC" log --format=%s | grep -qxF "$subject"; then
-            echo "already applied: $subject"
-            continue
-        fi
-        echo "applying: $subject"
-        git -C "$GODOT_SRC" -c user.name="Marvin engine build" -c user.email="marvin@localhost" am --3way --keep-cr "$patch" \
-            || { git -C "$GODOT_SRC" am --abort || true; die "patch did not apply: $patch"; }
-    done
     git -C "$GODOT_SRC" log --oneline -n 6
 }
 
@@ -221,7 +233,10 @@ step_templates_windows() {
     [ -x "$VENV/bin/scons" ] || die "run 'deps' first"
     [ -x "$LLVM_MINGW/bin/x86_64-w64-mingw32-clang" ] || die "llvm-mingw not found in $LLVM_MINGW (run 'deps')"
     [ -d "$GODOT_SRC/bin/build_deps/mesa-x86_64-llvm" ] || die "D3D12 dependencies missing (run 'deps' after 'source')"
+    # platform/windows/detect.py's can_build() runs before the SCons options are read, so it only sees MINGW_PREFIX (and
+    # PATH), not mingw_prefix=.
     export PATH="$LLVM_MINGW/bin:$PATH"
+    export MINGW_PREFIX="$LLVM_MINGW"
     local target
     for target in template_release template_debug; do
         # Direct3D 12 (the preset's driver) and Vulkan (its fallback, through volk: no SDK needed); the GUI exe and its
@@ -251,8 +266,8 @@ step_install() {
     fi
     local target exe console
     for target in release debug; do
-        exe=$(ls "$GODOT_SRC"/bin/godot.windows.template_${target}.x86_64*.mono.exe 2> /dev/null | grep -v '\.console\.exe$' | head -n 1 || true)
-        console=$(ls "$GODOT_SRC"/bin/godot.windows.template_${target}.x86_64*.mono.console.exe 2> /dev/null | head -n 1 || true)
+        exe=$(command ls "$GODOT_SRC"/bin/godot.windows.template_${target}.x86_64*.mono.exe 2> /dev/null | grep -v '\.console\.exe$' | head -n 1 || true)
+        console=$(command ls "$GODOT_SRC"/bin/godot.windows.template_${target}.x86_64*.mono.console.exe 2> /dev/null | head -n 1 || true)
         if [ -n "$exe" ]; then
             cp "$exe" "$TEMPLATES_DIR/windows_${target}_x86_64.exe"
             [ -n "$console" ] && cp "$console" "$TEMPLATES_DIR/windows_${target}_x86_64_console.exe"
@@ -283,8 +298,8 @@ step_verify() {
     version=$("$godot" --headless --version 2> /dev/null | tail -n 1 | tr -d '\r')
     echo "editor:    $version"
     [[ "$version" == 4.7.2.stable.marvin.mono.* ]] || die "unexpected version $version (expected 4.7.2.stable.marvin.mono.*)"
-    echo "templates: $(cat "$TEMPLATES_DIR/version.txt" 2> /dev/null || echo missing) in $TEMPLATES_DIR"
-    ls -la "$TEMPLATES_DIR"
+    echo "templates: $(command cat "$TEMPLATES_DIR/version.txt" 2> /dev/null || echo missing) in $TEMPLATES_DIR"
+    command ls -la "$TEMPLATES_DIR"
     echo
     echo "Use it with:  MARVIN_ENGINE=marvin apps/simulator-godot/tools/godot ...   (and tools/export)"
 }

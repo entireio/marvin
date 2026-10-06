@@ -1,4 +1,4 @@
-From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From b87450e67b648c4f3323229df5fa183c848f08ed Mon Sep 17 00:00:00 2001
 From: Thomas Dohmke <thomas@dohmke.de>
 Date: Tue, 6 Oct 2026 12:00:00 +0000
 Subject: [PATCH 1/4] version: tag the engine as 4.7.2.stable.marvin
@@ -11,13 +11,14 @@ status stays "stable", so the C# packages the project builds against stay Godot.
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_011LFhRgmAGGsjqJRdhLgNJx
 ---
- version.py |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+ version.py | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/version.py b/version.py
+index 4b0e55c..45c5e34 100644
 --- a/version.py
 +++ b/version.py
-@@ -4,6 +4,8 @@
+@@ -4,6 +4,8 @@ major = 4
  minor = 7
  patch = 2
  status = "stable"
@@ -29,3 +30,4 @@ diff --git a/version.py b/version.py
  docs = "4.7"
 -- 
 4.7.2-stable + Marvin patches
+
