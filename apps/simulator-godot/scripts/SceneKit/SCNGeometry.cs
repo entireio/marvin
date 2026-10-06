@@ -340,7 +340,7 @@ public class SCNGeometry : IPropertyOwner
     /// in a large flush).
     /// </summary>
     public bool godotAutomaticLevelsOfDetail { get => _godotAutomaticLevelsOfDetail; set { if (_godotAutomaticLevelsOfDetail == value) return; _godotAutomaticLevelsOfDetail = value; Changed(true); } }
-    internal const int AutomaticLodMinTriangles = 2048;
+    internal static int AutomaticLodMinTriangles => SceneKitCalibration.MeshLodMinTriangles;
     public Dictionary<SCNShaderModifierEntryPoint, string> shaderModifiers
     {
         get => _shaderModifiers;
@@ -350,13 +350,87 @@ public class SCNGeometry : IPropertyOwner
     public void setValue(object value, string forKey)
     {
         if (value is SCNMaterialProperty p) { p.AddOwner(this); p.ArgumentOwner(this); }
-        bool had = arguments.ContainsKey(forKey);
-        arguments[forKey] = value is float f ? (double)f : value;
-        if (!had) Changed(); else foreach (var v in argumentVariants) MaterialGpu.ApplyArgument(v, forKey, arguments[forKey], DrawnScene);
+        bool had = arguments.TryGetValue(forKey, out var old);
+        var stored = value is float f ? (double)f : value;
+        arguments[forKey] = stored;
+        if (!had) { Changed(); return; }
+        if (InstanceArguments.Contains(forKey) && InstanceValue(stored))
+        {
+            // A per-instance argument (Godot instance uniforms): the mesh instances of the user nodes take the new value.
+            foreach (var n in users) n.MarkGeometryDirty();
+            return;
+        }
+        // Another bound value selects another shared variant (see ShadingKey).
+        if (!SameBoundValue(old, stored)) { Changed(); return; }
+        foreach (var v in argumentVariants) MaterialGpu.ApplyArgument(v, forKey, stored, DrawnScene);
+    }
+
+    // ---- Per-instance shader arguments (Godot-only; see ShaderComposer.ShadingKey)
+    /// <summary>
+    /// The arguments of this geometry's own shader modifiers that are passed per mesh instance (Godot instance uniforms)
+    /// instead of per material: matrices declared as mat4 in a modifier of this geometry. Geometries whose own shading
+    /// differs only in these values share one Godot material, so Godot can draw equal meshes with it as one instanced
+    /// draw (DirtCoating gives every robot part its own dirtToBody matrix; Marvin's 112 track shoes and 112 ribs were 224
+    /// draws per pass). The matrix reaches the shader as the same 32-bit floats a material uniform holds, and the robots'
+    /// captures are pixel-identical. Numbers and vectors stay material uniforms (geometries with equal values share them):
+    /// passed per instance, DirtCoating's dirtHeight divisor changed a few dirty-robot pixels by one 8-bit step (the
+    /// shader compiler evaluates a division by a uniform differently).
+    /// </summary>
+    internal IReadOnlyCollection<string> InstanceArguments
+    {
+        get
+        {
+            if (_shaderModifiers == null || arguments.Count == 0) return NoInstanceArguments;
+            if (instanceArgumentsVersion == version && instanceArguments != null) return instanceArguments;
+            var result = new HashSet<string>();
+            foreach (var snippet in _shaderModifiers.Values)
+                foreach (var (name, type) in ShaderComposer.DeclaredArguments(snippet))
+                    if (type == "mat4" && arguments.TryGetValue(name, out var v) && InstanceValue(v)) result.Add(name);
+            instanceArguments = result; instanceArgumentsVersion = version;
+            return result;
+        }
+    }
+    private HashSet<string> instanceArguments;
+    private int instanceArgumentsVersion = -1;
+    private static readonly HashSet<string> NoInstanceArguments = new();
+    internal static bool InstanceValue(object v) => v is SCNMatrix4 or NSValue { value: SCNMatrix4 };
+    private static bool SameBoundValue(object a, object b) =>
+        ReferenceEquals(a, b) || (a is double x && b is double y && BitConverter.DoubleToInt64Bits(x) == BitConverter.DoubleToInt64Bits(y));
+    /// <summary>The part of this geometry's own shading that selects its material variants (null: none of its own).</summary>
+    internal ShaderComposer.ShadingKey ShadingKey
+    {
+        get
+        {
+            if (!HasOwnShading) return null;
+            if (shadingKey != null && shadingKeyVersion == version) return shadingKey;
+            var instance = InstanceArguments;
+            var bound = new List<(string, object)>();
+            foreach (var kv in arguments) if (!instance.Contains(kv.Key)) bound.Add((kv.Key, kv.Value));
+            shadingKey = new ShaderComposer.ShadingKey(_shaderModifiers, instance, bound);
+            shadingKeyVersion = version;
+            return shadingKey;
+        }
+    }
+    private ShaderComposer.ShadingKey shadingKey;
+    private int shadingKeyVersion = -1;
+    /// <summary>Sets this geometry's per-instance arguments on a Godot instance that draws it (SCNNode.RebuildMeshes).</summary>
+    internal void ApplyInstanceArguments(GeometryInstance3D instance)
+    {
+        foreach (var name in InstanceArguments)
+        {
+            var value = arguments[name];
+            // The columns of the Godot matrix a material uniform would get (MaterialGpu.ApplyArgument).
+            var m = (value is NSValue nv ? (SCNMatrix4)nv.value : (SCNMatrix4)value).ToGodotProjection();
+            instance.SetInstanceShaderParameter(ShaderNames.Of(name + "_c0"), m.X);
+            instance.SetInstanceShaderParameter(ShaderNames.Of(name + "_c1"), m.Y);
+            instance.SetInstanceShaderParameter(ShaderNames.Of(name + "_c2"), m.Z);
+            instance.SetInstanceShaderParameter(ShaderNames.Of(name + "_c3"), m.W);
+        }
     }
     public object value(string forKey) => arguments.TryGetValue(forKey, out var v) ? v : null;
     void IPropertyOwner.PropertyChanged(SCNMaterialProperty property)
     {
+        // Geometries that share a variant (equal ShadingKey) hold the same property, so each binds the same contents.
         foreach (var kv in arguments) if (ReferenceEquals(kv.Value, property)) foreach (var v in argumentVariants) MaterialGpu.ApplyArgument(v, kv.Key, property, DrawnScene);
     }
     /// <summary>The scene this geometry is drawn in (its first user node's scene; null when detached).</summary>
@@ -435,15 +509,55 @@ public class SCNGeometry : IPropertyOwner
             if (mesh != null && meshVersion == meshDataVersion && runs.SequenceEqual(meshRuns) && (meshTangents || !tangents)) return mesh;
             meshRuns = runs;
             var old = mesh;
-            mesh = BuildMesh(tangents);
+            bool oldShared = sharedMesh != null;
+            string key = SharedMeshKey(runs, tangents);
+            if (key != null && sharedMeshes.TryGetValue(key, out var weak) && weak.TryGetTarget(out var entry))
+            {
+                // Godot-only: an equal primitive built before (see SharedMeshKey).
+                sharedMesh = entry; mesh = entry.mesh; prepared = null;
+                meshTangents = entry.tangents; MeshHasLods = entry.hasLods;
+                surfaceElements.Clear(); surfaceElements.AddRange(entry.surfaceElements);
+                if (!meshTangents && !registeredWithoutTangents) { registeredWithoutTangents = true; lock (withoutTangents) withoutTangents.Add(new WeakReference<SCNGeometry>(this)); }
+            }
+            else
+            {
+                mesh = BuildMesh(tangents);
+                sharedMesh = null;
+                if (key != null)
+                {
+                    sharedMesh = new SharedMesh { mesh = mesh, surfaceElements = surfaceElements.ToArray(), hasLods = MeshHasLods, tangents = meshTangents };
+                    sharedMeshes[key] = new WeakReference<SharedMesh>(sharedMesh);
+                }
+            }
             meshVersion = meshDataVersion;
             // Release the replaced mesh's wrapper now instead of through the finalizer thread (per-frame batches replace
             // theirs every frame; finalizing them contended with the main thread). Mesh instances that still show it keep
-            // the engine object alive until their nodes rebuild.
-            old?.Dispose();
+            // the engine object alive until their nodes rebuild. A shared mesh's wrapper may still be used by other geometries.
+            if (!oldShared && !ReferenceEquals(old, mesh)) old?.Dispose();
             return mesh;
         }
     }
+
+    // ---- Shared meshes of equal primitives (Godot-only)
+    /// <summary>
+    /// Primitive geometries (SCNBox, SCNSphere, SCNCylinder, SCNPlane) with the same shape parameters build the same
+    /// arrays; they share one Godot mesh, so Godot can draw equal primitives with the same material as one instanced draw
+    /// (its forward renderer joins consecutive draws of the same mesh surface and material). Marvin's track belts are 112
+    /// copies of one shoe box and 112 equal rib boxes. Null: not shared (plain geometry, custom bounds, SceneKit LODs).
+    /// </summary>
+    internal virtual string MeshShapeKey => null;
+    /// <summary>A double's exact bits, for shape keys.</summary>
+    protected static string K(double v) => BitConverter.DoubleToInt64Bits(v).ToString("X16");
+    private string SharedMeshKey(int[] runs, bool tangents)
+    {
+        var shape = MeshShapeKey;
+        if (shape == null || _customBounds.HasValue || (_levelsOfDetail != null && _levelsOfDetail.Length > 0)) return null;
+        return $"{shape}|{string.Join(",", runs)}|{tangents}|{_godotAutomaticLevelsOfDetail}";
+    }
+    private sealed class SharedMesh { public ArrayMesh mesh; public int[] surfaceElements; public bool hasLods, tangents; }
+    /// <summary>The shared mesh this geometry draws (keeps the table's weak entry alive while it is used).</summary>
+    private SharedMesh sharedMesh;
+    private static readonly Dictionary<string, WeakReference<SharedMesh>> sharedMeshes = new();
     /// <summary>
     /// Tangents feed only normal maps (the composer's TANGENT/BINORMAL), so they are generated only when a material of
     /// the geometry, or its own shader modifiers, uses them; generating them for every textured mesh cost 1.3 s when the

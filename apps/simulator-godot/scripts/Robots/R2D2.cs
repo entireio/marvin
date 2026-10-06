@@ -112,21 +112,23 @@ public sealed class R2D2
             triangleCount += part.indices.Count / 3;
             if (part.name == "R2D2_Leg_Center") { hasCenterLeg = true; }
         }
+        // PORT: Godot-only, the same look: the three wheels share their rubber and hub materials (Swift creates equal ones
+        // per wheel), so Godot draws equal tires and spokes as one instanced draw (docs/performance.md, "Draw calls").
+        var rubber = material(0x555653, roughness: 0.94);
+        var hub = material(0x8b969e, metal: 0.75, roughness: 0.38);
         foreach (var contact in groundContacts)
         {
             var side = contact.x > 0 ? 1 : contact.x < 0 ? -1 : 0;
-            addWheel(x: contact.x, z: contact.z, tire: side == 0 ? centerTire : outerTire, side: side);
+            addWheel(x: contact.x, z: contact.z, tire: side == 0 ? centerTire : outerTire, side: side, rubber: rubber, hub: hub);
         }
         dirtCoating.install(root, height: sceneHeight, wheelOffset: 0.213);
     }
 
-    private void addWheel(double x, double z, Tire tire, int side)
+    private void addWheel(double x, double z, Tire tire, int side, SCNMaterial rubber, SCNMaterial hub)
     {
         double radius = tire.radius, width = tire.width;
         var axle = new SCNNode(); axle.name = "R2-D2 rolling tire";
         axle.position = new SCNVector3(x, radius, z);
-        var rubber = material(0x555653, roughness: 0.94);
-        var hub = material(0x8b969e, metal: 0.75, roughness: 0.38);
         SCNNode cylinder(double radius, double width, SCNMaterial surface)
         {
             var shape = new SCNCylinder(radius, width); shape.radialSegmentCount = 48;

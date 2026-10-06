@@ -42,6 +42,7 @@ public sealed class SCNBox : SCNGeometry
     public int lengthSegmentCount { get => _ls; set { _ls = value; Rebuild(); } }
     public int chamferSegmentCount { get => _cs; set { _cs = value; Rebuild(); } }
     protected override SCNGeometry CopyShape() => new SCNBox(_w, _h, _l, _r) { _ws = _ws, _hs = _hs, _ls = _ls, _cs = _cs };
+    internal override string MeshShapeKey => $"box {K(_w)} {K(_h)} {K(_l)} {K(_r)} {_ws} {_hs} {_ls} {_cs}";
 
     protected override void Build()
     {
@@ -118,6 +119,7 @@ public sealed class SCNSphere : SCNGeometry
     public int segmentCount { get => _seg; set { _seg = value; Rebuild(); } }
     public bool isGeodesic { get => _geodesic; set { _geodesic = value; Rebuild(); } }
     protected override SCNGeometry CopyShape() => new SCNSphere(_r) { _seg = _seg, _geodesic = _geodesic };
+    internal override string MeshShapeKey => $"sphere {K(_r)} {_seg} {_geodesic}";
     protected override void Build()
     {
         int n = Math.Max(3, _seg);
@@ -161,6 +163,7 @@ public sealed class SCNCylinder : SCNGeometry
     public int radialSegmentCount { get => _radial; set { _radial = value; Rebuild(); } }
     public int heightSegmentCount { get => _hseg; set { _hseg = value; Rebuild(); } }
     protected override SCNGeometry CopyShape() => new SCNCylinder(_r, _h) { _radial = _radial, _hseg = _hseg };
+    internal override string MeshShapeKey => $"cylinder {K(_r)} {K(_h)} {_radial} {_hseg}";
     protected override void Build()
     {
         int n = Math.Max(3, _radial), m = Math.Max(1, _hseg);
@@ -219,6 +222,7 @@ public sealed class SCNPlane : SCNGeometry
     public int heightSegmentCount { get => _hs; set { _hs = value; Rebuild(); } }
     public int cornerSegmentCount { get => _cs; set { _cs = value; Rebuild(); } }
     protected override SCNGeometry CopyShape() => new SCNPlane(_w, _h) { _corner = _corner, _ws = _ws, _hs = _hs, _cs = _cs };
+    internal override string MeshShapeKey => $"plane {K(_w)} {K(_h)} {K(_corner)} {_ws} {_hs} {_cs}";
     protected override void Build()
     {
         int nx = Math.Max(1, _ws), ny = Math.Max(1, _hs);

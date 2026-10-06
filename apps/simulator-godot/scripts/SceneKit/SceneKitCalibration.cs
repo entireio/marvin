@@ -134,6 +134,10 @@ internal static class SceneKitCalibration
     // changed the close-ups by 0.03/255 on average and half a pixel by 0.01 (town view: 2.2 and 2.4 M primitives per frame
     // instead of 3.8 M); as shadow casters only, half a pixel changes them by at most 0.003/255.
     public static double MeshLodThreshold = 0.5;
+    /// <summary>Surfaces with fewer triangles get no Godot mesh LODs (SCNGeometry.godotAutomaticLevelsOfDetail). Lowering it
+    /// to 256 also gives the robots' small parts (track shoes and ribs, wheels) levels: measured and not adopted
+    /// (docs/performance.md, "Draw calls").</summary>
+    public static int MeshLodMinTriangles = 2048;
     /// <summary>Let the camera draw the levels too (no shadow-only twin, the game's default): 0.5-1 ms less GPU time per
     /// 1080p frame than shadows alone, but the robots' silhouettes move by up to MeshLodThreshold pixels. False draws the
     /// full meshes for the camera, as SceneKit does (MARVIN_SCN_CAL=Exact or "MeshLodForCamera=0").</summary>

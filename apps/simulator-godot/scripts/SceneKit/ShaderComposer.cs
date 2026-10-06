@@ -96,6 +96,75 @@ internal static class ShaderComposer
         var parts = head.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
         return parts.Length >= 2 ? parts[^1].Split('[')[0] : head;
     }
+    /// <summary>The declared type of an argument ("mat4", "float", "sampler2D"); "array" for array arguments.</summary>
+    private static string ArgType(string decl)
+    {
+        var head = decl.Split(':')[0].Trim();
+        if (head.Contains('[')) return "array";
+        var parts = head.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).Where(t => t is not ("highp" or "mediump" or "lowp")).ToArray();
+        return parts.Length >= 2 ? parts[0] : "";
+    }
+
+    // ---- Per-instance matrix arguments (Godot-only; SCNGeometry.InstanceArguments)
+    private static readonly Dictionary<string, (string name, string type)[]> declaredArguments = new();
+    /// <summary>(name, type) of every `#pragma arguments` entry of a modifier snippet (cached per snippet text).</summary>
+    internal static (string name, string type)[] DeclaredArguments(string snippet)
+    {
+        if (snippet == null) return Array.Empty<(string, string)>();
+        lock (declaredArguments)
+        {
+            if (declaredArguments.TryGetValue(snippet, out var cached)) return cached;
+            var result = Parse(snippet).arguments.Select(a => (ArgName(a), ArgType(a))).ToArray();
+            declaredArguments[snippet] = result;
+            return result;
+        }
+    }
+    /// <summary>A mat4 argument passed per mesh instance: four vec4 Godot instance uniforms (Godot has no matrix instance
+    /// uniforms) and a define that rebuilds the matrix under its own name, so the snippet's code is unchanged.</summary>
+    private static string InstanceDeclaration(string name) =>
+        $"instance uniform vec4 {name}_c0;\ninstance uniform vec4 {name}_c1;\ninstance uniform vec4 {name}_c2;\ninstance uniform vec4 {name}_c3;\n#define {name} mat4({name}_c0, {name}_c1, {name}_c2, {name}_c3)";
+
+    /// <summary>
+    /// What a geometry's own shading contributes to a material variant (Godot-only): its shader modifiers, the names of its
+    /// per-instance matrix arguments (SCNGeometry.InstanceArguments, set per mesh instance) and its other arguments
+    /// (numbers compared by value, textures, material properties and other objects by reference). Geometries with equal
+    /// keys draw with one Godot material per SCNMaterial: before, every geometry with an argument of its own had its own
+    /// (DirtCoating's per-part dirtToBody gave each robot part one), so equal meshes could never be drawn as one instanced
+    /// draw.
+    /// </summary>
+    internal sealed class ShadingKey : IEquatable<ShadingKey>
+    {
+        private readonly (SCNShaderModifierEntryPoint, string)[] modifiers;
+        private readonly string[] instance;
+        private readonly (string, object)[] bound;
+        private readonly int hash;
+        internal ShadingKey(Dictionary<SCNShaderModifierEntryPoint, string> modifiers, IReadOnlyCollection<string> instance, List<(string, object)> bound)
+        {
+            this.modifiers = modifiers == null ? Array.Empty<(SCNShaderModifierEntryPoint, string)>() : modifiers.Select(kv => (kv.Key, kv.Value ?? "")).OrderBy(kv => kv.Key).ToArray();
+            this.instance = instance.OrderBy(n => n, StringComparer.Ordinal).ToArray();
+            this.bound = bound.OrderBy(kv => kv.Item1, StringComparer.Ordinal).ToArray();
+            var h = new HashCode();
+            foreach (var (e, s) in this.modifiers) { h.Add(e); h.Add(s); }
+            foreach (var n in this.instance) h.Add(n);
+            foreach (var (n, v) in this.bound) { h.Add(n); h.Add(v is double d ? d.GetHashCode() : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(v)); }
+            hash = h.ToHashCode();
+        }
+        public bool Equals(ShadingKey o)
+        {
+            if (o is null || o.hash != hash || o.modifiers.Length != modifiers.Length || o.instance.Length != instance.Length || o.bound.Length != bound.Length) return false;
+            for (int i = 0; i < modifiers.Length; i++) if (modifiers[i].Item1 != o.modifiers[i].Item1 || !string.Equals(modifiers[i].Item2, o.modifiers[i].Item2, StringComparison.Ordinal)) return false;
+            for (int i = 0; i < instance.Length; i++) if (!string.Equals(instance[i], o.instance[i], StringComparison.Ordinal)) return false;
+            for (int i = 0; i < bound.Length; i++)
+            {
+                if (bound[i].Item1 != o.bound[i].Item1) return false;
+                object a = bound[i].Item2, b = o.bound[i].Item2;
+                if (!(ReferenceEquals(a, b) || (a is double x && b is double y && BitConverter.DoubleToInt64Bits(x) == BitConverter.DoubleToInt64Bits(y)))) return false;
+            }
+            return true;
+        }
+        public override bool Equals(object obj) => obj is ShadingKey k && Equals(k);
+        public override int GetHashCode() => hash;
+    }
 
     internal static Plan Compose(SCNMaterial m, SCNGeometry geometry, VariantFlags flags)
     {
@@ -270,12 +339,20 @@ internal static class ShaderComposer
 
         // ---- Modifier arguments, varyings and declarations
         var declared = new HashSet<string>();
+        // The geometry's per-instance matrix arguments are Godot instance uniforms (SCNGeometry.InstanceArguments; set per
+        // mesh instance by SCNNode.RebuildMeshes), so geometries that differ only in them share this material.
+        var instanceArguments = geometry?.InstanceArguments;
         foreach (var snip in all)
         {
             foreach (var a in snip.arguments)
             {
                 var name = ArgName(a);
                 if (!declared.Add("u:" + name)) continue;
+                if (instanceArguments != null && instanceArguments.Contains(name) && ArgType(a) == "mat4")
+                {
+                    sb.AppendLine(InstanceDeclaration(name));
+                    continue;
+                }
                 plan.arguments.Add(name);
                 sb.AppendLine($"uniform {a};");
             }
@@ -735,7 +812,10 @@ internal static class ShaderNames
 internal sealed class MaterialGpu
 {
     private readonly SCNMaterial m;
-    private readonly Dictionary<(SCNGeometry geometry, int priority, ShaderComposer.VariantFlags flags), (ShaderMaterial material, ShaderComposer.Plan plan)> variants = new();
+    /// <summary>One Godot material per render priority, mesh traits and geometry-owned shading. Geometries with equal
+    /// shading keys share it (ShaderComposer.ShadingKey); `geometry` is the first of them, whose modifiers and bound
+    /// arguments it was composed with (the others' are equal).</summary>
+    private readonly Dictionary<(ShaderComposer.ShadingKey shading, int priority, ShaderComposer.VariantFlags flags), (ShaderMaterial material, ShaderComposer.Plan plan, SCNGeometry geometry)> variants = new();
     private bool structuralDirty = true, valuesDirty = true;
     private readonly HashSet<string> dirtyArguments = new();
     internal MaterialGpu(SCNMaterial m) { this.m = m; }
@@ -755,24 +835,28 @@ internal sealed class MaterialGpu
     /// <summary>Whether the variant Variant() returned for these arguments blends (is drawn in the transparent pass).</summary>
     internal bool IsTransparentVariant(SCNGeometry geometry, int renderingOrder, ShaderComposer.VariantFlags flags)
     {
-        var g = geometry != null && geometry.HasOwnShading ? geometry : null;
-        return variants.TryGetValue((g, Math.Clamp(renderingOrder, -128, 127), flags), out var v) && v.plan.transparent;
+        return variants.TryGetValue((geometry?.ShadingKey, Math.Clamp(renderingOrder, -128, 127), flags), out var v) && v.plan.transparent;
     }
     /// <summary>Whether that variant is a sky drawn behind everything with a .geometry modifier (ShaderComposer.Plan.ssaoSky).</summary>
     internal bool IsSsaoSkyVariant(SCNGeometry geometry, int renderingOrder, ShaderComposer.VariantFlags flags)
     {
-        var g = geometry != null && geometry.HasOwnShading ? geometry : null;
-        return variants.TryGetValue((g, Math.Clamp(renderingOrder, -128, 127), flags), out var v) && v.plan.ssaoSky;
+        return variants.TryGetValue((geometry?.ShadingKey, Math.Clamp(renderingOrder, -128, 127), flags), out var v) && v.plan.ssaoSky;
     }
     internal ShaderMaterial Variant(SCNGeometry geometry, int renderingOrder, ShaderComposer.VariantFlags flags)
     {
-        var g = geometry != null && geometry.HasOwnShading ? geometry : null;
+        var shading = geometry?.ShadingKey;
+        var g = shading != null ? geometry : null;
         int priority = Math.Clamp(renderingOrder, -128, 127);
-        var key = (g, priority, flags);
-        if (variants.TryGetValue(key, out var v)) return v.material;
+        var key = (shading, priority, flags);
+        if (variants.TryGetValue(key, out var v))
+        {
+            // Another geometry with the same shading key: property arguments notify it of contents changes.
+            if (g != null && !g.argumentVariants.Contains(v.material)) g.argumentVariants.Add(v.material);
+            return v.material;
+        }
         var sm = new ShaderMaterial();
         var plan = Configure(sm, g, priority, flags);
-        variants[key] = (sm, plan);
+        variants[key] = (sm, plan, g);
         g?.argumentVariants.Add(sm);
         return sm;
     }
@@ -792,22 +876,22 @@ internal sealed class MaterialGpu
         {
             foreach (var key in variants.Keys.ToList())
             {
-                var (sm, _) = variants[key];
-                variants[key] = (sm, Configure(sm, key.geometry, key.priority, key.flags));
+                var (sm, _, g) = variants[key];
+                variants[key] = (sm, Configure(sm, g, key.priority, key.flags), g);
             }
         }
         else if (valuesDirty)
         {
-            foreach (var (key, (sm, plan)) in variants) ApplyValues(sm, plan, key.geometry);
+            foreach (var (key, (sm, plan, g)) in variants) ApplyValues(sm, plan, g);
         }
         else if (dirtyArguments.Count > 0)
         {
             string[] changed;
             lock (dirtyArguments) changed = dirtyArguments.ToArray();
-            foreach (var (key, (sm, plan)) in variants)
+            foreach (var (key, (sm, plan, g)) in variants)
                 foreach (var a in changed)
-                    if (key.geometry == null || !key.geometry.arguments.ContainsKey(a))
-                        if (m.arguments.TryGetValue(a, out var value)) ApplyArgument(sm, a, value, key.geometry?.DrawnScene);
+                    if (g == null || !g.arguments.ContainsKey(a))
+                        if (m.arguments.TryGetValue(a, out var value)) ApplyArgument(sm, a, value, g?.DrawnScene);
         }
         structuralDirty = valuesDirty = false;
         lock (dirtyArguments) dirtyArguments.Clear();

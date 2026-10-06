@@ -600,6 +600,8 @@ public partial class SCNNode : Node3D
                 transparent |= material.gpu.IsTransparentVariant(g, _renderingOrder, flags);
                 ssaoSky |= material.gpu.IsSsaoSkyVariant(g, _renderingOrder, flags);
             }
+            // Godot-only: the geometry's per-instance shader arguments (SCNGeometry.InstanceArguments).
+            if (g.InstanceArguments.Count > 0) g.ApplyInstanceArguments(mi);
         }
         if (transparent)
         {
@@ -625,6 +627,7 @@ public partial class SCNNode : Node3D
             var primary = meshes[0];
             if (shadowTwin.Mesh != primary.Mesh) shadowTwin.Mesh = primary.Mesh;
             for (int s = 0; s < primary.Mesh.GetSurfaceCount(); s++) shadowTwin.SetSurfaceOverrideMaterial(s, primary.GetSurfaceOverrideMaterial(s));
+            if (_geometry.InstanceArguments.Count > 0) _geometry.ApplyInstanceArguments(shadowTwin);
             primary.LodBias = FullDetailLodBias;
         }
         else if (shadowTwin != null)
