@@ -234,9 +234,21 @@ the opaque and transparent passes 0.21 ms, the depth prepass 0.68-0.72 ms (1.45-
   snapshots must leave the HUD out; not done.
 
 **Tried and dropped**: `.constant` materials unshaded in forward scenes (their `light()` only applies deferred shadows;
-exact): the town view 19.12 against 19.06 ms, the race start 15.85 against 15.86 ms, no gain. Not measured on their own
-(the GPU time went to the combinations): folding the roughness polynomials of constant-roughness materials into
-uniforms, and recomputing the world position in `light()` instead of passing it from `fragment()`.
+exact): the town view 19.12 against 19.06 ms, the race start 15.85 against 15.86 ms, no gain. With the kept build,
+dropping the four varyings that carry the material's albedo and metalness to `light()` (a diagnostic) gains nothing
+either (town view 16.71 against 16.89 ms, race start 14.58 against 14.43): the shaders are past the register threshold
+that mattered, so recomputing the world position in `light()` instead of passing it (three more varyings) was not
+pursued. Folding the roughness polynomials and the band lookup into constants where the roughness is a constant (22 of
+the 51 shaders a town benchmark run composes) was not tried.
+
+**What is left in these passes** (diagnostics on the kept build): without the sky-light reflection the town view takes
+15.71 instead of 16.89 ms and the race start 13.86 instead of 14.43; with a plain Lambert `light()` 15.16 and 13.69. So
+the image-based specular still costs about 1.2 ms in the town view (0.5 opaque, 0.7 in the overlays) and the direct
+specular with the box test another 0.5; neither can be dropped without changing the look (the rough ground reflects
+little, but not nothing). The rest of the frame (default configuration, city roam, 18.0 ms busy): the transparent ground
+overlays 6.5 ms, the opaque pass 5.0, the shadow maps 2.1 plus 0.36 for the atlas clear, the SSAO port with its resolve
+1.8, the depth prepass 1.0, tonemap and 2D 0.85, glow and the final depth resolve 0.52, uploads 0.45-0.6, the window
+blit 0.37, the mid-frame depth resolve 0.2.
 
 **Look and checks.** Captures of eb73a04 and of this change, interleaved mode by mode (one Godot at a time): the visual
 regression test (pinned grid `1,3,0,2`), the smoke test (the reference pins), the town smoke test (pinned), the binary
