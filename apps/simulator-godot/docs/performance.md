@@ -16,9 +16,25 @@ camera mesh LODs"); every measurement before that section is of the exact-SceneK
 splits"), paid for by no longer casting the race world's flat base terrain. The two configurations are now a setting
 (Settings > Shadow quality: Fast, the default, or Exact; PORTING.md, "Known deviations"), which applies to the game
 launched normally; game modes, the benchmarks included, ignore the stored choice and measure Fast unless
-`MARVIN_SCN_CAL` says otherwise.
+`MARVIN_SCN_CAL` says otherwise. Later that day the procedural ground and its overlays were made cheaper without changing
+a pixel's worth of the look ("Ground and overlays").
 
 ## Summary
+
+- **Ground and overlays** (2026-10-06; section below, like for like against eb73a04 built from its own tree): the
+  town's world-space value noise reads its lattice hashes from a table the GPU fills once with the same expression
+  instead of evaluating four sines per call, and the ground's shader modifiers skip work whose result is exactly known
+  (`atan`, the pigment, the dune colour, the wind tongues and a texture sample where their weight is exactly 0 or 1).
+  At 1920 x 1080 (editor runtime, interleaved rounds) the town roam runs at 48.6 instead of 46.2 FPS in the default
+  Fast configuration (GPU walltime 22.2 -> 21.0 ms per frame) and at 35.7 instead of 34.5 in Exact; the race at 52.9
+  instead of 52.3 in Fast (GPU busy 17.6 -> 16.9 ms). The Exact race shows no measurable gain: 41.6 against 42.4 FPS over
+  five rounds whose spreads overlap (39.7-43.2 and 41.4-43.4), with the same GPU busy time in its traces and no loss in
+  the frozen race views; the moving race's content depends on the frame timing.
+  The captures and reports are unchanged (in 119 of 388 captures single pixels one 8-bit step off, at most 0.0018 % of
+  a capture: last-bit differences of the reordered arithmetic). Most of the town's remaining ground cost is lighting:
+  every overlay layer is lit in full with both
+  suns' shadows, and in a street-level town view the trampled sand alone costs about 3.5 ms and the streets 1.8 ms of the
+  transparent pass.
 
 - **Near shadow splits** (2026-10-06; section below, like for like against the earlier hard-shadow fit on one build):
   under the hard filter the suns' shadow maps have four splits ending 12, 30 and 58 m from the camera and at the far end
@@ -92,13 +108,149 @@ sampling cost in row 1 (about 4.5-5 ms at 1080p, "Hard shadows and camera mesh L
 | # | Cost | Godot | macOS | Gap | Evidence |
 |---|---|---|---|---|---|
 | 1 | Directional shadows (two suns): maps + sampling | 7.4 ms GPU/frame at 1080p (maps 3.1 incl. the atlas clear; sampling makes the opaque and transparent passes 5.0 ms slower, partly overlapping); maps 3.1 ms at 540p | ~1.4 ms at 1080p (two maps 1.8 ms; turning shadows off saves 1.4 ms) | **~6 ms at 1080p** | `--benchmark-no-shadows`: 22.1 -> 14.7 ms, 29 -> 45 FPS. Godot's soft filter alone (SoftHigh vs hard, `MARVIN_SCN_CAL=ShadowFilterQuality=0`) is 3.7 ms. Godot renders four maps (two suns x two splits) into an 8192² atlas and clears the whole atlas every frame (0.34 ms); SceneKit renders one 4096 and one 2048 map. |
-| 2 | Scene shading without shadows (opaque + transparent passes) | 9.1 ms at 1080p | 5.7 ms (one forward pass) | **~3.4 ms** | Fill-bound: the opaque pass scales 2.5x and the transparent pass 3x from 540p to 1080p. The opaque cost is the ground: without the town it is unchanged (7.6 ms), with the `townNoise` ground materials made constant it drops by 2.2 ms. The transparent pass is 15 draws of town ground overlays (soil, street, trampled sand, red soil) for 6.6 ms with shadows, 3.9 without; without the town 2.7. |
+| 2 | Scene shading without shadows (opaque + transparent passes) | 9.1 ms at 1080p | 5.7 ms (one forward pass) | **~3.4 ms** | Fill-bound: the opaque pass scales 2.5x and the transparent pass 3x from 540p to 1080p. The opaque cost is the ground: without the town it is unchanged (7.6 ms), with the `townNoise` ground materials made constant it drops by 2.2 ms. The transparent pass is 15 draws of town ground overlays (soil, street, trampled sand, red soil) for 6.6 ms with shadows, 3.9 without; without the town 2.7. Since "Ground and overlays" the noise costs no sines and the ground skips work with an exactly known result. |
 | 3 | Post-processing, depth prepass and frame overhead | ~4.1 ms (depth prepass 1.0, glow 1.0, tonemap + HUD 0.6, uploads 0.5, MSAA depth resolve 0.5, window blit 0.3, colour resolve 0.2) | ~0.6-1.0 ms (uploads 0.5, bloom and final blit; SceneKit has no depth prepass outside its SSAO pass) | **~3 ms** | Metal System Trace per encoder. |
 | 4 | Loading freeze at 93 % (`startDirtTrack` on the main thread) | 2.8-3.4 s | 0.75 s | **2-2.6 s** | `--world-build-profile`: facade node flush 2.07 s + parallel mesh preparation 0.51 s for 4,884 nodes; `revealDirtTrack`'s `view.snapshot()` 0.47 s, of which PNG encoding of the discarded image 0.30 s; GC 0.12 s; game code ~0.2 s. SceneKit prepares in the background (`SCNView.prepare` is asynchronous there). |
 | 5 | Main-thread CPU (one thread does everything) | 11 ms/frame at 540p: managed 4.1 ms (game tick 1.6, facade flush 2.1-2.5, ...), Godot's scene and render encoding 3.3 ms, Metal driver 1.5 ms; GC pauses ~1.2 ms/frame on average | main 3.8 ms + SceneKit render thread 8.4 ms (in parallel) | headroom 5.7 ms at 60 FPS | `sample` of both processes; the facade flush grows 2.1 -> 2.5 ms over ten minutes (trail chunks). |
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## Ground and overlays: the same pixels with less work
+
+Measured on 2026-10-06 on the same Mac, editor runtime at 1920 x 1080, the default Fast configuration unless a row says
+Exact. Two other worktrees ran their own GPU benchmarks on the Mac throughout; every run waited for an idle GPU
+(`run-benchmark.py --wait-idle`) and the per-pass numbers come from traces without other GPU work in them.
+
+The opaque pass shades the town's base terrain, the dune tiles and the 4 km horizon plane with
+`TownGround.terrainSurface`: world-space value noise (`townNoise`, four `fract(sin(...) * 43758.5453)` lattice hashes per
+call), `townPigment` (five noise calls) and the desert boundary (`atan` and three sines). Over it the transparent pass
+draws the town's ground overlays one layer at a time, each lit in full with both suns' shadows: the trampled sand
+(`townPigment` over three anisotropically filtered textures), the streets (wind tongues from `townNoise`), the doorway
+patches, the robots' trails and two red-soil aprons at the track.
+
+**Where the time goes** (diagnostics that change the look; the city roam frozen at 16 s (`MARVIN_BENCHMARK_FREEZE=16`),
+a street-level view in which the ground fills about two thirds of the screen and the trampled sand is drawn after the
+streets; GPU per pass from a labelled Metal System Trace 21-25 s after the start; one or two runs per variant, interleaved
+with runs of the unchanged build):
+
+| variant, frozen town view | opaque pass ms | transparent pass ms | GPU busy ms | FPS |
+|---|---|---|---|---|
+| unchanged shader code (eb73a04), five runs | 5.08-5.16 | 7.85-8.47 | 18.98-19.55 | 47.3-48.2 |
+| trampled sand hidden | 5.11, 5.12 | 4.46, 4.98 | 15.54, 16.07 | 56.7, 55.4 |
+| streets hidden | 5.13 | 6.52 | 17.63 | 51.6 |
+| doorway patches hidden; trails hidden | 5.09; 5.12 | 8.15; 8.10 | 19.15; 19.16 | 48.0; 47.7 |
+| trampled sand, streets, patches and trails hidden | 5.09 | 2.57 | 13.80 | 58.6 |
+| trampled sand unlit (`.constant`) | 5.14 | 6.74 | 17.85 | 51.2 |
+| trampled sand without its three textures; without anisotropic filtering | 5.11; 5.12 | 7.17; 7.51 | 18.22; 18.59 | 49.9; 48.5 |
+| trampled sand without its pigment | 5.08, 5.12 | 7.82, 7.41 | 18.88, 18.46 | 48.6, 49.1 |
+| every `townNoise` hash without its sines (wrong values) | 4.92, 4.91 | 7.64, 7.55 | 18.65, 18.42 | 48.6, 49.3 |
+
+In this view the trampled sand costs about 3.5 ms (its lighting 1.6, its textures 1.1, of which anisotropic filtering
+0.8, its pigment 0.3-0.6) and the streets 1.8 ms; the noise's sines are about 0.5 ms over both passes. The red-soil aprons
+cost nothing measurable there (each hidden: within the runs' spread). Of the 2.6 ms left in the transparent pass with
+the four layers hidden, most is the pass itself (it loads and stores the 2x MSAA colour and depth targets) and the dust.
+
+**Kept** (commit 9e00938; the look unchanged, see below):
+
+- **The noise's lattice hashes from a table.** `townNoise` reads the four hashes of its cell from a 512 x 512 RGBA32F
+  texture (cells -256..255; every call site stays inside: the pigment within 184 m of the centre, the dune bands over
+  the horizon plane at 1/43 scale, the wind tongues within 225 m), which a compute shader on a local RenderingDevice
+  fills once with the shaders' own expression while the world is built (5.3 ms). On Metal the values are bit for bit
+  the ones the fragment shaders computed: the town captures, where the pigment covers most of the ground, are
+  identical. Without a RenderingDevice (headless) the shaders keep the sines.
+- **Exact early-outs.** The desert boundary's radius lies between 95 and 151 m (the overlays' outer fade: 102 to
+  158 m), so `desert` is exactly 0 within 82 m of the centre and exactly 1 beyond 184 m, where `atan` and the radius are
+  not needed; the pigment's weight is exactly 0 within 28 m and it is hidden where `desert` is 1 (the dunes and the
+  horizon plane), the dune colour and the ripple only show where `desert` > 0; the trampled sand's outer fade is exactly 1
+  within 94 m; a street's alpha is exactly its vertex alpha within 83 m (no `atan`, no wind tongues); the infield
+  deposit's texture is sampled only inside its 60 m square (outside, `scn_inside` made it 0). Where `desert` is 1 the
+  colour is the dune colour itself rather than `mix(soil, dune, 1)`, which can differ in the last bit.
+
+Frozen views, the two steps on one build with the original shader text as the baseline (two interleaved rounds; FPS,
+GPU walltime per frame from `metalperftrace`, opaque / transparent pass and GPU busy per frame from the trace):
+
+| frozen view | unchanged | early-outs | early-outs + hash table |
+|---|---|---|---|
+| town (city roam at 16 s) | 48.14, 48.23 FPS; 21.21, 21.10 ms; 5.13 / 8.08, 5.08 / 7.85; busy 19.17, 18.98 | 49.09, 49.05 FPS; 20.76, 20.69 ms; 4.91 / 7.69, 4.86 / 7.86; busy 18.57, 18.70 | 50.10, 50.09 FPS; 20.32, 20.25 ms; 4.60 / 7.65, 4.62 / 7.41; busy 18.21, 18.03 |
+| race start (1 s; track, walls and robots, no town ground) | 56.62, 55.85 FPS; 17.81, 18.00 ms | 56.61, 56.51 FPS; 17.81, 17.80 ms | 56.44, 56.35 FPS; 17.83, 17.85 ms |
+
+So the town view gains about 0.9 ms of GPU walltime per frame (+1.9 FPS): 0.5 ms in the opaque pass (base terrain) and
+0.4 ms in the transparent one (trampled sand, streets); the deposit's early-out came after these runs. The race start shows
+no ground that changes.
+
+Moving benchmarks, eb73a04 built from its own tree (a copy of this tree with the four changed files restored) against
+this commit, interleaved (A, B, A, B), 45 s each, labelled trace 20-24 s after the start:
+
+| 1920 x 1080, editor runtime | eb73a04 | this commit |
+|---|---|---|
+| city roam, Fast (two rounds) | 46.11, 46.21 FPS; walltime 22.25, 22.09 ms; busy 20.71, 20.34 ms (opaque 5.72, 5.62 / transparent 8.17, 8.20) | 48.66, 48.46 FPS; 21.01, 21.02 ms; busy 19.35, 19.08 ms (5.09, 5.08 / 7.76, 7.59) |
+| race, Fast (four rounds) | 52.59, 51.59, 52.80, 52.32 FPS; 19.09, 19.47, 19.08, 19.22 ms; busy 17.48, 18.39, 17.29, 17.32 ms | 53.16, 52.93, 53.42, 51.91 FPS; 19.07, 19.06, 18.77, 19.36 ms; busy 16.75, 17.08, 16.85, 17.00 ms |
+| city roam, Exact (two rounds) | 34.56, 34.49 FPS; 29.54, 29.63 ms; busy 27.25, 27.43 ms | 35.68, 35.76 FPS; 28.61, 28.56 ms; busy 26.17, 25.95 ms |
+| race, Exact (five rounds) | 42.04, 42.62, 43.36, 42.41, 41.43 FPS; 24.25, 23.95, 23.46, 24.12, 24.57 ms; busy 22.32, 22.60, 21.38, 21.72, 23.00 ms | 40.79, 39.74, 41.46, 43.15, 42.77 FPS; 25.05, 25.72, 24.73, 23.59, 23.80 ms; busy 21.91, 22.73, 23.61, 21.82, 21.77 ms |
+| race, Exact, grid pinned (`MARVIN_GRID_SLOTS=0,3,1,2`, two rounds) | 42.06, 41.51 FPS; 24.35, 24.51 ms; busy 22.12, 22.48 ms | 40.22, 39.77 FPS; 25.39, 25.79 ms; busy 23.93, 24.73 ms |
+| town view frozen at 16 s, Fast (two rounds) | 48.26, 48.25 FPS; 21.00, 20.98 ms; opaque 5.12, 5.16 / transparent 7.65, 7.60 ms | 49.70, 50.00 FPS; 20.40, 20.17 ms; 4.65, 4.69 / 7.69, 7.30 ms |
+| race overview frozen at 19 s (the whole town from above), grid pinned, Fast | busy 20.19 ms (opaque 9.82 / transparent 3.50) | busy 19.21 ms (9.46 / 3.24) |
+| the same, Exact (two rounds) | busy 26.12, 26.21 ms (14.09, 14.15 / 4.96, 5.02) | busy 25.39, 25.15 ms (13.53, 13.55 / 4.66, 4.71) |
+| race start frozen at 1 s, grid pinned, Exact (two rounds) | busy 19.99, 20.39 ms | busy 20.26, 20.37 ms |
+
+(One round-1 run of each build, eb73a04's race and this commit's roam, shared the GPU with another worktree's benchmark
+that started at the same moment (about 1,000 GPU-ms per second of another Godot in `metalperftrace`) and was repeated;
+the runner now backs off before starting and repeats such runs.)
+
+- **Fast**: the town roam gains 2.4 FPS (46.2 -> 48.6) and 1.15 ms of GPU walltime per frame (busy -1.3 ms: opaque
+  -0.6, transparent -0.5); the race 0.5 FPS (52.3 -> 52.9) and 0.7 ms of GPU busy per frame, the walltime only 0.15 ms
+  (the chase views show little town ground; the race overview, all town, 1.0 ms less busy).
+- **Exact**: the town roam gains 1.2 FPS (34.5 -> 35.7) and 1.0 ms of walltime. The race does not gain measurably: 41.6
+  against 42.4 FPS on average over five unpinned rounds whose spreads overlap, 40.0 against 41.8 in the two pinned ones;
+  the GPU busy time in its traces is the same on average (22.4 against 22.2 ms), and the frozen race views that compare
+  one frame show no loss (the start the same, the overview 0.9 ms less). The race's physics advances by each frame's dt,
+  so the moving race's content already differs between two runs of one build (draw calls per second differ from the first
+  seconds, also with the grid pinned), more so between builds with different frame rates. Variants run to look for a
+  cause (the sines instead of the table, the table only for the coarse noise scales, the table only in the opaque
+  terrain; one or two runs each) gave 39.4-43.5 FPS in the pinned Exact race without a pattern, and the same GPU time as
+  this commit in the frozen views.
+
+**Tried and dropped:**
+
+- **Skipping the streets under the trampled sand.** Where the transparent sort draws the streets before the trampled
+  sand (about half of all view directions: their bounding-box centres are 25 m apart) the trampled sand's alpha is
+  exactly 1 within 36-94 m of the centre and covers them completely; SceneKit draws them the same way. Discarding those
+  street fragments (a test of the sort order with a 1 m margin and of the radius in the street shader) saved 0.8 ms of
+  the frozen town view's transparent pass (busy 18.42, 18.34 -> 17.58, 17.39 ms; walltime 20.44, 20.37 -> 19.97,
+  20.02 ms; 49.8 -> 50.8 FPS). Not kept: it is exact only where the trampled sand really reaches every sample, which the
+  street shader cannot see: an opaque surface between the two layers (they are 7 mm apart; a robot's tread a few
+  millimetres in the ground, a wall's base) or a depth-writing transparent surface sorted between them (WALL-E's eyes)
+  hides the trampled sand but not the street, and the trampled mesh ends at the town's edge. Making it exact needs the
+  opaque depth per MSAA sample (Godot's depth texture holds their mean), the facade's sorted list per view and a
+  coverage mask, for about 0.4 ms of walltime in half of the town's frames.
+- **A baked pigment texture** (`townPigment` sampled from a world-space texture instead of evaluated): bilinear
+  interpolation of the 2.1 m value noise differs from the analytic field, so not look-identical; the hash table gives
+  most of the gain exactly.
+- **Dropping the red-soil aprons' fully transparent triangles** (15,186 of the city ramp apron's 19,200 triangles have
+  zero alpha at all three vertices, so dropping them with the bounding box kept would be exact): the aprons cost nothing
+  measurable in the town view, so not pursued.
+- **The trampled sand in the opaque pass, or a wider depth-only region of the base terrain under it**: not exact. The
+  transparent sort decides whether the streets show above or below the trampled sand, and the depth-only base terrain
+  is outside SceneKit's SSAO pass, so moving its border changes the occlusion of what stands on it.
+
+**Look and checks.** The unchanged build and this commit, each run from its own tree with the same pins (town and
+entrance `MARVIN_GRID_SLOTS=0,3,1,2 MARVIN_TOWN_DAYLIGHT=0.2125,4.18`; navigation `2,1,0,3`; the smoke test's reference
+pins; visual regression `1,3,0,2`; binary sky `MARVIN_DAYLIGHT_REFERENCE`; post-race and city escape as in PORTING.md;
+passage `0,3,1,2`), the unchanged build twice for the noise: 14 capture modes, 388 captures (town 21, entrance 38,
+navigation 20, smoke 36, dune contact 14, ground performance 68, visual regression 43, binary sky 8, dust 6, post-race 21,
+city escape 10, people 29, passage 66, menu 8). 307 of them render identically in the unchanged build's two runs; of
+those, 188 are identical after the change and 119 (town, entrance, navigation, dunes, ground performance, dust, city
+escape, people and passage views) differ in single pixels by one 8-bit step, at most 0.0018 % of a capture (mean
+0.0000/255): the last-bit differences of the restructured shader code (the compiler fuses the reordered arithmetic
+differently, and where `desert` is 1 the dune colour replaces `mix(soil, dune, 1)`). The other 81 captures hold random
+state (crowd, dust, dirt coatings, racer contacts) and differ from the unchanged build about as much as its two runs
+differ from each other (each mode's mean within 0.00-0.06/255 of that spread; the largest, dust 0.24 against 0.19). Every
+deterministic JSON report is byte-identical (town-smoke, the three entrance reports, navigation, smoke, full-race-trails,
+menu-smoke, visual-regression, binary-races, postrace, city-escape, people, street-people, passages, preflight);
+dune-contact.json differs in `cpuUpdateP95MS` (a timing), the ground-performance comparison's image errors by up to
+1e-8 and the smoke test's test-scores.json in its random scores, as between two runs of the unchanged build.
+`tools/checks` is byte-identical to `reference/simulation-checks-swift.txt`.
 
 ## Near shadow splits: finer hard shadows next to the camera
 
@@ -893,7 +1045,12 @@ camera mesh LODs"):
    Godot's light loop (`render_mode unshaded` where the composer already writes the final colour), and the overlays could
    share one lit evaluation. Measured since: the composed `light()` and the sky-light lookups cost 1.6 and 0.7 ms
    in the opaque pass, but only when removed whole (an occupancy limit); exact restructurings of single parts gained
-   nothing measurable. The trampled sand and the streets are 1.7 and 1.2 ms of the transparent pass.
+   nothing measurable. The trampled sand and the streets are 1.7 and 1.2 ms of the transparent pass. *Ground and
+   overlays (2026-10-06): the noise's sines and the work with an exactly known result are gone (about 0.9 ms of GPU
+   walltime in a street-level town view); with hard shadows the trampled sand is still 3.5 ms (lighting 1.6, textures
+   1.1) and the streets 1.8 ms of such a view's transparent pass, because every layer is lit in full. What is left needs
+   either a look change (one lit evaluation for the stacked layers, fewer anisotropic taps) or a renderer that can skip
+   a layer the next one covers completely (see "Tried and dropped" there).*
 4. Post chain and prepass (~3 ms): glow, tonemap and the 2D pass at full resolution, the depth prepass, two MSAA
    resolves. All inside Godot's renderer; the depth resolve between the opaque and transparent passes runs because the
    SSAO port asks for the normal-roughness buffer.
@@ -926,6 +1083,12 @@ tools/perf/gpu-passes.py OUT_A OUT_B ...
 # one fixed race frame (the start, the robots next to the chase camera) for A/B: freeze 1 s after the start
 tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --mode race --seconds 28 --labels --trace 21:4 \
     --trace-from-start --wait-idle --env MARVIN_BENCHMARK_FREEZE=1
+# the cost of one ground layer in the frozen town view (a look change, diagnostics only; "Ground and overlays")
+tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --mode city-roam --seconds 28 --labels --trace 21:4 \
+    --trace-from-start --wait-idle --env MARVIN_BENCHMARK_FREEZE=16 "--env=MARVIN_BENCHMARK_HIDE=Trampled sand"
+# before/after of a shader change without a worktree: a copy of this tree with the changed files restored from the old
+# commit (cp -cR apps/simulator-godot OLD; git show OLD_COMMIT:apps/simulator-godot/FILE > OLD/FILE; OLD/tools/build),
+# then OLD/tools/perf/run-benchmark.py and this tree's, interleaved
 # the earlier hard-shadow fit for A/B on one build (and the near splits' stability probe)
 tools/perf/run-benchmark.py OUT ... --env "MARVIN_SCN_CAL=HardShadowSplit1=0;BaseTerrainCastsShadow=1"
 tools/godot -- --shadow-motion-probe OUT        # MARVIN_SHADOW_MOTION=exact|race|casters
