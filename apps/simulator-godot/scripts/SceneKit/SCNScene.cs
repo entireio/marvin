@@ -26,6 +26,8 @@ public sealed class SCNScene : IPropertyOwner
     /// <summary>Lighting features this scene's shaders support (SceneKitRuntime.ShadingVariant; -1: not determined yet) and
     /// the light epoch they were last scanned at.</summary>
     internal int shadingFeatures = -1, shadingScanEpoch = -1;
+    /// <summary>The graphics-detail shading epoch this scene's nodes were built for (SceneKitRuntime.ObserveShading).</summary>
+    internal int detailEpochSeen = SceneKitRuntime.DetailEpoch;
 
     private bool attached;
     public SCNScene()

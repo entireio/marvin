@@ -209,13 +209,25 @@ public partial class SceneKitRuntime : Node
         var flags = ShaderComposer.VariantFlags.None;
         if ((scene.shadingFeatures & (ShadingDeferred | ShadingLdr)) == 0) flags |= ShaderComposer.VariantFlags.Forward;
         if ((scene.shadingFeatures & ShadingPositional) == 0) flags |= ShaderComposer.VariantFlags.DirectionalOnly;
-        return flags;
+        return flags | DetailVariant;
     }
+    /// <summary>The graphics-detail shading variant (look changes; none at Graphics detail Max): SceneKitCalibration
+    /// .SimpleSkyReflection and SimpleGroundLighting (ShaderComposer.VariantFlags.SimpleSky, SimpleGround).</summary>
+    internal static ShaderComposer.VariantFlags DetailVariant =>
+        (SceneKitCalibration.SimpleSkyReflection ? ShaderComposer.VariantFlags.SimpleSky : 0)
+        | (SceneKitCalibration.SimpleGroundLighting ? ShaderComposer.VariantFlags.SimpleGround : 0);
+    /// <summary>Incremented when DetailVariant or SceneKitCalibration.LodDistanceScale changes at run time
+    /// (GraphicsDetailChanged): every scene rebuilds its nodes with the new shaders and LOD distances before it is drawn
+    /// next (ObserveShading) or prepared (PrepareAsync).</summary>
+    internal static int DetailEpoch;
+    /// <summary>What the scenes' nodes were last built with: the detail shading variant and the LOD distance scale.</summary>
+    private static (ShaderComposer.VariantFlags, double) builtDetail = (DetailVariant, SceneKitCalibration.LodDistanceScale);
     /// <summary>A view is about to draw <paramref name="scene"/> (ldr: its camera renders without HDR): adds the features the
     /// scene's shaders lack and marks its nodes for rebuilding (Flush and RenderIsolated flush them before drawing).</summary>
     internal static void ObserveShading(SCNScene scene, bool ldr)
     {
         if (scene == null) return;
+        if (ObserveDetail(scene)) shadingGrew = true;
         int observed = ldr ? ShadingLdr : 0;
         if (scene.shadingScanEpoch != lightEpoch || scene.shadingFeatures < 0) { scene.shadingScanEpoch = lightEpoch; observed |= ScanLights(scene); }
         if (scene.shadingFeatures < 0) { scene.shadingFeatures = observed; return; }
@@ -226,6 +238,16 @@ public partial class SceneKitRuntime : Node
         if (ShadingVariant(scene) == before) return;
         scene.rootNode.MarkSubtree(SCNNode.DirtyGeometry);
         shadingGrew = true;
+    }
+    /// <summary>The graphics-detail shading changed since this scene's nodes were built (DetailEpoch): marks them for
+    /// rebuilding with the new shaders. Called before a view draws the scene (ObserveShading) and when a scene is prepared
+    /// (PrepareAsync: the race world cached from an earlier race rebuilds behind the loading screen, spread over frames).</summary>
+    private static bool ObserveDetail(SCNScene scene)
+    {
+        if (scene.detailEpochSeen == DetailEpoch) return false;
+        scene.detailEpochSeen = DetailEpoch;
+        scene.rootNode.MarkSubtree(SCNNode.DirtyGeometry);
+        return true;
     }
     private static bool activeLdr;
     /// <summary>The view being synced renders without HDR (SCNCamera.wantsHDR false).</summary>
@@ -339,7 +361,7 @@ public partial class SceneKitRuntime : Node
     internal static void PrepareAsync(IEnumerable<SCNScene> scenes, Action<bool> completion)
     {
         var set = new HashSet<SCNScene>();
-        foreach (var s in scenes) if (s != null) { s.EnsureAttached(); set.Add(s); }
+        foreach (var s in scenes) if (s != null) { s.EnsureAttached(); ObserveDetail(s); set.Add(s); }
         if (set.Count == 0 || !OnMainThread) { FlushAll(); completion?.Invoke(true); return; }
         preparations.Add(new Preparation { scenes = set, completion = completion });
     }
@@ -690,6 +712,25 @@ public partial class SceneKitRuntime : Node
         meshLodNodes.RemoveWhere(Freed);
         foreach (var node in meshLodNodes) node.MarkGeometryDirty();
     }
+    /// <summary>
+    /// Applies SceneKitCalibration's graphics-detail fields after they changed at run time (the game's Graphics detail
+    /// setting, GraphicsDetailSetting.apply; main thread): every view's render scale, upscaler, MSAA and anisotropy now,
+    /// Godot's glow upsampling now, the robots' small-part mesh LODs at the next flush (SCNGeometry
+    /// .AutomaticLodMinTrianglesChanged) and the shading variant of every scene before it is drawn next (DetailEpoch,
+    /// ObserveShading); the SSAO switch is read by each view's effect as it draws.
+    /// </summary>
+    internal static void GraphicsDetailChanged()
+    {
+        RenderingServer.EnvironmentGlowSetUseBicubicUpscale(SceneKitCalibration.GlowBicubicUpscale);
+        foreach (var view in LiveViews()) view.ApplyRenderScaling();
+        var detail = (DetailVariant, SceneKitCalibration.LodDistanceScale);
+        if (detail != builtDetail) { builtDetail = detail; DetailEpoch++; }
+        int lodMin = SceneKitCalibration.MeshLodMinTriangles;
+        if (lodMinTrianglesBuilt != lodMin) SCNGeometry.AutomaticLodMinTrianglesChanged(lodMinTrianglesBuilt, lodMin);
+        lodMinTrianglesBuilt = lodMin;
+    }
+    /// <summary>The MeshLodMinTriangles the robots' built meshes were made with (GraphicsDetailChanged).</summary>
+    private static int lodMinTrianglesBuilt = SceneKitCalibration.MeshLodMinTriangles;
     /// <summary>Set whenever a Godot transform, the node hierarchy, a node's visibility or the set of transparent instances
     /// changes: the offsets depend on nothing else but the camera, so a sort for the same camera with nothing changed since
     /// (the second flush of a frame) would set the same offsets and is skipped.</summary>

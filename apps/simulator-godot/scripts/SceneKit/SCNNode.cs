@@ -690,10 +690,13 @@ public partial class SCNNode : Node3D
     }
     private static double LodDistance(SCNLevelOfDetail l)
     {
-        if (l.screenSpaceRadius <= 0) return l.worldSpaceDistance;
+        // Godot-only graphics detail: SceneKitCalibration.LodDistanceScale (1 at Max) moves every switch closer.
+        double scale = SceneKitCalibration.LodDistanceScale;
+        if (l.screenSpaceRadius <= 0) return scale == 1 ? l.worldSpaceDistance : l.worldSpaceDistance * scale;
         // PORT: screen-space LODs are converted for a 1080-pixel-high, 48° viewport.
         var r = l.geometry.boundingSphere.radius;
-        return r * 1080 / (2 * Math.Tan(48 * Math.PI / 360) * l.screenSpaceRadius);
+        var d = r * 1080 / (2 * Math.Tan(48 * Math.PI / 360) * l.screenSpaceRadius);
+        return scale == 1 ? d : d * scale;
     }
 
     /// <summary>The visual state last pushed to every instance in <see cref="meshes"/> (null after an instance was added).</summary>

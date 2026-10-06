@@ -286,6 +286,7 @@ public class SCNGeometry : IPropertyOwner
         var g = CopyShape() ?? new SCNGeometry(_sources, _elements);
         g.name = name; g._materials = new List<SCNMaterial>(_materials); g._levelsOfDetail = _levelsOfDetail; g._customBounds = _customBounds;
         g._godotAutomaticLevelsOfDetail = _godotAutomaticLevelsOfDetail;
+        if (g._godotAutomaticLevelsOfDetail) g.RegisterAutomaticLods();
         g._shaderModifiers = _shaderModifiers == null ? null : new Dictionary<SCNShaderModifierEntryPoint, string>(_shaderModifiers);
         foreach (var kv in arguments) g.arguments[kv.Key] = kv.Value;
         return g;
@@ -339,8 +340,64 @@ public class SCNGeometry : IPropertyOwner
     /// vertex colours or SceneKit levels of detail are left alone. Generated when the mesh is prepared (on worker threads
     /// in a large flush).
     /// </summary>
-    public bool godotAutomaticLevelsOfDetail { get => _godotAutomaticLevelsOfDetail; set { if (_godotAutomaticLevelsOfDetail == value) return; _godotAutomaticLevelsOfDetail = value; Changed(true); } }
+    public bool godotAutomaticLevelsOfDetail { get => _godotAutomaticLevelsOfDetail; set { if (_godotAutomaticLevelsOfDetail == value) return; _godotAutomaticLevelsOfDetail = value; if (value) RegisterAutomaticLods(); Changed(true); } }
     internal static int AutomaticLodMinTriangles => SceneKitCalibration.MeshLodMinTriangles;
+    /// <summary>Geometries that have had godotAutomaticLevelsOfDetail (weak), for a run-time change of the triangle threshold.</summary>
+    private static readonly List<WeakReference<SCNGeometry>> automaticLodGeometries = new();
+    private bool automaticLodRegistered;
+    private void RegisterAutomaticLods()
+    {
+        if (automaticLodRegistered) return;
+        automaticLodRegistered = true;
+        lock (automaticLodGeometries) automaticLodGeometries.Add(new WeakReference<SCNGeometry>(this));
+    }
+    /// <summary>
+    /// Godot-only (graphics detail, SceneKitCalibration.MeshLodMinTriangles changed at run time; main thread): the built
+    /// meshes with a surface whose triangle count lies between the old and the new threshold gain or lose their levels, so
+    /// they are rebuilt (with their nodes, which then add or drop their shadow-only twins). Their arrays and levels are
+    /// prepared on worker threads (one geometry per shared mesh), and the nodes rebuild on the main thread once that is
+    /// done, so the switch does not wait for the level generation (about 90 ms for the four robots); until then they draw
+    /// their old meshes. Meshes not built yet use the new threshold when they are.
+    /// </summary>
+    internal static void AutomaticLodMinTrianglesChanged(int from, int to)
+    {
+        int lo = Math.Min(from, to), hi = Math.Max(from, to);
+        if (lo == hi) return;
+        var rebuild = new List<SCNGeometry>();
+        lock (automaticLodGeometries)
+        {
+            for (int i = automaticLodGeometries.Count - 1; i >= 0; i--)
+            {
+                if (!automaticLodGeometries[i].TryGetTarget(out var g)) { automaticLodGeometries.RemoveAt(i); continue; }
+                if (g._godotAutomaticLevelsOfDetail && g.mesh != null && g.HasRunWithTriangles(lo, hi)) rebuild.Add(g);
+            }
+        }
+        if (rebuild.Count == 0) return;
+        var prepare = new List<SCNGeometry>();
+        var keys = new HashSet<string>();
+        foreach (var g in rebuild)
+        {
+            g.meshDataVersion++; // the users are marked when the arrays are ready (below)
+            var key = g.SharedMeshKey(g.MaterialRuns(), g.NeedsTangents);
+            if (key == null || keys.Add(key)) prepare.Add(g);
+        }
+        System.Threading.Tasks.Task.Run(() => System.Threading.Tasks.Parallel.ForEach(prepare, g => g.PrepareMesh()))
+            .ContinueWith(_ => DispatchQueue.main.async(() => { foreach (var g in rebuild) { g.version++; foreach (var n in g.users) n.MarkGeometryDirty(); } }));
+    }
+    /// <summary>Whether one of the mesh's surfaces (runs of elements with one material) has lo..hi-1 triangles.</summary>
+    private bool HasRunWithTriangles(int lo, int hi)
+    {
+        var runs = MaterialRuns();
+        for (int r = 0; r < runs.Length; r++)
+        {
+            int end = r + 1 < runs.Length ? runs[r + 1] : _elements.Length;
+            long triangles = 0;
+            for (int e = runs[r]; e < end; e++)
+                if (_elements[e].primitiveType is SCNGeometryPrimitiveType.triangles or SCNGeometryPrimitiveType.triangleStrip) triangles += _elements[e].primitiveCount;
+            if (triangles >= lo && triangles < hi) return true;
+        }
+        return false;
+    }
     public Dictionary<SCNShaderModifierEntryPoint, string> shaderModifiers
     {
         get => _shaderModifiers;
@@ -552,7 +609,7 @@ public class SCNGeometry : IPropertyOwner
     {
         var shape = MeshShapeKey;
         if (shape == null || _customBounds.HasValue || (_levelsOfDetail != null && _levelsOfDetail.Length > 0)) return null;
-        return $"{shape}|{string.Join(",", runs)}|{tangents}|{_godotAutomaticLevelsOfDetail}";
+        return $"{shape}|{string.Join(",", runs)}|{tangents}|{_godotAutomaticLevelsOfDetail}" + (_godotAutomaticLevelsOfDetail ? $"|{AutomaticLodMinTriangles}" : "");
     }
     private sealed class SharedMesh { public ArrayMesh mesh; public int[] surfaceElements; public bool hasLods, tangents; }
     /// <summary>The shared mesh this geometry draws (keeps the table's weak entry alive while it is used).</summary>

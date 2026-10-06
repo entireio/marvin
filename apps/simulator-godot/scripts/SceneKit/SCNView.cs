@@ -224,6 +224,8 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         var vp = new SubViewport { Name = "SCNViewport", RenderTargetUpdateMode = SubViewport.UpdateMode.Always, Msaa3D = Viewport.Msaa.Msaa4X, MeshLodThreshold = (float)SceneKitCalibration.MeshLodThreshold };
         holder.AddChild(vp);
         rig = new ViewRig(vp);
+        defaultAnisotropy = vp.AnisotropicFilteringLevel;
+        ApplyRenderScaling();
         SceneKitRuntime.views.Add(new WeakReference<SCNView>(this));
     }
     /// <summary>Device pixels per point: the window's content scale (1 on a 1x screen).</summary>
@@ -240,13 +242,94 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         QueueRedraw();
     }
     public override void _Draw() => DrawTextureRect(rig.viewport.GetTexture(), new Rect2(Vector2.Zero, Size), false);
+
     /// <summary>Renders every frame while visible, not at all while hidden (as a SubViewportContainer manages its viewports).</summary>
     private void UpdateRendering() => rig.viewport.RenderTargetUpdateMode = IsVisibleInTree() ? SubViewport.UpdateMode.Always : SubViewport.UpdateMode.Disabled;
     public SCNView(CGRect frame) : this() { this.frame = frame; }
 
     public SCNScene scene { get => rig.scene; set => rig.SetScene(value); }
     public SCNNode pointOfView { get => rig.pointOfView; set => rig.pointOfView = value; }
-    public SCNAntialiasingMode antialiasingMode { get => _antialiasingMode; set { _antialiasingMode = value; rig.viewport.Msaa3D = ViewRig.Msaa(value); } }
+    public SCNAntialiasingMode antialiasingMode { get => _antialiasingMode; set { _antialiasingMode = value; ApplyRenderScaling(); } }
+    /// <summary>
+    /// Godot-only (graphics detail, SceneKitCalibration.RenderScale and friends): the viewport's 3D render scale, upscaler,
+    /// MSAA and anisotropic filtering. At RenderScale 1 the viewport is left as before (Msaa3D from antialiasingMode, no
+    /// scaling). Below 1 the temporal upscaler (MetalFX temporal on Metal, FSR 2 elsewhere) accumulates jittered frames
+    /// at the lower resolution and replaces MSAA (Godot turns 3D MSAA off under MetalFX temporal itself; the facade does it
+    /// for both); the spatial upscalers keep MSAA. Godot then draws glow and tone mapping at the drawable's size, and the
+    /// AppKit overlays are not part of the viewport. Properties are only written when they change: every write
+    /// reconfigures the viewport's render buffers.
+    /// </summary>
+    internal void ApplyRenderScaling()
+    {
+        var vp = rig.viewport;
+        // Only a view in the scene tree gets an upscaler (applied again when it enters, removed when it leaves): Godot
+        // 4.7.2's Metal driver timed out on a fence in every later frame ("timeout waiting for fence", 1 s per frame) after
+        // a view configured for MetalFX temporal was freed without ever being drawn (a settings view created and freed by
+        // the menu check).
+        double scale = IsInsideTree() && !leavingTree ? Math.Clamp(SceneKitCalibration.RenderScale, 0.25, 1.0) : 1.0;
+        var mode = Viewport.Scaling3DModeEnum.Bilinear;
+        var msaa = ViewRig.Msaa(_antialiasingMode);
+        if (scale < 1)
+        {
+            mode = SceneKitCalibration.RenderUpscaler switch
+            {
+                1 => Viewport.Scaling3DModeEnum.Bilinear,
+                2 => Viewport.Scaling3DModeEnum.Fsr,
+                3 => Upscalers.metalfxSpatial ? Viewport.Scaling3DModeEnum.MetalfxSpatial : Viewport.Scaling3DModeEnum.Fsr,
+                4 => Upscalers.fsr2 ? Viewport.Scaling3DModeEnum.Fsr2 : Viewport.Scaling3DModeEnum.Fsr,
+                _ => Upscalers.Temporal(scale),
+            };
+            if (mode is Viewport.Scaling3DModeEnum.MetalfxTemporal or Viewport.Scaling3DModeEnum.Fsr2) msaa = Viewport.Msaa.Disabled;
+        }
+        // MSAA goes off before a temporal upscaler is set and back on after it is gone, so Godot never sees both.
+        if (msaa == Viewport.Msaa.Disabled && vp.Msaa3D != msaa) vp.Msaa3D = msaa;
+        if (vp.Scaling3DMode != mode) vp.Scaling3DMode = mode;
+        if (vp.Scaling3DScale != (float)scale) vp.Scaling3DScale = (float)scale;
+        if (vp.Msaa3D != msaa) vp.Msaa3D = msaa;
+        if (vp.MeshLodThreshold != (float)SceneKitCalibration.MeshLodThreshold) vp.MeshLodThreshold = (float)SceneKitCalibration.MeshLodThreshold;
+        if (SceneKitCalibration.AnisotropicFiltering >= 0)
+        {
+            var level = (Viewport.AnisotropicFiltering)Math.Clamp(SceneKitCalibration.AnisotropicFiltering, 0, 4);
+            if (vp.AnisotropicFilteringLevel != level) vp.AnisotropicFilteringLevel = level;
+        }
+        else if (defaultAnisotropy is Viewport.AnisotropicFiltering original && vp.AnisotropicFilteringLevel != original) vp.AnisotropicFilteringLevel = original;
+    }
+    private Viewport.AnisotropicFiltering? defaultAnisotropy;
+    /// <summary>Set while the view leaves the scene tree (NotificationExitTree; it is still inside during the notification).</summary>
+    private bool leavingTree;
+    /// <summary>
+    /// What this Godot 4.7.2 build and GPU offer (asked once): MetalFX temporal and spatial upscaling on the Metal driver
+    /// when the device supports them (RenderingDevice features; MetalFX temporal only for input scales within the device's
+    /// limits), FSR 2 on every RenderingDevice driver (Forward+: Metal, Direct3D 12, Vulkan). The temporal level uses
+    /// MetalFX temporal where it can, else FSR 2, else (no RenderingDevice: the Compatibility renderer) bilinear scaling;
+    /// choosing here avoids Godot's own fallbacks and their warnings. Printed once when first used.
+    /// </summary>
+    private static class Upscalers
+    {
+        private static readonly RenderingDevice device = RenderingServer.GetRenderingDevice();
+        internal static readonly bool fsr2 = device != null;
+        internal static readonly bool metalfxSpatial = device?.HasFeature(RenderingDevice.Features.MetalfxSpatial) ?? false;
+        internal static readonly bool metalfxTemporal = device?.HasFeature(RenderingDevice.Features.MetalfxTemporal) ?? false;
+        private static readonly double minScale = metalfxTemporal ? device.LimitGet(RenderingDevice.Limit.MetalfxTemporalScalerMinScale) / 1e6 : 1;
+        private static readonly double maxScale = metalfxTemporal ? device.LimitGet(RenderingDevice.Limit.MetalfxTemporalScalerMaxScale) / 1e6 : 1;
+        private static bool reported;
+        internal static Viewport.Scaling3DModeEnum Temporal(double scale)
+        {
+            var mode = metalfxTemporal && scale >= minScale && scale <= maxScale ? Viewport.Scaling3DModeEnum.MetalfxTemporal
+                : fsr2 ? Viewport.Scaling3DModeEnum.Fsr2 : Viewport.Scaling3DModeEnum.Bilinear;
+            if (!reported)
+            {
+                reported = true;
+                GD.Print($"Graphics detail: temporal upscaling with {mode} (driver {RenderingServer.GetCurrentRenderingDriverName()}; MetalFX temporal {(metalfxTemporal ? $"scales {minScale:0.###}-{maxScale:0.###}" : "unsupported")}, MetalFX spatial {(metalfxSpatial ? "supported" : "unsupported")}, FSR 2 {(fsr2 ? "supported" : "unsupported")})");
+            }
+            return mode;
+        }
+    }
+    /// <summary>Draws per snapshot: 1, or under a temporal upscaler (graphics detail below Max) one per jitter phase, as
+    /// Godot counts them (8 / RenderScale^2, at most 32), so the upscaler's history converges on the still view the
+    /// snapshot shows, as it does on screen while the camera rests.</summary>
+    private int TemporalSnapshotDraws => rig.viewport.Scaling3DMode is Viewport.Scaling3DModeEnum.MetalfxTemporal or Viewport.Scaling3DModeEnum.Fsr2 && rig.viewport.Scaling3DScale < 1
+        ? Math.Min(32, (int)Math.Ceiling(8 / (rig.viewport.Scaling3DScale * rig.viewport.Scaling3DScale))) : 1;
     /// <summary>rendersContinuously: the facade always renders every frame while visible; false is stored only.</summary>
     public bool rendersContinuously { get => _rendersContinuously; set => _rendersContinuously = value; }
     public NSColor backgroundColor { get => rig.backgroundColor; set => rig.backgroundColor = value; }
@@ -274,7 +357,7 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         if (rig.viewport.Size != size) rig.viewport.Size = size;
         // Rendered alone with this view's scene uniforms (a hidden view, which does not render each frame, renders once).
         long t0 = FrameProfile.Now.Ticks;
-        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, scene: rig.scene);
+        SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, draws: TemporalSnapshotDraws, scene: rig.scene);
         long t1 = FrameProfile.Now.Ticks;
         var img = rig.viewport.GetTexture().GetImage();
         long t2 = FrameProfile.Now.Ticks;

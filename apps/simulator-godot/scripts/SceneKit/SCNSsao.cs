@@ -48,6 +48,10 @@ public partial class SCNSsaoEffect : CompositorEffect
         bias = (float)camera.screenSpaceAmbientOcclusionBias;
         depthThreshold = (float)camera.screenSpaceAmbientOcclusionDepthThreshold;
         normalThreshold = (float)camera.screenSpaceAmbientOcclusionNormalThreshold;
+        // Godot-only (graphics detail): without SSAO the depth prepass need not write the normal-roughness buffer (nor
+        // Godot resolve it and the depth mid-frame); the callback then only clears scn_ssao to 1.
+        bool on = SceneKitCalibration.SsaoEnabled;
+        if (NeedsNormalRoughness != on) { NeedsNormalRoughness = on; AccessResolvedDepth = on; }
     }
 
     // ---- per-effect (per view) textures
@@ -66,7 +70,7 @@ public partial class SCNSsaoEffect : CompositorEffect
         var full = rb.GetInternalSize();
         if (full.X <= 0 || full.Y <= 0) return;
         SCNSsao.EnsureShared(rd, full);
-                if (intensity <= 0 || radius <= 0)
+        if (intensity <= 0 || radius <= 0 || !SceneKitCalibration.SsaoEnabled)
         {
             rd.TextureClear(SCNSsao.Output, new Color(1, 1, 1, 1), 0, 1, 0, 1);
             return;
@@ -119,10 +123,15 @@ public partial class SCNSsaoEffect : CompositorEffect
         // 4. Scalable ambient obscurance at half resolution (scn_ssao_compute).
         {
             float r = 1000f * radius, r2 = r * r;
+            // Godot-only (graphics detail): below the drawable's resolution (Viewport.Scaling3DScale) the disk keeps its
+            // footprint at the drawable's size, so the occlusion has the same world size as at full resolution (SceneKit's
+            // radius is in pixels of the drawable). 1 at full resolution.
+            var target = rb.GetTargetSize();
+            float pixelScale = target.Y > 0 && target.Y != full.Y ? (float)full.Y / target.Y : 1f;
             var pc = new PushConstants();
             pc.Add(projInfo.X, projInfo.Y, projInfo.Z, projInfo.W);
             pc.Add(half.X, half.Y, full.X, full.Y);
-            pc.Add(r, r2, bias, intensity / (r2 * r2 * r2));
+            pc.Add(r * pixelScale, r2, bias, intensity / (r2 * r2 * r2));
             pc.Add(mipCount, ortho ? 1 : 0, 0, 0);
             var set = CachedSet(rd, SCNSsao.SaoShader, Bind.Image, csz, Bind.Nearest, depth, Bind.Image, index, Bind.Image, aoA);
             SCNSsao.Dispatch(rd, SCNSsao.SaoPipeline, set, pc, half);

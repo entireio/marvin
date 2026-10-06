@@ -174,6 +174,34 @@ internal static class SceneKitCalibration
     /// setting leaves it alone (ShadowQualitySetting.apply).</summary>
     internal static readonly bool Overridden = !string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("MARVIN_SCN_CAL"));
 
+    // ---- Graphics detail (Godot-only; the Settings screen's Graphics detail row, GraphicsDetailSetting). These defaults
+    // are the Max level, the renderer as it was before the setting: every field below leaves Godot as it was.
+    /// <summary>3D render scale of every SCNView (Godot's Viewport.Scaling3DScale): the scene is drawn at this fraction of
+    /// the drawable's width and height and upscaled to it (RenderUpscaler); the AppKit overlays (HUD, menu) stay at the
+    /// drawable's resolution. 1: no scaling.</summary>
+    public static double RenderScale = 1.0;
+    /// <summary>The upscaler below RenderScale 1 (SCNView.ApplyRenderScaling): 0 temporal (MetalFX temporal on Metal, FSR 2
+    /// on Direct3D 12 and Vulkan; both accumulate jittered frames, so 3D MSAA is off), 1 bilinear, 2 FSR 1 (spatial),
+    /// 3 MetalFX spatial (Metal only; FSR 1 elsewhere), 4 FSR 2 on every driver (for measurements on Metal).</summary>
+    public static int RenderUpscaler = 0;
+    /// <summary>Godot's anisotropic filtering level for the SCNViews' textures (Viewport.AnisotropicFilteringLevel: 0 off,
+    /// 1 2x, 2 4x, 3 8x, 4 16x); -1 leaves Godot's default (4x).</summary>
+    public static int AnisotropicFiltering = -1;
+    /// <summary>SceneKit's SSAO (SCNSsaoEffect) in the SCNViews; false: none (the composer reads 1), and Godot's depth
+    /// prepass no longer writes the normal-roughness buffer the SSAO reads.</summary>
+    public static bool SsaoEnabled = true;
+    /// <summary>The sky reflection of physically based materials whose roughness no shader modifier changes (all but the
+    /// robots, whose chrome keeps its sharp horizon) from the sky light's spherical harmonics at the reflection direction
+    /// instead of the pre-filtered radiance bands (ShaderComposer.VariantFlags.SimpleSky).</summary>
+    public static bool SimpleSkyReflection = false;
+    /// <summary>The ground's overlay layers (blended physically based materials that write no depth: trampled sand,
+    /// streets, doorway patches, aprons) lit with diffuse light only: no direct specular, the sky reflection from the
+    /// spherical harmonics (ShaderComposer.VariantFlags.SimpleGround).</summary>
+    public static bool SimpleGroundLighting = false;
+    /// <summary>Distance scale of SceneKit's world- and screen-space levels of detail (SCNLevelOfDetail: the town's
+    /// buildings, crowd and dune tiles switch to their coarser levels this much closer); 1: SceneKit's distances.</summary>
+    public static double LodDistanceScale = 1.0;
+
     // ---- Direct specular (GGX in the composer's light()).
     // Measured (tools/scenekit-reference/robots/SpecularHighlight.swift: highlight profiles of roughness 0 .. 0.2 spheres
     // under 0.01 .. 1000 lm suns, zoomed in at 0.0005 rad per pixel and whole at 0.007): SceneKit keeps the highlight's full
@@ -234,7 +262,28 @@ internal static class SceneKitCalibration
             var kv = item.Split('=', 2);
             var field = typeof(SceneKitCalibration).GetField(kv[0].Trim(), BindingFlags.Public | BindingFlags.Static);
             if (field == null || kv.Length < 2) { Godot.GD.PushWarning($"MARVIN_SCN_CAL: unknown setting '{item}'"); continue; }
-            field.SetValue(null, Convert.ChangeType(double.Parse(kv[1], CultureInfo.InvariantCulture), field.FieldType, CultureInfo.InvariantCulture));
+            var value = Convert.ChangeType(double.Parse(kv[1], CultureInfo.InvariantCulture), field.FieldType, CultureInfo.InvariantCulture);
+            field.SetValue(null, value);
+            overrides.Add((field, value));
         }
+    }
+    /// <summary>The fields MARVIN_SCN_CAL set, in order, with their values.</summary>
+    private static readonly System.Collections.Generic.List<(FieldInfo field, object value)> overrides = new();
+    /// <summary>The graphics-detail fields (GraphicsDetailSetting.Preset sets them for each level).</summary>
+    internal static readonly string[] GraphicsDetailFields = { nameof(RenderScale), nameof(RenderUpscaler), nameof(AnisotropicFiltering), nameof(SsaoEnabled), nameof(GlowBicubicUpscale), nameof(MeshLodMinTriangles), nameof(SimpleSkyReflection), nameof(SimpleGroundLighting), nameof(LodDistanceScale), nameof(MeshLodThreshold) };
+    /// <summary>Sets the named fields to MARVIN_SCN_CAL's values again where it names them (after a preset changed them),
+    /// so an experiment's explicit values win over the graphics-detail level's.</summary>
+    internal static void ReapplyOverrides(System.Collections.Generic.IEnumerable<string> names)
+    {
+        var set = new System.Collections.Generic.HashSet<string>(names);
+        foreach (var (field, value) in overrides) if (set.Contains(field.Name)) field.SetValue(null, value);
+    }
+    /// <summary>The current values of the graphics-detail fields, for comparisons (GraphicsDetailSetting.applied).</summary>
+    internal static string GraphicsDetailSignature()
+    {
+        var parts = new System.Collections.Generic.List<string>();
+        foreach (var name in GraphicsDetailFields)
+            parts.Add(name + "=" + Convert.ToString(typeof(SceneKitCalibration).GetField(name, BindingFlags.Public | BindingFlags.Static).GetValue(null), CultureInfo.InvariantCulture));
+        return string.Join(";", parts);
     }
 }

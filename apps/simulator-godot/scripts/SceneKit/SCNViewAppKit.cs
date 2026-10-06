@@ -94,6 +94,10 @@ public partial class SCNView : NSResponder
                 resetCursorRects();
                 UpdateDrawable();
                 UpdateRendering();
+                leavingTree = false; ApplyRenderScaling(); // Godot-only (graphics detail): an upscaler only for views in the tree
+                break;
+            case NotificationExitTree:
+                leavingTree = true; ApplyRenderScaling(); // back to no scaling (still inside the tree during this notification)
                 break;
             case NotificationVisibilityChanged:
                 UpdateRendering();
