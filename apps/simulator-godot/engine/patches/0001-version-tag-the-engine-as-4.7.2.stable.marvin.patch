@@ -1,0 +1,31 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Thomas Dohmke <thomas@dohmke.de>
+Date: Tue, 6 Oct 2026 12:00:00 +0000
+Subject: [PATCH 1/4] version: tag the engine as 4.7.2.stable.marvin
+
+Sets module_config to ".marvin", so the .NET build reports 4.7.2.stable.marvin.mono and looks for its export
+templates in export_templates/4.7.2.stable.marvin.mono instead of the stock 4.7.2.stable.mono folder. The
+status stays "stable", so the C# packages the project builds against stay Godot.NET.Sdk/GodotSharp 4.7.2
+(the engine changes in this series add API only and are called dynamically).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_011LFhRgmAGGsjqJRdhLgNJx
+---
+ version.py |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/version.py b/version.py
+--- a/version.py
++++ b/version.py
+@@ -4,6 +4,8 @@
+ minor = 7
+ patch = 2
+ status = "stable"
+-module_config = ""
++# Marvin: tag the patched engine so its export templates (4.7.2.stable.marvin.mono) never mix with the stock
++# 4.7.2.stable.mono ones. The status stays "stable", so the C# packages stay Godot.NET.Sdk/GodotSharp 4.7.2.
++module_config = ".marvin"
+ website = "https://godotengine.org"
+ docs = "4.7"
+-- 
+4.7.2-stable + Marvin patches

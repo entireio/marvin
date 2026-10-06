@@ -1,0 +1,130 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Thomas Dohmke <thomas@dohmke.de>
+Date: Tue, 6 Oct 2026 12:00:00 +0000
+Subject: [PATCH 2/4] Forward+: Draw all directional shadow splits in one render pass
+
+New project setting rendering/lights_and_shadows/directional_shadow/single_render_pass (default false).
+
+Stock Forward+ clears the whole directional shadow atlas in a render pass of its own every frame
+(render_forward_clustered.cpp, _pre_opaque_render: draw_list_begin(direction_shadow_get_fb(),
+DRAW_CLEAR_DEPTH)) and then draws each split of each light in a separate render pass with load/store actions
+(_render_shadow_end: one _render_list_with_draw_list() per ShadowPass, DRAW_DEFAULT_ALL, region = split).
+On Metal a partial render area loads and stores every tile up to the region's far corner
+(drivers/metal/metal3_objects.cpp: renderTargetWidth/Height = region end, LoadActionLoad when the area is
+not the whole attachment), so a split in the lower right quadrant of an 8192^2 atlas loads and stores the
+whole atlas. Measured on an M2 at 1080p: the clear alone is 0.34 ms and a split pass with 16 draws still
+costs 0.4-0.5 ms.
+
+With the setting, the directional splits are drawn in one draw list on the atlas framebuffer, begun with
+DRAW_CLEAR_DEPTH over the whole atlas (LoadActionClear on Metal, a render-pass clear on Vulkan and D3D12),
+with each split's viewport and scissor set inside it. The image is identical; the separate clear and the
+per-split load/store go away. Other shadow passes (positional atlas, cube maps) are unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_011LFhRgmAGGsjqJRdhLgNJx
+---
+ doc/classes/ProjectSettings.xml                                              |    4 ++++
+ servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp |   37 ++++++++++++++++++++++++++++++++++---
+ servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h   |    2 ++
+ servers/rendering/rendering_server.cpp                                       |    1 +
+ 4 files changed, 41 insertions(+), 3 deletions(-)
+
+diff --git a/doc/classes/ProjectSettings.xml b/doc/classes/ProjectSettings.xml
+--- a/doc/classes/ProjectSettings.xml
++++ b/doc/classes/ProjectSettings.xml
+@@ -3142,6 +3142,10 @@
+ 		</member>
+ 		<member name="rendering/lights_and_shadows/directional_shadow/16_bits" type="bool" setter="" getter="" default="true">
+ 			Use 16 bits for the directional shadow depth map. Enabling this results in shadows having less precision and may result in shadow acne, but can lead to performance improvements on some devices.
++		</member>
++		<member name="rendering/lights_and_shadows/directional_shadow/single_render_pass" type="bool" setter="" getter="" default="false">
++			If [code]true[/code], every split of every [DirectionalLight3D] shadow is drawn in one render pass that clears the whole directional shadow atlas with its load action and stores it once. If [code]false[/code], the atlas is cleared by a separate render pass and each split is drawn in its own render pass, which loads and stores the atlas again. The result is the same; the single pass avoids the extra clear and the repeated load/store of the atlas, which is significant on tile-based GPUs (Apple Silicon, mobile).
++			[b]Note:[/b] Only supported by the Forward+ renderer.
+ 		</member>
+ 		<member name="rendering/lights_and_shadows/directional_shadow/size" type="int" setter="" getter="" default="4096">
+ 			The directional shadow's size in pixels. Higher values will result in sharper shadows, at the cost of performance. The value is rounded up to the nearest power of 2.
+diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
+--- a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
++++ b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
+@@ -1565,12 +1565,18 @@
+ 				_render_shadow_pass(p_render_data->render_shadows[index].light, p_render_data->shadow_atlas, p_render_data->render_shadows[index].pass, p_render_data->render_shadows[index].instances, lod_distance_multiplier, p_render_data->scene_data->screen_mesh_lod_threshold, true, true, true, p_render_data->render_info, viewport_size, p_render_data->scene_data->cam_transform);
+ 			}
+ 		}
++
++		// With rendering/lights_and_shadows/directional_shadow/single_render_pass, _render_shadow_end() draws every
++		// directional split in one render pass whose load action clears the atlas, so no separate clear pass is needed.
++		scene_state.directional_shadows_single_pass = GLOBAL_GET_CACHED(bool, "rendering/lights_and_shadows/directional_shadow/single_render_pass");
+ 
+ 		if (p_render_data->directional_shadows.size()) {
+ 			//open the pass for directional shadows
+ 			light_storage->update_directional_shadow_atlas();
+-			RD::get_singleton()->draw_list_begin(light_storage->direction_shadow_get_fb(), RD::DRAW_CLEAR_DEPTH, Vector<Color>(), 0.0f);
+-			RD::get_singleton()->draw_list_end();
++			if (!scene_state.directional_shadows_single_pass) {
++				RD::get_singleton()->draw_list_begin(light_storage->direction_shadow_get_fb(), RD::DRAW_CLEAR_DEPTH, Vector<Color>(), 0.0f);
++				RD::get_singleton()->draw_list_end();
++			}
+ 		}
+ 	}
+ 
+@@ -2898,9 +2904,34 @@
+ void RenderForwardClustered::_render_shadow_end() {
+ 	RD::get_singleton()->draw_command_begin_label("Shadow Render");
+ 
+-	for (SceneState::ShadowPass &shadow_pass : scene_state.shadow_passes) {
++	RID directional_fb = scene_state.directional_shadows_single_pass ? RendererRD::LightStorage::get_singleton()->direction_shadow_get_fb() : RID();
++
++	uint32_t pass_index = 0;
++	while (pass_index < scene_state.shadow_passes.size()) {
++		if (directional_fb.is_valid() && scene_state.shadow_passes[pass_index].framebuffer == directional_fb) {
++			// All directional splits in one render pass: its load action clears the whole atlas (a fast clear, free on
++			// tile-based GPUs) and the atlas is stored once, instead of a separate full-atlas clear followed by one
++			// load/store render pass per split. Each split gets its own viewport and scissor, as its own pass had.
++			RD::FramebufferFormatID fb_format = RD::get_singleton()->framebuffer_get_format(directional_fb);
++			RD::DrawListID draw_list = RD::get_singleton()->draw_list_begin(directional_fb, RD::DRAW_CLEAR_DEPTH, Vector<Color>(), 0.0f);
++			while (pass_index < scene_state.shadow_passes.size() && scene_state.shadow_passes[pass_index].framebuffer == directional_fb) {
++				SceneState::ShadowPass &shadow_pass = scene_state.shadow_passes[pass_index];
++				RenderListParameters render_list_parameters(render_list[RENDER_LIST_SECONDARY].elements.ptr() + shadow_pass.element_from, render_list[RENDER_LIST_SECONDARY].element_info.ptr() + shadow_pass.element_from, shadow_pass.element_count, shadow_pass.flip_cull, shadow_pass.pass_mode, 0, true, false, shadow_pass.rp_uniform_set, false, Vector2(), shadow_pass.lod_distance_multiplier, shadow_pass.screen_mesh_lod_threshold, 1, shadow_pass.element_from);
++				render_list_parameters.framebuffer_format = fb_format;
++				RD::get_singleton()->draw_list_set_viewport(draw_list, shadow_pass.rect);
++				// The scissor rectangle is relative to the viewport set above.
++				RD::get_singleton()->draw_list_enable_scissor(draw_list, Rect2(Vector2(), shadow_pass.rect.size));
++				_render_list(draw_list, fb_format, &render_list_parameters, 0, render_list_parameters.element_count);
++				pass_index++;
++			}
++			RD::get_singleton()->draw_list_end();
++			continue;
++		}
++
++		SceneState::ShadowPass &shadow_pass = scene_state.shadow_passes[pass_index];
+ 		RenderListParameters render_list_parameters(render_list[RENDER_LIST_SECONDARY].elements.ptr() + shadow_pass.element_from, render_list[RENDER_LIST_SECONDARY].element_info.ptr() + shadow_pass.element_from, shadow_pass.element_count, shadow_pass.flip_cull, shadow_pass.pass_mode, 0, true, false, shadow_pass.rp_uniform_set, false, Vector2(), shadow_pass.lod_distance_multiplier, shadow_pass.screen_mesh_lod_threshold, 1, shadow_pass.element_from);
+ 		_render_list_with_draw_list(&render_list_parameters, shadow_pass.framebuffer, shadow_pass.clear_depth ? RD::DRAW_CLEAR_DEPTH : RD::DRAW_DEFAULT_ALL, Vector<Color>(), 0.0f, 0, shadow_pass.rect);
++		pass_index++;
+ 	}
+ 
+ 	RD::get_singleton()->draw_command_end_label();
+diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h
+--- a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h
++++ b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.h
+@@ -441,6 +441,8 @@
+ 		};
+ 
+ 		LocalVector<ShadowPass> shadow_passes;
++		// Draw all directional shadow splits in one render pass (rendering/lights_and_shadows/directional_shadow/single_render_pass).
++		bool directional_shadows_single_pass = false;
+ 
+ 		void grow_instance_buffer(RenderListType p_render_list, uint32_t p_req_element_count, bool p_append);
+ 	} scene_state;
+diff --git a/servers/rendering/rendering_server.cpp b/servers/rendering/rendering_server.cpp
+--- a/servers/rendering/rendering_server.cpp
++++ b/servers/rendering/rendering_server.cpp
+@@ -3675,6 +3675,7 @@
+ 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Very Low (Faster),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"), 2);
+ 	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile", 0);
+ 	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/16_bits", true);
++	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/single_render_pass", false);
+ 
+ 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/lights_and_shadows/positional_shadow/soft_shadow_filter_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Very Low (Faster),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"), 2);
+ 	GLOBAL_DEF("rendering/lights_and_shadows/positional_shadow/soft_shadow_filter_quality.mobile", 0);
+-- 
+4.7.2-stable + Marvin patches

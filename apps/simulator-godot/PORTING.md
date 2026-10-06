@@ -20,6 +20,7 @@ A faithful port of the macOS game in `apps/simulator-macos` to Godot 4.7 (.NET/C
 | `reference/` | **Gitignored.** Reference outputs from the macOS game (SimulationChecks output, captures). |
 | `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export` (release builds) and `export-verify.py` (their layout); `perf/`: like-for-like benchmark runner and probes (see `docs/performance.md`). |
 | `docs/performance.md` | The measured performance gap to the macOS game (same drawable sizes, GPU per pass, CPU, memory, loading) and the ranked costs. |
+| `engine/` | A patch series against Godot 4.7.2-stable (one render pass for the directional shadow atlas, a fixed-kernel soft shadow filter, fixed world-anchored shadow boxes), `build-engine.sh` for the patched .NET editor and the macOS/Windows templates (`4.7.2.stable.marvin.mono`), and the facade plan; `MARVIN_ENGINE=marvin` selects it in `tools/`. Drafted, not yet built or measured (`engine/README.md`). |
 | `export_presets.cfg`, `MarvinGodot.sln` | Export presets (macOS universal, Windows x86_64 with Direct3D 12 and a Vulkan fallback; Godot 4.7.2 .NET export templates) and the solution file Godot's C# export needs. |
 | `README.md` | Building, exporting and running, on macOS and Windows (see "Release builds and Windows" below for what was verified). |
 

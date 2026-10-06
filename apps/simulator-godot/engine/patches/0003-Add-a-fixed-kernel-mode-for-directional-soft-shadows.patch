@@ -1,0 +1,278 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Thomas Dohmke <thomas@dohmke.de>
+Date: Tue, 6 Oct 2026 12:00:00 +0000
+Subject: [PATCH 3/4] Add a fixed-kernel mode for directional soft shadows
+
+New project setting rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel:
+0 Rotated (default, stock), 1 Fixed, 2 Fixed With Early Out. Read by
+RenderingServer.directional_soft_shadow_filter_set_quality(), so it can change at run time.
+
+The stock soft PCF (scene_forward_lights_inc.glsl, sample_directional_pcf_shadow) rotates a Vogel disk per
+pixel: an interleaved-gradient hash of gl_FragCoord, sin and cos, a mat2, and per tap a rotated offset
+built from a scene UBO kernel entry. It is inlined into the directional light loop of the forward
+fragment shader, after the material code, while every material output is still live. Measured on an M2
+(Marvin's port at 1080p): the soft filter costs ~4 ms more than the hard filter (one bilinear comparison),
+and 8 taps (Soft Medium) cost the same as 16 (Soft High) within the run-to-run spread. That points at the
+soft path's extra live state (lower occupancy of an already register-heavy shader) plus the taps multiplied
+by transparent overdraw, rather than the number of taps (to be confirmed with a GPU capture).
+
+The fixed mode takes the same taps for every pixel: rings of four point-symmetric taps at equal-area radii
+(get_fixed_ring_disk, outermost ring first, centroid exactly zero so edges do not shift), each a hardware
+bilinear depth comparison, scaled by the light's blur and the quality radius as before. No hash, no
+sin/cos, no rotation matrix, no noise; the sample count still comes from soft_shadow_filter_quality. This
+is the classic fixed-kernel PCF (SceneKit's shadowSampleCount x shadowRadius kernel). The early-out variant
+takes the outer ring first and stops when its four taps agree (fully lit or fully shadowed).
+
+The mode is a 2-bit specialization constant (packed_1 bits 6-7) in the Forward+ scene shader, so the
+unused path compiles out. The Mobile renderer keeps the rotated kernel.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_011LFhRgmAGGsjqJRdhLgNJx
+---
+ doc/classes/ProjectSettings.xml                                                          |    7 +++++++
+ servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp             |    1 +
+ servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h         |    1 +
+ servers/rendering/renderer_rd/renderer_scene_render_rd.cpp                               |   42 ++++++++++++++++++++++++++++++++++++++++--
+ servers/rendering/renderer_rd/renderer_scene_render_rd.h                                 |    5 +++++
+ servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl     |    6 ++++--
+ servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl |    6 ++++++
+ servers/rendering/renderer_rd/shaders/scene_forward_lights_inc.glsl                      |   45 ++++++++++++++++++++++++++++++++++++++++
+ servers/rendering/rendering_server.cpp                                                   |    1 +
+ 9 files changed, 110 insertions(+), 4 deletions(-)
+
+diff --git a/doc/classes/ProjectSettings.xml b/doc/classes/ProjectSettings.xml
+--- a/doc/classes/ProjectSettings.xml
++++ b/doc/classes/ProjectSettings.xml
+@@ -3153,6 +3153,13 @@
+ 		<member name="rendering/lights_and_shadows/directional_shadow/size.mobile" type="int" setter="" getter="" default="2048">
+ 			Lower-end override for [member rendering/lights_and_shadows/directional_shadow/size] on mobile devices, due to performance concerns or driver support.
+ 		</member>
++		<member name="rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel" type="int" setter="" getter="" default="0">
++			The sample pattern of the soft (PCF) filter of [DirectionalLight3D] shadows whose [member Light3D.light_angular_distance] is [code]0[/code]. The number of samples and the blur radius still come from [member rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality] and [member Light3D.shadow_blur].
++			- [b]Rotated (Default)[/b]: a Vogel disk rotated per pixel by a noise pattern. Smooth penumbrae with fine noise (resolved by TAA).
++			- [b]Fixed[/b]: the same point-symmetric rings of four samples for every pixel, without the per-pixel rotation. Faster, noise-free and stable, but with visible steps in wide penumbrae when few samples are used (the classic look of fixed-kernel PCF).
++			- [b]Fixed With Early Out[/b]: like [b]Fixed[/b], but the outer four samples are taken first and the others are skipped when all four are fully lit or fully shadowed. Fastest on scenes with few penumbra pixels; shadows thinner than the gap between those four samples can be lost.
++			[b]Note:[/b] Only supported by the Forward+ renderer. Changes made at run time take effect on the next call to [method RenderingServer.directional_soft_shadow_filter_set_quality].
++		</member>
+ 		<member name="rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality" type="int" setter="" getter="" default="2">
+ 			Quality setting for shadows cast by [DirectionalLight3D]s. Higher quality settings use more samples when reading from shadow maps and are thus slower. Low quality settings may result in shadows looking grainy.
+ 			[b]Note:[/b] The Soft Very Low setting will automatically multiply [i]constant[/i] shadow blur by 0.75x to reduce the amount of noise visible. This automatic blur change only affects the constant blur factor defined in [member Light3D.shadow_blur], not the variable blur performed by [DirectionalLight3D]s' [member Light3D.light_angular_distance].
+diff --git a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
+--- a/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
++++ b/servers/rendering/renderer_rd/forward_clustered/render_forward_clustered.cpp
+@@ -5124,6 +5124,7 @@
+ 	specialization.penumbra_shadow_samples = penumbra_shadow_samples_get();
+ 	specialization.directional_soft_shadow_samples = directional_soft_shadow_samples_get();
+ 	specialization.directional_penumbra_shadow_samples = directional_penumbra_shadow_samples_get();
++	specialization.directional_soft_shadow_kernel = directional_soft_shadow_kernel_mode_get();
+ 	specialization.use_lightmap_bicubic_filter = lightmap_filter_bicubic_get();
+ 	specialization.fog_use_legacy_blending = fog_use_legacy_blending_get();
+ 	scene_shader.set_default_specialization(specialization);
+diff --git a/servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h b/servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h
+--- a/servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h
++++ b/servers/rendering/renderer_rd/forward_clustered/scene_shader_forward_clustered.h
+@@ -128,6 +128,7 @@
+ 				uint32_t multimesh_has_custom_data : 1;
+ 				uint32_t fog_use_legacy_blending : 1;
+ 				uint32_t cluster_has_area_light : 1;
++				uint32_t directional_soft_shadow_kernel : 2;
+ 			};
+ 		};
+ 
+diff --git a/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp b/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp
+--- a/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp
++++ b/servers/rendering/renderer_rd/renderer_scene_render_rd.cpp
+@@ -53,6 +53,35 @@
+ 
+ 		r_kernel[i * 4] = Math::cos(theta) * r;
+ 		r_kernel[i * 4 + 1] = Math::sin(theta) * r;
++	}
++}
++
++// Kernel for the fixed (unrotated) directional PCF filter: rings of four taps at equal-area radii, each ring rotated by
++// the golden angle against the previous one. Every ring is point-symmetric, so the kernel's centroid is exactly zero and
++// shadow edges do not shift (an unrotated Vogel disk is lopsided). The outermost ring comes first, so the first four taps
++// can classify fully lit and fully shadowed pixels (early out). Fewer than four samples use the centre.
++void get_fixed_ring_disk(float *r_kernel, int p_sample_count) {
++	const float golden_angle = 2.4;
++
++	if (p_sample_count < 4) {
++		for (int i = 0; i < p_sample_count; i++) {
++			r_kernel[i * 4] = 0.0;
++			r_kernel[i * 4 + 1] = 0.0;
++		}
++		return;
++	}
++
++	const int rings = p_sample_count / 4;
++	for (int ring = 0; ring < rings; ring++) {
++		const int j = rings - 1 - ring; // Outermost ring first.
++		const float r = Math::sqrt((float(j) + 0.5) / float(rings));
++		const float theta = float(Math::PI) * 0.125f + float(j) * golden_angle;
++		for (int k = 0; k < 4; k++) {
++			const int i = ring * 4 + k;
++			const float a = theta + float(k) * float(Math::PI) * 0.5f;
++			r_kernel[i * 4] = Math::cos(a) * r;
++			r_kernel[i * 4 + 1] = Math::sin(a) * r;
++		}
+ 	}
+ }
+ 
+@@ -1219,8 +1248,13 @@
+ void RendererSceneRenderRD::directional_soft_shadow_filter_set_quality(RSE::ShadowQuality p_quality) {
+ 	ERR_FAIL_INDEX_MSG(p_quality, RSE::SHADOW_QUALITY_MAX, "Shadow quality too high, please see RenderingServer's ShadowQuality enum");
+ 
+-	if (directional_shadow_quality != p_quality) {
++	// 0: kernel rotated per pixel (default), 1: fixed kernel, 2: fixed kernel with early out. Read here so that changing
++	// the project setting at run time takes effect with the next call to this function.
++	const int kernel_mode = CLAMP(int(GLOBAL_GET("rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel")), 0, 2);
++
++	if (directional_shadow_quality != p_quality || directional_soft_shadow_kernel_mode != kernel_mode) {
+ 		directional_shadow_quality = p_quality;
++		directional_soft_shadow_kernel_mode = kernel_mode;
+ 
+ 		switch (directional_shadow_quality) {
+ 			case RSE::SHADOW_QUALITY_HARD: {
+@@ -1257,7 +1291,11 @@
+ 				break;
+ 		}
+ 		get_vogel_disk(directional_penumbra_shadow_kernel, directional_penumbra_shadow_samples);
+-		get_vogel_disk(directional_soft_shadow_kernel, directional_soft_shadow_samples);
++		if (directional_soft_shadow_kernel_mode != 0) {
++			get_fixed_ring_disk(directional_soft_shadow_kernel, directional_soft_shadow_samples);
++		} else {
++			get_vogel_disk(directional_soft_shadow_kernel, directional_soft_shadow_samples);
++		}
+ 	}
+ 
+ 	_update_shader_quality_settings();
+diff --git a/servers/rendering/renderer_rd/renderer_scene_render_rd.h b/servers/rendering/renderer_rd/renderer_scene_render_rd.h
+--- a/servers/rendering/renderer_rd/renderer_scene_render_rd.h
++++ b/servers/rendering/renderer_rd/renderer_scene_render_rd.h
+@@ -143,6 +143,7 @@
+ 	bool lightmap_filter_bicubic = false;
+ 	int directional_penumbra_shadow_samples = 0;
+ 	int directional_soft_shadow_samples = 0;
++	int directional_soft_shadow_kernel_mode = 0; // rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel
+ 	int penumbra_shadow_samples = 0;
+ 	int soft_shadow_samples = 0;
+ 	RSE::DecalFilter decals_filter = RSE::DECAL_FILTER_LINEAR_MIPMAPS;
+@@ -310,6 +311,10 @@
+ 	_FORCE_INLINE_ int directional_soft_shadow_samples_get() const {
+ 		return directional_soft_shadow_samples;
+ 	}
++	// 0: kernel rotated per pixel, 1: fixed kernel, 2: fixed kernel with early out (see get_fixed_ring_disk()).
++	_FORCE_INLINE_ int directional_soft_shadow_kernel_mode_get() const {
++		return directional_soft_shadow_kernel_mode;
++	}
+ 	_FORCE_INLINE_ int penumbra_shadow_samples_get() const {
+ 		return penumbra_shadow_samples;
+ 	}
+diff --git a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
+--- a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
++++ b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
+@@ -2486,7 +2486,9 @@
+ 
+ 						pssm_coord /= pssm_coord.w;
+ 
+-						shadow = sample_directional_pcf_shadow(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale * (blur_factor + (1.0 - blur_factor) * float(directional_lights.data[i].blend_splits)), pssm_coord, scene_data.taa_frame_count);
++						vec4 shadow_clamp_rect = vec4(0.0, 0.0, 1.0, 1.0);
++
++						shadow = sample_directional_pcf_shadow_kernel(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale * (blur_factor + (1.0 - blur_factor) * float(directional_lights.data[i].blend_splits)), pssm_coord, scene_data.taa_frame_count, sc_directional_soft_shadow_kernel(), shadow_clamp_rect);
+ 
+ 						if (directional_lights.data[i].blend_splits) {
+ 							float pssm_blend;
+@@ -2520,7 +2522,7 @@
+ 
+ 							pssm_coord /= pssm_coord.w;
+ 
+-							float shadow2 = sample_directional_pcf_shadow(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale * (blur_factor2 + (1.0 - blur_factor2) * float(directional_lights.data[i].blend_splits)), pssm_coord, scene_data.taa_frame_count);
++							float shadow2 = sample_directional_pcf_shadow_kernel(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale * (blur_factor2 + (1.0 - blur_factor2) * float(directional_lights.data[i].blend_splits)), pssm_coord, scene_data.taa_frame_count, sc_directional_soft_shadow_kernel(), shadow_clamp_rect);
+ 							shadow = mix(shadow, shadow2, pssm_blend);
+ 						}
+ 					}
+diff --git a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl
+--- a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl
++++ b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered_inc.glsl
+@@ -144,6 +144,12 @@
+ 
+ bool sc_cluster_has_area_light() {
+ 	return ((sc_packed_1() >> 5) & 1U) != 0;
++}
++
++// rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel:
++// 0: kernel rotated per pixel, 1: fixed kernel, 2: fixed kernel with early out.
++uint sc_directional_soft_shadow_kernel() {
++	return (sc_packed_1() >> 6) & 3U;
+ }
+ 
+ float sc_luminance_multiplier() {
+diff --git a/servers/rendering/renderer_rd/shaders/scene_forward_lights_inc.glsl b/servers/rendering/renderer_rd/shaders/scene_forward_lights_inc.glsl
+--- a/servers/rendering/renderer_rd/shaders/scene_forward_lights_inc.glsl
++++ b/servers/rendering/renderer_rd/shaders/scene_forward_lights_inc.glsl
+@@ -335,7 +335,52 @@
+ 
+ 	return half(avg * (1.0 / float(sc_directional_soft_shadow_samples())));
+ }
++
++// Fixed-kernel directional PCF (rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel = Fixed):
++// every pixel takes the same taps, each a hardware bilinear depth comparison (directional_soft_shadow_kernel holds
++// point-symmetric rings of four taps, outermost ring first, see get_fixed_ring_disk()). Unlike
++// sample_directional_pcf_shadow() there is no per-pixel rotation: no hash, no sin/cos, no rotation matrix and no noise,
++// which keeps the filter's register footprint close to the hard filter's.
++// clamp_rect keeps the taps inside the light's own map (fixed shadow boxes); vec4(0, 0, 1, 1) for other lights.
++// early_out: when the outer ring's four taps agree, the pixel is taken as fully lit or fully shadowed and the other taps
++// are skipped. This can miss shadows thinner than the gap between those four taps.
++half sample_directional_pcf_shadow_fixed(texture2D shadow, vec2 shadow_pixel_size, vec4 coord, vec4 clamp_rect, bool early_out) {
++	vec2 pos = coord.xy;
++	float depth = coord.z;
++	uint sample_count = sc_directional_soft_shadow_samples();
+ 
++	float avg = 0.0;
++	uint first = 0u;
++
++	if (early_out && sample_count > 4u) {
++		for (uint i = 0u; i < 4u; i++) {
++			vec2 tap = clamp(pos + shadow_pixel_size * scene_data_block.data.directional_soft_shadow_kernel[i].xy, clamp_rect.xy, clamp_rect.zw);
++			avg += textureProj(sampler2DShadow(shadow, shadow_sampler), vec4(tap, depth, 1.0));
++		}
++		if (avg < 0.001 || avg > 3.999) {
++			return half(avg * 0.25);
++		}
++		first = 4u;
++	}
++
++	SPEC_CONSTANT_LOOP_ANNOTATION
++	for (uint i = first; i < sample_count; i++) {
++		vec2 tap = clamp(pos + shadow_pixel_size * scene_data_block.data.directional_soft_shadow_kernel[i].xy, clamp_rect.xy, clamp_rect.zw);
++		avg += textureProj(sampler2DShadow(shadow, shadow_sampler), vec4(tap, depth, 1.0));
++	}
++
++	return half(avg * (1.0 / float(sample_count)));
++}
++
++// Directional PCF with the kernel selected by kernel_mode (sc_directional_soft_shadow_kernel() where the renderer has
++// it): 0 the per-pixel rotated Vogel disk, 1 the fixed kernel, 2 the fixed kernel with early out.
++half sample_directional_pcf_shadow_kernel(texture2D shadow, vec2 shadow_pixel_size, vec4 coord, float taa_frame_count, uint kernel_mode, vec4 clamp_rect) {
++	if (kernel_mode != 0u && sc_directional_soft_shadow_samples() != 0u) {
++		return sample_directional_pcf_shadow_fixed(shadow, shadow_pixel_size, coord, clamp_rect, kernel_mode == 2u);
++	}
++	return sample_directional_pcf_shadow(shadow, shadow_pixel_size, coord, taa_frame_count);
++}
++
+ half sample_pcf_shadow(texture2D shadow, vec2 shadow_pixel_size, vec3 coord, float taa_frame_count) {
+ 	vec2 pos = coord.xy;
+ 	float depth = coord.z;
+diff --git a/servers/rendering/rendering_server.cpp b/servers/rendering/rendering_server.cpp
+--- a/servers/rendering/rendering_server.cpp
++++ b/servers/rendering/rendering_server.cpp
+@@ -3674,6 +3674,7 @@
+ 	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/size.mobile", 2048);
+ 	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", PROPERTY_HINT_ENUM, "Hard (Fastest),Soft Very Low (Faster),Soft Low (Fast),Soft Medium (Average),Soft High (Slow),Soft Ultra (Slowest)"), 2);
+ 	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile", 0);
++	GLOBAL_DEF(PropertyInfo(Variant::INT, "rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel", PROPERTY_HINT_ENUM, "Rotated (Default),Fixed,Fixed With Early Out"), 0);
+ 	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/16_bits", true);
+ 	GLOBAL_DEF("rendering/lights_and_shadows/directional_shadow/single_render_pass", false);
+ 
+-- 
+4.7.2-stable + Marvin patches

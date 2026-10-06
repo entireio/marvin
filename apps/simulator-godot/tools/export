@@ -36,9 +36,10 @@ if [ ! -x "$GODOT" ] && [ ! -f "$GODOT" ]; then
     echo "tools/export: Godot not found at \$GODOT=$GODOT" >&2; exit 1
 fi
 
-# Export templates for this exact engine version (4.7.2.stable.mono).
+# Export templates for this exact engine version (4.7.2.stable.mono; the patched engine of engine/README.md, selected
+# with MARVIN_ENGINE=marvin, reports 4.7.2.stable.marvin.mono and has its own template folder).
 version=$("$GODOT" --headless --version 2>/dev/null | tail -n 1 | tr -d '\r')
-template_version=$(echo "$version" | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?\.[a-z0-9]+\.mono).*/\1/')
+template_version=$(echo "$version" | sed -E 's/^([0-9]+\.[0-9]+(\.[0-9]+)?\.[a-z0-9]+(\.[a-z0-9_]+)*\.mono).*/\1/')
 case "$(uname -s)" in
     Darwin) templates="$HOME/Library/Application Support/Godot/export_templates/$template_version";;
     MINGW*|MSYS*|CYGWIN*)
@@ -49,7 +50,10 @@ case "$(uname -s)" in
 esac
 if [ ! -d "$templates" ]; then
     echo "tools/export: export templates for $version not found in $templates" >&2
-    echo "  install Godot_v${template_version%.mono}_mono_export_templates.tpz (Editor > Manage Export Templates)" >&2
+    case "$template_version" in
+        *.marvin.mono) echo "  build and install them with engine/build-engine.sh (engine/README.md)" >&2;;
+        *) echo "  install Godot_v${template_version%.mono}_mono_export_templates.tpz (Editor > Manage Export Templates)" >&2;;
+    esac
     exit 1
 fi
 

@@ -1,0 +1,473 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Thomas Dohmke <thomas@dohmke.de>
+Date: Tue, 6 Oct 2026 12:00:00 +0000
+Subject: [PATCH 4/4] Add fixed (world-anchored) directional shadow boxes
+
+New RenderingServer.light_directional_set_shadow_fixed_box(light, enable, extent, z_near, z_far,
+resolution).
+
+A light with a fixed box renders one orthographic map anchored to the light instead of camera-fitted
+splits: |x|, |y| <= extent around the light's origin in light space, z_near..z_far along its -Z, the centre
+snapped to whole texels in light space (renderer_scene_cull.cpp). Casters are culled to the box and the
+light culler uses the camera's far plane as the shadow range. The map is a square of `resolution` pixels
+(or the region's shorter side) at the origin of the light's atlas region
+(LightStorage::light_directional_get_fixed_box_rect), so a 4096 and a 2048 map can share an 8192 atlas with
+their own texel sizes. light_directional_get_shadow_mode() reports ORTHOGONAL for such lights, so the atlas
+layout, the light culler and the debug views treat them as one split without further changes.
+
+The map's atlas rectangle goes to the shaders in the DirectionalLightData field that was padding
+(uvec2 pad -> shadow_box_rect, two packUnorm2x16 words, zero for other lights), so the struct layout is
+unchanged. Forward+, Mobile and the volumetric fog leave receivers outside the box unshadowed
+(directional_shadow_box_outside), and the fixed PCF kernel clamps its taps to the map
+(directional_shadow_box_clamp_rect). The split distance is 1e30, so there is no split selection and no
+distance fade. Renderers without support (Compatibility) keep their camera-fitted maps.
+
+This is the shadow model of SceneKit's automaticallyAdjustsShadowProjection = false (orthographicScale,
+zNear, zFar, shadowMapSize) and of most fixed-sun games.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_011LFhRgmAGGsjqJRdhLgNJx
+---
+ doc/classes/RenderingServer.xml                                                      |   13 +++++++++++++
+ servers/rendering/renderer_rd/shaders/environment/volumetric_fog_process.glsl        |    3 +++
+ servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl |    8 +++++++-
+ servers/rendering/renderer_rd/shaders/forward_mobile/scene_forward_mobile.glsl       |    5 +++++
+ servers/rendering/renderer_rd/shaders/light_data_inc.glsl                            |   30 +++++++++++++++++++++++++++++-
+ servers/rendering/renderer_rd/storage_rd/light_storage.cpp                           |   79 ++++++++++++++++++++++++++++++++++++++++-
+ servers/rendering/renderer_rd/storage_rd/light_storage.h                             |   16 ++++++++++++++--
+ servers/rendering/renderer_scene_cull.cpp                                            |   61 ++++++++++++++++++++++++++++++++++++++++
+ servers/rendering/rendering_light_culler.cpp                                         |    8 ++++++++
+ servers/rendering/rendering_server.cpp                                               |    1 +
+ servers/rendering/rendering_server.h                                                 |    1 +
+ servers/rendering/rendering_server_default.h                                         |    1 +
+ servers/rendering/storage/light_storage.h                                            |    4 ++++
+ 13 files changed, 225 insertions(+), 5 deletions(-)
+
+diff --git a/doc/classes/RenderingServer.xml b/doc/classes/RenderingServer.xml
+--- a/doc/classes/RenderingServer.xml
++++ b/doc/classes/RenderingServer.xml
+@@ -2137,6 +2137,19 @@
+ 				If [code]true[/code], this directional light will blend between shadow map splits resulting in a smoother transition between them. Equivalent to [member DirectionalLight3D.directional_shadow_blend_splits].
+ 			</description>
+ 		</method>
++		<method name="light_directional_set_shadow_fixed_box">
++			<return type="void" />
++			<param index="0" name="light" type="RID" />
++			<param index="1" name="enable" type="bool" />
++			<param index="2" name="extent" type="float" />
++			<param index="3" name="z_near" type="float" />
++			<param index="4" name="z_far" type="float" />
++			<param index="5" name="resolution" type="int" />
++			<description>
++				If [param enable] is [code]true[/code], this directional light renders one orthographic shadow map anchored to the light instead of camera-fitted splits: it covers [code]|x|, |y| &lt;= extent[/code] around the light's origin (in the light's space) and the depths [param z_near] to [param z_far] along the light's direction. Receivers outside this box are not shadowed, and casters outside it do not cast. The box centre is snapped to whole shadow texels, so moving the light does not make its shadows shimmer. The map is a square of [param resolution] pixels in the light's region of the directional shadow atlas, or the whole region's shorter side when [param resolution] is [code]0[/code]; the shadow texel is [code]2 * extent / resolution[/code]. [member DirectionalLight3D.directional_shadow_mode], the split distances and [member DirectionalLight3D.directional_shadow_max_distance] are ignored while the box is enabled. Set [member DirectionalLight3D.directional_shadow_pancake_size] to [code]0[/code] so casters crossing the near plane are clipped rather than flattened onto it.
++				[b]Note:[/b] Only supported by the Forward+ and Mobile renderers. The PCF taps of [member ProjectSettings.rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_kernel]'s fixed kernels stay inside the box's map; the rotated kernel and [member Light3D.light_angular_distance] soft shadows can read a few texels beyond it near the box's edge.
++			</description>
++		</method>
+ 		<method name="light_directional_set_shadow_mode">
+ 			<return type="void" />
+ 			<param index="0" name="light" type="RID" />
+diff --git a/servers/rendering/renderer_rd/shaders/environment/volumetric_fog_process.glsl b/servers/rendering/renderer_rd/shaders/environment/volumetric_fog_process.glsl
+--- a/servers/rendering/renderer_rd/shaders/environment/volumetric_fog_process.glsl
++++ b/servers/rendering/renderer_rd/shaders/environment/volumetric_fog_process.glsl
+@@ -431,6 +431,9 @@
+ 
+ 					float depth = texture(sampler2D(directional_shadow_atlas, linear_sampler), pssm_coord.xy).r;
+ 					float shadow = exp(min(0.0, (pssm_coord.z - depth)) * z_range * INV_FOG_FADE);
++					if (directional_shadow_box_outside(directional_lights.data[i].shadow_box_rect, pssm_coord.xyz)) {
++						shadow = 1.0; // Outside the light's fixed shadow box.
++					}
+ 
+ 					shadow = mix(shadow, 1.0, smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, view_pos.z)); //done with negative values for performance
+ 
+diff --git a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
+--- a/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
++++ b/servers/rendering/renderer_rd/shaders/forward_clustered/scene_forward_clustered.glsl
+@@ -2486,7 +2486,8 @@
+ 
+ 						pssm_coord /= pssm_coord.w;
+ 
+-						vec4 shadow_clamp_rect = vec4(0.0, 0.0, 1.0, 1.0);
++						// Keeps the fixed kernel's taps inside a fixed shadow box's map (the whole atlas for other lights).
++						vec4 shadow_clamp_rect = directional_shadow_box_clamp_rect(directional_lights.data[i].shadow_box_rect, scene_data.directional_shadow_pixel_size);
+ 
+ 						shadow = sample_directional_pcf_shadow_kernel(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale * (blur_factor + (1.0 - blur_factor) * float(directional_lights.data[i].blend_splits)), pssm_coord, scene_data.taa_frame_count, sc_directional_soft_shadow_kernel(), shadow_clamp_rect);
+ 
+@@ -2524,6 +2525,11 @@
+ 
+ 							float shadow2 = sample_directional_pcf_shadow_kernel(directional_shadow_atlas, scene_data.directional_shadow_pixel_size * directional_lights.data[i].soft_shadow_scale * (blur_factor2 + (1.0 - blur_factor2) * float(directional_lights.data[i].blend_splits)), pssm_coord, scene_data.taa_frame_count, sc_directional_soft_shadow_kernel(), shadow_clamp_rect);
+ 							shadow = mix(shadow, shadow2, pssm_blend);
++						}
++
++						// A fixed shadow box never blends splits, so pssm_coord is still the receiver's position in its map.
++						if (directional_shadow_box_outside(directional_lights.data[i].shadow_box_rect, pssm_coord.xyz)) {
++							shadow = 1.0;
+ 						}
+ 					}
+ 
+diff --git a/servers/rendering/renderer_rd/shaders/forward_mobile/scene_forward_mobile.glsl b/servers/rendering/renderer_rd/shaders/forward_mobile/scene_forward_mobile.glsl
+--- a/servers/rendering/renderer_rd/shaders/forward_mobile/scene_forward_mobile.glsl
++++ b/servers/rendering/renderer_rd/shaders/forward_mobile/scene_forward_mobile.glsl
+@@ -2062,6 +2062,11 @@
+ 						shadow = mix(shadow, shadow2, pssm_blend);
+ 					}
+ 
++					// Fixed shadow box (no split blending): receivers outside the light's box are unshadowed.
++					if (directional_shadow_box_outside(directional_lights.data[i].shadow_box_rect, pssm_coord.xyz)) {
++						shadow = half(1.0);
++					}
++
+ #ifdef USE_LIGHTMAP
+ 					if (shadowmask_mode == LIGHTMAP_SHADOWMASK_MODE_REPLACE) {
+ 						shadow = mix(shadow, shadowmask, half(smoothstep(directional_lights.data[i].fade_from, directional_lights.data[i].fade_to, vertex.z))); //done with negative values for performance
+diff --git a/servers/rendering/renderer_rd/shaders/light_data_inc.glsl b/servers/rendering/renderer_rd/shaders/light_data_inc.glsl
+--- a/servers/rendering/renderer_rd/shaders/light_data_inc.glsl
++++ b/servers/rendering/renderer_rd/shaders/light_data_inc.glsl
+@@ -72,7 +72,7 @@
+ 	float shadow_opacity;
+ 	float fade_from;
+ 	float fade_to;
+-	uvec2 pad;
++	uvec2 shadow_box_rect; // Fixed shadow box: packUnorm2x16 of the map's atlas rect min and max; 0 otherwise.
+ 	uint bake_mode;
+ 	float volumetric_fog_energy;
+ 	vec4 shadow_bias;
+@@ -90,3 +90,31 @@
+ 	vec2 uv_scale3;
+ 	vec2 uv_scale4;
+ };
++
++// Fixed directional shadow box (RenderingServer.light_directional_set_shadow_fixed_box): shadow_box_rect holds the
++// light's map in the atlas as two 16-bit unorm pairs, (min.x | min.y << 16, max.x | max.y << 16). Unpacked with
++// integer operations rather than unpackUnorm2x16(), so every shader backend (SPIRV-Cross for Metal, NIR/DXIL for
++// D3D12) sees only plain ALU.
++vec4 directional_shadow_box_rect(uvec2 box_rect) {
++	return vec4(uvec4(box_rect.x & 0xFFFFu, box_rect.x >> 16u, box_rect.y & 0xFFFFu, box_rect.y >> 16u)) * (1.0 / 65535.0);
++}
++
++// The light's only map covers a box anchored to the light, so receivers outside it (beyond the map's rect in the
++// atlas, in front of its near plane or beyond its far plane) are unshadowed. pssm_coord: the receiver's coordinates in
++// the atlas after the perspective divide (depth 1 at the near plane, 0 at the far plane).
++bool directional_shadow_box_outside(uvec2 box_rect, vec3 pssm_coord) {
++	if (box_rect.y == 0u) {
++		return false;
++	}
++	vec4 rect = directional_shadow_box_rect(box_rect);
++	return any(lessThan(pssm_coord.xy, rect.xy)) || any(greaterThan(pssm_coord.xy, rect.zw)) || pssm_coord.z < 0.0 || pssm_coord.z > 1.0;
++}
++
++// The rect PCF taps are clamped to: half a texel inside a fixed shadow box's map, so its kernel never reads a
++// neighbouring map in the atlas; the whole atlas for other lights.
++vec4 directional_shadow_box_clamp_rect(uvec2 box_rect, vec2 atlas_pixel_size) {
++	if (box_rect.y == 0u) {
++		return vec4(0.0, 0.0, 1.0, 1.0);
++	}
++	return directional_shadow_box_rect(box_rect) + vec4(0.5 * atlas_pixel_size, -0.5 * atlas_pixel_size);
++}
+diff --git a/servers/rendering/renderer_rd/storage_rd/light_storage.cpp b/servers/rendering/renderer_rd/storage_rd/light_storage.cpp
+--- a/servers/rendering/renderer_rd/storage_rd/light_storage.cpp
++++ b/servers/rendering/renderer_rd/storage_rd/light_storage.cpp
+@@ -425,9 +425,62 @@
+ 	const Light *light = light_owner.get_or_null(p_light);
+ 	ERR_FAIL_NULL_V(light, RSE::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL);
+ 
++	// A fixed shadow box is one orthogonal map, whatever split mode the light has: every user of the mode (scene cull,
++	// atlas layout, light culler, debug views) then treats it as a single split.
++	if (light->directional_fixed_box) {
++		return RSE::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL;
++	}
+ 	return light->directional_shadow_mode;
+ }
+ 
++void LightStorage::light_directional_set_shadow_fixed_box(RID p_light, bool p_enable, float p_extent, float p_z_near, float p_z_far, int p_resolution) {
++	Light *light = light_owner.get_or_null(p_light);
++	ERR_FAIL_NULL(light);
++	ERR_FAIL_COND_MSG(p_enable && p_extent <= 0.0, "The extent of a fixed directional shadow box must be greater than zero.");
++	ERR_FAIL_COND_MSG(p_enable && p_z_far <= p_z_near, "The far plane of a fixed directional shadow box must be beyond its near plane.");
++
++	light->directional_fixed_box = p_enable;
++	light->directional_fixed_box_extent = p_extent;
++	light->directional_fixed_box_z_near = p_z_near;
++	light->directional_fixed_box_z_far = p_z_far;
++	light->directional_fixed_box_resolution = MAX(p_resolution, 0);
++	light->version++;
++	light->dependency.changed_notify(Dependency::DEPENDENCY_CHANGED_LIGHT);
++}
++
++bool LightStorage::light_directional_get_shadow_fixed_box(RID p_light, float &r_extent, float &r_z_near, float &r_z_far, int &r_resolution) const {
++	const Light *light = light_owner.get_or_null(p_light);
++	ERR_FAIL_NULL_V(light, false);
++
++	if (!light->directional_fixed_box) {
++		return false;
++	}
++	r_extent = light->directional_fixed_box_extent;
++	r_z_near = light->directional_fixed_box_z_near;
++	r_z_far = light->directional_fixed_box_z_far;
++	r_resolution = light->directional_fixed_box_resolution;
++	return true;
++}
++
++// Side of a fixed shadow box's square map in an atlas region: the region's shorter side, or less when the light asks
++// for a smaller map (a 2048 map in a 4096 x 8192 region keeps SceneKit's texel size for a 2048 shadowMapSize).
++static int _get_directional_fixed_box_size(const Size2i &p_region_size, int p_resolution) {
++	int size = MIN(p_region_size.width, p_region_size.height);
++	if (p_resolution > 0) {
++		size = MIN(size, p_resolution);
++	}
++	return MAX(size, 1);
++}
++
++Rect2 LightStorage::light_directional_get_fixed_box_rect(RID p_light, const Rect2 &p_region) const {
++	const Light *light = light_owner.get_or_null(p_light);
++	if (!light || light->type != RSE::LIGHT_DIRECTIONAL || !light->directional_fixed_box) {
++		return p_region;
++	}
++	const int size = _get_directional_fixed_box_size(Size2i(p_region.size), light->directional_fixed_box_resolution);
++	return Rect2(p_region.position, Vector2(size, size));
++}
++
+ void LightStorage::light_area_set_size(RID p_light, const Vector2 &p_size) {
+ 	Light *light = light_owner.get_or_null(p_light);
+ 	light->area_size = p_size.maxf(0.0f);
+@@ -711,6 +764,13 @@
+ 	directional_light_buffer = RD::get_singleton()->uniform_buffer_create(directional_light_buffer_size);
+ }
+ 
++// GLSL packUnorm2x16(): x in the low 16 bits, y in the high 16 bits.
++static uint32_t _pack_unorm_2x16(const Vector2 &p_value) {
++	const uint32_t x = uint32_t(Math::round(CLAMP(p_value.x, (real_t)0.0, (real_t)1.0) * (real_t)65535.0));
++	const uint32_t y = uint32_t(Math::round(CLAMP(p_value.y, (real_t)0.0, (real_t)1.0) * (real_t)65535.0));
++	return x | (y << 16);
++}
++
+ void LightStorage::update_light_buffers(RenderDataRD *p_render_data, const PagedArray<RID> &p_lights, const Transform3D &p_camera_transform, RID p_shadow_atlas, bool p_using_shadows, uint32_t &r_directional_light_count, uint32_t &r_positional_light_count, bool &r_directional_light_soft_shadows) {
+ 	ForwardIDStorage *forward_id_storage = ForwardIDStorage::get_singleton();
+ 	RendererRD::TextureStorage *texture_storage = RendererRD::TextureStorage::get_singleton();
+@@ -798,9 +858,12 @@
+ 				}
+ 
+ 				light_data.bake_mode = light->bake_mode;
++				// Zero unless the light has a fixed shadow box (set below); the shaders test the second word.
++				light_data.shadow_box_rect[0] = 0;
++				light_data.shadow_box_rect[1] = 0;
+ 
+ 				if (light_data.shadow_opacity > 0.001) {
+-					RSE::LightDirectionalShadowMode smode = light->directional_shadow_mode;
++					RSE::LightDirectionalShadowMode smode = light->directional_fixed_box ? RSE::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL : light->directional_shadow_mode;
+ 
+ 					light_data.soft_shadow_scale = light->param[RSE::LIGHT_PARAM_SHADOW_BLUR];
+ 					light_data.softshadow_angle = angular_diameter;
+@@ -860,6 +923,15 @@
+ 					float fade_start = light->param[RSE::LIGHT_PARAM_SHADOW_FADE_START];
+ 					light_data.fade_from = -light_data.shadow_split_offsets[3] * MIN(fade_start, 0.999); //using 1.0 would break smoothstep
+ 					light_data.fade_to = -light_data.shadow_split_offsets[3];
++
++					if (light->directional_fixed_box) {
++						// The map's rectangle in the atlas (min, max) as two packUnorm2x16 words: the shaders leave receivers
++						// outside the box unshadowed and keep PCF taps inside the map. The split distance set by the scene
++						// cull is huge, so there is no split selection and no distance fade.
++						const Rect2 box_rect = light_instance->shadow_transform[0].atlas_rect;
++						light_data.shadow_box_rect[0] = _pack_unorm_2x16(box_rect.position);
++						light_data.shadow_box_rect[1] = _pack_unorm_2x16(box_rect.position + box_rect.size);
++					}
+ 				}
+ 
+ 				r_directional_light_count++;
+@@ -2820,6 +2892,11 @@
+ 	LightInstance *light_instance = light_instance_owner.get_or_null(p_light_instance);
+ 	ERR_FAIL_NULL_V(light_instance, 0);
+ 
++	const Light *light = light_owner.get_or_null(light_instance->light);
++	if (light && light->directional_fixed_box) {
++		return _get_directional_fixed_box_size(r.size, light->directional_fixed_box_resolution);
++	}
++
+ 	switch (light_directional_get_shadow_mode(light_instance->light)) {
+ 		case RSE::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL:
+ 			break; //none
+diff --git a/servers/rendering/renderer_rd/storage_rd/light_storage.h b/servers/rendering/renderer_rd/storage_rd/light_storage.h
+--- a/servers/rendering/renderer_rd/storage_rd/light_storage.h
++++ b/servers/rendering/renderer_rd/storage_rd/light_storage.h
+@@ -77,6 +77,13 @@
+ 		RSE::LightOmniShadowMode omni_shadow_mode = RSE::LIGHT_OMNI_SHADOW_DUAL_PARABOLOID;
+ 		RSE::LightDirectionalShadowMode directional_shadow_mode = RSE::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL;
+ 		bool directional_blend_splits = false;
++		// Fixed shadow box (light_directional_set_shadow_fixed_box()): one map over |x|, |y| <= extent around the
++		// light's origin and z_near..z_far along its -Z, instead of camera-fitted splits.
++		bool directional_fixed_box = false;
++		float directional_fixed_box_extent = 50.0;
++		float directional_fixed_box_z_near = 0.0;
++		float directional_fixed_box_z_far = 100.0;
++		int directional_fixed_box_resolution = 0; // 0: the light's whole atlas region (square).
+ 		RSE::LightDirectionalSkyMode directional_sky_mode = RSE::LIGHT_DIRECTIONAL_SKY_MODE_LIGHT_AND_SKY;
+ 		Vector2 area_size = Vector2(1, 1);
+ 		bool area_normalize_energy = true;
+@@ -208,7 +215,7 @@
+ 		float shadow_opacity;
+ 		float fade_from;
+ 		float fade_to;
+-		uint32_t pad[2];
++		uint32_t shadow_box_rect[2]; // Fixed shadow box: packUnorm2x16 of the map's atlas rect min and max; 0 otherwise.
+ 		uint32_t bake_mode;
+ 		float volumetric_fog_energy;
+ 		float shadow_bias[4];
+@@ -524,6 +531,11 @@
+ 
+ 	virtual RSE::LightDirectionalShadowMode light_directional_get_shadow_mode(RID p_light) override;
+ 	virtual RSE::LightOmniShadowMode light_omni_get_shadow_mode(RID p_light) override;
++	virtual void light_directional_set_shadow_fixed_box(RID p_light, bool p_enable, float p_extent, float p_z_near, float p_z_far, int p_resolution) override;
++	virtual bool light_directional_get_shadow_fixed_box(RID p_light, float &r_extent, float &r_z_near, float &r_z_far, int &r_resolution) const override;
++	// The part of a directional light's atlas region its fixed shadow box uses (a square at the region's origin), or the
++	// whole region when the light has no fixed box.
++	Rect2 light_directional_get_fixed_box_rect(RID p_light, const Rect2 &p_region) const;
+ 	virtual void light_area_set_size(RID p_light, const Vector2 &p_size) override;
+ 	virtual Vector2 light_area_get_size(RID p_light) const override;
+ 	virtual void light_area_set_normalize_energy(RID p_light, bool p_enabled) override;
+@@ -817,7 +829,7 @@
+ 
+ 	_FORCE_INLINE_ void light_instance_set_directional_rect(RID p_light_instance, const Rect2 &p_directional_rect) {
+ 		LightInstance *li = light_instance_owner.get_or_null(p_light_instance);
+-		li->directional_rect = p_directional_rect;
++		li->directional_rect = light_directional_get_fixed_box_rect(li->light, p_directional_rect);
+ 	}
+ 
+ 	_FORCE_INLINE_ Rect2 light_instance_get_directional_rect(RID p_light_instance) {
+diff --git a/servers/rendering/renderer_scene_cull.cpp b/servers/rendering/renderer_scene_cull.cpp
+--- a/servers/rendering/renderer_scene_cull.cpp
++++ b/servers/rendering/renderer_scene_cull.cpp
+@@ -2151,7 +2151,68 @@
+ 
+ 	Transform3D light_transform = p_instance->transform;
+ 	light_transform.orthonormalize(); //scale does not count on lights
++
++	float fixed_extent = 0.0;
++	float fixed_z_near = 0.0;
++	float fixed_z_far = 0.0;
++	int fixed_resolution = 0;
++	if (RSG::light_storage->light_directional_get_shadow_fixed_box(p_instance->base, fixed_extent, fixed_z_near, fixed_z_far, fixed_resolution)) {
++		// Fixed shadow box: one orthographic map anchored to the light, independent of the camera. It covers
++		// |x|, |y| <= extent around the light's origin (light space) and z_near..z_far along the light's -Z. The box
++		// centre is snapped to whole texels in light space, so the texels stay put while the light moves.
++		const real_t extent = MAX((real_t)fixed_extent, (real_t)0.001);
++		const real_t z_near = fixed_z_near;
++		const real_t z_far = MAX((real_t)fixed_z_far, z_near + (real_t)0.001);
++		const real_t texture_size = MAX((real_t)RSG::light_storage->get_directional_light_shadow_size(light->instance), (real_t)1.0);
++		const real_t texel = 2.0 * extent / texture_size;
++
++		const Vector3 x_vec = light_transform.basis.get_column(Vector3::AXIS_X).normalized();
++		const Vector3 y_vec = light_transform.basis.get_column(Vector3::AXIS_Y).normalized();
++		const Vector3 z_vec = light_transform.basis.get_column(Vector3::AXIS_Z).normalized(); // Points back towards the light.
+ 
++		const real_t center_x = Math::snapped(x_vec.dot(light_transform.origin), texel);
++		const real_t center_y = Math::snapped(y_vec.dot(light_transform.origin), texel);
++		const real_t near_z = z_vec.dot(light_transform.origin) - z_near; // The box's face towards the light.
++		const real_t far_z = z_vec.dot(light_transform.origin) - z_far;
++
++		// Casters are culled to the box itself: SceneKit's fixed box (and this mode) ignores casters in front of z_near.
++		// Set the light's shadow pancake size to 0 to keep straddling casters from being flattened onto the near plane.
++		Vector<Plane> light_frustum_planes;
++		light_frustum_planes.resize(6);
++		light_frustum_planes.write[0] = Plane(x_vec, center_x + extent);
++		light_frustum_planes.write[1] = Plane(-x_vec, -(center_x - extent));
++		light_frustum_planes.write[2] = Plane(y_vec, center_y + extent);
++		light_frustum_planes.write[3] = Plane(-y_vec, -(center_y - extent));
++		light_frustum_planes.write[4] = Plane(z_vec, near_z);
++		light_frustum_planes.write[5] = Plane(-z_vec, -far_z);
++
++		Projection ortho_camera;
++		ortho_camera.set_orthogonal(-extent, extent, -extent, extent, 0, z_far - z_near);
++
++		Transform3D ortho_transform;
++		ortho_transform.basis = light_transform.basis;
++		ortho_transform.origin = x_vec * center_x + y_vec * center_y + z_vec * near_z;
++
++		cull.shadow_count = p_shadow_index + 1;
++		cull.shadows[p_shadow_index].cascade_count = 1;
++		cull.shadows[p_shadow_index].light_instance = light->instance;
++		cull.shadows[p_shadow_index].caster_mask = RSG::light_storage->light_get_shadow_caster_mask(p_instance->base);
++
++		Cull::Shadow::Cascade &cascade = cull.shadows[p_shadow_index].cascades[0];
++		cascade.frustum = Frustum(light_frustum_planes);
++		cascade.projection = ortho_camera;
++		cascade.transform = ortho_transform;
++		cascade.zfar = z_far - z_near;
++		// No camera-depth splits and no distance fade: every receiver uses this map, and the shaders leave
++		// receivers outside the box unshadowed instead.
++		cascade.split = 1e30;
++		cascade.shadow_texel_size = texel;
++		cascade.bias_scale = z_far - z_near;
++		cascade.range_begin = near_z - z_vec.dot(p_cam_transform.origin);
++		cascade.uv_scale = Vector2(1.0 / (2.0 * extent), 1.0 / (2.0 * extent));
++		return;
++	}
++
+ 	real_t max_distance = p_cam_projection.get_z_far();
+ 	real_t shadow_max = RSG::light_storage->light_get_param(p_instance->base, RSE::LIGHT_PARAM_SHADOW_MAX_DISTANCE);
+ 	if (shadow_max > 0 && !p_cam_orthogonal) { //its impractical (and leads to unwanted behaviors) to set max distance in orthogonal camera
+diff --git a/servers/rendering/rendering_light_culler.cpp b/servers/rendering/rendering_light_culler.cpp
+--- a/servers/rendering/rendering_light_culler.cpp
++++ b/servers/rendering/rendering_light_culler.cpp
+@@ -112,6 +112,14 @@
+ 			lsource.type = LightSource::ST_DIRECTIONAL;
+ 
+ 			lsource.range = RSG::light_storage->light_get_param(p_instance.base, RSE::LIGHT_PARAM_SHADOW_MAX_DISTANCE);
++			{
++				// A fixed shadow box shadows receivers at any distance from the camera (up to its far plane).
++				float box_extent, box_z_near, box_z_far;
++				int box_resolution;
++				if (RSG::light_storage->light_directional_get_shadow_fixed_box(p_instance.base, box_extent, box_z_near, box_z_far, box_resolution)) {
++					lsource.range = FLT_MAX;
++				}
++			}
+ 			switch (RSG::light_storage->light_directional_get_shadow_mode(p_instance.base)) {
+ 				case RSE::LIGHT_DIRECTIONAL_SHADOW_ORTHOGONAL:
+ 					lsource.cascade_count = 1;
+diff --git a/servers/rendering/rendering_server.cpp b/servers/rendering/rendering_server.cpp
+--- a/servers/rendering/rendering_server.cpp
++++ b/servers/rendering/rendering_server.cpp
+@@ -2536,6 +2536,7 @@
+ 	ClassDB::bind_method(D_METHOD("light_directional_set_shadow_mode", "light", "mode"), &RenderingServer::light_directional_set_shadow_mode);
+ 	ClassDB::bind_method(D_METHOD("light_directional_set_blend_splits", "light", "enable"), &RenderingServer::light_directional_set_blend_splits);
+ 	ClassDB::bind_method(D_METHOD("light_directional_set_sky_mode", "light", "mode"), &RenderingServer::light_directional_set_sky_mode);
++	ClassDB::bind_method(D_METHOD("light_directional_set_shadow_fixed_box", "light", "enable", "extent", "z_near", "z_far", "resolution"), &RenderingServer::light_directional_set_shadow_fixed_box);
+ 
+ 	ClassDB::bind_method(D_METHOD("light_area_set_size", "light", "size"), &RenderingServer::light_area_set_size);
+ 	ClassDB::bind_method(D_METHOD("light_area_set_normalize_energy", "light", "enable"), &RenderingServer::light_area_set_normalize_energy);
+diff --git a/servers/rendering/rendering_server.h b/servers/rendering/rendering_server.h
+--- a/servers/rendering/rendering_server.h
++++ b/servers/rendering/rendering_server.h
+@@ -327,6 +327,7 @@
+ 	virtual void light_directional_set_shadow_mode(RID p_light, RSE::LightDirectionalShadowMode p_mode) = 0;
+ 	virtual void light_directional_set_blend_splits(RID p_light, bool p_enable) = 0;
+ 	virtual void light_directional_set_sky_mode(RID p_light, RSE::LightDirectionalSkyMode p_mode) = 0;
++	virtual void light_directional_set_shadow_fixed_box(RID p_light, bool p_enable, float p_extent, float p_z_near, float p_z_far, int p_resolution) = 0;
+ 
+ 	virtual void light_area_set_size(RID p_light, const Vector2 &p_size) = 0;
+ 	virtual void light_area_set_normalize_energy(RID p_light, bool p_enabled) = 0;
+diff --git a/servers/rendering/rendering_server_default.h b/servers/rendering/rendering_server_default.h
+--- a/servers/rendering/rendering_server_default.h
++++ b/servers/rendering/rendering_server_default.h
+@@ -500,6 +500,7 @@
+ 	FUNC2(light_directional_set_shadow_mode, RID, RSE::LightDirectionalShadowMode)
+ 	FUNC2(light_directional_set_blend_splits, RID, bool)
+ 	FUNC2(light_directional_set_sky_mode, RID, RSE::LightDirectionalSkyMode)
++	FUNC6(light_directional_set_shadow_fixed_box, RID, bool, float, float, float, int)
+ 
+ 	FUNC2(light_area_set_size, RID, const Vector2 &)
+ 	FUNC2(light_area_set_normalize_energy, RID, bool)
+diff --git a/servers/rendering/storage/light_storage.h b/servers/rendering/storage/light_storage.h
+--- a/servers/rendering/storage/light_storage.h
++++ b/servers/rendering/storage/light_storage.h
+@@ -75,6 +75,10 @@
+ 	virtual RSE::LightDirectionalSkyMode light_directional_get_sky_mode(RID p_light) const = 0;
+ 
+ 	virtual RSE::LightDirectionalShadowMode light_directional_get_shadow_mode(RID p_light) = 0;
++
++	// Fixed (world-anchored) directional shadow box. Renderers that do not implement it keep their camera-fitted maps.
++	virtual void light_directional_set_shadow_fixed_box(RID p_light, bool p_enable, float p_extent, float p_z_near, float p_z_far, int p_resolution) {}
++	virtual bool light_directional_get_shadow_fixed_box(RID p_light, float &r_extent, float &r_z_near, float &r_z_far, int &r_resolution) const { return false; }
+ 	virtual RSE::LightOmniShadowMode light_omni_get_shadow_mode(RID p_light) = 0;
+ 
+ 	virtual void light_area_set_size(RID p_light, const Vector2 &p_size) = 0;
+-- 
+4.7.2-stable + Marvin patches
