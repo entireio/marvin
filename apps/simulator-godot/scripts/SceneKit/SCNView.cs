@@ -117,6 +117,7 @@ internal sealed class ViewRig
         SceneKitRuntime.ActiveScene = scene;
         SceneKitRuntime.ActiveCamera = pov;
         SceneKitRuntime.SetActiveLdr(!pov.camera.wantsHDR);
+        SceneKitRuntime.ObserveShading(scene, !pov.camera.wantsHDR);
         int mask = pov.camera.categoryBitMask;
         if (SceneKitRuntime.CameraMask != mask) { SceneKitRuntime.CameraMask = mask; SceneKitRuntime.MasksChanged(); }
     }

@@ -32,6 +32,10 @@ internal static class SceneKitCalibration
 
     // ---- Bloom (SceneKit bloom -> Godot glow, additive). Levels: round(log2(bloomBlurRadius) + BloomLevelOffset - log2(height/400)).
     public static double BloomIntensityScale = 0.15, BloomHdrScale = 1.0, BloomLevelOffset = -0.6, BloomLevelWeight = 1.0, BloomHeightScaling = 0.0;
+    /// <summary>Godot's tonemap pass upsamples the glow levels bicubically (Godot's default, four bilinear taps per level);
+    /// false: one bilinear tap per level (RenderingServer.EnvironmentGlowSetUseBicubicUpscale), measured 0.15 ms less per
+    /// 1080p frame (docs/performance.md, "Shading and post").</summary>
+    public static bool GlowBicubicUpscale = true;
 
     // ---- Screen-space ambient occlusion: SceneKit's own algorithm, ported from its Metal kernels (SCNSsao.cs); no constants.
 

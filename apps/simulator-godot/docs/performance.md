@@ -20,6 +20,15 @@ launched normally; game modes, the benchmarks included, ignore the stored choice
 
 ## Summary
 
+- **Shading and post** (2026-10-06; section below, like for like against eb73a04, two interleaved rounds): the
+  composer's `light()` was inlined by Godot into its omni and spot light loops, which never run in the game, and carried
+  deferred-shadow and LDR code the race world never uses; scenes now get shaders without what they lack, the sky-light
+  lookup uses polynomials instead of Metal's `atan2`/`acos`, and `light()` finds a light's shadow box by an id. At 1920
+  x 1080 the city roam runs at 51.6 instead of 46.4 FPS and the race at 56.7 instead of 52.2 (GPU walltime 22.0 -> 19.7
+  and 19.3 -> 17.3 ms per frame); `MARVIN_SCN_CAL=Exact` 34.6 -> 37.9 and 40.0 -> 47.8 FPS. The look is unchanged:
+  images identical or a few pixels one 8-bit level off, reports byte-identical. The post chain, the depth prepass and
+  Godot's MSAA resolves were measured and left (Godot's two depth resolves, 0.6 ms, are redundant here but unconditional
+  in the engine).
 - **Near shadow splits** (2026-10-06; section below, like for like against the earlier hard-shadow fit on one build):
   under the hard filter the suns' shadow maps have four splits ending 12, 30 and 58 m from the camera and at the far end
   of the suns' box, so the texels next to the camera are 1.2 x 0.6 cm instead of 2.9 cm and do not crawl while the
@@ -99,6 +108,149 @@ sampling cost in row 1 (about 4.5-5 ms at 1080p, "Hard shadows and camera mesh L
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## Shading and post: lighting-feature variants, sky-light lookup, shadow-box test
+
+Measured on 2026-10-06 on the same Mac, on top of the shadow quality setting (eb73a04). Three exact changes to the
+composer make the opaque and transparent passes cheaper; the post chain, the depth prepass and the MSAA resolves were
+measured and left as they are. The look is unchanged ("Look and checks" below).
+
+**What changed.**
+
+- **Lighting-feature variants** (`ShaderComposer.VariantFlags.Forward` and `DirectionalOnly`, chosen per scene by
+  `SceneKitRuntime.ShadingVariant`; PORTING.md, "Shader composer"). Godot inlines the composer's `light()` into its
+  directional, omni and spot light loops, and the deferred-shadow and LDR-clamp code sits behind uniform branches, so
+  every material carried code the race and the town never run: the game has no omni or spot lights, and the race world
+  has no deferred shadows and an HDR camera. The GPU allocates registers for that code all the same. A scene without
+  omni and spot lights now gets `light()` for directional lights only; a scene without deferred shadows and LDR cameras
+  gets neither branch nor the `scn_unlit` and `scn_fog_amount` varyings they read. A scene's features only grow, and a
+  view about to draw a scene with a feature its shaders lack (an LDR snapshot camera, a deferred light added later)
+  rebuilds the scene's nodes first, so every scene renders exactly what the full shaders render. The menu and the
+  sandbox, with deferred shadows and LDR cameras, keep the full shaders.
+- **Sky-light lookup** (`scn_env_radiance`): the equirect coordinates of the reflection direction came from Metal's
+  `atan2` and `acos`. Minimax polynomials (six terms each: `atan` on [0, 1] with the octants folded, `acos` as
+  sqrt(1-x) x P(x)) are within 1.7e-6 and 6.4e-7 rad, 2e-5 and 7e-6 of a texel of the 64 x 32 radiance bands. The band
+  lookup's `pow(r, 1.0)` (the calibrated blur power is 1) is folded to `r`.
+- **Shadow-box test**: `light()` found a light's fixed shadow box by comparing the light's direction with both boxes' z
+  rows, in every fragment and for every light. `FitShadows` now gives each box's Godot light the specular amount 2 + the
+  box index (every other light 1; SceneKit lights have no specular amount, and `light()` no longer multiplies by it),
+  and `light()` transforms the fragment by that light's box only.
+
+**Method.** One fixed frame each, as in the GPU optimisation pass: the town roam frozen at 16 s and the race frozen 1 s
+after its start (`MARVIN_BENCHMARK_FREEZE`), 1920 x 1080, editor runtime, a labelled Metal System Trace 21-25 s after
+the benchmark start, GPU busy per frame and pass (`gpu-passes.py`). Diagnostics change the look and only isolate a cost.
+Three other agents' Godot runs shared the Mac all morning: every run waited for an idle GPU (`run-benchmark.py
+--wait-idle`), and runs whose trace showed other GPU work were repeated. The same build varies by 0.4 ms in the town
+view (transparent pass 7.70-8.17 ms over five runs) and by 0.03 ms at the race start (three runs). Then 45 s moving
+benchmarks, interleaved against a build of eb73a04 from its own tree (base, this change, base, this change), Fast and
+Exact (`MARVIN_SCN_CAL=Exact`), with traces 20-24 s after the start.
+
+GPU busy per frame in ms (single runs unless a count is given; "..." adds to the row above):
+
+| change | town view: GPU busy | opaque | transparent | race start: GPU busy | opaque | transparent | |
+|---|---|---|---|---|---|---|---|
+| base (HEAD eb73a04) (5 runs) | 19.06 | 5.14 | 7.92 | 15.86 | 7.70 | 0.87 |  |
+| diagnostic: plain Lambert `light()` | 17.03 | 4.51 | 6.39 |  |  |  | changes the look |
+| diagnostic: no sky-light reflection | 17.42 | 4.26 | 7.07 |  |  |  | changes the look |
+| diagnostic: sky lookup with linear u, v (fetches kept) | 18.22 | 4.74 | 7.45 |  |  |  | changes the look |
+| diagnostic: sky lookup without its two fetches | 18.69 | 5.05 | 7.55 |  |  |  | changes the look |
+| diagnostic: no direct specular | 17.65 | 4.59 | 7.18 |  |  |  | changes the look |
+| diagnostic: Forward without the shadow-box test | 17.13 | 4.84 | 6.44 |  |  |  | changes the look |
+| polynomial atan / acos | 18.33 | 4.82 | 7.42 |  |  |  | exact |
+| DirectionalOnly | 17.58 | 4.83 | 6.77 |  |  |  | exact |
+| Forward | 18.71 | 5.06 | 7.63 |  |  |  | exact |
+| `.constant` unshaded in forward scenes | 19.12 | 5.15 | 8.05 | 15.85 | 7.72 | 0.75 | exact, dropped |
+| Forward + DirectionalOnly + unshaded constants | 17.55 | 4.74 | 6.92 | 16.08 | 7.63 | 0.89 | exact |
+| ... + box id | 17.00 | 4.81 | 6.12 | 14.91 | 6.86 | 0.67 | exact |
+| ... + polynomials, `pow` folded | 17.10 | 4.48 | 6.59 | 14.12 | 6.31 | 0.51 | exact |
+| ... + box id + polynomials | 16.72 | 4.44 | 6.27 | 14.10 | 6.30 | 0.58 | exact |
+| **kept** (variants, box id, polynomials, fold) | 17.12 | 4.41 | 6.78 | 14.49 | 6.32 | 0.79 | exact |
+
+The cost sat in register pressure, not in arithmetic, as the GPU optimisation pass suspected: removing `light()` from
+the omni and spot loops, which never run, saves about as much as replacing it with a plain Lambert term (a diagnostic)
+did, most of it in the transparent pass, where the town's 15 ground overlays are lit layer by layer. The sky-light
+lookup's two trigonometric functions alone cost about 0.4 ms in the opaque pass and as much in the transparent pass
+(linear coordinates as a diagnostic), its two fetches 0.1 ms; the polynomials recover most of that. The parts do not add
+up: in the race-start view the variants alone gain nothing and the variants with the polynomials 1.7 ms. What counts is
+whether a shader drops below a register threshold, so every part was measured together with the others before it was
+kept.
+
+**45 s at 1920 x 1080** (editor runtime, two interleaved rounds; FPS, p99 and frames over 25 ms from `benchmark.json`,
+GPU walltime per frame from `metalperftrace`, GPU busy and passes from the trace):
+
+| scene, configuration | build | FPS | p99 ms | frames > 25 ms | GPU walltime ms/frame | GPU busy ms/frame | opaque | transparent |
+|---|---|---|---|---|---|---|---|---|
+| city roam, Fast | eb73a04 | 46.46, 46.40 | 25.9, 27.2 | 43, 59 | 22.06, 22.02 | 20.20, 20.34 | 5.66, 5.68 | 7.99, 8.13 |
+| city roam, Fast | this change | 51.71, 51.55 | 23.4, 23.3 | 4, 3 | 19.68, 19.77 | 17.94, 18.13 | 4.94, 4.99 | 6.42, 6.52 |
+| city roam, Exact | eb73a04 | 34.62, 34.50 | 36.1, 37.4 | 1331, 1331 | 29.60, 30.11 | 27.09, 27.35 | 8.13, 8.24 | 12.02, 12.10 |
+| city roam, Exact | this change | 38.21, 37.49 | 32.1, 33.3 | 1223, 1300 | 26.79, 27.42 | 24.49, 24.78 | 7.09, 7.39 | 10.49, 10.07 |
+| race, Fast | eb73a04 | 52.59, 51.77 | 23.2, 23.1 | 2, 2 | 19.10, 19.56 | 17.12, 19.05 | 8.09, 8.07 | 2.09, 3.82 |
+| race, Fast | this change | 57.38, 56.10 | 21.7, 21.7 | 2, 1 | 16.87, 17.79 | 14.73, 16.93 | 6.19, 6.58 | 1.65, 3.38 |
+| race, Exact | eb73a04 | 40.27, 39.67 | 29.8, 34.5 | 786, 785 | 25.46, 25.83 | 21.87, 21.36 | 10.68, 10.99 | 4.32, 3.18 |
+| race, Exact | this change | 48.01, 47.67 | 26.3, 26.0 | 273, 285 | 21.02, 21.24 | 18.96, 19.10 | 9.39, 9.18 | 2.61, 2.78 |
+
+- City roam, Fast: FPS 46.43 -> 51.63; walltime 22.04 -> 19.72 (-2.32); busy 20.27 -> 18.04 (-2.23); opaque 5.67 ->
+  4.97; transparent 8.06 -> 6.47 (means of the runs above).
+- City roam, Exact: FPS 34.56 -> 37.85; walltime 29.85 -> 27.11 (-2.75); busy 27.22 -> 24.63 (-2.59); opaque 8.18 ->
+  7.24; transparent 12.06 -> 10.28 (means of the runs above).
+- Race, Fast: FPS 52.18 -> 56.74; walltime 19.33 -> 17.33 (-2.00); busy 18.08 -> 15.83 (-2.26); opaque 8.08 -> 6.38;
+  transparent 2.96 -> 2.51 (means of the runs above).
+- Race, Exact: FPS 39.97 -> 47.84; walltime 25.65 -> 21.13 (-4.52); busy 21.62 -> 19.03 (-2.59); opaque 10.84 -> 9.29;
+  transparent 3.75 -> 2.70 (means of the runs above).
+
+**Post chain, prepass and resolves: measured, not changed.** Per pass in the town view: the tonemap pass 0.65 ms (0.36
+without glow), the root viewport's 2D pass that draws the 3D view's texture 0.19 ms, the window blit 0.37 ms, the glow's
+compute passes about 0.11 ms (in one encoder with the final MSAA depth resolve, 0.41 ms), the MSAA depth resolve between
+the opaque and transparent passes 0.21 ms, the depth prepass 0.68-0.72 ms (1.45-1.48 ms at the race start).
+
+- **Glow**: with the bloom off (diagnostic) the glow's compute passes disappear and the tonemap pass takes 0.36 instead
+  of 0.65 ms, so the glow costs about 0.4 ms, 0.29 ms of it in the tonemap pass, which samples three levels bicubically
+  (four bilinear taps each). Bilinear upsampling (`SceneKitCalibration.GlowBicubicUpscale = false`, Godot's
+  `EnvironmentGlowSetUseBicubicUpscale`) takes the tonemap pass to 0.50 ms. Measured as an option (the default stays
+  bicubic in this change): in the town view the frame takes 16.95 instead of 17.12 ms with it (tonemap and 2D 0.71
+  instead of 0.85 ms). The glow then differs only where it is visible at all: around the robots' highlights in the smoke
+  test's close-ups and acting views by up to 5/255 in 0.03-0.4 % of the pixels (at most 0.002/255 on average), and by
+  one level in 0.08 % of the binary sky's midday-suns view; over the smoke and sky sets 0.11 and 0.054/255 from the
+  bicubic build against 0.11 and 0.071/255 between two runs of eb73a04. Computing the glow at a lower resolution than
+  Godot does is not possible from the game: its first level is already half resolution, and the levels and the tonemap
+  pass that composites them are inside the engine.
+- **MSAA resolves**: Godot 4.7.2 resolves the MSAA depth after the opaque pass whenever a compositor effect asks for the
+  normal-roughness buffer (the SSAO port reads it before the opaque pass), and resolves colour and depth again at the
+  end of every frame whether anything reads the depth or not (`render_forward_clustered.cpp`). Both depth resolves (0.21
+  + 0.41 ms) are redundant for this game, but every other way to get the normal-roughness buffer (Godot's own SSAO, SSR,
+  SDFGI, a material that reads `NORMAL_ROUGHNESS_TEXTURE`) triggers the same resolve: removing them needs an engine
+  change.
+- **Depth prepass**: Godot 4.7.2 draws every opaque material in its depth prepass and has no per-material switch; the
+  SSAO port reads the prepass's depth and normals before the opaque pass, and the opaque pass relies on its depth test.
+  Turning it off (`rendering/driver/depth_prepass/enable`) also takes away the resolved depth the SSAO effect reads
+  before the opaque pass. Its fragment work is small (the composer's code is dead there apart from the SSAO normal and
+  tag): the cost is the vertex and rasterisation work of about 437 draws.
+- **Tonemap, 2D pass, window blit**: full-screen passes bound by memory bandwidth (the tonemap reads the 16 MB RGBA16F
+  colour buffer and writes 8 MB). Rendering the 3D view straight into the root viewport would save the 2D pass's copy of
+  the view's texture (about 0.19 ms), but the root canvas draws the window's own backgrounds under the content view and
+  snapshots must leave the HUD out; not done.
+
+**Tried and dropped**: `.constant` materials unshaded in forward scenes (their `light()` only applies deferred shadows;
+exact): the town view 19.12 against 19.06 ms, the race start 15.85 against 15.86 ms, no gain. Not measured on their own
+(the GPU time went to the combinations): folding the roughness polynomials of constant-roughness materials into
+uniforms, and recomputing the world position in `light()` instead of passing it from `fragment()`.
+
+**Look and checks.** Captures of eb73a04 and of this change, interleaved mode by mode (one Godot at a time): the visual
+regression test (pinned grid `1,3,0,2`), the smoke test (the reference pins), the town smoke test (pinned), the binary
+sky (the macOS daylights), the menu, the robot close-ups in the sandbox and the race light, the facade test and the
+calibration scenes, 196 images; a second run of eb73a04 for the visual regression, smoke, town and sky sets gives the
+run-to-run noise. Every image that the two eb73a04 runs render identically, and every image of the deterministic
+close-up, menu, facade-test and calibration sets, is identical with this change or differs in at most 11 pixels by one
+8-bit level (at most 4 outside the race-light close-ups; the polynomial coordinates move a few sky-light lookups across
+a bilinear weight step): 32 of 43 visual-regression images, all menu, facade-test and 4 of 6 calibration images, 21 of
+31 sandbox-light and 7 of 31 race-light close-ups are pixel-identical. Images with random state (the sandbox course,
+dirt coatings, dust, crowds) differ from eb73a04 as much as two eb73a04 runs do (all 196: 0.029/255 on average, between
+the two eb73a04 runs 0.043; town 0.0067 against 0.0071, sky 0.048 against 0.071, smoke 0.14 against 0.11 with the
+sandbox course's random rings in sandbox-contact). The reports are byte-identical: smoke.json, full-race-trails.json,
+menu-smoke.json (the Shadow quality row's live switch included), visual-regression.json (its robot shadow samples count
+rendered pixels), town-smoke.json, binary-races.json and the facade test's measurements.json. `tools/checks` is
+byte-identical to the Swift reference. The playthrough passes 63 of 63 steps with frame times per stage like eb73a04's;
+`--loading-smoke-test` passes.
 
 ## Near shadow splits: finer hard shadows next to the camera
 
@@ -893,10 +1045,14 @@ camera mesh LODs"):
    Godot's light loop (`render_mode unshaded` where the composer already writes the final colour), and the overlays could
    share one lit evaluation. Measured since: the composed `light()` and the sky-light lookups cost 1.6 and 0.7 ms
    in the opaque pass, but only when removed whole (an occupancy limit); exact restructurings of single parts gained
-   nothing measurable. The trampled sand and the streets are 1.7 and 1.2 ms of the transparent pass.
+   nothing measurable. The trampled sand and the streets are 1.7 and 1.2 ms of the transparent pass. *Done in "Shading
+   and post": the occupancy limit was `light()` inlined into Godot's omni and spot loops, which never run, and Metal's
+   `atan2`/`acos` in the sky-light lookup; 2.0-2.3 ms less per 1080p frame in the default configuration.*
 4. Post chain and prepass (~3 ms): glow, tonemap and the 2D pass at full resolution, the depth prepass, two MSAA
    resolves. All inside Godot's renderer; the depth resolve between the opaque and transparent passes runs because the
-   SSAO port asks for the normal-roughness buffer.
+   SSAO port asks for the normal-roughness buffer. *Measured again in "Shading and post": the two depth resolves
+   (0.21 + 0.41 ms) and the 2D pass's copy of the view (0.19 ms) are the only redundant work, and only an engine change
+   (or drawing the 3D view into the root viewport) removes them; bilinear glow upsampling saves 0.15 ms.*
 5. Loading freeze (2-2.6 s): hand meshes to Godot over several frames or from a worker thread while the loading screen
    draws, and do not encode a PNG for snapshots whose image is discarded. *Done in the CPU pass (2.8 → 0.3 s).*
 6. CPU: a separate render thread (Godot's thread model) would give the main thread back ~5 ms; allocation in the trails,
