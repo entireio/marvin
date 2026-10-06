@@ -33,6 +33,22 @@ public partial class SceneKitRuntime : Node
     internal static SCNMaterial DefaultMaterial => defaultMaterial ??= new SCNMaterial();
     internal static double SceneTime;
 
+    /// <summary>True when nothing is drawn: Godot's dummy renderer (`--headless`), whose viewport textures hold no image.</summary>
+    internal static bool Headless => headless ??= DisplayServer.GetName() == "headless" || RenderingServer.GetCurrentRenderingMethod() == "dummy";
+    private static bool? headless;
+    private static bool headlessNoted;
+
+    /// <summary>A viewport's rendered image. Headless (the dummy renderer) there is none: a transparent black RGBA8 image of
+    /// the viewport's size stands in, so game modes still run their logic and write their reports (with blank captures and
+    /// whatever their pixel checks make of them). GPU-less CI runs the logic modes this way
+    /// (.github/workflows/godot-windows.yml). A rendering driver is unaffected.</summary>
+    internal static Image ViewportImage(Viewport viewport, Vector2I size)
+    {
+        if (!Headless) return viewport.GetTexture().GetImage();
+        if (!headlessNoted) { headlessNoted = true; GD.Print("SceneKit facade: headless (dummy renderer), snapshots and captures are blank"); }
+        return Image.CreateEmpty(Math.Max(1, size.X), Math.Max(1, size.Y), false, Image.Format.Rgba8);
+    }
+
     /// <summary>Creates the runtime node (deferred add to the scene tree root) and the global shader uniforms.</summary>
     public static void EnsureStarted()
     {

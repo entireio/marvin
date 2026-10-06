@@ -1,0 +1,2 @@
+# The CI references are small and read by a plain checkout (no LFS): keep images out of Git LFS here.
+*.png -filter -diff -merge -text

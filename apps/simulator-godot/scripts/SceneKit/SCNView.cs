@@ -359,7 +359,7 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         long t0 = FrameProfile.Now.Ticks;
         SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, draws: TemporalSnapshotDraws, scene: rig.scene);
         long t1 = FrameProfile.Now.Ticks;
-        var img = rig.viewport.GetTexture().GetImage();
+        var img = SceneKitRuntime.ViewportImage(rig.viewport, size);
         long t2 = FrameProfile.Now.Ticks;
         var image = NSImage.Snapshot(img);
         FrameProfile.Snapshot(t0, t1, t2);
@@ -427,7 +427,7 @@ public sealed class SCNRenderer : SCNSceneRenderer
         rig.viewport.RenderTargetUpdateMode = SubViewport.UpdateMode.Once;
         // Two draws, as before the isolation (the first one after a size or scene change is not used).
         SceneKitRuntime.RenderIsolated(rig.viewport, rig.Sync, draws: 2, scene: rig.scene);
-        return rig.viewport.GetTexture().GetImage();
+        return SceneKitRuntime.ViewportImage(rig.viewport, size);
     }
     /// <summary>render(withViewport:commandBuffer:passDescriptor:) is Metal-specific. PORT: unsupported (diagnostics only).</summary>
     public void render(CGRect withViewport, object commandBuffer, object passDescriptor) => throw new NotSupportedException("SCNRenderer.render(withViewport:commandBuffer:passDescriptor:) has no Godot equivalent");

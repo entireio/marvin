@@ -1,0 +1,341 @@
+# The Godot port (apps/simulator-godot) on a GitHub-hosted Windows runner, which has no GPU.
+# What it answers, in the job summaries and the uploaded artifacts (apps/simulator-godot/PORTING.md,
+# "Release builds and Windows", explains the tooling in apps/simulator-godot/tools/ci):
+#   checks  - the C# SimulationChecks against the Swift reference, default and with MARVIN_PORTABLE_MATH=1
+#             (a numeric difference is a finding, a crash or failed check fails the job);
+#   assets  - the game's assets generated on Windows with the repository's exporters, against a Mac's;
+#   game    - the generated town (--town-statistics against the macOS game, --town-reference-dump against Godot on
+#             macOS), the deterministic logic modes headless against Godot on macOS and the macOS game, then the
+#             Windows export (tools/export windows) and the exported exe headless;
+#   render  - best effort: Direct3D 12 (WARP) and Vulkan through Mesa's lavapipe, a few deterministic captures
+#             against Godot-on-macOS captures.
+name: Godot port on Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      regenerate_assets:
+        description: Generate the game's assets again instead of restoring them from the cache
+        type: boolean
+        default: false
+  push:
+    branches: [codex/mos-aster-racing-city]
+    paths:
+      - apps/simulator-godot/**
+      - apps/simulator-macos/Resources/**
+      - scripts/prepare-simulator-assets.py
+      - scripts/export-marvin-simulator.py
+      - scripts/export-r2d2-simulator.py
+      - scripts/export-racers-simulator.py
+      - scripts/racer_gltf.py
+      - hardware/mechanical/step/marvin_robot.step
+      - .github/workflows/godot-windows.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: godot-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: '4.7.2'
+  MESA_VERSION: '26.2.4'          # pal1000/mesa-dist-win, for lavapipe
+  DOTNET_VERSION: '8.0.x'
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  PYTHONUTF8: '1'
+  PYTHONUNBUFFERED: '1'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  checks:
+    # Windows is the question; Linux (glibc) and a macOS runner (Darwin libm, where the reference comes from) show
+    # whether a difference is Windows' C runtime or any libm other than Darwin's.
+    name: Core maths (SimulationChecks, ${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-checks-${{ runner.os }}-${{ hashFiles('apps/simulator-godot/src/**/*.csproj') }}
+      - name: Build
+        working-directory: apps/simulator-godot
+        run: dotnet build src/Checks/MarvinChecks.csproj -c Release -nologo -v q
+      - name: Run SimulationChecks (default, then MARVIN_PORTABLE_MATH=1)
+        id: run
+        working-directory: apps/simulator-godot
+        run: |
+          mkdir -p ../../out/checks
+          set +e
+          dotnet run --project src/Checks/MarvinChecks.csproj -c Release --no-build > ../../out/checks/checks-default.txt 2> ../../out/checks/checks-default.err
+          echo "default=$?" >> "$GITHUB_OUTPUT"
+          MARVIN_PORTABLE_MATH=1 dotnet run --project src/Checks/MarvinChecks.csproj -c Release --no-build > ../../out/checks/checks-portable.txt 2> ../../out/checks/checks-portable.err
+          echo "portable=$?" >> "$GITHUB_OUTPUT"
+          cat ../../out/checks/checks-default.err ../../out/checks/checks-portable.err
+          exit 0
+      - name: Compare with the Swift reference
+        run: >-
+          python apps/simulator-godot/tools/ci/checks-report.py
+          --reference apps/simulator-godot/src/Checks/reference/simulation-checks-swift.txt
+          --run "default|out/checks/checks-default.txt|${{ steps.run.outputs.default }}"
+          --run "MARVIN_PORTABLE_MATH=1|out/checks/checks-portable.txt|${{ steps.run.outputs.portable }}"
+          --out out/checks --title "Core maths on ${{ runner.os }} (${{ matrix.os }}): SimulationChecks against the Swift reference"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checks-${{ matrix.os }}
+          path: out/checks
+          retention-days: 14
+
+  assets:
+    name: Game assets (generated on Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Cache key (exporters, their LFS sources by object id, the macOS Resources, the sync script)
+        id: key
+        run: |
+          key=$(git ls-files -s apps/simulator-macos/Resources hardware/mechanical/step/marvin_robot.step \
+                scripts/prepare-simulator-assets.py scripts/export-marvin-simulator.py scripts/export-r2d2-simulator.py \
+                scripts/export-racers-simulator.py scripts/racer_gltf.py apps/simulator-godot/tools/sync-assets.py \
+                | sha256sum | cut -c1-20)
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+      - name: Restore the generated assets
+        id: cache
+        if: ${{ !inputs.regenerate_assets }}
+        uses: actions/cache/restore@v4
+        with:
+          path: apps/simulator-godot/assets
+          key: godot-assets-windows-${{ steps.key.outputs.key }}
+      - name: Fetch the LFS sources (macOS Resources, Marvin's STEP master)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: git lfs pull --include="apps/simulator-macos/Resources/**,hardware/mechanical/step/marvin_robot.step"
+      - name: Generate (scripts/prepare-simulator-assets.py, as build-app.sh does)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: python scripts/prepare-simulator-assets.py
+      - name: Sync (apps/simulator-godot/tools/sync-assets.py)
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: python apps/simulator-godot/tools/sync-assets.py
+      - name: Save the generated assets
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: apps/simulator-godot/assets
+          key: godot-assets-windows-${{ steps.key.outputs.key }}
+      - name: Compare with a Mac's assets
+        run: python apps/simulator-godot/tools/ci/assets-report.py --out out/assets
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-assets
+          path: apps/simulator-godot/assets
+          retention-days: 3
+          compression-level: 1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: assets-report
+          path: out/assets
+          retention-days: 14
+
+  game:
+    name: Town, headless modes, export
+    needs: assets
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: godot-assets
+          path: apps/simulator-godot/assets
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-godot-${{ runner.os }}-${{ hashFiles('apps/simulator-godot/**/*.csproj') }}
+      - name: Restore Godot ${{ env.GODOT_VERSION }} .NET
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/godot
+          key: godot-${{ env.GODOT_VERSION }}-mono-win64
+      - name: Download Godot ${{ env.GODOT_VERSION }} .NET
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          temp=$(cygpath -u "$RUNNER_TEMP")
+          curl -fsSL --retry 3 -o "$temp/godot.zip" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_win64.zip"
+          7z x -y -o"$RUNNER_TEMP/godot" "$RUNNER_TEMP/godot.zip" > /dev/null
+          rm "$temp/godot.zip"
+      - name: Locate Godot
+        run: |
+          exe=$(cygpath -m "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_mono_win64/Godot_v${GODOT_VERSION}-stable_mono_win64_console.exe")
+          echo "GODOT=$exe" >> "$GITHUB_ENV"
+          "$exe" --headless --version
+      - name: Build the C# (tools/build)
+        run: apps/simulator-godot/tools/build
+      - name: Import (textures, audio)
+        id: import
+        run: |
+          mkdir -p out
+          start=$SECONDS
+          "$GODOT" --headless --path apps/simulator-godot --import > out/import.log 2>&1 || { tail -50 out/import.log; exit 1; }
+          echo "import took $((SECONDS - start)) s"
+      - name: Headless modes (editor runtime) against Godot on macOS and the macOS game
+        run: python apps/simulator-godot/tools/ci/headless-modes.py --godot "$GODOT" --out out/headless
+      # The export runs even when a headless mode failed (the job still fails at the end).
+      - name: Restore the Windows export templates
+        id: templates-cache
+        if: ${{ !cancelled() && steps.import.outcome == 'success' }}
+        uses: actions/cache@v4
+        with:
+          path: ~/AppData/Roaming/Godot/export_templates/${{ env.GODOT_VERSION }}.stable.mono
+          key: godot-templates-${{ env.GODOT_VERSION }}-mono-windows-x86_64
+      - name: Download the export templates (Windows x86_64 only)
+        if: ${{ !cancelled() && steps.import.outcome == 'success' && steps.templates-cache.outputs.cache-hit != 'true' }}
+        run: |
+          temp=$(cygpath -u "$RUNNER_TEMP")
+          curl -fsSL --retry 3 -o "$temp/templates.tpz" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz"
+          dest="$APPDATA/Godot/export_templates/${GODOT_VERSION}.stable.mono"
+          mkdir -p "$(cygpath -u "$dest")"
+          7z e -y -o"$dest" "$RUNNER_TEMP/templates.tpz" templates/version.txt templates/icudt_godot.dat \
+            templates/windows_release_x86_64.exe templates/windows_release_x86_64_console.exe \
+            templates/windows_debug_x86_64.exe templates/windows_debug_x86_64_console.exe > /dev/null
+          rm "$temp/templates.tpz"
+          ls -la "$(cygpath -u "$dest")"
+      - name: Export the Windows build (tools/export windows)
+        id: export
+        if: ${{ !cancelled() && steps.import.outcome == 'success' }}
+        run: apps/simulator-godot/tools/export windows --zip
+      - name: The exported exe, headless
+        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
+        run: >-
+          python apps/simulator-godot/tools/ci/headless-modes.py
+          --exe apps/simulator-godot/build/windows/MarvinSimulator.console.exe --out out/export
+          --only town-statistics,town-reference-dump,storm-race-test
+          --title "Exported Windows build (MarvinSimulator.console.exe), headless"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: game-reports
+          path: |
+            out
+            apps/simulator-godot/build/*.log
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
+        with:
+          name: MarvinSimulator-windows-x86_64
+          path: apps/simulator-godot/build/windows
+          retention-days: 7
+
+  render:
+    name: Rendering without a GPU (best effort)
+    needs: assets
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: godot-assets
+          path: apps/simulator-godot/assets
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check -q pillow
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-godot-${{ runner.os }}-${{ hashFiles('apps/simulator-godot/**/*.csproj') }}
+      - name: Restore Godot ${{ env.GODOT_VERSION }} .NET
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/godot
+          key: godot-${{ env.GODOT_VERSION }}-mono-win64
+      - name: Download Godot ${{ env.GODOT_VERSION }} .NET
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          temp=$(cygpath -u "$RUNNER_TEMP")
+          curl -fsSL --retry 3 -o "$temp/godot.zip" \
+            "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_mono_win64.zip"
+          7z x -y -o"$RUNNER_TEMP/godot" "$RUNNER_TEMP/godot.zip" > /dev/null
+          rm "$temp/godot.zip"
+      - name: Locate Godot
+        run: |
+          exe=$(cygpath -m "$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}-stable_mono_win64/Godot_v${GODOT_VERSION}-stable_mono_win64_console.exe")
+          echo "GODOT=$exe" >> "$GITHUB_ENV"
+      - name: Build the C# (tools/build)
+        run: apps/simulator-godot/tools/build
+      - name: Import (textures, audio)
+        run: |
+          mkdir -p out
+          "$GODOT" --headless --path apps/simulator-godot --import > out/import.log 2>&1 || { tail -50 out/import.log; exit 1; }
+      - name: What the runner has (display adapters, Vulkan)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Get-CimInstance Win32_VideoController | Format-Table Name, DriverVersion, AdapterRAM -AutoSize | Out-String -Width 200
+          Get-ChildItem C:\Windows\System32\vulkan-1.dll, C:\Windows\System32\D3D12.dll, C:\Windows\System32\d3d10warp.dll -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
+      - name: Direct3D 12 (WARP software adapter, if Godot takes it)
+        continue-on-error: true
+        run: python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver d3d12 --label "Direct3D 12" --out out/render
+      - name: Mesa lavapipe (software Vulkan) and the Vulkan loader
+        id: lavapipe
+        continue-on-error: true
+        run: |
+          temp=$(cygpath -u "$RUNNER_TEMP")
+          curl -fsSL --retry 3 -o "$temp/mesa.7z" \
+            "https://github.com/pal1000/mesa-dist-win/releases/download/${MESA_VERSION}/mesa3d-${MESA_VERSION}-release-msvc.7z"
+          7z x -y -o"$RUNNER_TEMP/mesa" "$RUNNER_TEMP/mesa.7z" > /dev/null
+          icd=$(cygpath -m "$(ls "$temp"/mesa/x64/lvp_icd.x86_64.json)")
+          echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
+          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+          # The Vulkan loader (vulkan-1.dll) comes with GPU drivers, which the runner lacks: take LunarG's runtime.
+          if [ ! -f /c/Windows/System32/vulkan-1.dll ]; then
+            curl -fsSL --retry 3 -o "$temp/vkrt.zip" https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-runtime-components.zip
+            7z x -y -o"$RUNNER_TEMP/vkrt" "$RUNNER_TEMP/vkrt.zip" > /dev/null
+            loader=$(find "$temp/vkrt" -path '*x64*' -name vulkan-1.dll | head -n 1)
+            echo "loader: $loader"
+            cp "$loader" "$(dirname "$(cygpath -u "$GODOT")")/"
+          fi
+      - name: Vulkan through lavapipe
+        if: steps.lavapipe.outcome == 'success'
+        continue-on-error: true
+        run: python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver vulkan --label "Vulkan (Mesa lavapipe)" --out out/render
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render
+          path: out
+          retention-days: 14

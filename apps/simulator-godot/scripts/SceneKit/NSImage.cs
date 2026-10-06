@@ -280,7 +280,7 @@ public sealed class NSImage
         {
             if (reps.Count > 0) return reps[0].ToGodotImage(straightAlpha: true);
             if (loadedImage != null) return loadedImage;
-            if (loaded != null) { loadedImage = loaded.GetImage(); if (loadedImage.IsCompressed()) loadedImage.Decompress(); return loadedImage; }
+            if (loaded != null) { loadedImage = loaded.GetImage(); if (loadedImage != null && loadedImage.IsCompressed()) loadedImage.Decompress(); return loadedImage; }
             return null;
         }
     }

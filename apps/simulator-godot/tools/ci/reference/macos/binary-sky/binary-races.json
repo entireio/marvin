@@ -1,0 +1,61 @@
+{
+  "daylightSamples" : 2000,
+  "occlusion" : true,
+  "passed" : true,
+  "races" : [
+    {
+      "allFinished" : true,
+      "binaryPhase" : 1.2779030814928711,
+      "daylightFraction" : 0.030301773467998311,
+      "elevationsDegrees" : [
+        4.6350537598018633,
+        14.735515198083075
+      ],
+      "laps" : [
+        3,
+        3,
+        3,
+        3
+      ],
+      "separationDegrees" : 11.183713486389273,
+      "stableDuringRace" : true,
+      "time" : "morning"
+    },
+    {
+      "allFinished" : true,
+      "binaryPhase" : 1.1411447316962047,
+      "daylightFraction" : 0.51984281832212875,
+      "elevationsDegrees" : [
+        64.924263407369295,
+        63.612289338353079
+      ],
+      "laps" : [
+        3,
+        3,
+        3,
+        3
+      ],
+      "separationDegrees" : 10.74352856009731,
+      "stableDuringRace" : true,
+      "time" : "midday"
+    },
+    {
+      "allFinished" : true,
+      "binaryPhase" : 1.979128867054551,
+      "daylightFraction" : 0.96558987846006727,
+      "elevationsDegrees" : [
+        14.477814531368765,
+        5.2947385067791579
+      ],
+      "laps" : [
+        3,
+        3,
+        3,
+        3
+      ],
+      "separationDegrees" : 10.168768690001167,
+      "stableDuringRace" : true,
+      "time" : "evening"
+    }
+  ]
+}

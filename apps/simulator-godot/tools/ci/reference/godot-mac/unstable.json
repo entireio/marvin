@@ -1,0 +1,12 @@
+{
+  "audio-facade-test/audio-facade.json": [
+    "realtime.capturedFrames"
+  ],
+  "audio-smoke-test/audio.json": [
+    "measurements.realRaceExpressions"
+  ],
+  "audio-smoke-test/wav-sha256.json": [
+    "head-on-collision.wav",
+    "physics-race.wav"
+  ]
+}

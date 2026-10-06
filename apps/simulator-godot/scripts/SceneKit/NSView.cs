@@ -428,7 +428,7 @@ internal static class NSViewRendering
             var topLeft = view.ToGodotLocal(new CGPoint(rect.minX, view.isFlipped ? rect.minY : rect.maxY));
             PaintTree(view, canvas, -topLeft);
             RenderingServer.ForceDraw(false, 0.0);
-            var image = viewport.GetTexture().GetImage();
+            var image = SceneKitRuntime.ViewportImage(viewport, new Vector2I(w, h));
             if (image.GetFormat() != Image.Format.Rgba8) image.Convert(Image.Format.Rgba8);
             var data = image.GetData();
             bool premultipliedTarget = (to.bitmapFormat & NSBitmapFormat.alphaNonpremultiplied) == 0;

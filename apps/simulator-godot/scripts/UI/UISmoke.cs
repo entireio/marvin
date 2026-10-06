@@ -45,8 +45,9 @@ public static class UISmoke
     internal static async Task WriteWindow(SceneTree tree, string dir, string name)
     {
         await Frame(tree);
-        await tree.ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
-        var image = tree.Root.GetTexture().GetImage();
+        // Headless (dummy renderer) no frame is drawn, so FramePostDraw never comes: a blank image stands in.
+        if (!SceneKitRuntime.Headless) await tree.ToSignal(RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw);
+        var image = SceneKitRuntime.ViewportImage(tree.Root, tree.Root.Size);
         image.SavePng(URL.fileURLWithPath(dir).appendingPathComponent(name).path);
     }
 

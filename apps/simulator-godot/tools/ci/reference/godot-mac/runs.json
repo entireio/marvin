@@ -1,0 +1,50 @@
+{
+  "town-statistics": {
+    "exit": 0,
+    "seconds": 5.2
+  },
+  "town-reference-dump": {
+    "exit": 0,
+    "seconds": 5.6
+  },
+  "town-people-dump": {
+    "exit": 0,
+    "seconds": 6.7
+  },
+  "audio-facade-test": {
+    "exit": 0,
+    "seconds": 2.0
+  },
+  "audio-smoke-test": {
+    "exit": 0,
+    "seconds": 13.3
+  },
+  "storm-race-test": {
+    "exit": 0,
+    "seconds": 34.7
+  },
+  "smoke-test": {
+    "exit": 1,
+    "seconds": 15.7
+  },
+  "town-smoke-test": {
+    "exit": 0,
+    "seconds": 9.6
+  },
+  "entrance-smoke-test": {
+    "exit": 0,
+    "seconds": 9.8
+  },
+  "people-smoke-test": {
+    "exit": 0,
+    "seconds": 16.4
+  },
+  "character-smoke-test": {
+    "exit": 0,
+    "seconds": 10.2
+  },
+  "binary-sky-smoke-test": {
+    "exit": 1,
+    "seconds": 12.4
+  }
+}

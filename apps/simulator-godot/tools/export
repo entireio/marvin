@@ -27,7 +27,13 @@ for arg in "$@"; do
 done
 [ ${#platforms[@]} -eq 0 ] && platforms=(macos windows)
 
-python="$(command -v python3 || command -v python || true)"
+# The first Python 3 that runs (on Windows "python3" can be the Microsoft Store's placeholder, which does not).
+python=""
+for candidate in python3 python; do
+    if command -v "$candidate" > /dev/null && "$candidate" -c 'import sys; sys.exit(sys.version_info < (3,))' 2> /dev/null; then
+        python="$candidate"; break
+    fi
+done
 if [ -z "$python" ]; then echo "tools/export: Python 3 not found" >&2; exit 1; fi
 if [ ! -f assets/Marvin/geometry.bin ]; then
     echo "tools/export: assets/ is missing; run tools/sync-assets.py first" >&2; exit 1
