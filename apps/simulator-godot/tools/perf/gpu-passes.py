@@ -18,10 +18,16 @@ def classify(label, draws):
         return 'shadow atlas clear'
     if 'D16 8192x8192 load' in label:
         return 'shadow maps'
-    if re.search(r'RGBA16F \d+x\d+x2 \| D D32FS8 \S+ load', label):
+    # 3D passes with MSAA (WxHx2) or without it (WxH: a temporal upscaler, below the drawable's size at a lower
+    # render scale; the graphics detail levels)
+    if re.search(r'RGBA16F \d+x\d+(x2)? \| D D32FS8 \S+ load', label):
         return 'opaque' if draws > 60 else 'transparent'
-    if re.search(r'RGBA8 \d+x\d+x2 \| D D32FS8 \S+ clear', label):
+    if re.search(r'(RGBA8 \d+x\d+(x2)?|-) \| D D32FS8 \S+ clear', label):
         return 'depth prepass'
+    if label.startswith('MetalFX_Temporal'):
+        return 'MetalFX temporal'
+    if 'MotionVectorsStore' in label:
+        return 'motion vectors'
     if 'ResolveShaderRD:0' in label:
         return 'resolve gi + ssao'
     if 'CopyShaderRD' in label:
@@ -38,6 +44,8 @@ def classify(label, draws):
         return 'tonemap/2d'
     if 'GPU Execution' in label:
         return 'other'
+    if re.match(r'^C#\d+ #\d+', label):
+        return 'compute: ssao, glow (no MSAA)'
     return 'other: ' + label[:40]
 
 
@@ -63,7 +71,8 @@ def load(run):
 runs = sys.argv[1:]
 data = [load(r) for r in runs]
 keys = ['TOTAL busy', 'FPS', 'opaque', 'opaque enc/frame', 'transparent', 'transparent enc/frame', 'shadow maps', 'shadow atlas clear', 'depth prepass', 'resolve gi + ssao',
-        'final depth resolve + glow', 'mid depth resolve', 'color resolve', 'tonemap/2d', 'window blit', 'blits/uploads']
+        'compute: ssao, glow (no MSAA)', 'final depth resolve + glow', 'mid depth resolve', 'color resolve', 'MetalFX temporal',
+        'motion vectors', 'tonemap/2d', 'window blit', 'blits/uploads']
 keys += sorted({k for d in data for k in d} - set(keys))
 names = [os.path.basename(r.rstrip('/')) for r in runs]
 print(f"{'pass':28s}" + ''.join(f'{n[:14]:>15s}' for n in names))

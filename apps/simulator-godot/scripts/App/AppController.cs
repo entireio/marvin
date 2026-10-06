@@ -304,7 +304,13 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         var wallDelta = max(0, now - lastTime);
         var dt = min(wallDelta, 0.1); lastTime = now;
         if (isLoadingDirt) { loadingHeartbeats += 1; return; }
-        if (townBenchmarkStart != null) { tickTownBenchmark(now: now, dt: dt); return; }
+        if (townBenchmarkStart is double benchmarkStart)
+        {
+            // Godot-only measurement hook (TownSmoke.cs, townBenchmarkFixedStep): the benchmark's clock advances 1/60 s per
+            // tick, as the smoke runs' does, so a frozen view is the same frame in every run.
+            if (townBenchmarkFixedStep) { townBenchmarkTicks += 1; tickTownBenchmark(now: benchmarkStart + townBenchmarkTicks / 60.0, dt: 1.0 / 60); return; }
+            tickTownBenchmark(now: now, dt: dt); return;
+        }
         if (!inSandbox)
         {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt);

@@ -334,6 +334,12 @@ public partial class AppController
 
     /// Godot-only render telemetry of the benchmark (godot-render.json).
     public GodotFrameTelemetry godotTelemetry;
+    /// Godot-only measurement hook: MARVIN_BENCHMARK_FIXED_STEP=1 advances the benchmark (drive, racers, effects, camera,
+    /// town) by 1/60 s per tick instead of the wall-clock interval, like the smoke runs' fixed clock, so the view frozen at
+    /// MARVIN_BENCHMARK_FREEZE seconds is the same frame in every run and build (look comparisons of the graphics detail
+    /// levels at 1920 x 1080; docs/performance.md). Its frame rate and timeline still measure real frames.
+    public readonly bool townBenchmarkFixedStep = environmentValue("MARVIN_BENCHMARK_FIXED_STEP") == "1";
+    public int townBenchmarkTicks;
     private bool townBenchmarkCensusDone;
 
     public void tickTownBenchmark(double now, double dt)
