@@ -16,9 +16,20 @@ camera mesh LODs"); every measurement before that section is of the exact-SceneK
 splits"), paid for by no longer casting the race world's flat base terrain. The two configurations are now a setting
 (Settings > Shadow quality: Fast, the default, or Exact; PORTING.md, "Known deviations"), which applies to the game
 launched normally; game modes, the benchmarks included, ignore the stored choice and measure Fast unless
-`MARVIN_SCN_CAL` says otherwise.
+`MARVIN_SCN_CAL` says otherwise. Later that day Godot started drawing equal robot parts as instanced draws ("Draw calls"),
+which halved the draw calls without changing the look or, measurably, the GPU time.
 
 ## Summary
+
+- **Draw calls** (2026-10-06; section below, like for like against eb73a04 in interleaved runs): Godot now draws
+  Marvin's 112 track shoes, its 112 track ribs, R2-D2's 30 wheel spokes and the robots' other equal parts as instanced
+  draws. Draw calls per frame at 1920 x 1080: town roam 1,370 -> 705 (Exact 1,300 -> 635), race 1,640-1,970 ->
+  890-1,180; Godot's render submission on the main thread takes 0.75-1.00 instead of 0.95-1.26 ms per frame. **The
+  GPU time and the frame rate did not measurably change** (town roam 46.4 -> 46.8 FPS, Exact 34.5 -> 34.6; the race
+  within its run-to-run spread of 3-4 FPS; one frozen town view 19.28 -> 19.02 ms GPU busy, within the spread): on the
+  M2 a draw call costs the GPU little, and what the track belts cost (about 1 ms of GPU busy time per frame in the town
+  view, measured by hiding them) is their 325,000 triangles per pass, which instancing keeps. Mesh LODs for the belts
+  would remove most of that (0.45 ms in the passes they touch) but change the look, so they stay an option.
 
 - **Near shadow splits** (2026-10-06; section below, like for like against the earlier hard-shadow fit on one build):
   under the hard filter the suns' shadow maps have four splits ending 12, 30 and 58 m from the camera and at the far end
@@ -99,6 +110,143 @@ sampling cost in row 1 (about 4.5-5 ms at 1080p, "Hard shadows and camera mesh L
 | 6 | Garbage collection | 1.6 MB allocated per frame (tick 1.1 MB: effects 0.6, town 0.36; facade node flush 0.48 MB) -> 12-14 gen0 + ~1 gen1 per second, 16-19 ms paused per second | ARC, no collector | ~1 ms/frame, pauses of ~1.4 ms | `godot-render.json` allocation telemetry |
 | 7 | Memory | 3.8-3.96 GB (editor) / 3.30-3.77 GB (export); .NET heap ~1 GB, textures 610 MB (540p) / 796 MB (1080p), buffers ~380 MB | 3.23 GB | +0.1-0.7 GB | process RSS, Godot monitors |
 | 8 | Texture churn in the dunes | 49 new ImageTextures + 72 MTLTextures per second in `--dune-roam` (DeformableSand height maps, a new texture per patch update as on macOS); city roam: none after the first minute; race 1.3/s | (SceneKit creates the same MTLTextures) | small | `godot-render.json` `flushed` counters; freed only when the GC finalizes the wrappers |
+
+## Draw calls: equal robot parts drawn as instances
+
+Measured on 2026-10-06 on the same Mac. **Where the draw calls came from.** At 1920 x 1080 the town roam drew about
+1,370 draw calls per frame (`godot-render.json`: the visible list, 530, which Godot's depth prepass and colour pass
+both draw, and the shadow lists, 780, over the suns' eight splits) and the race 1,650-1,850. Hiding the robots
+(`MARVIN_BENCHMARK_HIDE`) left 580 in the roam: the robots made about 760. `MARVIN_BENCHMARK_CENSUS=SECONDS`
+(`scripts/App/DrawCensus.cs`, Godot-only) prints the scene's visible Godot instances by top-level node: Marvin alone is
+254 surfaces, 226 of them its two track belts (56 shoes, 56 ribs and a carcass each), the rest its 21 CAD parts, the
+buttons, two eyes and four hub spokes; R2-D2 has 50 (14 parts, three wheels with two cylinders and ten spokes each),
+WALL-E 76 (58 of them track links), BB-8 3. Every one was its own draw in the prepass, the colour pass and every
+shadow split that saw it. Godot's forward renderer joins consecutive draws of the same mesh surface with the same
+material into one instanced draw, but no two robot parts shared both: `DirtCoating.install` copies every part's
+geometry and gives it its own `dirtToBody` matrix as a geometry argument, so every part had its own Godot material,
+and every copy of a box its own Godot mesh.
+
+**What changed (the look unchanged, see below):**
+
+1. A geometry's own matrix arguments (declared `mat4` by its own modifiers) are Godot instance uniforms, set per mesh
+   instance (`SCNGeometry.InstanceArguments`; four vec4 columns, since Godot has no matrix instance uniforms), and
+   geometries whose own shading differs only in them share one Godot material per SCNMaterial
+   (`ShaderComposer.ShadingKey`: numbers compared by value, textures and properties by reference). The matrix reaches the
+   shader as the same 32-bit floats. A first version passed the numbers per instance too: then DirtCoating's
+   `dirtHeight` divisor changed 1-7 pixels of each dirty BB-8 and WALL-E close-up by one 8-bit step (the shader compiler
+   evaluates a division by a uniform differently); the numbers are equal for all parts of a robot anyway.
+2. Equal primitives (SCNBox, SCNSphere, SCNCylinder, SCNPlane with the same parameters and material layout) share one
+   Godot mesh (`SCNGeometry.MeshShapeKey`).
+3. PORT (game code, the same values): the ribs of a belt share one material, as do Marvin's four spokes and R2-D2's
+   three wheels; the Swift code creates an equal material for every rib, spoke and wheel.
+
+Census of the frozen town view and race start, before -> after (distinct mesh surface and material pairs, the most
+draws a fully visible object can take per pass): Marvin 254 -> 30 (its 112 shoes and 112 ribs are one and two pairs),
+R2-D2 50 -> 20, the town 1,880 -> 1,870 (the metal city gate 19 -> 12; 54 of its 691 meshes were equal primitives),
+WALL-E 76 -> 76. Draws per Metal encoder in the frozen town view: colour pass 433 -> 210, prepass 428 -> 210, shadow
+maps 595 -> 163; race start: 550-557 -> 292-299, 553-555 -> 292-296, 683-686 -> 183-185.
+
+**Results**, 1920 x 1080, editor runtime, `run-benchmark.py --wait-idle`, the commit before (eb73a04) built from a
+copy of this tree with its old files and run by the same runner, interleaved (before, after) per scene and
+configuration. Two other worktrees ran their own benchmarks and captures on the Mac in turns; their game processes
+started or ended during most of these runs (before and after alike: `run.json` `contention`), but neither the Metal
+statistics nor any trace shows their GPU work while these runs presented frames. The race runs of the second pair of rounds had
+their grid pinned (`MARVIN_GRID_SLOTS=0,1,2,3`); the race still differs from run to run (the physics advance with the
+real frame time, and dust and trails are random), which shows mostly in the transparent pass (2.0-5.1 ms in the
+traced 4 s). The first two rounds' after runs (and four of the five frozen ones) ran the version that also passed
+numbers per instance (item 1); the last round is the final build: the same draw calls, and the same GPU and CPU times
+within the spread. Two runs of that round were repeated: one was stopped while it waited for an idle GPU, and one
+shared the GPU with another worktree's game (29.6 FPS, 1,025 GPU-ms per second of the other process).
+
+| 45 s run | before: FPS | after: FPS | before: GPU walltime ms | after | before: GPU busy ms | after | draw calls before -> after | Godot render CPU ms before -> after |
+|---|---|---|---|---|---|---|---|---|
+| town roam, Fast | 46.38, 46.28, 46.45 | 46.70, 46.75, 46.81 | 22.02, 22.03, 22.02 | 22.04, 21.92, 21.87 | 20.39, 20.36, 20.29 | 20.07, 20.12, 20.14 | 1,372 -> 705 | 0.95-0.98 -> 0.75-0.81 |
+| town roam, Exact | 34.57, 34.53, 34.52 | 34.60, 34.71, 34.63 | 29.57, 29.60, 29.66 | 29.43, 29.30, 29.44 | 27.41, 27.29, 27.23 | 27.05, 27.06, 27.40 | 1,304 -> 636 | 0.96-1.03 -> 0.76-0.85 |
+| race, Fast | 51.93, 50.79, 54.09, 53.05, 50.58 | 50.87, 52.27, 50.16, 53.02, 53.10 | 18.67-19.99 | 19.08-20.29 | 16.53-17.62 | 16.66-17.97 | 1,665-1,967 -> 1,037-1,180 | 1.07-1.26 -> 0.86-0.95 |
+| race, Exact | 42.08, 42.83, 41.25, 40.48, 41.59 | 40.58, 39.32, 39.06, 43.35, 43.22 | 23.92-25.20 | 23.58-26.11 | 21.33-23.83 | 22.23-23.56 | 1,643-1,926 -> 894-1,116 | 1.10-1.23 -> 0.87-1.00 |
+
+| frozen view (28 s, trace 21-25 s) | before: GPU busy / walltime ms | after |
+|---|---|---|
+| town view at 16 s, Fast (five before, five after) | 19.55, 19.22, 19.06, 19.15, 19.40 / 21.40, 21.28, 21.17, 21.25, 21.34 | 19.08, 19.01, 19.32, 18.68, 19.03 / 21.41, 21.07, 21.22, 20.92, 21.13 |
+| race start at 1 s, Fast (three before, five after) | 16.64, 16.02, 16.09 / 18.61, 17.97, 17.91 | 15.83, 15.85, 15.90, 15.68, 15.79 / 17.78, 17.72, 17.83, 17.68, 17.66 |
+
+- **GPU: no measurable change.** In the town view the passes that draw the robots are the same within 0.05 ms
+  (colour pass 5.12 -> 5.11 ms, of it vertex 0.73 -> 0.71; prepass 0.69 -> 0.66; shadow maps 1.69 -> 1.64), while
+  the transparent pass, which the change does not touch, moves by +-0.35 ms between runs of one build; the frame
+  totals differ by 0.25 ms busy and 0.14 ms walltime on average, less than that spread. The race start was 0.2-0.3 ms
+  quicker in every after run than in the two regular before runs (the first before run is an outlier in the colour
+  pass), spread over the passes by a few hundredths of a millisecond each. The moving race shows nothing beyond its
+  spread (Fast 52.1 FPS before, 51.9 after on average; Exact 41.6 and 41.1), and the town roam's 0.2-0.3 ms less GPU busy
+  time and +0.4 FPS are within the runs' spread too. Frames over 25 ms and p99 are the same in the roam; in the Fast race two of the five after
+  runs had 16 and 31 frames over 25 ms (main-thread gaps of 50-56 ms in bursts of under a second; not investigated
+  further; the other three had 1-3, all five before runs 1-3), and in the Exact race the count follows the frame rate
+  of each run (383-896 after, 416-755 before).
+- **CPU:** the facade flush is unchanged (1.22-1.61 ms per frame both ways); Godot's own render submission for the
+  view (`ViewportGetMeasuredRenderTimeCpu`: culling, render lists, encoding) takes 0.15-0.35 ms less per frame. At
+  1080p the GPU sets the frame rate, so this shows only as headroom (and on drivers with costlier draw calls than
+  Metal's; Windows was not measured).
+- **Why so little GPU time:** an Apple GPU spends little on a draw itself. What the belts cost is their geometry: each
+  shoe and rib is a chamfered `SCNBox` of 1,452 triangles (the facade's tessellation of SceneKit's chamfers), 325,000
+  triangles per pass for the 224 of them. Hiding the belts (a diagnostic) saved 1.0-1.3 ms of GPU busy time in the
+  town view (19.2-19.6 -> 18.2 ms): vertex time 0.73 -> 0.59 ms in the colour pass, 0.49 -> 0.34 in the prepass and
+  0.64 -> 0.35 in the shadow maps; hiding every robot saved 1.3-1.7 ms. Instancing keeps every triangle: of those
+  0.58 ms of the belts' vertex time it saved 0.09.
+- **Exact:** the same draw calls saved (shadow lists 712 -> 267 in the roam; its robots' shadow-only twins are
+  instanced too); GPU and frame rate unchanged within the spread.
+
+**Measured and not adopted:**
+
+- **Mesh LODs for the robots' small parts** (`MARVIN_SCN_CAL=MeshLodMinTriangles=256`; the default 2048 gives LODs only
+  to the CAD and scanned parts): the belts' boxes collapse to a few triangles where their 1 mm chamfers are below half
+  a pixel. Frozen town view, two runs each: 3.17 -> 2.25 M primitives per frame, colour pass vertex 0.71 -> 0.60 ms,
+  prepass 0.66 -> 0.56, shadow maps 1.64 -> 1.40 (0.45 ms less in the passes it touches; the frame totals stayed within
+  the transparent pass's spread, 18.68-19.32 against 18.88-18.95 ms); race start shadow maps 2.35 -> 2.00 ms. In Fast
+  the camera draws the levels too, so the small parts' silhouettes move by up to half a pixel. Restricted to the
+  shadows (a shadow-only twin, as in Exact), the visual regression's captures changed by up to 0.0017/255 and its
+  report by one robot shadow sample (WALL-E 467 -> 466; macOS 450), so the deterministic reports would no longer be
+  byte-identical. Not adopted; it is the one geometry saving found that the GPU notices.
+- **Merging rigid parts:** Marvin's 21 CAD parts on three rigid nodes could become about ten meshes by material, but
+  their meshes carry Godot LODs chosen per part (merged parts would switch levels together, which changes the Fast
+  camera image), `dirtToBody` would have to move into the vertices (the dirt noise would see other float roundings) and
+  it saves about ten draws per pass, which the GPU does not notice either.
+- **WALL-E's 58 track links** cannot share a mesh: their exported vertices differ in the last float digits (up to
+  1e-6 m after a rigid fit), so sharing one would move them.
+- **The town**: 1,880 surfaces in 637 distinct meshes after the change; only 10 more pairs can be instanced. Merging
+  its static geometry by material would change frustum culling, visibility ranges and the draw order among
+  equal-depth surfaces; with draws this cheap on the GPU it was not pursued. The 1,680 dune tiles (54 in view) are
+  distinct height fields.
+
+**Look and checks** (the rule: identical captures, or within the noise of two runs of the unchanged build; every
+deterministic JSON report byte-identical). The full-game comparison's capture modes ran on both builds: facade test,
+calibration scenes, menu, visual regression, smoke, robot close-ups in the sandbox and the race light, character,
+town, entrance, people, passage, navigation, post-race, city escape, binary sky, sandstorm, dune contact, ground
+performance, mesh reuse, trail material, dust visibility, HUD and loading (the comparison's pins), and menu, visual
+regression, smoke, both close-up sets and town with `MARVIN_SCN_CAL=Exact`; the unchanged build ran every mode with
+random state twice, and the modes whose racers start on the random grid (passage, entrance, binary sky, dune contact,
+ground performance, mesh reuse) ran again on both builds with the grid pinned (`MARVIN_GRID_SLOTS=0,1,2,3`). The first
+full set ran on the version that also passed numbers per instance (item 1); the final build ran the robot modes again
+(facade, menu, visual regression, smoke, both close-up sets, town, the pinned passage, entrance, binary sky and dune
+contact, and the Exact set).
+
+- Pixel-identical to the unchanged build: the facade test, calibration scenes, menu, visual regression (43), both
+  close-up sets (31 each, Fast and Exact), trail material, loading, and the pinned passage (66), entrance (38), binary
+  sky, ground performance (68) and mesh reuse (68) captures.
+- The rest differ from the unchanged build in the same captures and by about as much as two runs of the unchanged build
+  differ from each other: smoke 15 of 36 (random dirt coatings, sandbox course rings, dust; largest 0.87/255, two old
+  runs 0.69), town 7 of 21 (0.058, two old runs 0.052), the pinned dune contact's two WALL-E drive views (0.12, old
+  runs 0.16), the HUD's two captures with a measured FPS figure, people, city escape, and the modes with random draws
+  or real-time races (character, navigation, post-race, sandstorm, dust), as in earlier comparisons.
+- Every deterministic report is byte-identical: smoke.json, full-race-trails.json, menu-smoke.json,
+  visual-regression.json, town-smoke.json, characters.json, people.json, street-people.json, passages.json,
+  preflight.json, entrances.json, activities.json, pedestrian-access.json, city-escape.json, binary-races.json, the mesh
+  reuse comparison and the facade test's measurements.json. Differences are timing fields and random draws that differ
+  between two old runs too (dune contact's `cpuUpdateP95MS`, the HUD's FPS sample, the unpinned sandstorm's drift
+  depth, the unpinned ground-performance comparison, the test scores' date).
+- One facade-test run of the change (the first of eight) rendered three pixels of its main-thread thread-check image
+  and seven of `V_ground` differently (up to 11/255; its threads check reported 0.0007 instead of 0); the seven other
+  runs and the final build's are identical to the unchanged build. Not reproduced; the meshes involved are built the
+  same way in both builds.
+- `tools/checks` is byte-identical to the Swift reference.
 
 ## Near shadow splits: finer hard shadows next to the camera
 
@@ -887,7 +1035,10 @@ camera mesh LODs"):
 2. The robots' draw calls (~760 per 1080p frame in the town roam): every robot part is its own draw with its own
    material (DirtCoating's per-geometry arguments) in the prepass, the colour pass and each shadow map. Merging the
    parts that move together and share a material would need the coating's per-part `dirtToBody` folded into the
-   vertices.
+   vertices. *Done differently ("Draw calls"): per-instance arguments and shared meshes let Godot instance the equal
+   parts, half the draw calls are gone, Godot's render submission is 0.15-0.35 ms shorter, and the GPU time is the same
+   within the spread: a draw call costs the M2's GPU little. The belts' cost is their triangles (about 1 ms); LODs for
+   the small parts would take 0.45 ms of it but change the look.*
 3. Scene shading (~3.4 ms): the ground (terrain and the transparent town overlays) is shaded with full lighting and
    shadowing per overlay layer; materials that SceneKit shades as `.constant` or whose result is covered could skip
    Godot's light loop (`render_mode unshaded` where the composer already writes the final colour), and the overlays could
@@ -926,6 +1077,12 @@ tools/perf/gpu-passes.py OUT_A OUT_B ...
 # one fixed race frame (the start, the robots next to the chase camera) for A/B: freeze 1 s after the start
 tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --mode race --seconds 28 --labels --trace 21:4 \
     --trace-from-start --wait-idle --env MARVIN_BENCHMARK_FREEZE=1
+# draw calls: what the view's draw calls are made of (DrawCensus: instances, surfaces and distinct mesh surface and
+# material pairs per top-level node, printed to OUT/game.log at benchmark time S; _DEPTH=2 splits the groups further)
+tools/perf/run-benchmark.py OUT --app godot --size 1920x1080 --mode city-roam --env MARVIN_BENCHMARK_CENSUS=16 \
+    [--env MARVIN_BENCHMARK_CENSUS_DEPTH=2]; grep DRAW_CENSUS OUT/game.log
+# mesh LODs for the robots' small parts too (measured in "Draw calls", not adopted)
+tools/perf/run-benchmark.py OUT ... --env MARVIN_SCN_CAL=MeshLodMinTriangles=256
 # the earlier hard-shadow fit for A/B on one build (and the near splits' stability probe)
 tools/perf/run-benchmark.py OUT ... --env "MARVIN_SCN_CAL=HardShadowSplit1=0;BaseTerrainCastsShadow=1"
 tools/godot -- --shadow-motion-probe OUT        # MARVIN_SHADOW_MOTION=exact|race|casters
