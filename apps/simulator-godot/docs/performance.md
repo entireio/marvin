@@ -293,7 +293,10 @@ measured and left as they are. The look is unchanged ("Look and checks" below).
 after its start (`MARVIN_BENCHMARK_FREEZE`), 1920 x 1080, editor runtime, a labelled Metal System Trace 21-25 s after
 the benchmark start, GPU busy per frame and pass (`gpu-passes.py`). Diagnostics change the look and only isolate a cost.
 Three other agents' Godot runs shared the Mac all morning: every run waited for an idle GPU (`run-benchmark.py
---wait-idle`), and runs whose trace showed other GPU work were repeated. The same build varies by 0.4 ms in the town
+--wait-idle`), and runs whose trace showed other GPU work were repeated. `--wait-idle` now recognises other game
+processes by their executable (`ps` comm): matching whole command lines (`pgrep -f`) also matched the other runners' own
+`pgrep` and shell polling loops, which hold the pattern verbatim, so three runners waiting for an idle GPU kept one
+another waiting with no game running (seen for minutes at a time). The same build varies by 0.4 ms in the town
 view (transparent pass 7.70-8.17 ms over five runs) and by 0.03 ms at the race start (three runs). Then 45 s moving
 benchmarks, interleaved against a build of eb73a04 from its own tree (base, this change, base, this change), Fast and
 Exact (`MARVIN_SCN_CAL=Exact`), with traces 20-24 s after the start.

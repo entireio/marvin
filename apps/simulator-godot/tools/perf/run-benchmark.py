@@ -45,6 +45,7 @@ import argparse
 import datetime
 import json
 import os
+import re
 import signal
 import statistics
 import subprocess
@@ -181,8 +182,16 @@ def leftover_ktraces():
 def other_games(own_pids):
     """PIDs of other running Godot / Marvin Simulator processes (not ours, not MARVIN_PERF_IGNORE_PIDS)."""
     ignore = {int(p) for p in os.environ.get('MARVIN_PERF_IGNORE_PIDS', '').split(',') if p.strip()}
-    out = subprocess.run(['pgrep', '-f', GAME_PATTERN], capture_output=True, text=True).stdout.split()
-    return sorted(int(p) for p in out if int(p) not in own_pids and int(p) not in ignore and int(p) != os.getpid())
+    # The executable's path (ps comm), not `pgrep -f GAME_PATTERN` over whole command lines: that also matched other
+    # runners' pgrep processes and shell loops (their command lines hold the pattern, "MarvinSimulator" verbatim), so two
+    # or three runners waiting for an idle GPU kept each other waiting.
+    out = subprocess.run(['ps', '-axo', 'pid=,comm='], capture_output=True, text=True).stdout.splitlines()
+    pids = []
+    for line in out:
+        pid, _, executable = line.strip().partition(' ')
+        if pid.isdigit() and re.search(GAME_PATTERN, executable.strip()):
+            pids.append(int(pid))
+    return sorted(p for p in pids if p not in own_pids and p not in ignore and p != os.getpid())
 
 
 def wait_idle(quiet_seconds=1.0, poll=0.25, limit=7200):
