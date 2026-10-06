@@ -45,6 +45,10 @@ def main():
     import json
     mac = json.loads(MANIFEST.read_text())
     differ = sorted(k for k in mac if k in here and here[k] != mac[k])
+    # Text written with the platform's newline (Python's write_text on Windows writes CRLF): same content otherwise?
+    assets = Path(args.assets)
+    newline_only = [k for k in differ if k.endswith((".json", ".md", ".txt"))
+                    and hashlib.sha256((assets / k).read_bytes().replace(b"\r\n", b"\n")).hexdigest() == mac[k]]
     missing = sorted(k for k in mac if k not in here)
     extra = sorted(k for k in here if k not in mac)
     same = len(mac) - len(differ) - len(missing)
@@ -52,15 +56,15 @@ def main():
     md = ["## Game assets against a Mac's", "",
           f"`tools/sync-assets.py` output (generated meshes from `scripts/prepare-simulator-assets.py` on this runner) "
           f"against the SHA-256 manifest of a Mac's (`tools/ci/reference/assets-sha256.json`): **{same} of {len(mac)} files "
-          f"identical**" + (f", {len(differ)} differ ({len(generated_differ)} of them generated)" if differ else "")
+          f"identical**" + (f", {len(differ)} differ ({len(generated_differ)} of them generated, {len(newline_only)} only in line endings)" if differ else "")
           + (f", {len(missing)} missing" if missing else "") + (f", {len(extra)} not on the Mac" if extra else "") + "."]
     if differ or missing or extra:
         md += ["", "| File | State |", "|---|---|"]
-        md += [f"| `{md_escape(k)}` | differs |" for k in differ[:40]]
+        md += [f"| `{md_escape(k)}` | {'differs only in line endings (CRLF here, LF on the Mac)' if k in newline_only else 'differs'} |" for k in differ[:40]]
         md += [f"| `{md_escape(k)}` | missing here |" for k in missing[:20]]
         md += [f"| `{md_escape(k)}` | only here |" for k in extra[:20]]
     if args.out:
-        write_json(Path(args.out) / "assets.json", {"identical": same, "total": len(mac), "differ": differ, "missing": missing, "extra": extra})
+        write_json(Path(args.out) / "assets.json", {"identical": same, "total": len(mac), "differ": differ, "lineEndingsOnly": newline_only, "missing": missing, "extra": extra})
     append_summary("\n".join(md) + "\n")
     return 0
 

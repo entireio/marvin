@@ -17,7 +17,7 @@ import argparse, json, os, re, shutil, subprocess, sys, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cilib import REFERENCE, ROOT, append_summary, md_escape, read_text, write_json
+from cilib import REFERENCE, ROOT, append_summary, exit_text, md_escape, read_text, write_json
 
 CAPTURES = REFERENCE / "godot-mac-captures"
 TOWN_PINS = {"MARVIN_GRID_SLOTS": "0,3,1,2", "MARVIN_TOWN_DAYLIGHT": "0.2125,4.18"}
@@ -96,6 +96,22 @@ def main():
         device = device_line(log)
         pngs = sorted(p.name for p in directory.glob("*.png"))
         entry = {"mode": name, "exit": code, "timedOut": timed_out, "seconds": seconds, "device": device, "captures": len(pngs)}
+        for report in sorted(directory.glob("*.json")):
+            try:
+                verdict = json.loads(read_text(report)).get("passed")
+            except (ValueError, AttributeError):
+                verdict = None
+            if isinstance(verdict, bool):
+                entry["passed"] = verdict if entry.get("passed", True) else False
+        # Godot falls back to another driver when the requested one does not start (project.godot: fallback_to_vulkan,
+        # fallback_to_d3d12): that is not a run of this driver.
+        api = {"vulkan": "Vulkan", "d3d12": "D3D12", "metal": "Metal", "opengl3": "OpenGL"}.get(args.driver)
+        if api and device and not device.startswith(api):
+            entry["fellBack"] = device
+            entry["why"] = why_not(log)
+            results.append(entry)
+            rows.append((name, code, timed_out, seconds, device, len(pngs), None, [], []))
+            break
         compared = []
         try:
             from PIL import Image, ImageStat
@@ -129,20 +145,25 @@ def main():
         started = True
     write_json(out / "render.json", results)
 
-    any_rendered = any(r["captures"] and r.get("blank") != r["captures"] for r in results)
+    any_rendered = any(r["captures"] and r.get("blank") != r["captures"] and not r.get("fellBack") for r in results)
     first = results[0] if results else {}
     if first.get("device"):
         md.append(f"Device: `{md_escape(first['device'], 200)}`.")
     md.append("")
-    md.append("| Mode | Exit | Time s | Captures (blank) | Mean /255 vs Godot on macOS (worst) |")
-    md.append("|---|---|---|---|---|")
-    for name, code, timed_out, seconds, device, count, blank, values, compared in rows:
+    md.append(f"Captures are compared at half size (box filter) with the same mode rendered by Godot on macOS (Metal), "
+              f"`tools/ci/reference/godot-mac-captures`; window captures need the 1280 x 820 window to fit the screen.")
+    md.append("")
+    md.append("| Mode | Its check | Exit | Time s | Captures (blank) | Mean /255 vs Godot on macOS (worst) |")
+    md.append("|---|---|---|---|---|---|")
+    for (name, code, timed_out, seconds, device, count, blank, values, compared), entry in zip(rows, results):
         stats = (f"{sum(values) / len(values):.2f} ({max(values):.2f}) over {len(values)}" if values else "-")
-        md.append(f"| {name} | {'timeout' if timed_out else code} | {seconds} | {count} ({blank if blank is not None else '?'}) | {stats} |")
+        verdict = {True: "pass", False: "**fail**"}.get(entry.get("passed"), "-")
+        md.append(f"| {name} | {verdict} | {exit_text(code, timed_out)} | {seconds} | {count} ({blank if blank is not None else '?'}) | {stats} |")
     if not any_rendered:
         why = first.get("why") or []
         md.append("")
-        md.append(f"**{label} did not render.** From the log of the first mode:")
+        md.append(f"**{label} did not render**" + (f" (Godot fell back to `{md_escape(first['fellBack'], 120)}`)" if first.get("fellBack") else "")
+                  + ". From the log of the first mode:")
         md.append("")
         md.append("```")
         md.extend(why or [l for l in read_text(out / f'{results[0]["mode"]}.log').splitlines()[-15:]] if results else ["(no run)"])

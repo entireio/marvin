@@ -145,6 +145,28 @@ def compare_digest(reference, text):
     return False, rows
 
 
+# ---------------------------------------------------------------- exit codes
+
+NTSTATUS = {0xC0000005: "access violation", 0xC0000374: "heap corruption", 0xC0000409: "fail fast",
+            0xC00000FD: "stack overflow", 0xC0000142: "DLL initialisation failed", 0xE0434352: ".NET exception"}
+
+
+def is_crash(code):
+    """A Windows exception status (0xC0000000 and up) rather than an exit code the program chose."""
+    return code is not None and (code & 0xFFFFFFFF) >= 0xC0000000
+
+
+def exit_text(code, timed_out=False):
+    if timed_out:
+        return "timeout"
+    if code is None:
+        return "-"
+    if is_crash(code):
+        c = code & 0xFFFFFFFF
+        return f"{c:#010x} ({NTSTATUS.get(c, 'crash')})"
+    return str(code)
+
+
 # ---------------------------------------------------------------- output
 
 def md_escape(text, limit=160):

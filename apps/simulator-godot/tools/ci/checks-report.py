@@ -76,7 +76,7 @@ def main():
             diffs.append("".join(difflib.unified_diff([l + "\n" for l in reference], [l + "\n" for l in lines],
                                                       "swift-reference", label, n=0)))
             details.append(f"\n<details open><summary>{md_escape(label)}: differing lines</summary>\n")
-            details.append("| Ref line | Swift reference | Windows | Numbers (reference → Windows, relative difference) |")
+            details.append("| Ref line | Swift reference | This runner | Numbers (reference → this runner, relative difference) |")
             details.append("|---|---|---|---|")
             for c in changed[:60]:
                 nums = "; ".join(f"{n['reference']} → {n['actual']} ({float(n['relative']):.2e})" if n["relative"] else f"{n['reference']} → {n['actual']}"

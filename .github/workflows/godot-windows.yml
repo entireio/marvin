@@ -96,11 +96,44 @@ jobs:
           --run "default|out/checks/checks-default.txt|${{ steps.run.outputs.default }}"
           --run "MARVIN_PORTABLE_MATH=1|out/checks/checks-portable.txt|${{ steps.run.outputs.portable }}"
           --out out/checks --title "Core maths on ${{ runner.os }} (${{ matrix.os }}): SimulationChecks against the Swift reference"
+      - name: libm probe (the platform's sin, cos, atan2, exp, pow ... for the game's arguments)
+        if: ${{ !cancelled() }}
+        working-directory: apps/simulator-godot
+        run: dotnet run --project src/Checks/MarvinChecks.csproj -c Release --no-build -- --libm-probe ../../out/libm
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: checks-${{ matrix.os }}
           path: out/checks
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: libm-${{ matrix.os }}
+          path: out/libm
+          retention-days: 7
+
+  libm:
+    name: Which libm functions differ from macOS
+    needs: checks
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: libm-*
+          path: probes
+      - name: Compare Windows and Linux with macOS, call by call
+        run: >-
+          python3 apps/simulator-godot/tools/ci/libm-report.py --reference "macOS|probes/libm-macos-latest"
+          --run "Windows|probes/libm-windows-latest" --run "Linux|probes/libm-ubuntu-latest" --out out/libm
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: libm-report
+          path: out/libm
           retention-days: 14
 
   assets:
@@ -240,6 +273,30 @@ jobs:
           --exe apps/simulator-godot/build/windows/MarvinSimulator.console.exe --out out/export
           --only town-statistics,town-reference-dump,storm-race-test
           --title "Exported Windows build (MarvinSimulator.console.exe), headless"
+      - name: Diagnostics (exit status of the exported build, town mesh welding)
+        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
+        continue-on-error: true
+        run: |
+          mkdir -p out/diagnostics
+          ci=apps/simulator-godot/tools/ci
+          # The exported (release) build, verbose: what it does last before its exit status.
+          python $ci/headless-modes.py --exe apps/simulator-godot/build/windows/MarvinSimulator.console.exe \
+            --engine-args=--verbose --out out/diagnostics/export-verbose --only town-statistics,audio-facade-test \
+            --title "Diagnostics: exported release build, --verbose" || true
+          tail -60 out/diagnostics/export-verbose/town-statistics.log
+          # The same project exported with the debug template.
+          mkdir -p apps/simulator-godot/build/windows-debug
+          "$GODOT" --headless --path apps/simulator-godot --export-debug "Windows Desktop" \
+            "$(cygpath -m "$PWD/apps/simulator-godot/build/windows-debug/MarvinSimulator.exe")" > out/diagnostics/export-debug.log 2>&1 \
+            || tail -30 out/diagnostics/export-debug.log
+          python $ci/headless-modes.py --exe apps/simulator-godot/build/windows-debug/MarvinSimulator.console.exe \
+            --out out/diagnostics/export-debug --only town-statistics,audio-facade-test \
+            --title "Diagnostics: exported debug build" || true
+          # Vertex welding of the town's street mesh (merged vertex counts differ from macOS): every raw vertex's bits
+          # and its merged index, to diff with the same dump on a Mac.
+          MARVIN_MESH_COUNTS=19238,13367 "$GODOT" --headless --path apps/simulator-godot -- --town-mesh-dump \
+            "$(cygpath -m "$PWD/out/diagnostics/mesh")" --mesh-reuse-test > out/diagnostics/mesh.log 2>&1 || true
+          grep "^pair" out/diagnostics/mesh/town-mesh.txt | head -5 || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -307,6 +364,33 @@ jobs:
         run: |
           Get-CimInstance Win32_VideoController | Format-Table Name, DriverVersion, AdapterRAM -AutoSize | Out-String -Width 200
           Get-ChildItem C:\Windows\System32\vulkan-1.dll, C:\Windows\System32\D3D12.dll, C:\Windows\System32\d3d10warp.dll -ErrorAction SilentlyContinue | Format-Table Name, Length, LastWriteTime
+      - name: Screen 1920 x 1080 (the game's 1280 x 820 window does not fit the runner's 1024 x 768)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Add-Type -TypeDefinition @"
+          using System; using System.Runtime.InteropServices;
+          public static class Screen1080 {
+            [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)] public struct DEVMODE {
+              [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
+              public short dmSpecVersion, dmDriverVersion, dmSize, dmDriverExtra; public int dmFields;
+              public int dmPositionX, dmPositionY, dmDisplayOrientation, dmDisplayFixedOutput;
+              public short dmColor, dmDuplex, dmYResolution, dmTTOption, dmCollate;
+              [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
+              public short dmLogPixels; public int dmBitsPerPel, dmPelsWidth, dmPelsHeight, dmDisplayFlags, dmDisplayFrequency;
+              public int dmICMMethod, dmICMIntent, dmMediaType, dmDitherType, dmReserved1, dmReserved2, dmPanningWidth, dmPanningHeight; }
+            [DllImport("user32.dll", CharSet = CharSet.Ansi)] static extern bool EnumDisplaySettings(string name, int mode, ref DEVMODE dm);
+            [DllImport("user32.dll", CharSet = CharSet.Ansi)] static extern int ChangeDisplaySettings(ref DEVMODE dm, int flags);
+            public static string Set(int w, int h) {
+              var dm = new DEVMODE(); dm.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE));
+              EnumDisplaySettings(null, -1, ref dm);
+              string before = dm.dmPelsWidth + "x" + dm.dmPelsHeight;
+              dm.dmPelsWidth = w; dm.dmPelsHeight = h; dm.dmFields = 0x80000 | 0x100000;
+              return before + " -> ChangeDisplaySettings " + ChangeDisplaySettings(ref dm, 0); } }
+          "@
+          [Screen1080]::Set(1920, 1080)
+          Add-Type -AssemblyName System.Windows.Forms
+          [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
       - name: Direct3D 12 (WARP software adapter, if Godot takes it)
         continue-on-error: true
         run: python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver d3d12 --label "Direct3D 12" --out out/render
@@ -318,9 +402,11 @@ jobs:
           curl -fsSL --retry 3 -o "$temp/mesa.7z" \
             "https://github.com/pal1000/mesa-dist-win/releases/download/${MESA_VERSION}/mesa3d-${MESA_VERSION}-release-msvc.7z"
           7z x -y -o"$RUNNER_TEMP/mesa" "$RUNNER_TEMP/mesa.7z" > /dev/null
-          icd=$(cygpath -m "$(ls "$temp"/mesa/x64/lvp_icd.x86_64.json)")
+          icd=$(cygpath -w "$(ls "$temp"/mesa/x64/lvp_icd.x86_64.json)")
+          # The Vulkan loader ignores VK_DRIVER_FILES in an elevated process (the runner's): register the driver.
+          MSYS_NO_PATHCONV=1 reg add 'HKLM\SOFTWARE\Khronos\Vulkan\Drivers' /v "$icd" /t REG_DWORD /d 0 /f
           echo "VK_DRIVER_FILES=$icd" >> "$GITHUB_ENV"
-          echo "VK_ICD_FILENAMES=$icd" >> "$GITHUB_ENV"
+          echo "VK_LOADER_DEBUG=error,warn,driver" >> "$GITHUB_ENV"
           # The Vulkan loader (vulkan-1.dll) comes with GPU drivers, which the runner lacks: take LunarG's runtime.
           if [ ! -f /c/Windows/System32/vulkan-1.dll ]; then
             curl -fsSL --retry 3 -o "$temp/vkrt.zip" https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-runtime-components.zip

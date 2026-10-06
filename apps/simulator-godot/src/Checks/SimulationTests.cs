@@ -689,6 +689,8 @@ public static class CheckRunner
     {
         // Godot-port only: the managed Darwin hypot used on Windows against Darwin libm (PortableMathChecks.cs).
         if (args.Contains("--portable-math")) return PortableMathChecks.Run(args);
+        // Godot-port only: the platform's libm results for the functions the simulation calls (LibmProbe.cs).
+        if (args.Contains("--libm-probe")) return LibmProbe.Run(args);
         var checks = new SimulationTests();
         checks.testTownSpeedAndGaze();
         checks.testStormLanding();

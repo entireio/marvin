@@ -20,8 +20,8 @@ import argparse, hashlib, json, os, shutil, subprocess, sys, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cilib import (REFERENCE, ROOT, append_summary, compare_digest, compare_json, digest, load_json, md_escape, read_text,
-                   show, write_json)
+from cilib import (REFERENCE, ROOT, append_summary, compare_digest, compare_json, digest, exit_text, is_crash, load_json,
+                   md_escape, read_text, show, write_json)
 
 SMOKE_PINS = {"MARVIN_GRID_SLOTS": "0,3,1,2;0,3,1,2;3,1,2,0", "MARVIN_DAYLIGHT_FRACTION": "0.515,0.795,0.8305",
               "MARVIN_DAYLIGHT_PHASE": "2.75,2.065,2.5753"}
@@ -100,7 +100,7 @@ def town_identity(out, results):
                          "routes, collision bodies, scene nodes): **byte-identical** to Godot on macOS.")
         else:
             lines.append("**Town layout** (`--town-reference-dump`): **DIFFERS** from Godot on macOS: "
-                         + ", ".join(f"{k['kind']} {len(k['differing'])} of {k['referenceCount']}" for k in g["kinds"]) + " records.")
+                         + ", ".join(f"{k['kind']} {k['differingCount']} of {k['referenceCount']}" for k in g["kinds"]) + " records.")
     return [l + "\n" for l in lines] if lines else []
 
 
@@ -111,6 +111,7 @@ def main():
     group.add_argument("--exe", help="an exported game (MarvinSimulator.console.exe)")
     parser.add_argument("--out", required=True)
     parser.add_argument("--only", help="comma-separated mode names")
+    parser.add_argument("--engine-args", help="more Godot arguments, e.g. --verbose")
     parser.add_argument("--title", default="Headless game modes against Godot on macOS and the macOS game")
     parser.add_argument("--update-reference", action="store_true", help="store this run as tools/ci/reference/godot-mac")
     parser.add_argument("--mark-unstable", action="store_true",
@@ -120,8 +121,9 @@ def main():
 
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    cmd = ([args.godot, "--headless", "--audio-driver", "Dummy", "--path", str(ROOT), "--"] if args.godot
-           else [str(Path(args.exe).resolve()), "--headless", "--audio-driver", "Dummy"])
+    extra = args.engine_args.split() if args.engine_args else []
+    cmd = ([args.godot, "--headless", "--audio-driver", "Dummy", *extra, "--path", str(ROOT), "--"] if args.godot
+           else [str(Path(args.exe).resolve()), "--headless", "--audio-driver", "Dummy", *extra])
     selected = [m for m in MODES if not args.only or m[0] in args.only.split(",")]
     unstable_path = GODOT_MAC / "unstable.json"
     unstable = json.loads(unstable_path.read_text()) if unstable_path.exists() and not args.update_reference else {}
@@ -162,7 +164,7 @@ def main():
                 ref = GODOT_MAC / name / (report + ".digest.json")
                 if ref.exists():
                     identical, kinds = compare_digest(json.loads(ref.read_text()), read_text(path))
-                    item["godotMac"] = {"identical": identical, "kinds": [{"kind": k, "referenceCount": rc, "count": c, "differing": d[:200], "examples": e} for k, rc, c, d, e in kinds]}
+                    item["godotMac"] = {"identical": identical, "kinds": [{"kind": k, "referenceCount": rc, "count": c, "differingCount": len(d), "differing": d[:200], "examples": e} for k, rc, c, d, e in kinds]}
                     vs_godot = "identical" if identical else "**FINDING**: " + ", ".join(f"{k} {len(d)} of {rc}" for k, rc, c, d, e in kinds) + " records differ"
                     if not identical:
                         details.append(f"\n<details open><summary>{name} / {report}: records that differ from Godot on macOS</summary>\n")
@@ -218,6 +220,10 @@ def main():
         expected = code if args.update_reference else mac.get("exit", 0)
         if timed_out and missing_reports:
             entry["failure"] = "timed out without its reports"
+        elif is_crash(code) and not missing_reports and not args.update_reference:
+            # Every report written, then a Windows exception status: the mode finished and the process crashed while
+            # quitting. A finding (listed below), not a failure of the mode.
+            entry["crashAtExit"] = exit_text(code)
         elif not timed_out and code != expected:
             entry["failure"] = f"exit code {code}, {expected} on macOS"
         elif missing_reports and not mac.get("missing"):
@@ -245,12 +251,17 @@ def main():
           "| Mode | Exit (on Mac) | Time s (on Mac) | Report | vs Godot on macOS (headless) | vs macOS game report |",
           "|---|---|---|---|---|---|"]
     for name, code, timed_out, seconds, mac, report, vs_godot, vs_macos in rows:
-        exit_text = ("timeout" if timed_out else str(code)) + f" ({mac.get('exit', '-')})"
-        md.append(f"| {name} | {exit_text} | {seconds} ({mac.get('seconds', '-')}) | {report} | {vs_godot} | {vs_macos} |")
+        md.append(f"| {name} | {exit_text(code, timed_out)} ({mac.get('exit', '-')}) | {seconds} ({mac.get('seconds', '-')}) | {report} | {vs_godot} | {vs_macos} |")
     failures = [r for r in results if r.get("failure")]
+    crashes = [r for r in results if r.get("crashAtExit")]
     md.append("")
-    md.append("All modes ran as on macOS." if not failures else
+    md.append("All modes ran as on macOS." if not failures and not crashes else
+              "All modes ran and wrote their reports." if not failures else
               "**FAIL**: " + "; ".join(f"{r['mode']}: {r['failure']}" for r in failures))
+    if crashes:
+        md.append("")
+        md.append(f"**FINDING: crash at exit.** {len(crashes)} of {len(results)} modes wrote every report and then ended with a "
+                  "Windows exception status while quitting: " + ", ".join(f"{r['mode']} {r['crashAtExit']}" for r in crashes) + ".")
     md.extend(details)
     append_summary("\n".join(md) + "\n")
     return 1 if failed else 0
