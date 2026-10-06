@@ -13,8 +13,9 @@
 // composite of the view snapshot and the race HUD), plus playthrough.json with every step's result.
 //
 // Test hooks, as the macOS smoke modes have them: the weather is clear (weatherOverride), scores go to
-// DIR/test-scores.json (scoreDirectory), the six menu settings and the mute setting are reset to their defaults and
-// restored afterwards (as a game mode the playthrough keeps Shadow quality Fast in any case), and `active` is kept
+// DIR/test-scores.json (scoreDirectory), the seven menu settings and the mute setting are reset to their defaults and
+// restored afterwards (as a game mode the playthrough keeps Shadow quality Fast and Graphics detail Max in any case,
+// unless MARVIN_SCN_CAL or MARVIN_GRAPHICS_DETAIL say otherwise), and `active` is kept
 // true so another app taking focus does not pause the run. The grid and daylight can be pinned with
 // MARVIN_GRID_SLOTS / MARVIN_DAYLIGHT_FRACTION / MARVIN_DAYLIGHT_PHASE (TestPins).
 using System;
@@ -54,7 +55,7 @@ public sealed class Playthrough
     private readonly List<object> steps = new();
     private int shotIndex = 0;
     private readonly double started = Time.GetTicksMsec() / 1000.0;
-    private static readonly string[] settingKeys = { "reduceMenuMotion", "hideKeyboardGuide", "disableRaceRobotCollisions", "disableRaceSteeringAssist", "disableRaceBrakingAssist", ShadowQualitySetting.key, "raceSoundMuted" };
+    private static readonly string[] settingKeys = { "reduceMenuMotion", "hideKeyboardGuide", "disableRaceRobotCollisions", "disableRaceSteeringAssist", "disableRaceBrakingAssist", ShadowQualitySetting.key, GraphicsDetailSetting.key, "raceSoundMuted" };
     private readonly object[] savedSettings = new object[settingKeys.Length];
     private bool keepActive = true;
 

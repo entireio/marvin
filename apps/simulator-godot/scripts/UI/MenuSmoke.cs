@@ -1,9 +1,10 @@
 // The main-menu check of App.swift's tick (smoke branch, menu frame 20) and DrivingAssistSmoke.swift
 // (AppController extensions). `--menu-smoke-test DIR` runs it alone; `--smoke-test DIR` runs it before the sandbox.
 // Same captures as macOS (main-menu.png, menu-b/r/w/m.png, driving-assist-settings.png) plus Godot-only checks:
-// real Godot input through the GUI (hover, click, portrait drag, character keys), the Shadow quality row (a Godot-only
-// setting), main-menu-window.png (the window as drawn on screen), driving-assist-settings-900x550.png and
-// menu-smoke.json. The settings screens show seven rows where macOS shows six (the Shadow quality row before Back).
+// real Godot input through the GUI (hover, click, portrait drag, character keys), the Shadow quality and Graphics detail
+// rows (Godot-only settings), main-menu-window.png (the window as drawn on screen), driving-assist-settings-900x550.png
+// and menu-smoke.json. The settings screens show eight rows where macOS shows six (Shadow quality and Graphics detail
+// before Back).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,13 +30,14 @@ public partial class AppController
     /// App.swift tick at menu frame 20 (the menu part of the smoke branch): sets menuSmokePassed and ends in the
     /// sandbox (mainMenu.activate()). PORT: asynchronous, because the Godot-only GUI input checks need frames; the
     /// timer is stopped meanwhile (on macOS the whole block runs inside one tick). The menu settings are at their
-    /// defaults (all On and Shadow quality Fast, as in the Mac captures) during the check and restored afterwards.
+    /// defaults (all On, Shadow quality Fast and Graphics detail Max, as in the Mac captures) during the check and restored
+    /// afterwards.
     /// </summary>
     public async Task checkMainMenu(string at, SceneTree tree)
     {
         var directory = at;
         FileManager.@default.createDirectory(directory, withIntermediateDirectories: true);
-        var settingKeys = new[] { "reduceMenuMotion", "hideKeyboardGuide", "disableRaceRobotCollisions", "disableRaceSteeringAssist", "disableRaceBrakingAssist", ShadowQualitySetting.key };
+        var settingKeys = new[] { "reduceMenuMotion", "hideKeyboardGuide", "disableRaceRobotCollisions", "disableRaceSteeringAssist", "disableRaceBrakingAssist", ShadowQualitySetting.key, GraphicsDetailSetting.key };
         var savedSettings = settingKeys.Select(k => UserDefaults.standard.@object(k)).ToArray();
         foreach (var k in settingKeys) UserDefaults.standard.removeObject(k);
         try
@@ -127,7 +129,7 @@ public partial class AppController
                 await frame(tree);
                 godotInput["clickActivates"] = mainMenu.settings;
                 mainMenu.layoutSubtreeIfNeeded(); await frame(tree);
-                var backAt = menuButtons[6].GetGlobalRect().GetCenter(); // Back: the seventh settings row on Godot
+                var backAt = menuButtons[7].GetGlobalRect().GetCenter(); // Back: the eighth settings row on Godot
                 Move(backAt, Godot.Vector2.Zero, 0); Button(backAt, true); Button(backAt, false);
                 await frame(tree);
                 godotInput["clickBack"] = !mainMenu.settings && mainMenu.selection == 2;
@@ -172,11 +174,15 @@ public partial class AppController
             try { shadowQualityPassed = checkShadowQualitySetting(); }
             catch (Exception e) { GD.PushError(e.ToString()); shadowQualityPassed = false; }
             menuSmokePassed = shadowQualityPassed && menuSmokePassed;
+            bool graphicsDetailPassed;
+            try { graphicsDetailPassed = await checkGraphicsDetailSetting(tree); }
+            catch (Exception e) { GD.PushError(e.ToString()); graphicsDetailPassed = false; }
+            menuSmokePassed = graphicsDetailPassed && menuSmokePassed;
             bool assistPassed;
             try { assistPassed = checkDrivingAssistSettings(at: directory); }
             catch (Exception e) { GD.PushError(e.ToString()); assistPassed = false; }
             menuSmokePassed = assistPassed && menuSmokePassed;
-            mainMenu.selection = 6; mainMenu.activate(); // Back (PORT: the sixth row on macOS)
+            mainMenu.selection = 7; mainMenu.activate(); // Back (PORT: the sixth row on macOS)
             menuSmokePassed = menuSmokePassed && !mainMenu.settings;
             mainMenu.selection = 0; mainMenu.activate();
             menuSmokePassed = menuSmokePassed && inSandbox && mainMenu.isHidden && !hud.isHidden;
@@ -184,7 +190,7 @@ public partial class AppController
             {
                 ["menuPassed"] = menuSmokePassed, ["dragPassed"] = dragPassed, ["firstResponderPassed"] = responderPassed,
                 ["keyboardPassed"] = keyboardPassed, ["drivingAssistPassed"] = assistPassed, ["shortcutsPassed"] = shortcutsPassed,
-                ["godotInput"] = godotInput, ["shadowQualityPassed"] = shadowQualityPassed,
+                ["godotInput"] = godotInput, ["shadowQualityPassed"] = shadowQualityPassed, ["graphicsDetailPassed"] = graphicsDetailPassed,
             };
             System.IO.File.WriteAllText(URL.fileURLWithPath(directory).appendingPathComponent("menu-smoke.json").path, JSONSerialization.prettyPrintedSortedKeys(report));
         }
@@ -203,7 +209,7 @@ public partial class AppController
     /// overlay's Auto Layout constraints (installContentOverlay), so the 900x550 frame reverts to the 1280x792 content
     /// size before the button check and driving-assist-settings.png. Godot-only: driving-assist-settings-900x550.png
     /// lays the settings out at the intended 900x550 frame (layout() without the constraint pass) and checks that all
-    /// buttons fit there too. PORT: seven buttons (the Shadow quality row), six on macOS.
+    /// buttons fit there too. PORT: eight buttons (the Shadow quality and Graphics detail rows), six on macOS.
     /// </summary>
     public bool checkDrivingAssistSettings(string at)
     {
@@ -229,7 +235,7 @@ public partial class AppController
             mainMenu.frame = new NSRect(0, 0, 900, 550);
             mainMenu.layoutSubtreeIfNeeded();
             var buttons = mainMenu.subviews.OfType<NSButton>().Where(b => !b.isHidden).ToList();
-            passed = passed && buttons.Count == 7 && buttons.All(b => mainMenu.bounds.contains(b.frame));
+            passed = passed && buttons.Count == 8 && buttons.All(b => mainMenu.bounds.contains(b.frame));
             if (mainMenu.bitmapImageRepForCachingDisplay(mainMenu.bounds) is NSBitmapImageRep bitmap)
             {
                 mainMenu.cacheDisplay(mainMenu.bounds, bitmap);
@@ -240,7 +246,7 @@ public partial class AppController
             mainMenu.frame = new NSRect(0, 0, 900, 550);
             mainMenu.layout();
             buttons = mainMenu.subviews.OfType<NSButton>().Where(b => !b.isHidden).ToList();
-            passed = passed && buttons.Count == 7 && buttons.All(b => mainMenu.bounds.contains(b.frame));
+            passed = passed && buttons.Count == 8 && buttons.All(b => mainMenu.bounds.contains(b.frame));
             if (mainMenu.bitmapImageRepForCachingDisplay(mainMenu.bounds) is NSBitmapImageRep small)
             {
                 mainMenu.cacheDisplay(mainMenu.bounds, small);
@@ -291,6 +297,52 @@ public partial class AppController
         {
             if (saved != null) UserDefaults.standard.set(saved, ShadowQualitySetting.key);
             else UserDefaults.standard.removeObject(ShadowQualitySetting.key);
+            mainMenu.selection = selection; mainMenu.refresh();
+        }
+    }
+
+    /// <summary>
+    /// Godot-only (the macOS Settings screen has no such row): the Graphics detail row reads Max by default and cycles
+    /// High, Medium, Low and back to Max, storing each choice where a fresh settings view reads it and applying it at
+    /// once (the main window's view and the portrait take the level's render scale; frames are drawn at each level).
+    /// Unless MARVIN_GRAPHICS_DETAIL chooses the level, it ends at Max, the level every game mode runs with; the stored
+    /// choice is restored afterwards without applying it.
+    /// </summary>
+    public async Task<bool> checkGraphicsDetailSetting(SceneTree tree)
+    {
+        var saved = UserDefaults.standard.@object(GraphicsDetailSetting.key);
+        var selection = mainMenu.selection;
+        bool forced = GraphicsDetailSetting.environment != null;
+        try
+        {
+            UserDefaults.standard.removeObject(GraphicsDetailSetting.key);
+            mainMenu.refresh();
+            var row = mainMenu.subviews.OfType<NSButton>().ToList()[6];
+            var level = GraphicsDetailSetting.Level.Max;
+            var passed = mainMenu.graphicsDetail == level && row.title == "Graphics detail: Max" && GraphicsDetailSetting.applied(level);
+            foreach (var expected in new[] { GraphicsDetailSetting.Level.High, GraphicsDetailSetting.Level.Medium, GraphicsDetailSetting.Level.Low, GraphicsDetailSetting.Level.Max })
+            {
+                mainMenu.selection = 6; mainMenu.activate();
+                // The frames after the switch (printed, not reported: timings differ between runs): a live switch must not
+                // hitch (docs/performance.md, "Graphics detail").
+                var intervals = new List<double>();
+                ulong last = Godot.Time.GetTicksUsec();
+                for (int i = 0; i < 12; i++) { await frame(tree); ulong t = Godot.Time.GetTicksUsec(); intervals.Add((t - last) / 1000.0); last = t; }
+                print($"Graphics detail switch to {expected}: the next 12 frames took {string.Join(" ", intervals.Select(v => Swift.format("%.1f", v)))} ms");
+                double scale = SceneKitCalibration.RenderScale;
+                bool scaled = forced || (mainMenu.portrait.GodotViewport.Scaling3DScale == (float)scale && view.GodotViewport.Scaling3DScale == (float)scale);
+                passed = passed && mainMenu.graphicsDetail == expected && UserDefaults.standard.@string(GraphicsDetailSetting.key) == expected.ToString()
+                    && row.title == $"Graphics detail: {expected}" && GraphicsDetailSetting.applied(expected) && scaled;
+                var reopened = new MainMenuView(NSRect.zero);
+                passed = passed && reopened.graphicsDetail == expected;
+                reopened.Free();
+            }
+            return passed;
+        }
+        finally
+        {
+            if (saved != null) UserDefaults.standard.set(saved, GraphicsDetailSetting.key);
+            else UserDefaults.standard.removeObject(GraphicsDetailSetting.key);
             mainMenu.selection = selection; mainMenu.refresh();
         }
     }

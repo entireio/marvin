@@ -57,8 +57,10 @@ public partial class MainMenuView : NSView
     public Action onDirtTrack;
     /// PORT: Godot-only, called after the Shadow quality row changed the stored choice (ShadowQualitySetting).
     public Action onShadowQuality;
-    // PORT: seven settings rows on Godot (the Shadow quality row before Back); macOS has six.
-    private int optionCount => settings ? 7 : 4;
+    /// PORT: Godot-only, called after the Graphics detail row changed the stored choice (GraphicsDetailSetting).
+    public Action onGraphicsDetail;
+    // PORT: eight settings rows on Godot (the Shadow quality and Graphics detail rows before Back); macOS has six.
+    private int optionCount => settings ? 8 : 4;
     public bool settings = false;
     public int selection = 0;
     public bool idleAnimation
@@ -93,6 +95,13 @@ public partial class MainMenuView : NSView
     {
         get => ShadowQualitySetting.exact;
         set => ShadowQualitySetting.exact = value;
+    }
+    /// PORT: Godot-only setting, the macOS Settings screen has no such row: Max (the default, full resolution), High,
+    /// Medium or Low, stored with the other settings (GraphicsDetailSetting).
+    public GraphicsDetailSetting.Level graphicsDetail
+    {
+        get => GraphicsDetailSetting.stored;
+        set => GraphicsDetailSetting.stored = value;
     }
     private double clock = 0.0, nextLook = 1.8, nextBlink = 2.7, blinkStart = -10.0;
     private double yaw = -0.30, pitch = 0.0, targetYaw = -0.30, targetPitch = 0.0;
@@ -141,7 +150,7 @@ public partial class MainMenuView : NSView
         subtitle.font = NSFont.systemFont(18, NSFont.Weight.regular);
         hint.font = NSFont.systemFont(12);
         foreach (var label in new[] { title, subtitle, hint }) { label.textColor = color(0x304e44); addSubview(label); }
-        foreach (var index in Enumerable.Range(0, 7))
+        foreach (var index in Enumerable.Range(0, 8))
         {
             var button = new MenuButton("", this, activateButton);
             button.tag = index; button.isBordered = false; button.wantsLayer = true;
@@ -159,17 +168,19 @@ public partial class MainMenuView : NSView
         var top = bounds.height / 2 + (settings ? 240 : 205);
         title.frame = new NSRect(split, top - 72, width, 76);
         subtitle.frame = new NSRect(split + 3, top - 108, width, 30);
-        // PORT: the seventh settings row (Shadow quality) goes below the Mac's six at the same spacing, the hint below it.
-        // Where that would reach the bottom edge (the 900 x 550 QA frame, the 900 x 612 content of the smallest window),
-        // the gap under the subtitle first narrows to the main menu's, then the rows move closer together.
+        // PORT: the seventh and eighth settings rows (Shadow quality, Graphics detail) go below the Mac's six at the same
+        // spacing, the hint below them. Where that would reach the bottom edge (the 900 x 550 QA frame, the 900 x 612
+        // content of the smallest window), the gap under the subtitle first narrows to the main menu's, then the rows move
+        // closer together.
         CGFloat first = 198, spacing = settings ? 54 : 72, height = settings ? 46 : 58;
+        int last = optionCount - 1;
         if (settings)
         {
-            var excess = 40 - (top - first - 6 * spacing);
+            var excess = 40 - (top - first - last * spacing);
             if (excess > 0)
             {
                 first -= min(12.0, excess);
-                spacing = min(spacing, max(30.0, Math.Floor((top - first - 40) / 6)));
+                spacing = min(spacing, max(30.0, Math.Floor((top - first - 40) / last)));
                 height = spacing - 8;
             }
         }
@@ -178,13 +189,13 @@ public partial class MainMenuView : NSView
             var button = buttons[i];
             button.frame = new NSRect(split, top - first - (CGFloat)i * spacing, width, height);
         }
-        hint.frame = new NSRect(split + 3, max(4, settings ? top - first - 6 * spacing - 36 : top - 458), width, 24);
+        hint.frame = new NSRect(split + 3, max(4, settings ? top - first - last * spacing - 36 : top - 458), width, 24);
     }
     public void refresh()
     {
         title.stringValue = settings ? "Settings" : "Marvin";
         subtitle.stringValue = settings ? "Race assists still need your input." : "Beep, boop... just some fun.";
-        var names = settings ? new[] { $"Idle animation: {(idleAnimation ? "On" : "Off")}", $"Keyboard guide: {(showGuide ? "On" : "Off")}", $"Robot collisions: {(raceRobotCollisions ? "On" : "Off")}", $"Steering assist: {(steeringAssist ? "On" : "Off")}", $"Braking assist: {(brakingAssist ? "On" : "Off")}", $"Shadow quality: {(exactShadows ? "Exact" : "Fast")}", "Back" } : new[] { "Sandbox", "Dirt Track", "Settings", "Quit" };
+        var names = settings ? new[] { $"Idle animation: {(idleAnimation ? "On" : "Off")}", $"Keyboard guide: {(showGuide ? "On" : "Off")}", $"Robot collisions: {(raceRobotCollisions ? "On" : "Off")}", $"Steering assist: {(steeringAssist ? "On" : "Off")}", $"Braking assist: {(brakingAssist ? "On" : "Off")}", $"Shadow quality: {(exactShadows ? "Exact" : "Fast")}", $"Graphics detail: {graphicsDetail}", "Back" } : new[] { "Sandbox", "Dirt Track", "Settings", "Quit" };
         for (int i = 0; i < buttons.Count; i++)
         {
             var button = buttons[i];
@@ -197,6 +208,7 @@ public partial class MainMenuView : NSView
                 [3] = "Dirt Track only. Gently smooths steering corrections while preserving your chosen direction. You remain in control.",
                 [4] = "Dirt Track only. Slows before tight corners and preserves turning grip. Space always applies full braking.",
                 [5] = "Exact draws soft shadows, as the macOS game does. Fast draws hard shadows for a higher frame rate. Applies immediately.",
+                [6] = "Max draws everything as the macOS game does. High leaves out the ambient occlusion and simplifies small details; Medium and Low also draw the 3D view at a lower resolution, upscaled. Lower levels give a higher frame rate. Applies immediately.",
             };
             button.toolTip = settings ? tips.GetValueOrDefault(i) : null;
             button.setAccessibilityHelp(button.toolTip);
@@ -218,6 +230,7 @@ public partial class MainMenuView : NSView
                 case 3: steeringAssist = !steeringAssist; break;
                 case 4: brakingAssist = !brakingAssist; break;
                 case 5: exactShadows = !exactShadows; onShadowQuality?.Invoke(); break;
+                case 6: graphicsDetail = GraphicsDetailSetting.Next(graphicsDetail); onGraphicsDetail?.Invoke(); break;
                 default: settings = false; selection = 2; break;
             }
         }

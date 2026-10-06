@@ -220,6 +220,8 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         mainMenu.onDirtTrack = () => loadDirtTrack();
         // PORT: Godot-only Settings row (ShadowQualitySetting): the new choice applies at once, also to the race world built.
         mainMenu.onShadowQuality = () => ShadowQualitySetting.apply(cachedDirtWorld);
+        // PORT: Godot-only Settings row (GraphicsDetailSetting): the new level applies at once.
+        mainMenu.onGraphicsDetail = () => GraphicsDetailSetting.apply(GraphicsDetailSetting.stored);
         makeMenu();
         window.center(); window.makeKeyAndOrderFront(null);
         window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true);
