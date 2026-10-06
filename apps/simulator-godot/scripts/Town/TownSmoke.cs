@@ -345,7 +345,9 @@ public partial class AppController
     public void tickTownBenchmark(double now, double dt)
     {
         if (!(townBenchmarkStart is double start && townBenchmarkDirectory is URL directory)) { return; }
-        var elapsed = now - start;
+        // Godot-only: under the fixed clock the elapsed time is the tick count exactly ((start + t) - start can miss t by
+        // an ulp, which moved the frozen frame by one tick in some runs).
+        var elapsed = townBenchmarkFixedStep ? townBenchmarkTicks / 60.0 : now - start;
         // PORT: benchmarkGPUCapture.update(elapsed:device:directory:) (Xcode GPU trace) is not ported.
         if (elapsed < 3) { townMeter.reset(); townBenchmarkCPU = new(); townBenchmarkTimeline = new(); }
         var begin = ProcessInfo.processInfo.systemUptime;
