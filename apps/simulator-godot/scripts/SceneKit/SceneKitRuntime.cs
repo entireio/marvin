@@ -45,6 +45,7 @@ public partial class SceneKitRuntime : Node
         RenderingServer.DirectionalShadowAtlasSetSize(SceneKitCalibration.DirectionalShadowAtlas, true);
         RenderingServer.DirectionalSoftShadowFilterSetQuality((RenderingServer.ShadowQuality)SceneKitCalibration.ShadowFilterQuality);
         RenderingServer.PositionalSoftShadowFilterSetQuality((RenderingServer.ShadowQuality)SceneKitCalibration.ShadowFilterQuality);
+        if (!SceneKitCalibration.GlowBicubicUpscale) RenderingServer.EnvironmentGlowSetUseBicubicUpscale(false);
         RenderingServer.FramePreDraw += Flush;
         RenderingServer.FramePostDraw += PostDraw;
         if (Engine.GetMainLoop() is SceneTree tree)
@@ -173,7 +174,59 @@ public partial class SceneKitRuntime : Node
         if (OnMainThread) { dirtyTextures.Add(t); return; }
         lock (parkGate) { parkedTextures.Add(t); anyParked = true; }
     }
-    internal static void SceneStateDirty() => sceneStateDirty = true;
+    internal static void SceneStateDirty() { sceneStateDirty = true; System.Threading.Interlocked.Increment(ref lightEpoch); }
+
+    // ---- Lighting features of a scene's shaders (Godot-only, performance; the images are those of the full shaders).
+    // The composer's light() carries SceneKit's deferred shadows and the LDR clamp (both behind uniform branches) and is
+    // inlined by Godot into its omni and spot light loops too; a .constant material runs Godot's light loop only for
+    // deferred shadows. Scenes that never use a feature get shaders without its code (ShaderComposer.VariantFlags
+    // Forward, DirectionalOnly): the race and town show no deferred shadows, are drawn HDR and have no omni or spot
+    // lights. A scene's features only grow: they start from its lights when its first node is built, and a view that
+    // syncs a scene with a feature its shaders lack (an LDR camera, a deferred or positional light added later) adds the
+    // feature and rebuilds the scene's nodes before that view draws (ObserveShading). 1080p frozen views: town -2.0 ms, race start -1.8 ms GPU per frame with the composer's
+    // other changes (docs/performance.md, "Shading and post").
+    internal const int ShadingDeferred = 1, ShadingLdr = 2, ShadingPositional = 4;
+    /// <summary>Incremented by every light or scene state change (SceneStateDirty), so scenes rescan their lights.</summary>
+    private static int lightEpoch;
+    /// <summary>A scene gained a feature in this flush: its nodes were marked and are rebuilt before drawing.</summary>
+    private static bool shadingGrew;
+    private static int ScanLights(SCNScene scene)
+    {
+        int features = 0;
+        scene.rootNode.enumerateHierarchy((n, _) =>
+        {
+            if (n.light is not SCNLight l) return;
+            if (l.type is SCNLight.LightType.omni or SCNLight.LightType.spot) features |= ShadingPositional;
+            else if (l.type == SCNLight.LightType.directional && l.castsShadow && l.shadowMode == SCNShadowMode.deferred) features |= ShadingDeferred;
+        });
+        return features;
+    }
+    /// <summary>The shader variant flags for nodes of <paramref name="scene"/> (none outside every scene: full shaders).</summary>
+    internal static ShaderComposer.VariantFlags ShadingVariant(SCNScene scene)
+    {
+        if (scene == null) return ShaderComposer.VariantFlags.None;
+        if (scene.shadingFeatures < 0) { scene.shadingScanEpoch = lightEpoch; scene.shadingFeatures = ScanLights(scene); }
+        var flags = ShaderComposer.VariantFlags.None;
+        if ((scene.shadingFeatures & (ShadingDeferred | ShadingLdr)) == 0) flags |= ShaderComposer.VariantFlags.Forward;
+        if ((scene.shadingFeatures & ShadingPositional) == 0) flags |= ShaderComposer.VariantFlags.DirectionalOnly;
+        return flags;
+    }
+    /// <summary>A view is about to draw <paramref name="scene"/> (ldr: its camera renders without HDR): adds the features the
+    /// scene's shaders lack and marks its nodes for rebuilding (Flush and RenderIsolated flush them before drawing).</summary>
+    internal static void ObserveShading(SCNScene scene, bool ldr)
+    {
+        if (scene == null) return;
+        int observed = ldr ? ShadingLdr : 0;
+        if (scene.shadingScanEpoch != lightEpoch || scene.shadingFeatures < 0) { scene.shadingScanEpoch = lightEpoch; observed |= ScanLights(scene); }
+        if (scene.shadingFeatures < 0) { scene.shadingFeatures = observed; return; }
+        if ((observed & ~scene.shadingFeatures) == 0) return;
+        var before = ShadingVariant(scene);
+        scene.shadingFeatures |= observed;
+        // Only a change of the variant needs new shaders (the menu's LDR camera adds nothing to its deferred light's).
+        if (ShadingVariant(scene) == before) return;
+        scene.rootNode.MarkSubtree(SCNNode.DirtyGeometry);
+        shadingGrew = true;
+    }
     private static bool activeLdr;
     /// <summary>The view being synced renders without HDR (SCNCamera.wantsHDR false).</summary>
     internal static void SetActiveLdr(bool ldr) { if (activeLdr != ldr) { activeLdr = ldr; sceneStateDirty = true; } }
@@ -244,6 +297,8 @@ public partial class SceneKitRuntime : Node
             constrainedBuffer.Clear();
             FrameProfile.Add(FrameProfile.Constraints, t); t = FrameProfile.Now;
             foreach (var view in LiveViews()) view.SyncCamera();
+            // A view's scene needs a lighting feature its shaders lack (ObserveShading): rebuild its nodes before drawing.
+            if (shadingGrew) { shadingGrew = false; FlushDirty(); }
             FrameProfile.Add(FrameProfile.Cameras, t); t = FrameProfile.Now;
             if (ActiveScene != null && (sceneStateDirty || ActiveScene != uniformsScene || ActiveScene.stateVersion != uniformsSceneVersion))
                 UpdateSceneUniforms(ActiveScene);
@@ -564,6 +619,8 @@ public partial class SceneKitRuntime : Node
                 // from the race camera only) changes which nodes are visible: apply that before drawing, not at the
                 // next frame (VisualRegressionSmoke's first track close-up after its QA scene showed the proxies white).
                 if (masksDirty) { ApplyMasks(scene); completeFlush = true; try { FlushDirty(); } finally { completeFlush = false; } }
+                // The renderer's scene needs a lighting feature its shaders lack (an LDR camera, ObserveShading): rebuild first.
+                if (shadingGrew) { shadingGrew = false; completeFlush = true; try { FlushDirty(); } finally { completeFlush = false; } }
                 if (ActiveScene != null) UpdateSceneUniforms(ActiveScene);
                 // Godot defers Node3D transform notifications to the end of the frame; apply them now.
                 if (instance != null && instance.IsInsideTree()) ForceTransforms(instance);
@@ -589,6 +646,8 @@ public partial class SceneKitRuntime : Node
     // ---- Directional shadows fitted per camera
     private static readonly HashSet<SCNNode> shadowLights = new();
     private static readonly Projection[] shadowBoxes = new Projection[2];
+    /// <summary>The lights whose Godot specular amount carries their box index (FitShadows).</summary>
+    private static readonly List<SCNNode> boxLights = new();
     private static Vector4 shadowSlope;
     internal static void RegisterShadowLight(SCNNode node, bool on) { if (on) shadowLights.Add(node); else shadowLights.Remove(node); }
 
@@ -680,12 +739,22 @@ public partial class SceneKitRuntime : Node
         var boxes = new Projection[2];
         var slopes = new double[2];
         int boxCount = 0;
+        // The composer's light() recognises a box's light by its Godot specular amount: 2 + the box index (1 for every
+        // other light; SCNLight.Sync sets 1). Lights that carried an index and no longer own a box (another scene's suns
+        // when this view is synced last) get 1 again, so a view never clips a light by a box that is not its own (as when
+        // the boxes were matched by direction).
+        var owners = new List<SCNNode>(2);
         foreach (var n in lights)
             if (!n.light.automaticallyAdjustsShadowProjection && boxCount < boxes.Length)
             {
                 slopes[boxCount] = SceneKitCalibration.ShadowSlopeBiasTexels * n.light.SceneKitShadowTexel;
+                n.SetShadowBoxId(2 + boxCount);
+                owners.Add(n);
                 boxes[boxCount++] = n.light.ShadowBox(n.RenderWorld());
             }
+        foreach (var n in boxLights)
+            if (!owners.Contains(n) && GodotObject.IsInstanceValid(n)) n.SetShadowBoxId(1);
+        boxLights.Clear(); boxLights.AddRange(owners);
         for (int i = 0; i < boxes.Length; i++)
         {
             if (shadowBoxes[i] == boxes[i]) continue;

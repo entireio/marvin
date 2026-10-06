@@ -23,6 +23,9 @@ public sealed class SCNScene : IPropertyOwner
     internal readonly World3D World = new();
     internal SubViewport host;
     internal int stateVersion;
+    /// <summary>Lighting features this scene's shaders support (SceneKitRuntime.ShadingVariant; -1: not determined yet) and
+    /// the light epoch they were last scanned at.</summary>
+    internal int shadingFeatures = -1, shadingScanEpoch = -1;
 
     private bool attached;
     public SCNScene()

@@ -312,6 +312,11 @@ public partial class SCNNode : Node3D
         if (scene != null && deferredFlags != 0) { int flags = deferredFlags; deferredFlags = 0; SceneKitRuntime.NodeDirty(this, flags); }
         if (_light != null) SceneKitRuntime.SceneStateDirty();
         if (scene != null) _geometry?.SceneChanged();
+        // Another scene may need other shaders (SceneKitRuntime.ShadingVariant): rebuild the node's material variants. Off the
+        // main thread (a subtree built by a builder thread), or while the scene's features are not determined yet (they are
+        // read when its first node is built, after the code building it ran), the rebuild is requested anyway: it is idempotent.
+        if (scene != null && _geometry != null && (!SceneKitRuntime.OnMainThread || scene.shadingFeatures < 0 || SceneKitRuntime.ShadingVariant(scene) != builtShading))
+            SceneKitRuntime.NodeDirty(this, DirtyGeometry);
         foreach (var c in _children) c.SetSceneOwner(scene);
     }
     public SCNNode childNode(string withName, bool recursively)
@@ -486,6 +491,8 @@ public partial class SCNNode : Node3D
     /// are never added to the scene (their particles are drawn as batches) and pushed hundreds of transforms per frame.</summary>
     private int deferredFlags;
     private readonly List<MeshInstance3D> meshes = new();
+    /// <summary>The shading variant flags of the scene the meshes were last built for (SceneKitRuntime.ShadingVariant).</summary>
+    private ShaderComposer.VariantFlags builtShading;
     /// <summary>Shadow-only instance of a geometry with Godot mesh LODs (SCNGeometry.godotAutomaticLevelsOfDetail): it casts
     /// the node's shadows from the levels of detail while meshes[0] draws the full mesh for the camera.</summary>
     private MeshInstance3D shadowTwin;
@@ -576,6 +583,8 @@ public partial class SCNNode : Node3D
         }
         bool transparent = false, ssaoSky = false;
         var levelMeshes = new ArrayMesh[levels.Count];
+        // The lighting features the scene's shaders need (SceneKitRuntime.ShadingVariant): full shaders outside every scene.
+        builtShading = SceneKitRuntime.ShadingVariant(sceneOwner);
         for (int i = 0; i < levels.Count; i++)
         {
             var (g, from, to) = levels[i];
@@ -594,7 +603,7 @@ public partial class SCNNode : Node3D
             for (int s = 0; s < surfaces; s++)
             {
                 var material = mats.Count == 0 ? SceneKitRuntime.DefaultMaterial : mats[g.surfaceElements[s] % mats.Count];
-                var flags = geometryFlags;
+                var flags = geometryFlags | builtShading;
                 if (!material.readsFromDepthBuffer && _renderingOrder < 0) flags |= ShaderComposer.VariantFlags.Background;
                 mi.SetSurfaceOverrideMaterial(s, material.gpu.Variant(g, _renderingOrder, flags));
                 transparent |= material.gpu.IsTransparentVariant(g, _renderingOrder, flags);
@@ -734,9 +743,18 @@ public partial class SCNNode : Node3D
         appliedVisuals = state;
     }
 
+    /// <summary>The Godot light's specular amount: 2 + the index of the fixed shadow box this light owns, else 1 (the
+    /// composer's light() recognises a box's light by it; SceneKitRuntime.FitShadows).</summary>
+    private float shadowBoxId = 1;
+    internal void SetShadowBoxId(float id)
+    {
+        shadowBoxId = id;
+        if (godotLight != null && godotLight.LightSpecular != id) godotLight.LightSpecular = id;
+    }
     private void SyncLight()
     {
         var updated = _light?.Sync(godotLight, SceneKitRuntime.AmbientIntensityFor(sceneOwner));
+        if (updated != null && updated.LightSpecular != shadowBoxId) updated.LightSpecular = shadowBoxId;
         SceneKitRuntime.RegisterShadowLight(this, updated is DirectionalLight3D && _light.castsShadow);
         if (updated != godotLight)
         {
