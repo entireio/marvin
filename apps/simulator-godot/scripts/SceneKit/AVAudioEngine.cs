@@ -829,6 +829,9 @@ public sealed class AVAudioEngine
     }
     /// <summary>reset(): clears every node's DSP state.</summary>
     public void reset() { lock (gate) foreach (var node in attached) node.ResetState(); }
+    /// <summary>Main thread, when Godot quits (SceneKitRuntime.Shutdown): every engine's render thread stops feeding its
+    /// Godot stream playback and ends (Godot-only; Core Audio stops with the process).</summary>
+    internal static void StopRenderThreads() => RealtimeOutput.QuitAll();
 
     public void enableManualRenderingMode(AVAudioEngineManualRenderingMode mode, AVAudioFormat format, AVAudioFrameCount maximumFrameCount)
     {
@@ -901,6 +904,21 @@ public sealed class AVAudioEngine
         // The headless Dummy driver mixes in bursts; nobody hears it, so it gets a 100 ms queue.
         private volatile int initialTarget = TargetQueued;
         private Thread thread;
+        private volatile bool quit;
+        private static readonly List<RealtimeOutput> running = new();
+        private static bool closed;
+        /// <summary>Ends every render thread (Godot quits): no call reaches a stream playback afterwards.</summary>
+        internal static void QuitAll()
+        {
+            RealtimeOutput[] outputs;
+            lock (running) { closed = true; outputs = running.ToArray(); running.Clear(); }
+            foreach (var o in outputs)
+            {
+                o.quit = true; o.wanted = false;
+                lock (o.engine.gate) o.playback = null; // waits for a render in progress
+                o.thread?.Join(TimeSpan.FromSeconds(2));
+            }
+        }
 
         public RealtimeOutput(AVAudioEngine engine) { this.engine = engine; }
 
@@ -920,6 +938,7 @@ public sealed class AVAudioEngine
             Play();
             if (thread == null)
             {
+                lock (running) { if (closed) return; running.Add(this); }
                 thread = new Thread(Loop) { IsBackground = true, Name = "AVAudioEngine render", Priority = ThreadPriority.AboveNormal };
                 thread.Start();
             }
@@ -957,7 +976,7 @@ public sealed class AVAudioEngine
             AudioStreamGeneratorPlayback watched = null;
             int target = initialTarget, seenSkips = 0;
             long settleAt = 0;
-            while (true)
+            while (!quit)
             {
                 var p = playback;
                 if (p == null) { Thread.Sleep(4); continue; }

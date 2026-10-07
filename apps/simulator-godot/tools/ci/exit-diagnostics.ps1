@@ -28,7 +28,7 @@ $sos = Join-Path $env:USERPROFILE '.dotnet\sos\sos.dll'
 $results = [System.Collections.Generic.List[object]]::new()
 
 function Exit-Text([long]$code) {
-    $c = $code -band 0xFFFFFFFF
+    $c = $code -band 4294967295 # (0xFFFFFFFF is the Int32 -1 in PowerShell)
     if ($c -ge 0xC0000000) { return ('0x{0:X8}' -f $c) }
     return "$code"
 }
@@ -56,9 +56,9 @@ function Add-Result([string]$build, [string]$mode, [string]$variant, $code, [str
 # cdb commands: report the first fatal event, then quit.
 $sosLoad = if (Test-Path $sos) { ".load $sos" } else { '.echo (SOS not installed)' }
 $report = ".echo ===== EVENT; .lastevent; .exr -1; r; .echo ===== FAULTING THREAD; kn 40; " +
-    ".echo ===== PAGE HEAP RECORD (rbp, rcx, rax: the block the access went to); !heap -p -a @rbp; !heap -p -a @rcx; !heap -p -a @rax; " +
-    ".echo ===== ALL THREADS; ~*kn 30; $sosLoad; .echo ===== MANAGED THREADS; !threads; .echo ===== MANAGED STACKS; ~*e !clrstack; " +
-    ".echo ===== MODULES; lm; q"
+    ".echo ===== PAGE HEAP RECORD (rbp, rcx, rax: the block the access went to); !ext.heap -p -a @rbp; !ext.heap -p -a @rcx; !ext.heap -p -a @rax; " +
+    ".echo ===== ALL THREADS; ~*kn 30; .echo ===== MODULES; lm; $sosLoad; .echo ===== MANAGED THREADS; !threads; " +
+    ".echo ===== MANAGED STACKS; !clrstack -all; q"
 $commands = @(
     '.symfix C:\symcache',
     "sxe -c `"$report`" c0000374",

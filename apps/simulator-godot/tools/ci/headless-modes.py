@@ -222,8 +222,10 @@ def main():
             entry["failure"] = "timed out without its reports"
         elif is_crash(code) and not missing_reports and not args.update_reference:
             # Every report written, then a Windows exception status: the mode finished and the process crashed while
-            # quitting. A finding (listed below), not a failure of the mode.
+            # quitting (as every exported build did until the facade freed its detached nodes and SSAO resources before
+            # Godot shuts down, PORTING.md "Release builds and Windows"). A player sees that at every quit: a failure.
             entry["crashAtExit"] = exit_text(code)
+            entry["failure"] = f"crashed while quitting ({exit_text(code)}) after writing its reports"
         elif not timed_out and code != expected:
             entry["failure"] = f"exit code {code}, {expected} on macOS"
         elif missing_reports and not mac.get("missing"):
@@ -255,12 +257,11 @@ def main():
     failures = [r for r in results if r.get("failure")]
     crashes = [r for r in results if r.get("crashAtExit")]
     md.append("")
-    md.append("All modes ran as on macOS." if not failures and not crashes else
-              "All modes ran and wrote their reports." if not failures else
+    md.append("All modes ran as on macOS and quit cleanly." if not failures else
               "**FAIL**: " + "; ".join(f"{r['mode']}: {r['failure']}" for r in failures))
     if crashes:
         md.append("")
-        md.append(f"**FINDING: crash at exit.** {len(crashes)} of {len(results)} modes wrote every report and then ended with a "
+        md.append(f"**Crash at exit.** {len(crashes)} of {len(results)} modes wrote every report and then ended with a "
                   "Windows exception status while quitting: " + ", ".join(f"{r['mode']} {r['crashAtExit']}" for r in crashes) + ".")
     md.extend(details)
     append_summary("\n".join(md) + "\n")

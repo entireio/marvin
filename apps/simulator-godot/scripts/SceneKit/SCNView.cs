@@ -227,6 +227,7 @@ public partial class SCNView : SubViewportContainer, SCNSceneRenderer
         defaultAnisotropy = vp.AnisotropicFilteringLevel;
         ApplyRenderScaling();
         SceneKitRuntime.views.Add(new WeakReference<SCNView>(this));
+        SceneKitRuntime.TrackNode(this);
     }
     /// <summary>Device pixels per point: the window's content scale (1 on a 1x screen).</summary>
     private double BackingScale => IsInsideTree() && GetWindow() is Window w && w.ContentScaleFactor > 0 ? w.ContentScaleFactor : 1;

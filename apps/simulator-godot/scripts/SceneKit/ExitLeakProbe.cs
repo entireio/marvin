@@ -9,7 +9,8 @@ namespace Marvin.SceneKit;
 /// the instances that show it) before the leaked instance, and in builds without DEBUG_ENABLED (the release export
 /// templates) the instance's destructor then erases itself from that freed Dependency (DependencyTracker::clear), a use
 /// after free: 0xC0000374 or 0xC0000005 on Windows, SIGBUS under MallocScribble on macOS. Debug templates and the editor
-/// unlink the instances in ~Dependency and are unaffected.
+/// unlink the instances in ~Dependency and are unaffected. The facade frees every node it made outside the scene tree
+/// before Godot shuts down (SceneKitRuntime.Shutdown); this probe's node is a plain Godot node the facade does not track.
 ///   MarvinSimulator --headless --exit-leak-probe DIR                       leaks the instance (the fault in a release build)
 ///   MARVIN_EXIT_PROBE=free MarvinSimulator --headless --exit-leak-probe DIR   frees it first (exits 0)
 /// Writes DIR/exit-leak-probe.json ({"freed": bool}) before quitting.

@@ -44,6 +44,7 @@ public partial class NSView : Control, NSResponder
         _frame = frame;
         Size = new Vector2((float)frame.width, (float)frame.height);
         Position = new Vector2((float)frame.minX, (float)frame.minY);
+        SceneKitRuntime.TrackNode(this); // freed when Godot quits if it is outside the window then (SceneKitRuntime.Shutdown)
     }
 
     // ---- Geometry

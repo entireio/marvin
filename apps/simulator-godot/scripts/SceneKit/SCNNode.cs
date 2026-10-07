@@ -51,7 +51,7 @@ public partial class SCNNode : Node3D
     /// <summary>Scene this node is attached to (set on the scene's root node and propagated).</summary>
     internal SCNScene sceneOwner;
 
-    public SCNNode() { SceneKitRuntime.EnsureStarted(); }
+    public SCNNode() { SceneKitRuntime.EnsureStarted(); SceneKitRuntime.TrackNode(this); }
     public SCNNode(SCNGeometry geometry) : this() { this.geometry = geometry; }
 
     // =====================================================================

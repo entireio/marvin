@@ -10,14 +10,16 @@ software adapter, Vulkan only a software implementation such as Mesa's lavapipe.
 driver does not start (Godot then falls back or quits) the script says why from the log and stops. Captures are
 compared with tools/ci/reference/godot-mac-captures/MODE/ (the same modes rendered by the editor runtime on a Mac with
 Metal, downscaled losslessly to keep them small: see REFERENCE_SCALE) as the mean |sRGB difference| /255, also per
-capture. Never fails the job (exit 0) unless --strict; the job summary says what ran and what did not.
+capture. A driver that does not render is not a failure (exit 0) unless --strict; the job summary says what ran and
+what did not. A mode that ends with a Windows exception status (a crash, also while quitting after its captures) is
+one: exit 1.
 Needs Pillow for the image statistics (pip install pillow).
 """
 import argparse, json, os, re, shutil, subprocess, sys, time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cilib import REFERENCE, ROOT, append_summary, exit_text, md_escape, read_text, write_json
+from cilib import REFERENCE, ROOT, append_summary, exit_text, is_crash, md_escape, read_text, write_json
 
 CAPTURES = REFERENCE / "godot-mac-captures"
 TOWN_PINS = {"MARVIN_GRID_SLOTS": "0,3,1,2", "MARVIN_TOWN_DAYLIGHT": "0.2125,4.18"}
@@ -176,9 +178,14 @@ def main():
             details.append("|---|---|")
             details += [f"| {p} | {d:.2f} |" if d is not None else f"| {p} | size differs |" for p, d in compared]
             details.append("\n</details>")
+    crashes = [r for r in results if is_crash(r["exit"])]
+    if crashes:
+        md.append("")
+        md.append("**FAIL**: " + ", ".join(f"{r['mode']} ended with {exit_text(r['exit'])}" for r in crashes)
+                  + (" after its captures (a crash while quitting)" if all(r["captures"] for r in crashes) else "") + ".")
     md.extend(details)
     append_summary("\n".join(md) + "\n")
-    return 1 if args.strict and not any_rendered else 0
+    return 1 if crashes or (args.strict and not any_rendered) else 0
 
 
 if __name__ == "__main__":

@@ -381,8 +381,18 @@ public class SCNGeometry : IPropertyOwner
             var key = g.SharedMeshKey(g.MaterialRuns(), g.NeedsTangents);
             if (key == null || keys.Add(key)) prepare.Add(g);
         }
-        System.Threading.Tasks.Task.Run(() => System.Threading.Tasks.Parallel.ForEach(prepare, g => g.PrepareMesh()))
-            .ContinueWith(_ => DispatchQueue.main.async(() => { foreach (var g in rebuild) { g.version++; foreach (var n in g.users) n.MarkGeometryDirty(); } }));
+        var work = System.Threading.Tasks.Task.Run(() => System.Threading.Tasks.Parallel.ForEach(prepare, g => g.PrepareMesh()));
+        lock (backgroundWork) { backgroundWork.RemoveAll(t => t.IsCompleted); backgroundWork.Add(work); }
+        work.ContinueWith(_ => DispatchQueue.main.async(() => { foreach (var g in rebuild) { g.version++; foreach (var n in g.users) n.MarkGeometryDirty(); } }));
+    }
+    /// <summary>The LOD rebuilds still preparing meshes on worker threads (PrepareMesh builds Godot ImporterMesh LODs).</summary>
+    private static readonly List<System.Threading.Tasks.Task> backgroundWork = new();
+    /// <summary>Main thread, when Godot quits (SceneKitRuntime.Shutdown): waits for the background mesh preparation.</summary>
+    internal static void WaitForBackgroundWork()
+    {
+        System.Threading.Tasks.Task[] work;
+        lock (backgroundWork) { work = backgroundWork.ToArray(); backgroundWork.Clear(); }
+        foreach (var t in work) { try { t.Wait(); } catch (AggregateException) { } }
     }
     /// <summary>Whether one of the mesh's surfaces (runs of elements with one material) has lo..hi-1 triangles.</summary>
     private bool HasRunWithTriangles(int lo, int hi)

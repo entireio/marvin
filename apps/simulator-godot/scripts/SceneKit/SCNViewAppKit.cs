@@ -99,6 +99,9 @@ public partial class SCNView : NSResponder
             case NotificationExitTree:
                 leavingTree = true; ApplyRenderScaling(); // back to no scaling (still inside the tree during this notification)
                 break;
+            case NotificationPredelete:
+                rig.ssao.ReleaseResources(); // the effect, a C# RefCounted script, gets no PREDELETE of its own
+                break;
             case NotificationVisibilityChanged:
                 UpdateRendering();
                 break;

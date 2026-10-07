@@ -7,10 +7,10 @@
 #   assets  - the game's assets generated on Windows with the repository's exporters, against a Mac's;
 #   game    - the generated town (--town-statistics against the macOS game, --town-reference-dump against Godot on
 #             macOS), the deterministic logic modes headless against Godot on macOS and the macOS game, then the
-#             Windows export (tools/export windows) and the exported exe headless (a crash while quitting after
-#             every report was written is reported as a finding), and diagnostics;
-#   render  - best effort: Direct3D 12 (WARP) and Vulkan through Mesa's lavapipe, a few deterministic captures
-#             against Godot-on-macOS captures.
+#             Windows export (tools/export windows) and the exported exe headless (a crash, also one while quitting
+#             after every report was written, fails the job), and diagnostics;
+#   render  - Direct3D 12 (WARP) and Vulkan through Mesa's lavapipe, a few deterministic captures against
+#             Godot-on-macOS captures (a driver that does not render is not a failure, a crash is).
 # On demand (workflow_dispatch, exit_diagnostics): how the builds end, repeated runs and cdb with full page heap and SOS
 # (tools/ci/exit-diagnostics.ps1), in the game and render jobs.
 name: Godot port on Windows
@@ -423,8 +423,8 @@ jobs:
           [Screen1080]::Set(1920, 1080)
           Add-Type -AssemblyName System.Windows.Forms
           [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+      # A driver that does not render is not a failure; a crash (also while quitting) is.
       - name: Direct3D 12 (WARP software adapter, if Godot takes it)
-        continue-on-error: true
         run: python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver d3d12 --label "Direct3D 12" --out out/render
       - name: Exit diagnostics (on demand; the editor runtime's town smoke on Direct3D 12 under cdb)
         if: ${{ !cancelled() && inputs.exit_diagnostics }}
@@ -439,6 +439,7 @@ jobs:
             -Project (Resolve-Path apps/simulator-godot).Path -Rendered d3d12
       - name: Mesa lavapipe (software Vulkan) and the Vulkan loader
         id: lavapipe
+        if: ${{ !cancelled() }}
         continue-on-error: true
         run: |
           temp=$(cygpath -u "$RUNNER_TEMP")
@@ -459,8 +460,7 @@ jobs:
             cp "$loader" "$(dirname "$(cygpath -u "$GODOT")")/"
           fi
       - name: Vulkan through lavapipe
-        if: steps.lavapipe.outcome == 'success'
-        continue-on-error: true
+        if: ${{ !cancelled() && steps.lavapipe.outcome == 'success' }}
         # The town smoke takes about 20 minutes on lavapipe (2.5 on WARP): the facade and HUD modes only.
         run: >-
           python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver vulkan

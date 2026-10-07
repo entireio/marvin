@@ -96,6 +96,87 @@ public partial class SceneKitRuntime : Node
     internal static double LastDispatchMS, LastFlushMS;
     internal static int LastMeshesBuilt;
 
+    // ---- Shutdown (Godot-only)
+    // Swift deallocates a SceneKit node once nothing references it (ARC); Godot keeps a node until it is freed, and frees
+    // at exit only the nodes in the scene tree. The game drops nodes outside every scene (the TownWorld that
+    // --town-statistics builds and never shows, the race's 1,600 pooled particle slots, which are never added to a scene,
+    // nodes removed from their parent), so they leaked at exit with their MeshInstance3D and Light3D children: Godot then
+    // reported "N RID allocations of type 'RendererSceneCull::Instance' were leaked at exit" and freed them itself, after
+    // the meshes and materials they show (RenderingServerDefault::_finish deletes the storages before the scene cull). In
+    // builds without DEBUG_ENABLED, the release export templates, an instance's destructor then erases itself from its
+    // mesh's freed Dependency (DependencyTracker::clear in ~Instance): a use after free that ended the exported Windows
+    // build with 0xC0000374 or 0xC0000005 at every quit after the town was built (PORTING.md, "Release builds and
+    // Windows"; --exit-leak-probe shows it with one MeshInstance3D). So the facade tracks the nodes it makes and, when
+    // Godot quits, frees those outside the scene tree while every server is still alive, after the background work that
+    // builds Godot objects and the audio render threads have stopped and the views' SSAO GPU resources are released
+    // (SCNSsaoEffect.ReleaseAll; the uniform sets Godot's UniformSetCacheRD keeps for them would otherwise be freed after
+    // the cache itself, a second use after free, in every build that renders with RenderingDevice).
+    //
+    // Weak GC handles rather than WeakReference objects: no finalizable object per node (the race makes nodes as it runs).
+    // A node's managed object lives as long as the Godot node (its script instance holds it), so a handle whose target
+    // is gone or disposed belongs to a freed node and is dropped when the list has doubled.
+    private static readonly object trackedGate = new();
+    private static readonly List<System.Runtime.InteropServices.GCHandle> trackedNodes = new();
+    private static int trackedPruneAt = 4096, trackedTotal;
+    private static bool shutDown;
+    /// <summary>Any thread: remembers a node the facade made (SCNNode, SCNView, NSView) for Shutdown.</summary>
+    internal static void TrackNode(Node node)
+    {
+        lock (trackedGate)
+        {
+            trackedNodes.Add(System.Runtime.InteropServices.GCHandle.Alloc(node, System.Runtime.InteropServices.GCHandleType.Weak));
+            trackedTotal++;
+            if (trackedNodes.Count < trackedPruneAt) return;
+            trackedNodes.RemoveAll(h => { if (h.Target is Node n && IsInstanceValid(n)) return false; h.Free(); return true; });
+            trackedPruneAt = Math.Max(4096, trackedNodes.Count * 2);
+        }
+    }
+    /// <summary>The runtime node stays at the root of the scene tree for the whole run: it leaves the tree only when Godot
+    /// quits (SceneTree finalization, whatever ended the run: SceneTree.Quit, exit(), the window's close button).</summary>
+    public override void _ExitTree() => Shutdown();
+    /// <summary>Main thread, once, when Godot quits: see "Shutdown" above.</summary>
+    internal static void Shutdown()
+    {
+        if (shutDown || !OnMainThread) return;
+        shutDown = true;
+        // Nothing may touch Godot from another thread while it shuts down: worlds built on DispatchQueue.global (a quit
+        // during the loading screen), the background mesh and texture preparation, the audio engines' render threads.
+        bool idle = DispatchQueue.WaitForGlobalBlocks(TimeSpan.FromSeconds(60));
+        foreach (var p in preparations) Wait(p.work);
+        SCNGeometry.WaitForBackgroundWork();
+        AVAudioEngine.StopRenderThreads();
+        int effects = SCNSsaoEffect.ReleaseAll();
+        int freed = FreeDetachedNodes();
+        if (OS.IsStdOutVerbose()) GD.Print($"SceneKit facade: shutdown, {freed} detached node trees freed ({trackedTotal} nodes made), {effects} SSAO views released{(idle ? "" : ", background blocks still running")}");
+    }
+    private static void Wait(System.Threading.Tasks.Task task)
+    {
+        try { task?.Wait(); } catch (AggregateException) { } // a failed preparation already reported itself
+    }
+    /// <summary>Frees every tracked node that is outside the scene tree, with the subtree it heads (its topmost
+    /// ancestor); nodes in the tree are freed by Godot with the root.</summary>
+    private static int FreeDetachedNodes()
+    {
+        if ((Engine.GetMainLoop() as SceneTree)?.Root is not Window root) return 0;
+        var nodes = new List<Node>();
+        lock (trackedGate)
+        {
+            foreach (var h in trackedNodes) { if (h.Target is Node n) nodes.Add(n); h.Free(); }
+            trackedNodes.Clear();
+        }
+        int freed = 0;
+        foreach (var node in nodes)
+        {
+            if (!IsInstanceValid(node)) continue;
+            Node top = node;
+            for (var parent = top.GetParent(); parent != null; parent = parent.GetParent()) top = parent;
+            if (top == root) continue;
+            top.Free();
+            freed++;
+        }
+        return freed;
+    }
+
     internal static void AttachHost(SubViewport host)
     {
         EnsureStarted();

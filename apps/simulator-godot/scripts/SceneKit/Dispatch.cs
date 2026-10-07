@@ -40,13 +40,42 @@ public sealed class DispatchQueue
     public void async(Action execute)
     {
         if (isMain) { SceneKitRuntime.EnsureStartedFromAnyThread(); mainBlocks.Enqueue(execute); }
-        else Task.Run(() => Run(execute));
+        else Task.Run(() => RunGlobal(execute));
     }
     public void asyncAfter(DispatchTime deadline, Action execute)
     {
-        if (!isMain) { Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(Math.Max(0, deadline.seconds - DispatchTime.now().seconds))); Run(execute); }); return; }
+        if (!isMain) { Task.Run(async () => { await Task.Delay(TimeSpan.FromSeconds(Math.Max(0, deadline.seconds - DispatchTime.now().seconds))); RunGlobal(execute); }); return; }
         SceneKitRuntime.EnsureStartedFromAnyThread();
         lock (timed) timed.Add((deadline.seconds, timedOrder++, execute));
+    }
+
+    // Blocks of the global queues that are running (Godot-only): the world builds create Godot objects, which must not
+    // happen while Godot shuts down. SceneKitRuntime.Shutdown closes the global queues (blocks that have not started yet
+    // never run) and waits for the running ones.
+    private static readonly object globalGate = new();
+    private static int globalBlocks;
+    private static bool globalClosed;
+    private static void RunGlobal(Action block)
+    {
+        lock (globalGate) { if (globalClosed) return; globalBlocks++; }
+        try { Run(block); }
+        finally { lock (globalGate) { if (--globalBlocks == 0) System.Threading.Monitor.PulseAll(globalGate); } }
+    }
+    /// <summary>Main thread, when Godot quits: closes the global queues and waits until no block of theirs is running, at
+    /// most <paramref name="timeout"/>; false when some still are. Blocks they queue on the main queue are not run.</summary>
+    internal static bool WaitForGlobalBlocks(TimeSpan timeout)
+    {
+        var end = DateTime.UtcNow + timeout;
+        lock (globalGate)
+        {
+            globalClosed = true;
+            while (globalBlocks > 0)
+            {
+                var left = end - DateTime.UtcNow;
+                if (left <= TimeSpan.Zero || !System.Threading.Monitor.Wait(globalGate, left)) return globalBlocks == 0;
+            }
+            return true;
+        }
     }
 
     /// <summary>Main thread, once per frame: runs the blocks queued for the main queue.</summary>

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Godot;
 
 namespace Marvin.SceneKit;
@@ -36,6 +37,39 @@ public partial class SCNSsaoEffect : CompositorEffect
         EffectCallbackType = EffectCallbackTypeEnum.PreOpaque;
         NeedsNormalRoughness = true;
         AccessResolvedDepth = true;
+        lock (live) { live.RemoveAll(w => !w.TryGetTarget(out _)); live.Add(new WeakReference<SCNSsaoEffect>(this)); }
+    }
+
+    // ---- Releasing the GPU resources (Godot-only)
+    // The passes' uniform sets come from Godot's UniformSetCacheRD, which keeps each one until a texture in it is freed.
+    // Godot frees that cache before RenderingDevice.finalize frees the RIDs still allocated, so a set still cached at exit
+    // calls back into the freed cache (UniformSetCacheRD::_invalidate): a use after free when Godot quits, in every build
+    // (the editor runtime's town smoke ended with 0xC0000005 on Direct3D 12 and Vulkan, SIGSEGV on Metal with
+    // MallocScribble). A C# RefCounted script never receives NOTIFICATION_PREDELETE (Godot's CSharpInstance skips it for
+    // RefCounted), so the effect cannot free its textures itself: its view does when it is freed (SCNView), and
+    // SceneKitRuntime.Shutdown releases every effect and the shared resources when Godot quits.
+    private static readonly List<WeakReference<SCNSsaoEffect>> live = new();
+    /// <summary>Main (render) thread: frees this view's textures, and with them the cached uniform sets that use them.</summary>
+    internal void ReleaseResources()
+    {
+        if (!csz.IsValid && depthMips.Count == 0) return;
+        var rd = RenderingServer.GetRenderingDevice();
+        if (rd != null) Free(rd);
+    }
+    /// <summary>Main thread, when Godot quits: every effect's textures, then the shared shaders, samplers and output.
+    /// Returns the number of effects that held textures.</summary>
+    internal static int ReleaseAll()
+    {
+        SCNSsaoEffect[] effects;
+        lock (live) { effects = live.Select(w => w.TryGetTarget(out var e) ? e : null).Where(e => e != null).ToArray(); live.Clear(); }
+        int released = 0;
+        foreach (var e in effects)
+        {
+            if (!IsInstanceValid(e) || (!e.csz.IsValid && e.depthMips.Count == 0)) continue;
+            e.ReleaseResources(); released++;
+        }
+        SCNSsao.ReleaseShared();
+        return released;
     }
 
     private bool skyBehindCamera;
@@ -204,14 +238,6 @@ public partial class SCNSsaoEffect : CompositorEffect
         sets.Clear();
     }
 
-    public override void _Notification(int what)
-    {
-        if (what == NotificationPredelete)
-        {
-            var rd = RenderingServer.GetRenderingDevice();
-            if (rd != null) Free(rd);
-        }
-    }
 }
 
 /// <summary>Shared shaders, samplers and the global scn_ssao texture of SCNSsaoEffect.</summary>
@@ -259,6 +285,21 @@ internal static class SCNSsao
         RenderingServer.GlobalShaderParameterSet("scn_ssao", outputTexture);
         if (old.IsValid) rd.FreeRid(old);
     }
+
+    /// <summary>Main (render) thread, when Godot quits (SCNSsaoEffect.ReleaseAll): frees the pipelines, shaders, samplers and
+    /// the global output texture (after the RenderingServer texture over it).</summary>
+    internal static void ReleaseShared()
+    {
+        var rd = RenderingServer.GetRenderingDevice();
+        if (rd == null) return;
+        if (outputTexture != null && IsValid(outputTexture)) outputTexture.TextureRdRid = new Rid();
+        foreach (var rid in new[] { CszPipeline, DownPipeline, MipPipeline, SaoPipeline, BlurPipeline, UpPipeline, CszShader, DownShader, MipShader, SaoShader, BlurShader, UpShader, NearestSampler, LinearSampler, Output })
+            if (rid.IsValid) rd.FreeRid(rid);
+        CszPipeline = DownPipeline = MipPipeline = SaoPipeline = BlurPipeline = UpPipeline = default;
+        CszShader = DownShader = MipShader = SaoShader = BlurShader = UpShader = NearestSampler = LinearSampler = Output = default;
+        outputSize = default;
+    }
+    private static bool IsValid(GodotObject o) => GodotObject.IsInstanceValid(o);
 
     private static bool primed;
     /// <summary>Called when the first view is made, so materials always see a valid (all-ones) scn_ssao texture.</summary>
