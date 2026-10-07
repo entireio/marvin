@@ -436,7 +436,7 @@ jobs:
           dotnet-sos install --architecture x64 | Out-String
           $gui = $env:GODOT -replace '_console\.exe$', '.exe'
           & apps/simulator-godot/tools/ci/exit-diagnostics.ps1 -Out out/exit-diagnostics -Godot $gui `
-            -Project (Resolve-Path apps/simulator-godot).Path -Rendered d3d12 -Runs 3 -TownSmoke
+            -Project (Resolve-Path apps/simulator-godot).Path -Rendered d3d12 -Runs 3 -TownSmoke -Debugger
       - name: Mesa lavapipe (software Vulkan) and the Vulkan loader
         id: lavapipe
         if: ${{ !cancelled() }}
@@ -465,15 +465,15 @@ jobs:
         run: >-
           python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver vulkan
           --label "Vulkan (Mesa lavapipe)" --out out/render --only facade-test,hud-smoke-test
-      - name: Exit diagnostics (on demand; the editor runtime with Vulkan through lavapipe, the town smoke under cdb)
+      - name: Exit diagnostics (on demand; the editor runtime with Vulkan through lavapipe, the town smoke)
         if: ${{ !cancelled() && inputs.exit_diagnostics && steps.lavapipe.outcome == 'success' }}
         continue-on-error: true
-        timeout-minutes: 60
+        timeout-minutes: 75
         shell: pwsh
         run: |
           $gui = $env:GODOT -replace '_console\.exe$', '.exe'
           & apps/simulator-godot/tools/ci/exit-diagnostics.ps1 -Out out/exit-diagnostics -Godot $gui `
-            -Project (Resolve-Path apps/simulator-godot).Path -Rendered vulkan -Runs 3 -TownSmoke
+            -Project (Resolve-Path apps/simulator-godot).Path -Rendered vulkan -Runs 2 -TownSmoke -SmokeTimeout 3600
       - uses: actions/upload-artifact@v4
         if: always()
         with:

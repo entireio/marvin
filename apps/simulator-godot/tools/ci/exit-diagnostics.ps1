@@ -12,13 +12,14 @@
 # the block the faulting thread was reading (!heap -p -a: where it was allocated and freed), every thread's native stack,
 # and with SOS the managed threads and their stacks; then the modules (lm) for the offsets. The official templates have
 # no symbols; frames are module+offset, named in PORTING.md from the template's own strings.
-# The editor runtime rendered (-Godot GUI_EXE -Rendered d3d12|vulkan [-TownSmoke]): --town-statistics -Runs times,
-# then --town-smoke-test under cdb, without page heap.
+# The editor runtime rendered (-Godot GUI_EXE -Rendered d3d12|vulkan [-TownSmoke [-Debugger] [-SmokeTimeout S]]):
+# --town-statistics -Runs times, then --town-smoke-test (under cdb with -Debugger, without page heap). Every run is
+# timed, also from the mode's last line to the process's end (the quit).
 # Results go to OUT/exit-diagnostics.json (appended to when it exists), the logs and cdb transcripts, and a section of
 # the job summary.
 param(
     [string]$ReleaseExe, [string]$DebugExe, [string]$Godot, [string]$Project, [string]$Rendered,
-    [Parameter(Mandatory = $true)][string]$Out, [int]$Runs = 3, [switch]$TownSmoke
+    [Parameter(Mandatory = $true)][string]$Out, [int]$Runs = 3, [switch]$TownSmoke, [switch]$Debugger, [int]$SmokeTimeout = 2400
 )
 $ErrorActionPreference = 'Continue'
 New-Item -ItemType Directory -Force $Out | Out-Null
@@ -35,14 +36,27 @@ function Exit-Text([long]$code) {
     return "$code"
 }
 
-# Runs a console program to its end (with a timeout) and returns its exit code; output to LOG.
+# The line a mode prints when its work is done (its reports written): the time from it to the process's end is the quit.
+$doneLine = 'Town smoke: PASS|Town smoke: FAIL|Town statistics: .*\.json|exit-leak-probe: '
+# Runs a console program to its end (with a timeout) and returns its exit code (null: killed at the timeout); output
+# to LOG. $script:runSeconds and $script:quitSeconds (from the mode's last line, $doneLine, to the end) time it.
 function Invoke-Logged([string]$exe, [string[]]$arguments, [string]$log, [hashtable]$environment = @{}, [int]$timeout = 900) {
     $saved = @{}
     foreach ($k in $environment.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k); [Environment]::SetEnvironmentVariable($k, $environment[$k]) }
+    $script:runSeconds = $null; $script:quitSeconds = $null
     try {
+        $clock = [System.Diagnostics.Stopwatch]::StartNew()
         $p = Start-Process -FilePath $exe -ArgumentList $arguments -NoNewWindow -PassThru -RedirectStandardOutput $log -RedirectStandardError "$log.err"
         $handle = $p.Handle # keeps the exit code available after the process ends
-        if (-not $p.WaitForExit($timeout * 1000)) { $p.Kill($true); return $null }
+        $doneAt = $null
+        while (-not $p.WaitForExit(2000)) {
+            if ($null -eq $doneAt -and (Test-Path $log) -and (Select-String -Path $log -Pattern $doneLine -Quiet)) { $doneAt = $clock.Elapsed.TotalSeconds }
+            if ($clock.Elapsed.TotalSeconds -gt $timeout) { $p.Kill($true); break }
+        }
+        $script:runSeconds = [math]::Round($clock.Elapsed.TotalSeconds)
+        if ($null -eq $doneAt -and (Select-String -Path $log -Pattern $doneLine -Quiet)) { $doneAt = $clock.Elapsed.TotalSeconds }
+        if ($null -ne $doneAt) { $script:quitSeconds = [math]::Round($clock.Elapsed.TotalSeconds - $doneAt) }
+        if (-not $p.HasExited) { return $null }
         return [long]$p.ExitCode
     } finally {
         foreach ($k in $saved.Keys) { [Environment]::SetEnvironmentVariable($k, $saved[$k]) }
@@ -51,14 +65,20 @@ function Invoke-Logged([string]$exe, [string[]]$arguments, [string]$log, [hashta
 
 function Add-Result([string]$build, [string]$mode, [string]$variant, $code, [string]$log) {
     $text = if ($null -eq $code) { 'timeout' } else { Exit-Text $code }
-    $results.Add([pscustomobject]@{ build = $build; mode = $mode; variant = $variant; exit = $text; log = (Split-Path -Leaf $log) })
-    "{0,-8} {1,-18} {2,-16} exit {3}" -f $build, $mode, $variant, $text
+    $results.Add([pscustomobject]@{ build = $build; mode = $mode; variant = $variant; exit = $text; seconds = $script:runSeconds;
+        quitSeconds = $script:quitSeconds; log = (Split-Path -Leaf $log) })
+    "{0,-8} {1,-18} {2,-16} exit {3} ({4} s, {5} s after its last line)" -f $build, $mode, $variant, $text, $script:runSeconds, $script:quitSeconds
 }
 
 # cdb commands: report the first fatal event, then quit.
 $sosLoad = if (Test-Path $sos) { ".load $sos" } else { '.echo (SOS not installed)' }
+# ext.heap takes a literal address, so the register goes through an alias (as /x, then .block).
+$heapRecord = ''
+foreach ($register in 'rbp', 'rcx', 'rax') {
+    $heapRecord += ".echo ----- $register; as /x Block_$register @$register; " + '.block { !ext.heap -p -a ${Block_' + $register + '}; !address ${Block_' + $register + '} }; '
+}
 $report = ".echo ===== EVENT; .lastevent; .exr -1; r; .echo ===== FAULTING THREAD; kn 40; " +
-    ".echo ===== PAGE HEAP RECORD (rbp, rcx, rax: the block the access went to); !ext.heap -p -a @rbp; !ext.heap -p -a @rcx; !ext.heap -p -a @rax; " +
+    ".echo ===== PAGE HEAP RECORD (the block at rbp, rcx and rax, where the faulting access may have gone); $heapRecord" +
     ".echo ===== ALL THREADS; ~*kn 30; .echo ===== MODULES; lm; $sosLoad; .echo ===== MANAGED THREADS; !threads; " +
     ".echo ===== MANAGED STACKS; !clrstack -all; q"
 $commands = @(
@@ -131,7 +151,7 @@ if ($ReleaseExe) {
 
 if ($Godot -and $Rendered) {
     # The town built with a rendering driver (--town-statistics: the town is built, nothing drawn), -Runs times, then the
-    # rendered town smoke under cdb (-TownSmoke; it takes about 3 minutes on WARP and 20 on lavapipe).
+    # rendered town smoke (-TownSmoke; about 3 minutes on WARP and 20 on lavapipe, longer under cdb).
     $console = $Godot -replace '\.exe$', '_console.exe'
     $engine = @('--path', $Project, '--rendering-driver', $Rendered, '--audio-driver', 'Dummy', '--')
     for ($i = 1; $i -le $Runs; $i++) {
@@ -141,12 +161,17 @@ if ($Godot -and $Rendered) {
     }
     if ($TownSmoke) {
         $dir = Join-Path $Out "editor-$Rendered-town-smoke-test"; New-Item -ItemType Directory -Force $dir | Out-Null
-        $transcript = "$dir.cdb.txt"
         $pins = @{ MARVIN_GRID_SLOTS = '0,3,1,2'; MARVIN_TOWN_DAYLIGHT = '0.2125,4.18' }
-        $code = Invoke-Cdb $Godot ($engine + @('--town-smoke-test', $dir)) $transcript $pins 2400
-        Add-Result "editor+$Rendered(cdb)" 'town-smoke-test' 'pinned' $code $transcript
-        "---- town-smoke-test under cdb, editor runtime, $Rendered"
-        Show-Transcript $transcript
+        if ($Debugger) {
+            $transcript = "$dir.cdb.txt"
+            $code = Invoke-Cdb $Godot ($engine + @('--town-smoke-test', $dir)) $transcript $pins $SmokeTimeout
+            Add-Result "editor+$Rendered(cdb)" 'town-smoke-test' 'pinned' $code $transcript
+            "---- town-smoke-test under cdb, editor runtime, $Rendered"
+            Show-Transcript $transcript
+        } else {
+            $code = Invoke-Logged $console ($engine + @('--town-smoke-test', $dir)) "$dir.log" $pins $SmokeTimeout
+            Add-Result "editor+$Rendered" 'town-smoke-test' 'pinned' $code "$dir.log"
+        }
     }
 }
 
@@ -156,8 +181,8 @@ if (Test-Path $json) { $all += @(Get-Content $json -Raw | ConvertFrom-Json) }
 $all += $results
 ConvertTo-Json -InputObject @($all) | Set-Content $json
 if ($env:GITHUB_STEP_SUMMARY) {
-    $md = @('## Exit diagnostics', '', '| Build | Mode | Variant | Exit |', '|---|---|---|---|')
-    foreach ($r in $results) { $md += "| $($r.build) | $($r.mode) | $($r.variant) | $($r.exit) |" }
+    $md = @('## Exit diagnostics', '', '| Build | Mode | Variant | Exit | Seconds (quit) |', '|---|---|---|---|---|')
+    foreach ($r in $results) { $md += "| $($r.build) | $($r.mode) | $($r.variant) | $($r.exit) | $($r.seconds) ($($r.quitSeconds)) |" }
     $md += ''
     Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value $md
 }
