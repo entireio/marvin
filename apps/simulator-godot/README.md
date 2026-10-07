@@ -171,8 +171,6 @@ runtime is inside.
   contacts) drift in their last digits from a macOS run, as the macOS release and debug builds do from each other.
   The generated town has the same statistics; short smoke reports (race smoke, storm races, town, entrance, people)
   are identical in CI, longer ones differ in some numbers.
-- **Quitting.** The exported build crashes while quitting after it built the town (0xC0000374 in CI, after the
-  game's work is done); the editor runtime and a debug-template export quit cleanly. Not fixed yet.
 - **Untested there:** a real GPU (CI renders with Direct3D 12 on WARP and with lavapipe), Windows audio output
   (WASAPI) and real display scaling.
 

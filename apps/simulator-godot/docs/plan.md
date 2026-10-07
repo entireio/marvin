@@ -46,8 +46,8 @@ At 960 x 540 every combination holds 60 FPS. The exported build measures the sam
    (`.github/workflows/godot-windows.yml`, every push to the port; `PORTING.md`, "Release builds and Windows"): the
    simulation checks, the assets generated on Windows, the town, 12 logic modes headless, the Windows export and
    Direct3D 12 and Vulkan rendering in software. What it found:
-   - **Everything runs.** All checks pass, all modes exit as on macOS, the export builds and runs, Direct3D 12
-     renders through Microsoft's WARP adapter and Vulkan through Mesa lavapipe.
+   - **Everything runs.** All checks pass, all modes exit as on macOS, the export builds, runs and quits cleanly,
+     Direct3D 12 renders through Microsoft's WARP adapter and Vulkan through Mesa lavapipe.
    - **The town is the same town.** `--town-statistics` is identical to macOS in all 27 keys. The full layout dump
      differs only in last digits (50 of 9,690 lines) and in up to 7 welded vertices in 15 of 417 cells.
    - **Fixed:** Float `normalize` used a different reciprocal square root off arm64, so normals and welded meshes
@@ -59,10 +59,16 @@ At 960 x 540 every combination holds 60 FPS. The exported build measures the sam
      SimulationChecks lines, the three-lap race report, audio levels at 1e-10). Making them identical would need
      Darwin's functions reproduced (not public) or a correctly rounded maths library on every platform, macOS
      included, which would change the macOS reference. Decide whether to accept the drift.
-   - **The exported Windows build crashes when it quits** after building the town (0xC0000374, heap corruption;
-     its reports are complete). The debug template and the editor runtime quit cleanly. Under `cdb` it is an access
-     violation in Godot's own shutdown code (no .NET frames); the official templates have no symbols, so the next
-     step is a template built with symbols, or freeing the town's nodes before quitting to see if that avoids it.
+   - **Fixed: the crash at exit.** The exported Windows build crashed whenever it quit after building the town
+     (0xC0000374 / 0xC0000005), the editor runtime after the rendered town smoke. Godot 4.7.2 has two use-after-frees
+     in its shutdown, reached through resources the port leaked: nodes outside the scene tree (their RenderingServer
+     instances outlive the meshes they show; only release templates fault) and the SSAO pass's cached uniform sets
+     (freed after Godot's cache; every RenderingDevice build). Full page heap on the runner, MallocScribble on this Mac
+     and a one-node probe (`--exit-leak-probe`) pinned both. The facade now frees its detached nodes and SSAO GPU
+     resources, and stops its background work, before Godot shuts down: the export, Direct3D 12 and Vulkan quit with
+     0 in CI, which fails on a crash at exit again (`PORTING.md`, "The crash at exit"). The engine faults themselves
+     remain for anything the facade does not track (a plain Godot node left outside the tree still crashes a release
+     build at exit: the probe); they could be reported to Godot.
    - Text: Windows draws the HUD in Segoe UI and Consolas and the signs in Bahnschrift; the layouts hold (HUD
      2.8/255 from macOS, the signs' text a little larger).
 
@@ -77,7 +83,7 @@ At 960 x 540 every combination holds 60 FPS. The exported build measures the sam
    - Medium and Low are softer than Max: distant sign text becomes hard to read and robot outlines look jagged. The cause of the jagged edges has not been investigated.
 4. **Smaller open items:**
    - Changing Graphics detail on the Settings screen freezes the menu for 0.1-0.3 s; the change could be deferred to the next race or sandbox start instead.
-   - Godot occasionally hangs when quitting after a test mode, and the Metal driver logged one fence timeout on a first switch to Medium.
+   - Godot occasionally hangs when quitting after a test mode, and the Metal driver logged one fence timeout on a first switch to Medium. It happened again on the first `--smoke-test` of a freshly exported macOS app (2026-10-07): after the settings check's switch to Medium every frame waited 1 s, the run took 516 s instead of 31 s and its later captures were wrong (its reports were identical); the next three runs were normal. Not investigated.
    - `--town-departure-movie` takes about 4 minutes in Godot against 30 s on macOS.
    - The repository's `check-sustained-performance.py` requires Metal, so it rejects benchmark runs from Windows.
 5. **Keeping up with the Mac game.** New macOS gameplay changes have to be ported by hand, file by file, and checked with the same capture and smoke modes.
