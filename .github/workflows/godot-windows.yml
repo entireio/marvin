@@ -2,11 +2,13 @@
 # What it answers, in the job summaries and the uploaded artifacts (apps/simulator-godot/PORTING.md,
 # "Release builds and Windows", explains the tooling in apps/simulator-godot/tools/ci):
 #   checks  - the C# SimulationChecks against the Swift reference, default and with MARVIN_PORTABLE_MATH=1
-#             (a numeric difference is a finding, a crash or failed check fails the job);
+#             (a numeric difference is a finding, a crash or failed check fails the job), on Windows, Linux and macOS;
+#   libm    - which C library functions round differently from Darwin's, call by call (tools/checks --libm-probe);
 #   assets  - the game's assets generated on Windows with the repository's exporters, against a Mac's;
 #   game    - the generated town (--town-statistics against the macOS game, --town-reference-dump against Godot on
 #             macOS), the deterministic logic modes headless against Godot on macOS and the macOS game, then the
-#             Windows export (tools/export windows) and the exported exe headless;
+#             Windows export (tools/export windows) and the exported exe headless (a crash while quitting after
+#             every report was written is reported as a finding), and diagnostics;
 #   render  - best effort: Direct3D 12 (WARP) and Vulkan through Mesa's lavapipe, a few deterministic captures
 #             against Godot-on-macOS captures.
 name: Godot port on Windows

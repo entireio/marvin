@@ -60,8 +60,9 @@ At 960 x 540 every combination holds 60 FPS. The exported build measures the sam
      Darwin's functions reproduced (not public) or a correctly rounded maths library on every platform, macOS
      included, which would change the macOS reference. Decide whether to accept the drift.
    - **The exported Windows build crashes when it quits** after building the town (0xC0000374, heap corruption;
-     its reports are complete). The debug template and the editor runtime quit cleanly. Not investigated beyond
-     the CI's diagnostics (a `cdb` stack of the crash is collected).
+     its reports are complete). The debug template and the editor runtime quit cleanly. Under `cdb` it is an access
+     violation in Godot's own shutdown code (no .NET frames); the official templates have no symbols, so the next
+     step is a template built with symbols, or freeing the town's nodes before quitting to see if that avoids it.
    - Text: Windows draws the HUD in Segoe UI and Consolas and the signs in Bahnschrift; the layouts hold (HUD
      2.8/255 from macOS, the signs' text a little larger).
 
