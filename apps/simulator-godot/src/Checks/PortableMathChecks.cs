@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Marvin.Core;
 
 namespace Marvin.Checks;
@@ -14,11 +15,25 @@ public static class PortableMathChecks
 {
     public static int Run(string[] args)
     {
+        // The software NEON reciprocal estimates (Simd.portableRsqrt/portableRecip, used on x64) against the CPU's own
+        // instructions, for every float.
+        var estimatesPassed = true;
+        if (System.Runtime.Intrinsics.Arm.AdvSimd.IsSupported)
+        {
+            estimatesPassed &= Exhaustive("rsqrt (FRSQRTE + 2 x FRSQRTS)", Simd.rsqrt, Simd.portableRsqrt);
+            estimatesPassed &= Exhaustive("recip (FRECPE + 2 x FRECPS)", Simd.recip, Simd.portableRecip);
+            Console.WriteLine(estimatesPassed ? "PASS: portable rsqrt/recip are bit-identical to the NEON instructions" : "FAIL: portable rsqrt/recip differ from the NEON instructions");
+        }
+        else
+        {
+            Console.WriteLine("portable-math: no AdvSimd on this CPU; the portable rsqrt/recip are checked on arm64.");
+        }
+        if (args.Contains("--estimates-only")) return estimatesPassed ? 0 : 1;
         var native = Swift.nativeHypotForChecks();
         if (native == null)
         {
             Console.WriteLine("portable-math: Darwin libm is not available on this platform; nothing to compare against (run on macOS).");
-            return 0;
+            return estimatesPassed ? 0 : 1;
         }
         var (hypot, hypotf) = native.Value;
         int index = Array.IndexOf(args, "--portable-math");
@@ -119,7 +134,31 @@ public static class PortableMathChecks
             Report("hypotf, special values", floatSpecials.Length * floatSpecials.Length, mismatches, example, ref passed);
         }
         Console.WriteLine(passed ? "PASS: portable hypot/hypotf are bit-identical to Darwin libm" : "FAIL: portable hypot/hypotf differ from Darwin libm");
-        return passed ? 0 : 1;
+        return passed && estimatesPassed ? 0 : 1;
+    }
+
+    /// <summary>Every one of the 2^32 float bit patterns through both functions; NaN results compare equal (payloads aside).</summary>
+    private static bool Exhaustive(string what, Func<float, float> native, Func<float, float> portable)
+    {
+        long mismatches = 0; string example = null; var gate = new object();
+        System.Threading.Tasks.Parallel.For(0, 1 << 16, high =>
+        {
+            long local = 0; string first = null;
+            for (uint low = 0; low < 1u << 16; low++)
+            {
+                var x = BitConverter.UInt32BitsToSingle(((uint)high << 16) | low);
+                float a = native(x), b = portable(x);
+                if (BitConverter.SingleToUInt32Bits(a) != BitConverter.SingleToUInt32Bits(b) && !(float.IsNaN(a) && float.IsNaN(b)))
+                {
+                    local += 1;
+                    first ??= $"{what}({x:R} = 0x{BitConverter.SingleToUInt32Bits(x):x8}) = 0x{BitConverter.SingleToUInt32Bits(a):x8} (NEON), 0x{BitConverter.SingleToUInt32Bits(b):x8} (portable)";
+                }
+            }
+            if (local != 0) lock (gate) { mismatches += local; example ??= first; }
+        });
+        var passed = true;
+        Report($"{what}, all 2^32 floats", 1L << 32, mismatches, example, ref passed);
+        return passed;
     }
 
     private static void Report(string what, long count, long mismatches, string example, ref bool passed)

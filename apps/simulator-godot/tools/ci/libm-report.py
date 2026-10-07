@@ -20,7 +20,7 @@ MAC_HASHES = REFERENCE / "libm-mac-sha256.json"
 ARITY = {"atan2": 2, "pow": 2, "hypot": 2, "atan2f": 2, "powf": 2}
 
 
-SINGLE = {"sinf", "cosf", "tanf", "acosf", "atanf", "atan2f", "expf", "logf", "powf", "sqrtf"}
+SINGLE = {"sinf", "cosf", "tanf", "acosf", "atanf", "atan2f", "expf", "logf", "powf", "sqrtf", "simd_rsqrtf", "simd_recipf"}
 
 
 def calls(path):
@@ -63,7 +63,8 @@ def main():
     md = ["## Which libm functions differ from macOS", "",
           f"`tools/checks --libm-probe`: the C library functions the simulation calls through .NET's Math/MathF, "
           f"65,536 calls each in the game's argument ranges, compared call by call with {ref_label}. "
-          "sqrt and the portable hypot are controls (they must match).", ""]
+          "sqrt is a control; hypot, simd_rsqrtf and simd_recipf are the port's own reproductions of Darwin's hypot and "
+          "the NEON estimate instructions, so they must match.", ""]
     if MAC_HASHES.exists():
         mac = json.loads(MAC_HASHES.read_text())
         same = [f.stem for f in files if mac.get(f.stem) == hashlib.sha256(f.read_bytes()).hexdigest()]

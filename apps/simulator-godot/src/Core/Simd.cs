@@ -643,8 +643,10 @@ public static class Simd
     public static Float3 cross(Float2 a, Float2 b) => new(0, 0, MathF.FusedMultiplyAdd(a.x, b.y, -(a.y * b.x)));
 
     /// <summary>
-    /// simd_precise_rsqrt(float) on ARM NEON: FRSQRTE estimate refined by two FRSQRTS steps.
-    /// PORT: reproduced with AdvSimd on arm64; other CPUs use 1/sqrtf, which can differ in the last bit.
+    /// simd_precise_rsqrt(float) on ARM NEON: FRSQRTE estimate refined by two FRSQRTS steps. AdvSimd on arm64; on other
+    /// CPUs (Windows and Linux x64) the same three instructions in software (<see cref="portableRsqrt"/>), bit for bit.
+    /// Before, they used 1/sqrtf, which differs in the last bit (normals of exactly 1.0 instead of 1.0 +- 1 ulp, so town
+    /// meshes welded different vertices on Windows: tools/ci, .github/workflows/godot-windows.yml).
     /// </summary>
     public static float rsqrt(float x)
     {
@@ -656,7 +658,7 @@ public static class Simd
             r = AdvSimd.Multiply(r, AdvSimd.ReciprocalSquareRootStep(v, AdvSimd.Multiply(r, r)));
             return r.ToScalar();
         }
-        return 1 / MathF.Sqrt(x);
+        return portableRsqrt(x);
     }
     /// <summary>simd_precise_recip(float) on ARM NEON: FRECPE estimate refined by two FRECPS steps (see <see cref="rsqrt(float)"/>).</summary>
     public static float recip(float x)
@@ -669,7 +671,107 @@ public static class Simd
             r = AdvSimd.Multiply(r, AdvSimd.ReciprocalStep(v, r));
             return r.ToScalar();
         }
-        return 1 / x;
+        return portableRecip(x);
+    }
+
+    // PORT: ARM's FRSQRTE, FRSQRTS, FRECPE and FRECPS (single precision, FPCR.AH = 0 and FZ = 0 as on macOS) from the
+    // Arm Architecture Reference Manual's pseudocode (FPRSqrtEstimate/RecipSqrtEstimate, FPRSqrtStepFused,
+    // FPRecipEstimate/RecipEstimate, FPRecipStepFused). Checked against AdvSimd for all 2^32 inputs on an M2
+    // (tools/checks --portable-math). NaN results are a quiet NaN (ARM returns the input NaN's payload).
+
+    /// <summary>The software FRSQRTE + 2 x FRSQRTS of <see cref="rsqrt(float)"/>.</summary>
+    public static float portableRsqrt(float x)
+    {
+        var r = frsqrte(x);
+        r *= frsqrts(x, r * r);
+        r *= frsqrts(x, r * r);
+        return r;
+    }
+    /// <summary>The software FRECPE + 2 x FRECPS of <see cref="recip(float)"/>.</summary>
+    public static float portableRecip(float x)
+    {
+        var r = frecpe(x);
+        r *= frecps(x, r);
+        r *= frecps(x, r);
+        return r;
+    }
+    private static readonly byte[] rsqrtEstimates = BuildRsqrtEstimates(), recipEstimates = BuildRecipEstimates();
+    private static byte[] BuildRsqrtEstimates()
+    {
+        var table = new byte[512];
+        for (var scaled = 128; scaled < 512; scaled++)
+        {
+            // RecipSqrtEstimate: scaled in 0.25 .. 1.0 in steps of 1/512; b is the largest with a*b*b < 2^28.
+            long a = scaled < 256 ? scaled * 2 + 1 : ((scaled >> 1) << 1) + 1 << 1;
+            long b = 512;
+            while (a * (b + 1) * (b + 1) < 1L << 28) { b += 1; }
+            table[scaled] = (byte)((b + 1) / 2 & 0xFF);
+        }
+        return table;
+    }
+    private static byte[] BuildRecipEstimates()
+    {
+        var table = new byte[512];
+        for (var scaled = 256; scaled < 512; scaled++)
+        {
+            // RecipEstimate: scaled in 0.5 .. 1.0 in steps of 1/512.
+            long a = scaled * 2 + 1;
+            long b = (1L << 19) / a;
+            table[scaled] = (byte)((b + 1) / 2 & 0xFF);
+        }
+        return table;
+    }
+    private static float frsqrte(float x)
+    {
+        if (float.IsNaN(x) || x < 0) { return float.NaN; }
+        if (x == 0) { return float.IsNegative(x) ? float.NegativeInfinity : float.PositiveInfinity; }
+        if (float.IsPositiveInfinity(x)) { return 0f; }
+        var bits = BitConverter.SingleToUInt32Bits(x);
+        long exp = (bits >> 23) & 0xFF;
+        ulong fraction = (ulong)(bits & 0x7FFFFF) << 29;                 // the double-precision fraction field (52 bits)
+        if (exp == 0)
+        {
+            while ((fraction & (1UL << 51)) == 0) { fraction <<= 1; exp -= 1; }
+            fraction = (fraction << 1) & ((1UL << 52) - 1);
+        }
+        var scaled = (exp & 1) == 0 ? 256 | (int)((fraction >> 44) & 0xFF) : 128 | (int)((fraction >> 45) & 0x7F);
+        var resultExp = (380 - exp) / 2;
+        return BitConverter.UInt32BitsToSingle((uint)((resultExp & 0xFF) << 23) | (uint)rsqrtEstimates[scaled] << 15);
+    }
+    /// <summary>FRSQRTS: (3 - a*b) / 2 with one rounding; infinity times zero gives 1.5.</summary>
+    private static float frsqrts(float a, float b)
+    {
+        if ((float.IsInfinity(a) && b == 0) || (a == 0 && float.IsInfinity(b))) { return 1.5f; }
+        return MathF.FusedMultiplyAdd(-a, b, 3f) * 0.5f;
+    }
+    private static float frecpe(float x)
+    {
+        if (float.IsNaN(x)) { return float.NaN; }
+        if (float.IsInfinity(x)) { return float.IsNegative(x) ? -0f : 0f; }
+        if (x == 0) { return float.IsNegative(x) ? float.NegativeInfinity : float.PositiveInfinity; }
+        var bits = BitConverter.SingleToUInt32Bits(x);
+        var sign = bits & 0x80000000u;
+        // |x| < 2^-128 overflows to infinity (round to nearest); without flush-to-zero large |x| give subnormals (below).
+        if ((bits & 0x7FFFFFFFu) < 0x00200000u) { return BitConverter.UInt32BitsToSingle(sign | 0x7F800000u); }
+        long exp = (bits >> 23) & 0xFF;
+        ulong fraction = (ulong)(bits & 0x7FFFFF) << 29;
+        if (exp == 0)
+        {
+            if ((fraction & (1UL << 51)) == 0) { exp = -1; fraction = (fraction << 2) & ((1UL << 52) - 1); }
+            else { fraction = (fraction << 1) & ((1UL << 52) - 1); }
+        }
+        var scaled = 256 | (int)((fraction >> 44) & 0xFF);
+        var resultExp = 253 - exp;
+        ulong resultFraction = (ulong)recipEstimates[scaled] << 44;
+        if (resultExp == 0) { resultFraction = (1UL << 51) | (resultFraction >> 1); }
+        else if (resultExp == -1) { resultFraction = (1UL << 50) | (resultFraction >> 2); resultExp = 0; }
+        return BitConverter.UInt32BitsToSingle(sign | (uint)((resultExp & 0xFF) << 23) | (uint)(resultFraction >> 29));
+    }
+    /// <summary>FRECPS: 2 - a*b with one rounding; infinity times zero gives 2.</summary>
+    private static float frecps(float a, float b)
+    {
+        if ((float.IsInfinity(a) && b == 0) || (a == 0 && float.IsInfinity(b))) { return 2f; }
+        return MathF.FusedMultiplyAdd(-a, b, 2f);
     }
     /// <summary>simd_precise_rsqrt(double) = 1/sqrt(x).</summary>
     public static double rsqrt(double x) => 1 / Math.Sqrt(x);

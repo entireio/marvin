@@ -96,6 +96,19 @@ jobs:
           --run "default|out/checks/checks-default.txt|${{ steps.run.outputs.default }}"
           --run "MARVIN_PORTABLE_MATH=1|out/checks/checks-portable.txt|${{ steps.run.outputs.portable }}"
           --out out/checks --title "Core maths on ${{ runner.os }} (${{ matrix.os }}): SimulationChecks against the Swift reference"
+      - name: Portable maths against Darwin and NEON (macOS runner; tools/checks --portable-math)
+        if: ${{ !cancelled() && runner.os == 'macOS' }}
+        working-directory: apps/simulator-godot
+        run: |
+          # The software NEON rsqrt/recip that x64 uses, for all 2^32 floats, and 4 million hypot pairs against libSystem.
+          dotnet run --project src/Checks/MarvinChecks.csproj -c Release --no-build -- --portable-math 4 | tee ../../out/checks/portable-math.txt
+          {
+            echo "## Portable maths on the macOS runner (arm64)"
+            echo
+            echo '```'
+            cat ../../out/checks/portable-math.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: libm probe (the platform's sin, cos, atan2, exp, pow ... for the game's arguments)
         if: ${{ !cancelled() }}
         working-directory: apps/simulator-godot
@@ -297,6 +310,15 @@ jobs:
           MARVIN_MESH_COUNTS=19238,13367 "$GODOT" --headless --path apps/simulator-godot -- --town-mesh-dump \
             "$(cygpath -m "$PWD/out/diagnostics/mesh")" --mesh-reuse-test > out/diagnostics/mesh.log 2>&1 || true
           grep "^pair" out/diagnostics/mesh/town-mesh.txt | head -5 || true
+      - name: Diagnostics (Windows Error Reporting for the crashes at exit)
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          # Which module faulted when a Godot process ended with an exception status.
+          New-Item -ItemType Directory -Force out/diagnostics | Out-Null
+          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Error', '.NET Runtime', 'Windows Error Reporting' } -MaxEvents 12 -ErrorAction SilentlyContinue |
+            ForEach-Object { "{0} {1}`n{2}`n" -f $_.TimeCreated, $_.ProviderName, $_.Message } | Tee-Object -FilePath out/diagnostics/windows-events.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -418,7 +440,10 @@ jobs:
       - name: Vulkan through lavapipe
         if: steps.lavapipe.outcome == 'success'
         continue-on-error: true
-        run: python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver vulkan --label "Vulkan (Mesa lavapipe)" --out out/render
+        # The town smoke takes about 20 minutes on lavapipe (2.5 on WARP): the facade and HUD modes only.
+        run: >-
+          python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver vulkan
+          --label "Vulkan (Mesa lavapipe)" --out out/render --only facade-test,hud-smoke-test
       - uses: actions/upload-artifact@v4
         if: always()
         with:

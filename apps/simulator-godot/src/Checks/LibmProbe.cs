@@ -13,7 +13,8 @@ namespace Marvin.Checks;
 /// (tools/ci/libm-report.py, .github/workflows/godot-windows.yml) shows which functions round differently from
 /// Darwin's, how often and by how many ulps: the source of SimulationChecks' numeric differences off macOS.
 /// sqrt is correctly rounded everywhere (a control); hypot is Swift.hypot (Darwin libm on macOS, the portable
-/// reproduction elsewhere), so it must match too.
+/// reproduction elsewhere) and simd_rsqrtf/simd_recipf are Simd.rsqrt/recip (NEON instructions on arm64, their
+/// software reproduction elsewhere), so they must match too.
 /// </summary>
 public static class LibmProbe
 {
@@ -67,6 +68,9 @@ public static class LibmProbe
             ("logf", 1, () => new[] { (float)LogU(-20, 20) }, a => MathF.Log(a[0])),
             ("powf", 2, () => new[] { F(0, 10), F(-4, 4) }, a => MathF.Pow(a[0], a[1])),
             ("sqrtf", 1, () => new[] { (float)LogU(-20, 20) }, a => MathF.Sqrt(a[0])),
+            // Not libm: simd_precise_rsqrt/recip (NEON estimate + two Newton steps; in software off arm64).
+            ("simd_rsqrtf", 1, () => new[] { (float)LogU(-40, 40) }, a => Simd.rsqrt(a[0])),
+            ("simd_recipf", 1, () => new[] { (float)LogU(-40, 40) * (random.Next(2) * 2 - 1) }, a => Simd.recip(a[0])),
         };
         foreach (var (name, arity, make, f) in floats)
         {
