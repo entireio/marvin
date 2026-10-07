@@ -2,7 +2,7 @@
 #
 #   tools/ci/exit-diagnostics.ps1 -ReleaseExe build/windows/MarvinSimulator.exe [-DebugExe build/windows-debug/MarvinSimulator.exe]
 #        -Out OUT [-Runs 3]
-#   tools/ci/exit-diagnostics.ps1 -Godot GODOT_GUI_EXE -Project apps/simulator-godot -Rendered d3d12 -Out OUT
+#   tools/ci/exit-diagnostics.ps1 -Godot GODOT_GUI_EXE -Project apps/simulator-godot -Rendered d3d12 -Out OUT [-TownSmoke]
 #
 # Exported builds (headless, Dummy audio): --town-statistics and the minimal --exit-leak-probe (a MeshInstance3D
 # outside the tree, leaked or freed: MARVIN_EXIT_PROBE=free) with the release build, -Runs times each, and once with the
@@ -12,11 +12,13 @@
 # the block the faulting thread was reading (!heap -p -a: where it was allocated and freed), every thread's native stack,
 # and with SOS the managed threads and their stacks; then the modules (lm) for the offsets. The official templates have
 # no symbols; frames are module+offset, named in PORTING.md from the template's own strings.
-# The editor runtime rendered (-Godot ... -Rendered d3d12|vulkan): --town-smoke-test under cdb, without page heap.
-# Writes OUT/exit-diagnostics.json, the logs and cdb transcripts, and a section of the job summary.
+# The editor runtime rendered (-Godot GUI_EXE -Rendered d3d12|vulkan [-TownSmoke]): --town-statistics -Runs times,
+# then --town-smoke-test under cdb, without page heap.
+# Results go to OUT/exit-diagnostics.json (appended to when it exists), the logs and cdb transcripts, and a section of
+# the job summary.
 param(
     [string]$ReleaseExe, [string]$DebugExe, [string]$Godot, [string]$Project, [string]$Rendered,
-    [Parameter(Mandatory = $true)][string]$Out, [int]$Runs = 3
+    [Parameter(Mandatory = $true)][string]$Out, [int]$Runs = 3, [switch]$TownSmoke
 )
 $ErrorActionPreference = 'Continue'
 New-Item -ItemType Directory -Force $Out | Out-Null
@@ -128,16 +130,31 @@ if ($ReleaseExe) {
 }
 
 if ($Godot -and $Rendered) {
-    $dir = Join-Path $Out "editor-$Rendered-town-smoke-test"; New-Item -ItemType Directory -Force $dir | Out-Null
-    $transcript = "$dir.cdb.txt"
-    $pins = @{ MARVIN_GRID_SLOTS = '0,3,1,2'; MARVIN_TOWN_DAYLIGHT = '0.2125,4.18' }
-    $code = Invoke-Cdb $Godot @('--path', $Project, '--rendering-driver', $Rendered, '--audio-driver', 'Dummy', '--', '--town-smoke-test', $dir) $transcript $pins 2400
-    Add-Result "editor+$Rendered(cdb)" 'town-smoke-test' 'pinned' $code $transcript
-    "---- town-smoke-test under cdb, editor runtime, $Rendered"
-    Show-Transcript $transcript
+    # The town built with a rendering driver (--town-statistics: the town is built, nothing drawn), -Runs times, then the
+    # rendered town smoke under cdb (-TownSmoke; it takes about 3 minutes on WARP and 20 on lavapipe).
+    $console = $Godot -replace '\.exe$', '_console.exe'
+    $engine = @('--path', $Project, '--rendering-driver', $Rendered, '--audio-driver', 'Dummy', '--')
+    for ($i = 1; $i -le $Runs; $i++) {
+        $dir = Join-Path $Out "editor-$Rendered-town-statistics-$i"; New-Item -ItemType Directory -Force $dir | Out-Null
+        $code = Invoke-Logged $console ($engine + @('--town-statistics', $dir)) "$dir.log"
+        Add-Result "editor+$Rendered" 'town-statistics' "#$i" $code "$dir.log"
+    }
+    if ($TownSmoke) {
+        $dir = Join-Path $Out "editor-$Rendered-town-smoke-test"; New-Item -ItemType Directory -Force $dir | Out-Null
+        $transcript = "$dir.cdb.txt"
+        $pins = @{ MARVIN_GRID_SLOTS = '0,3,1,2'; MARVIN_TOWN_DAYLIGHT = '0.2125,4.18' }
+        $code = Invoke-Cdb $Godot ($engine + @('--town-smoke-test', $dir)) $transcript $pins 2400
+        Add-Result "editor+$Rendered(cdb)" 'town-smoke-test' 'pinned' $code $transcript
+        "---- town-smoke-test under cdb, editor runtime, $Rendered"
+        Show-Transcript $transcript
+    }
 }
 
-$results | ConvertTo-Json | Set-Content (Join-Path $Out 'exit-diagnostics.json')
+$json = Join-Path $Out 'exit-diagnostics.json'
+$all = @()
+if (Test-Path $json) { $all += @(Get-Content $json -Raw | ConvertFrom-Json) }
+$all += $results
+ConvertTo-Json -InputObject @($all) | Set-Content $json
 if ($env:GITHUB_STEP_SUMMARY) {
     $md = @('## Exit diagnostics', '', '| Build | Mode | Variant | Exit |', '|---|---|---|---|')
     foreach ($r in $results) { $md += "| $($r.build) | $($r.mode) | $($r.variant) | $($r.exit) |" }
