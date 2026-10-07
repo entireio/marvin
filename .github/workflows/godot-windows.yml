@@ -11,6 +11,8 @@
 #             every report was written is reported as a finding), and diagnostics;
 #   render  - best effort: Direct3D 12 (WARP) and Vulkan through Mesa's lavapipe, a few deterministic captures
 #             against Godot-on-macOS captures.
+# On demand (workflow_dispatch, exit_diagnostics): how the builds end, repeated runs and cdb with full page heap and SOS
+# (tools/ci/exit-diagnostics.ps1), in the game and render jobs.
 name: Godot port on Windows
 
 on:
@@ -18,6 +20,10 @@ on:
     inputs:
       regenerate_assets:
         description: Generate the game's assets again instead of restoring them from the cache
+        type: boolean
+        default: false
+      exit_diagnostics:
+        description: How the builds end (tools/ci/exit-diagnostics.ps1) - repeated runs, cdb with full page heap and SOS
         type: boolean
         default: false
   push:
@@ -312,25 +318,17 @@ jobs:
           MARVIN_MESH_COUNTS=19238,13367 "$GODOT" --headless --path apps/simulator-godot -- --town-mesh-dump \
             "$(cygpath -m "$PWD/out/diagnostics/mesh")" --mesh-reuse-test > out/diagnostics/mesh.log 2>&1 || true
           grep "^pair" out/diagnostics/mesh/town-mesh.txt | head -5 || true
-      - name: Diagnostics (the stack of the exported build's crash at exit, under cdb)
-        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
+      - name: Exit diagnostics (on demand; repeated runs, cdb with full page heap)
+        if: ${{ !cancelled() && inputs.exit_diagnostics && steps.export.outcome == 'success' }}
         continue-on-error: true
-        timeout-minutes: 10
+        timeout-minutes: 60
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force out/diagnostics/cdb | Out-Null
-          $cdb = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
-          if (-not $cdb) { "cdb (Debugging Tools for Windows) is not installed on this runner"; exit 0 }
-          $exe = (Resolve-Path apps/simulator-godot/build/windows/MarvinSimulator.exe).Path
-          $dir = (Resolve-Path out/diagnostics/cdb).Path
-          # Break on heap corruption and on a second-chance access violation, print the stack and the modules, quit.
-          Set-Content -Path out/diagnostics/cdb-commands.txt -Value @(
-            'sxe -c "kb 40; lm; q" c0000374',
-            'sxd -c2 "kb 40; lm; q" av',
-            'g')
-          & $cdb.FullName -G -cf out/diagnostics/cdb-commands.txt $exe --headless --audio-driver Dummy --town-statistics $dir *> out/diagnostics/cdb.txt
-          "cdb exit: $LASTEXITCODE"
-          Get-Content out/diagnostics/cdb.txt | Select-Object -Last 120
+          dotnet tool install --global dotnet-sos | Out-String
+          dotnet-sos install --architecture x64 | Out-String
+          $debug = if (Test-Path apps/simulator-godot/build/windows-debug/MarvinSimulator.exe) { (Resolve-Path apps/simulator-godot/build/windows-debug/MarvinSimulator.exe).Path } else { '' }
+          & apps/simulator-godot/tools/ci/exit-diagnostics.ps1 -Out out/exit-diagnostics -Runs 3 `
+            -ReleaseExe (Resolve-Path apps/simulator-godot/build/windows/MarvinSimulator.exe).Path -DebugExe $debug
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -428,6 +426,17 @@ jobs:
       - name: Direct3D 12 (WARP software adapter, if Godot takes it)
         continue-on-error: true
         run: python apps/simulator-godot/tools/ci/render-captures.py --godot "$GODOT" --driver d3d12 --label "Direct3D 12" --out out/render
+      - name: Exit diagnostics (on demand; the editor runtime's town smoke on Direct3D 12 under cdb)
+        if: ${{ !cancelled() && inputs.exit_diagnostics }}
+        continue-on-error: true
+        timeout-minutes: 45
+        shell: pwsh
+        run: |
+          dotnet tool install --global dotnet-sos | Out-String
+          dotnet-sos install --architecture x64 | Out-String
+          $gui = $env:GODOT -replace '_console\.exe$', '.exe'
+          & apps/simulator-godot/tools/ci/exit-diagnostics.ps1 -Out out/exit-diagnostics -Godot $gui `
+            -Project (Resolve-Path apps/simulator-godot).Path -Rendered d3d12
       - name: Mesa lavapipe (software Vulkan) and the Vulkan loader
         id: lavapipe
         continue-on-error: true
