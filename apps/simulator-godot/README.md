@@ -99,10 +99,14 @@ Settings, scores and logs live in `~/Library/Application Support/Godot/app_userd
 
 ## Windows
 
-The Windows build has not been run on Windows: no Windows machine was available. Everything that can be checked on a
-Mac was (PORTING.md, "Release builds and Windows"): the export and its layout (above), the Windows user-interface
-paths (in-window menu bar, Control shortcuts, a window fitted to a scaled screen), Godot's Vulkan renderer (through
-MoltenVK), the portable maths and the thread stacks.
+No Windows PC has run the game yet. CI does, on a GitHub-hosted Windows runner without a GPU
+(`.github/workflows/godot-windows.yml`, on every push to the port): the simulation checks, the assets generated on
+Windows, the town and 12 logic modes headless, `tools/export windows` and the exported exe, and Direct3D 12 (Microsoft's
+WARP software adapter) and Vulkan (Mesa lavapipe) captures. Each run's summary page lists what differs from macOS, and
+the Windows build is attached to the run (`MarvinSimulator-windows-x86_64`). Before that, everything that can be
+checked on a Mac was: the export and its layout (above), the Windows user-interface paths (in-window menu bar, Control
+shortcuts, a window fitted to a scaled screen), Godot's Vulkan renderer (through MoltenVK), the portable maths and the
+thread stacks. Results: PORTING.md, "Release builds and Windows".
 
 ### Getting a build
 
@@ -160,13 +164,17 @@ runtime is inside.
   grows with its text, the signs shrink theirs to fit), but it looks different and has not been checked on Windows.
 - **Window chrome.** The system title bar above the client area instead of the Mac's unified title bar; the menu bar
   is in the window (Windows has no global menu bar).
-- **Last-digit maths.** `hypot` runs a managed copy of Darwin's algorithm that returns the same bits as macOS
-  (`tools/checks --portable-math`). The other C library functions (`sin`, `cos`, `atan2`, `exp`, `log`, `pow`) come from
-  the Windows C runtime and can differ from Darwin's in the last bit, so long chaotic simulations (a three-lap race
-  with contacts) can drift in their last digits from a macOS run, as the macOS release and debug builds do from each
-  other. Smoke reports that are byte-identical between the macOS game and the port on a Mac may therefore differ in
-  some numbers on Windows (the macOS release and debug builds drift like this and both pass every check).
-- **Untested there:** the Direct3D 12 renderer, Windows audio output (WASAPI) and real display scaling.
+- **Last-digit maths.** `hypot` and the reciprocal square root behind `normalize` run managed copies of Darwin's and
+  ARM's algorithms that return the same bits as macOS (`tools/checks --portable-math`). The other C library functions
+  (`sin`, `cos`, `tan`, `atan2`, `exp`, `log`, `pow` ...) come from the Windows C runtime and differ from Darwin's in
+  the last bit in up to a third of calls (measured in CI), so long chaotic simulations (a three-lap race with
+  contacts) drift in their last digits from a macOS run, as the macOS release and debug builds do from each other.
+  The generated town has the same statistics; short smoke reports (race smoke, storm races, town, entrance, people)
+  are identical in CI, longer ones differ in some numbers.
+- **Quitting.** The exported build crashes while quitting after it built the town (0xC0000374 in CI, after the
+  game's work is done); the editor runtime and a debug-template export quit cleanly. Not fixed yet.
+- **Untested there:** a real GPU (CI renders with Direct3D 12 on WARP and with lavapipe), Windows audio output
+  (WASAPI) and real display scaling.
 
 ## Layout
 
@@ -176,5 +184,5 @@ runtime is inside.
 | `export_presets.cfg` | Release presets: macOS (universal), Windows Desktop (x86_64) |
 | `src/Core`, `src/Checks` | The simulation core (pure C#) and the port of the macOS simulation checks |
 | `scripts/` | The game, mirroring the Swift sources; `scripts/SceneKit/` is the SceneKit/AppKit facade |
-| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export`, `export-verify.py`; `perf/` (benchmarks, `docs/performance.md`) |
+| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export`, `export-verify.py`; `perf/` (benchmarks, `docs/performance.md`); `ci/` (the Windows CI's scripts and references) |
 | `assets/`, `build/`, `reference/` | Gitignored: synced assets, exports, macOS reference captures |

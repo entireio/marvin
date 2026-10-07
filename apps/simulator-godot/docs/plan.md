@@ -25,6 +25,7 @@ Details: `PORTING.md` (conventions, facade, comparison), `docs/performance.md` (
 | Look | Mean difference per area from the macOS captures: 0.5-3.4/255 (`PORTING.md`, "Full-game comparison"). |
 | Settings (Godot-only) | **Shadow quality**: Fast (hard shadows, the default) or Exact (soft, matching macOS). **Graphics detail**: Max (the default, unchanged), High, Medium, Low. |
 | Release builds | `tools/export` builds a macOS app and a Windows folder. The exported macOS app passes the smoke modes and the full playthrough. |
+| Windows CI | `.github/workflows/godot-windows.yml` builds, tests, exports and renders the port on a GPU-less Windows runner on every push (see "Left to do", item 1). |
 | Mac game changes | The port matches the macOS gameplay at `1c8bb11`. The only later macOS commits (`de62266`, `057f52e`) add diagnostics, not gameplay. |
 
 ### Performance at 1920 x 1080 (Apple M2, FPS)
@@ -41,12 +42,32 @@ At 960 x 540 every combination holds 60 FPS. The exported build measures the sam
 
 ## Left to do
 
-1. **Run it on Windows.** The Windows build has never been started; no Windows machine was available. To check there:
-   - Direct3D 12 rendering, the Vulkan fallback, and FSR 2 upscaling at Medium and Low;
-   - audio output, window title bar, display scaling, keyboard layouts and Ctrl shortcuts;
-   - text: SF Pro and SF Mono are not on Windows, so the HUD and menus fall back to Windows fonts and look different;
-   - performance on representative Windows GPUs;
-   - that the generated town is identical. The town generator uses `sin`, `cos`, `atan2` and `pow`, which come from the Windows C runtime and can differ from macOS in the last bit. Run `--town-statistics` and compare with macOS. Only `hypot` has been made bit-identical.
+1. **Run it on Windows.** No Windows PC has run it yet, but CI now does on a GPU-less GitHub Windows runner
+   (`.github/workflows/godot-windows.yml`, every push to the port; `PORTING.md`, "Release builds and Windows"): the
+   simulation checks, the assets generated on Windows, the town, 12 logic modes headless, the Windows export and
+   Direct3D 12 and Vulkan rendering in software. What it found:
+   - **Everything runs.** All checks pass, all modes exit as on macOS, the export builds and runs, Direct3D 12
+     renders through Microsoft's WARP adapter and Vulkan through Mesa lavapipe.
+   - **The town is the same town.** `--town-statistics` is identical to macOS in all 27 keys. The full layout dump
+     differs only in last digits (50 of 9,690 lines) and in up to 7 welded vertices in 15 of 417 cells.
+   - **Fixed:** Float `normalize` used a different reciprocal square root off arm64, so normals and welded meshes
+     differed (the street mesh had 13,367 vertices instead of 19,238). `Simd.rsqrt`/`recip` now reproduce the
+     NEON instructions in software, bit for bit.
+   - **Last-digit maths remains.** Windows' C runtime rounds `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`,
+     `exp`, `log` and `pow` differently from macOS in 0.02-39 % of calls (by one ulp; Linux as well). Short runs
+     stay identical (smoke, storm races, town, entrance, people, characters); long chaotic ones drift (5 of 36
+     SimulationChecks lines, the three-lap race report, audio levels at 1e-10). Making them identical would need
+     Darwin's functions reproduced (not public) or a correctly rounded maths library on every platform, macOS
+     included, which would change the macOS reference. Decide whether to accept the drift.
+   - **The exported Windows build crashes when it quits** after building the town (0xC0000374, heap corruption;
+     its reports are complete). The debug template and the editor runtime quit cleanly. Not investigated beyond
+     the CI's diagnostics (a `cdb` stack of the crash is collected).
+   - Text: Windows draws the HUD in Segoe UI and Consolas and the signs in Bahnschrift; the layouts hold (HUD
+     2.8/255 from macOS, the signs' text a little larger).
+
+   Still to check on a real Windows PC: Direct3D 12 and the Vulkan fallback on a real GPU and FSR 2 at Medium and
+   Low, performance on representative GPUs, audio output (WASAPI), the title bar, display scaling, keyboard layouts
+   and Ctrl shortcuts.
 2. **Max is still short of 60 FPS at 1080p** (Fast town 54.9, race 57.9; Exact 39.8 / 47.4). Every remaining saving found either changes the look (those are now in High, Medium and Low) or needs changes inside Godot itself.
 3. **Known visual differences** (all in `PORTING.md`):
    - Fast shadows are hard-edged, with small stair-steps in close views. Exact is soft but lacks SceneKit's blotchy penumbra pattern.

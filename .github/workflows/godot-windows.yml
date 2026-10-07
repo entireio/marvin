@@ -310,15 +310,25 @@ jobs:
           MARVIN_MESH_COUNTS=19238,13367 "$GODOT" --headless --path apps/simulator-godot -- --town-mesh-dump \
             "$(cygpath -m "$PWD/out/diagnostics/mesh")" --mesh-reuse-test > out/diagnostics/mesh.log 2>&1 || true
           grep "^pair" out/diagnostics/mesh/town-mesh.txt | head -5 || true
-      - name: Diagnostics (Windows Error Reporting for the crashes at exit)
-        if: ${{ !cancelled() }}
+      - name: Diagnostics (the stack of the exported build's crash at exit, under cdb)
+        if: ${{ !cancelled() && steps.export.outcome == 'success' }}
         continue-on-error: true
+        timeout-minutes: 10
         shell: pwsh
         run: |
-          # Which module faulted when a Godot process ended with an exception status.
-          New-Item -ItemType Directory -Force out/diagnostics | Out-Null
-          Get-WinEvent -FilterHashtable @{ LogName = 'Application'; ProviderName = 'Application Error', '.NET Runtime', 'Windows Error Reporting' } -MaxEvents 12 -ErrorAction SilentlyContinue |
-            ForEach-Object { "{0} {1}`n{2}`n" -f $_.TimeCreated, $_.ProviderName, $_.Message } | Tee-Object -FilePath out/diagnostics/windows-events.txt
+          New-Item -ItemType Directory -Force out/diagnostics/cdb | Out-Null
+          $cdb = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $cdb) { "cdb (Debugging Tools for Windows) is not installed on this runner"; exit 0 }
+          $exe = (Resolve-Path apps/simulator-godot/build/windows/MarvinSimulator.exe).Path
+          $dir = (Resolve-Path out/diagnostics/cdb).Path
+          # Break on heap corruption and on a second-chance access violation, print the stack and the modules, quit.
+          Set-Content -Path out/diagnostics/cdb-commands.txt -Value @(
+            'sxe -c "kb 40; lm; q" c0000374',
+            'sxd -c2 "kb 40; lm; q" av',
+            'g')
+          & $cdb.FullName -G -cf out/diagnostics/cdb-commands.txt $exe --headless --audio-driver Dummy --town-statistics $dir *> out/diagnostics/cdb.txt
+          "cdb exit: $LASTEXITCODE"
+          Get-Content out/diagnostics/cdb.txt | Select-Object -Last 120
       - uses: actions/upload-artifact@v4
         if: always()
         with:
