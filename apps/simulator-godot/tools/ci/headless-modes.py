@@ -12,8 +12,9 @@ from pixels then describe blank images, the same on every platform. Every report
     any difference is a platform difference), large text dumps as digests (cilib.digest), and runs.json (exit codes);
   - tools/ci/reference/macos/AREA/: the macOS game's own report where one exists (informational: headless, pixel
     counts differ from a rendered run).
-Pins as in PORTING.md ("Validation", the reference runs). A difference is a finding, not a failure. Exits 1 only when
-a mode that exits 0 on macOS crashed, timed out without writing its reports or exited non-zero.
+Pins as in PORTING.md ("Validation", the reference runs). A difference is a finding, not a failure. Exits 1 when
+a mode times out (including while quitting after writing reports), crashes at exit, has an unexpected exit code,
+or is missing expected reports. Reference updates are published only if every selected mode passes the outcome checks.
 Writes OUT/MODE/ (reports and log), OUT/headless-modes.json and a Markdown section of the job summary.
 """
 import argparse, hashlib, json, os, shutil, subprocess, sys, time
@@ -131,6 +132,7 @@ def main():
     mac_runs = json.loads(runs_path.read_text()) if runs_path.exists() else {}
 
     results, failed = [], False
+    reference_updates = []
     rows, details = [], []
     for name, flag, env, reports, macos_area, timeout in selected:
         print(f"== {name}", flush=True)
@@ -153,12 +155,9 @@ def main():
                 entry["reports"].append(item)
                 rows.append((name, code, timed_out, seconds, mac, report, "**missing**", "-")); continue
             if args.update_reference:
-                target = GODOT_MAC / name
-                target.mkdir(parents=True, exist_ok=True)
-                if report.endswith(".txt"):
-                    write_json(target / (report + ".digest.json"), digest(read_text(path)))
-                else:
-                    shutil.copyfile(path, target / report)
+                # Keep the existing baseline intact until every selected mode has finished. Reports alone do not
+                # make a timed-out run valid: it may have hung during shutdown after producing all of its output.
+                reference_updates.append((path, GODOT_MAC / name / report))
             # Against Godot on macOS.
             if report.endswith(".txt"):
                 ref = GODOT_MAC / name / (report + ".digest.json")
@@ -216,10 +215,11 @@ def main():
                                 + (f", **{len(new)} more here**" if new else ""))
             entry["reports"].append(item)
             rows.append((name, code, timed_out, seconds, mac, report, vs_godot, vs_macos))
-        # Failure: a mode that passes on macOS crashed, hung before writing, or failed here.
+        # Reports may be complete before shutdown: any timeout is a failure, including during reference refresh.
         expected = code if args.update_reference else mac.get("exit", 0)
-        if timed_out and missing_reports:
-            entry["failure"] = "timed out without its reports"
+        if timed_out:
+            entry["failure"] = ("timed out without its reports" if missing_reports else
+                                "timed out after writing its reports")
         elif is_crash(code) and not missing_reports and not args.update_reference:
             # Every report written, then a Windows exception status: the mode finished and the process crashed while
             # quitting (as every exported build did until the facade freed its detached nodes and SSAO resources before
@@ -237,11 +237,17 @@ def main():
         if args.update_reference:
             mac_runs[name] = {"exit": code, "seconds": seconds}
 
-    if args.update_reference:
+    if args.update_reference and not failed:
         GODOT_MAC.mkdir(parents=True, exist_ok=True)
+        for path, target in reference_updates:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if path.suffix == ".txt":
+                write_json(target.with_name(target.name + ".digest.json"), digest(read_text(path)))
+            else:
+                shutil.copyfile(path, target)
         write_json(runs_path, mac_runs)
         unstable_path.unlink(missing_ok=True)
-    if args.mark_unstable:
+    if args.mark_unstable and not failed:
         write_json(unstable_path, unstable)
     write_json(out / "headless-modes.json", results)
 

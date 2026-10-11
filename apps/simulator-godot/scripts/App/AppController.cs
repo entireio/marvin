@@ -322,7 +322,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         var now = ProcessInfo.processInfo.systemUptime;
         var wallDelta = max(0, now - lastTime);
         var dt = min(wallDelta, 0.1); lastTime = now;
-        if (isLoadingDirt) { loadingHeartbeats += 1; return; }
+        if (isLoadingDirt) { loadingHeartbeats += 1; observeLoadingCheckIfNeeded(); return; }
         if (townBenchmarkStart is double benchmarkStart)
         {
             // Godot-only measurement hook (TownSmoke.cs, townBenchmarkFixedStep): the benchmark's clock advances 1/60 s per
@@ -434,7 +434,9 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         world.camera.camera.screenSpaceAmbientOcclusionBias = 0.025;
         isDirtTrack = true; inSandbox = true; simulation = new Simulation(dirtTrack: true, dirtStartOffset: DirtCourse.playerGrid.offset, dirtStartPhase: DirtCourse.playerGrid.phase);
         hud.isHidden = true; raceHUD.isHidden = true;
-        view.isHidden = true;
+        // The opaque loading overlay is a child of this view: keep its parent visible
+        // while preparing asynchronously, and let the overlay cover the unfinished scene.
+        view.isHidden = !isLoadingDirt;
         SCNTransaction.begin(); SCNTransaction.disableActions = true;
         raceHUD.helpVisible = mainMenu.showGuide; toolbarControlsVisible = !isLoadingDirt;
         dirtWorld.camera = world.camera;
@@ -471,10 +473,12 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         if (isLoadingDirt)
         {
             loadingView.update(0.93, "Getting ready to race");
+            observeLoadingCheckIfNeeded(preparing: true);
             view.prepare(new object[] { dirtWorld.scene }, success =>
             {
                 DispatchQueue.main.async(() =>
                 {
+                    observeLoadingCheckIfNeeded(preparing: true);
                     if (success) { revealDirtTrack(); }
                     else { failDirtLoading(); }
                 });
@@ -626,7 +630,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5;
         dirtIntro = null; dirtOutro = null;
         raceHUD.escaping = false; raceHUD.escapeComplete = false;
-        if (isDirtTrack) { setRaceControlsHidden(false); }
+        if (isDirtTrack && !isLoadingDirt) { setRaceControlsHidden(false); }
         simulation.reset(); updatePlayerModel();
         if (isDirtTrack)
         {

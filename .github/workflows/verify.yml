@@ -3,6 +3,12 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
+  simulator-ci-tools:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify simulator CI outcome handling
+        run: python3 -m unittest discover -s apps/simulator-godot/tools/ci -p 'test_*.py'
   simulator-performance-gate:
     runs-on: ubuntu-24.04
     steps:

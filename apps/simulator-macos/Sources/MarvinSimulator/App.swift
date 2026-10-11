@@ -20,6 +20,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     var isLoadingDirt=false
     var loadingHeartbeats=0
+    var loadingVisibilitySamples=0, loadingPreparationSamples=0
+    var loadingStayedVisible=true, loadingViewportBounds=NSRect.zero
+    var loadingControlsStayedHidden=true
     let loadingView=LevelLoadingView()
     let raceHUD = RaceHUD()
     let frameRateHUD = FrameRateHUD()
@@ -242,7 +245,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         let now = ProcessInfo.processInfo.systemUptime
         let wallDelta = max(0, now-lastTime)
         let dt = min(wallDelta, 0.1); lastTime = now
-        if isLoadingDirt { loadingHeartbeats += 1; return }
+        if isLoadingDirt { loadingHeartbeats += 1; observeLoadingCheckIfNeeded(); return }
         if townBenchmarkStart != nil { tickTownBenchmark(now:now,dt:dt); return }
         if !inSandbox {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt)
@@ -514,7 +517,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         world.camera.camera?.screenSpaceAmbientOcclusionBias = 0.025
         isDirtTrack = true; inSandbox = true; simulation = Simulation(dirtTrack: true, dirtStartOffset:DirtCourse.playerGrid.offset, dirtStartPhase:DirtCourse.playerGrid.phase)
         hud.isHidden = true; raceHUD.isHidden = true
-        view.isHidden = true
+        // The opaque loading overlay is a child of this view: keep its parent visible
+        // while preparing asynchronously, and let the overlay cover the unfinished scene.
+        view.isHidden = !isLoadingDirt
         SCNTransaction.begin(); SCNTransaction.disableActions = true
         raceHUD.helpVisible = mainMenu.showGuide; toolbarControlsVisible = !isLoadingDirt
         dirtWorld.camera = world.camera
@@ -549,9 +554,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         // before revealing the scene, avoiding a frame from the previous camera.
         if isLoadingDirt {
             loadingView.update(0.93,"Getting ready to race")
+            observeLoadingCheckIfNeeded(preparing:true)
             view.prepare([dirtWorld.scene]) { [weak self] success in
                 DispatchQueue.main.async {
                     guard let self else { return }
+                    self.observeLoadingCheckIfNeeded(preparing:true)
                     if success { self.revealDirtTrack() }
                     else { self.failDirtLoading() }
                 }
@@ -679,7 +686,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil; dirtOutro = nil
         raceHUD.escaping=false;raceHUD.escapeComplete=false
-        if isDirtTrack { setRaceControlsHidden(false) }
+        if isDirtTrack && !isLoadingDirt { setRaceControlsHidden(false) }
         simulation.reset(); updatePlayerModel()
         if isDirtTrack {
             var random = SystemRandomNumberGenerator()

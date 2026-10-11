@@ -59,10 +59,16 @@ public sealed partial class LevelLoadingView : NSView
 
 public partial class AppController
 {
+    private int loadingVisibilitySamples, loadingPreparationSamples;
+    private bool loadingStayedVisible = true;
+    private bool loadingControlsStayedHidden = true;
+    private NSRect loadingViewportBounds;
+
     public void loadDirtTrack()
     {
         if (isLoadingDirt) return;
         isLoadingDirt = true; loadingHeartbeats = 0; view.clearInput();
+        loadingVisibilitySamples = 0; loadingPreparationSamples = 0; loadingStayedVisible = true; loadingControlsStayedHidden = true; loadingViewportBounds = view.bounds;
         installContentOverlay(loadingView); loadingView.begin(); window.makeFirstResponder(loadingView);
         toolbarControlsVisible = false; mainMenu.portrait.rendersContinuously = false;
         if (cachedDirtWorld != null)
@@ -87,24 +93,46 @@ public partial class AppController
         isLoadingDirt = false; loadingView.removeFromSuperview(); showMainMenu(null);
         var alert = new NSAlert(); alert.messageText = "The race could not finish loading."; alert.informativeText = "Please try again."; alert.beginSheetModal(window);
     }
+    public void observeLoadingCheckIfNeeded(bool preparing = false)
+    {
+        if (!CommandLine.arguments.Contains("--loading-smoke-test")) return;
+        loadingVisibilitySamples += 1;
+        if (preparing) loadingPreparationSamples += 1;
+        // Check ancestor visibility, not just the overlay's own Visible flag. The
+        // former bug hid its parent only during the final asynchronous preparation.
+        loadingStayedVisible &= loadingView.IsVisibleInTree() && view.bounds.Equals(loadingViewportBounds);
+        loadingControlsStayedHidden &= !toolbarControlsVisible && raceHUD.isHidden && hud.isHidden;
+        if (preparing && loadingPreparationSamples == 1) captureLoadingCheckIfNeeded(0.93);
+    }
     public void captureLoadingCheckIfNeeded(double progress)
     {
         if (!(CommandLine.arguments.Contains("--loading-smoke-test") && smokeDirectory is string directory &&
-              progress >= 0.49 && progress < 0.51)) return;
+              ((progress >= 0.49 && progress < 0.51) || progress == 0.93))) return;
         loadingView.layoutSubtreeIfNeeded(); loadingView.displayIfNeeded();
         if (loadingView.bitmapImageRepForCachingDisplay(loadingView.bounds) is NSBitmapImageRep bitmap)
         {
             loadingView.cacheDisplay(loadingView.bounds, bitmap);
             try { FileManager.@default.createDirectory(directory, withIntermediateDirectories: true); } catch (Exception) { }
-            try { bitmap.representation(NSBitmapImageFileType.png, new())?.write(URL.fileURLWithPath(directory).appendingPathComponent("loading.png")); } catch (Exception) { }
+            var file = progress == 0.93 ? "loading-preparing.png" : "loading.png";
+            try { bitmap.representation(NSBitmapImageFileType.png, new())?.write(URL.fileURLWithPath(directory).appendingPathComponent(file)); } catch (Exception) { }
         }
     }
     public void finishLoadingCheckIfNeeded()
     {
         if (!CommandLine.arguments.Contains("--loading-smoke-test")) return;
         var h = loadingView.history;
-        var passed = h.FirstOrDefault(-1) == 0 && h.LastOrDefault(-1) == 1 && h.Zip(h.Skip(1)).All(pair => pair.First <= pair.Second) && h.Count > 20 && loadingHeartbeats > 5 && !view.isHidden && inSandbox && !isLoadingDirt;
-        print($"Loading: {(passed ? "PASS" : "FAIL")}, {h.Count.ToString(CultureInfo.InvariantCulture)} progress reports, {loadingHeartbeats.ToString(CultureInfo.InvariantCulture)} responsive ticks");
+        var passed = h.FirstOrDefault(-1) == 0 && h.LastOrDefault(-1) == 1 && h.Zip(h.Skip(1)).All(pair => pair.First <= pair.Second) && h.Count > 20 && loadingHeartbeats > 5 && !view.isHidden && inSandbox && !isLoadingDirt
+            && loadingStayedVisible && loadingControlsStayedHidden && loadingVisibilitySamples > 5 && loadingPreparationSamples == 2 && view.bounds.Equals(loadingViewportBounds)
+            && toolbarControlsVisible && !raceHUD.isHidden && loadingView.superview == null;
+        if (smokeDirectory is string directory)
+        {
+            System.IO.Directory.CreateDirectory(directory);
+            System.IO.File.WriteAllText(System.IO.Path.Combine(directory, "loading.json"), System.Text.Json.JsonSerializer.Serialize(new {
+                passed, loadingStayedVisible, loadingControlsStayedHidden, loadingVisibilitySamples, loadingPreparationSamples,
+                loadingHeartbeats, progressReports = h.Count, viewportUnchanged = view.bounds.Equals(loadingViewportBounds)
+            }, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        }
+        print($"Loading: {(passed ? "PASS" : "FAIL")}, {h.Count.ToString(CultureInfo.InvariantCulture)} progress reports, {loadingHeartbeats.ToString(CultureInfo.InvariantCulture)} responsive ticks, overlay visible through preparation: {loadingStayedVisible}");
         exit(passed ? 0 : 1);
     }
 }

@@ -40,6 +40,8 @@ apps/simulator-godot/tools/godot -- --facade-test DIR   # SceneKit facade self-t
 apps/simulator-godot/tools/godot -- --calibration DIR   # game-like calibration scenes at 1280x820 (see "Calibration against game scenes")
 apps/simulator-godot/tools/godot -- --text-calibration DIR   # text matrix for tools/scenekit-reference/TextCalibration.swift (see "AppKit views, events and text")
 apps/simulator-godot/tools/godot -- --hud-smoke-test DIR     # HUD/loading/sandbox HUD captures + hud-smoke.json (compare with tools/scenekit-reference/ui-reference/build.sh)
+apps/simulator-godot/tools/godot -- --loading-smoke-test DIR # loading visibility through preparation, controls and stable viewport + loading.json/PNGs
+apps/simulator-godot/tools/godot -- --sand-lifetime-test DIR # actual patch uploads/eviction/reset, resource reclamation and shared shaders + sand-lifetime.json
 apps/simulator-godot/tools/godot -- --menu-smoke-test DIR    # main menu captures + menu-smoke.json (macOS flag name)
 apps/simulator-godot/tools/godot -- --smoke-test DIR         # the composite native smoke test (macOS flag; every macOS smoke flag that is ported, see "App and game modes")
 apps/simulator-godot/tools/godot --audio-driver Dummy -- --playthrough DIR   # plays menu -> race -> sandbox through real input, captures every stage
@@ -714,6 +716,12 @@ Refreshing the references on this Mac: `tools/ci/headless-modes.py --godot "$GOD
 twice `--mark-unstable`; `tools/ci/render-captures.py --godot "$GODOT" --driver metal --out DIR --update-reference`;
 `tools/ci/assets-report.py --update-reference`; `tools/ci/libm-report.py --reference "macOS|DIR" --update-reference`
 after `tools/checks --libm-probe DIR`.
+
+Headless mode timeouts fail even after every report is written: shutdown must finish within the timeout.
+`--update-reference` publishes reports and exit codes only after every selected mode passes the outcome checks;
+a failed run preserves the existing reports, exit codes and unstable-key baseline. The outcome checks run with
+`python3 -m unittest discover -s apps/simulator-godot/tools/ci -p 'test_*.py'` from the repository root; they inject
+runner outcomes and use copies of committed reports, rather than launching or hanging Godot.
 
 **What the Windows runner showed** (runs 37546405428, 37547907742, 37550743128, 37552013870, 37560279850,
 37563045349, 37563918489 and 37568945282, 2026-10-07):

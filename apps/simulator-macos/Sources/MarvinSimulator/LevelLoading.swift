@@ -47,6 +47,7 @@ extension AppController {
     func loadDirtTrack() {
         guard !isLoadingDirt else { return }
         isLoadingDirt=true;loadingHeartbeats=0;view.clearInput()
+        loadingVisibilitySamples=0;loadingPreparationSamples=0;loadingStayedVisible=true;loadingControlsStayedHidden=true;loadingViewportBounds=view.bounds
         installContentOverlay(loadingView);loadingView.begin();window.makeFirstResponder(loadingView)
         toolbarControlsVisible=false;mainMenu.portrait.rendersContinuously=false
         if cachedDirtWorld != nil {
@@ -66,21 +67,42 @@ extension AppController {
         isLoadingDirt=false;loadingView.removeFromSuperview();showMainMenu(nil)
         let alert=NSAlert();alert.messageText="The race could not finish loading.";alert.informativeText="Please try again.";alert.beginSheetModal(for:window)
     }
+    func observeLoadingCheckIfNeeded(preparing:Bool=false) {
+        guard CommandLine.arguments.contains("--loading-smoke-test") else { return }
+        loadingVisibilitySamples += 1
+        if preparing { loadingPreparationSamples += 1 }
+        // Check ancestor visibility: hiding the parent during asynchronous
+        // preparation used to leave the overlay's own isHidden flag unchanged.
+        loadingStayedVisible = loadingStayedVisible && !loadingView.isHiddenOrHasHiddenAncestor && view.bounds == loadingViewportBounds
+        loadingControlsStayedHidden = loadingControlsStayedHidden && !toolbarControlsVisible && raceHUD.isHidden && hud.isHidden
+        if preparing && loadingPreparationSamples == 1 { captureLoadingCheckIfNeeded(0.93) }
+    }
     func captureLoadingCheckIfNeeded(_ progress:Double) {
         guard CommandLine.arguments.contains("--loading-smoke-test"),let directory=smokeDirectory,
-              progress>=0.49 && progress<0.51 else { return }
+              (progress>=0.49 && progress<0.51) || progress==0.93 else { return }
         loadingView.layoutSubtreeIfNeeded();loadingView.displayIfNeeded()
         if let bitmap=loadingView.bitmapImageRepForCachingDisplay(in:loadingView.bounds) {
             loadingView.cacheDisplay(in:loadingView.bounds,to:bitmap)
             try? FileManager.default.createDirectory(atPath:directory,withIntermediateDirectories:true)
-            try? bitmap.representation(using:.png,properties:[:])?.write(to:URL(fileURLWithPath:directory).appendingPathComponent("loading.png"))
+            let file=progress==0.93 ? "loading-preparing.png":"loading.png"
+            try? bitmap.representation(using:.png,properties:[:])?.write(to:URL(fileURLWithPath:directory).appendingPathComponent(file))
         }
     }
     func finishLoadingCheckIfNeeded() {
         guard CommandLine.arguments.contains("--loading-smoke-test") else { return }
         let h=loadingView.history
         let passed=h.first==0 && h.last==1 && zip(h,h.dropFirst()).allSatisfy{$0 <= $1} && h.count>20 && loadingHeartbeats>5 && !view.isHidden && inSandbox && !isLoadingDirt
-        print("Loading: \(passed ? "PASS":"FAIL"), \(h.count) progress reports, \(loadingHeartbeats) responsive ticks")
+            && loadingStayedVisible && loadingControlsStayedHidden && loadingVisibilitySamples>5 && loadingPreparationSamples==2 && view.bounds==loadingViewportBounds
+            && toolbarControlsVisible && !raceHUD.isHidden && loadingView.superview==nil
+        if let directory=smokeDirectory {
+            let report:[String:Any] = ["passed":passed,"loadingStayedVisible":loadingStayedVisible,"loadingControlsStayedHidden":loadingControlsStayedHidden,
+                "loadingVisibilitySamples":loadingVisibilitySamples,"loadingPreparationSamples":loadingPreparationSamples,
+                "loadingHeartbeats":loadingHeartbeats,"progressReports":h.count,"viewportUnchanged":view.bounds==loadingViewportBounds]
+            try? FileManager.default.createDirectory(atPath:directory,withIntermediateDirectories:true)
+            try? JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys])
+                .write(to:URL(fileURLWithPath:directory).appendingPathComponent("loading.json"))
+        }
+        print("Loading: \(passed ? "PASS":"FAIL"), \(h.count) progress reports, \(loadingHeartbeats) responsive ticks, overlay visible through preparation: \(loadingStayedVisible)")
         exit(passed ? 0:1)
     }
 }

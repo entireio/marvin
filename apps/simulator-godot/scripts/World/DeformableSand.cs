@@ -149,7 +149,10 @@ public sealed class DeformableSand
                 }
             var position = new SCNGeometrySource(buffer, MTLVertexFormat.float3, SCNGeometrySourceSemantic.vertex, vertexCount: 4225, dataOffset: 0, dataStride: 32);
             var normalSource = new SCNGeometrySource(buffer, MTLVertexFormat.float3, SCNGeometrySourceSemantic.normal, vertexCount: 4225, dataOffset: 16, dataStride: 32);
-            var mesh = new SCNGeometry(new[] { position, normalSource, patch.uv }, new[] { elements }); mesh.materials = new() { material };
+            // Each patch binds its own height texture, so it already needs a distinct Godot material variant. Keep
+            // that variant cache patch-owned: the shared base-terrain material lives for the whole world and would
+            // otherwise retain every evicted patch's geometry and texture. Copies still share the compiled shader.
+            var mesh = new SCNGeometry(new[] { position, normalSource, patch.uv }, new[] { elements }); mesh.materials = new() { material.copy() };
             mesh.shaderModifiers = new() { [SCNShaderModifierEntryPoint.geometry] = displacement };
             mesh.boundingBox = (new SCNVector3(0, (double)low - 0.14, 0), new SCNVector3(4, (double)high + 0.11, 4));
             patch.heights.minificationFilter = SCNFilterMode.nearest; patch.heights.magnificationFilter = SCNFilterMode.nearest; patch.heights.mipFilter = SCNFilterMode.none;
