@@ -1,0 +1,36 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4PHJPYX66CDTAAT3FVST4H1",
+  "strategy": "manual-commit",
+  "branch": "codex/mos-aster-racing-city",
+  "checkpoints_count": 1,
+  "files_touched": [
+    ".github/workflows/verify.yml",
+    "apps/simulator-godot/PORTING.md",
+    "apps/simulator-godot/scripts/App/AppController.cs",
+    "apps/simulator-godot/scripts/UI/LevelLoading.cs",
+    "apps/simulator-godot/scripts/World/DeformableSand.cs",
+    "apps/simulator-godot/scripts/World/SandLifetimeSmoke.cs",
+    "apps/simulator-godot/tools/ci/headless-modes.py",
+    "apps/simulator-godot/tools/ci/test_headless_modes.py",
+    "apps/simulator-macos/Sources/MarvinSimulator/App.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/LevelLoading.swift"
+  ],
+  "sessions": [
+    {
+      "metadata": "/0/metadata.json",
+      "transcript": "/0/full.jsonl",
+      "compact_transcript": "/0/transcript.jsonl",
+      "content_hash": "/0/content_hash.txt",
+      "prompt": "/0/prompt.txt"
+    }
+  ],
+  "token_usage": {
+    "input_tokens": 439195,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 11283072,
+    "output_tokens": 27779,
+    "api_call_count": 104,
+    "subagent_tokens_complete": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "tool_use_id": "01a12d11-aedc-7f51-98fe-d33926eee2b2",
+  "agent_id": "01a12d11-aedc-7f51-98fe-d33926eee2b2",
+  "subagent_type": "default",
+  "files": [
+    "apps/simulator-godot/tools/ci/test_headless_modes.py",
+    "apps/simulator-godot/tools/ci/headless-modes.py",
+    "apps/simulator-godot/PORTING.md"
+  ],
+  "token_usage": {
+    "input_tokens": 51559,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 1016192,
+    "output_tokens": 7092,
+    "api_call_count": 19
+  },
+  "started_at": "2026-10-11T18:24:58.187035-04:00",
+  "completed_at": "2026-10-11T18:33:19.264451-04:00"
+}

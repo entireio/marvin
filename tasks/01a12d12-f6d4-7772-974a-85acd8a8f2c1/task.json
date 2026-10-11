@@ -1,0 +1,18 @@
+{
+  "tool_use_id": "01a12d12-f6d4-7772-974a-85acd8a8f2c1",
+  "agent_id": "01a12d12-f6d4-7772-974a-85acd8a8f2c1",
+  "subagent_type": "default",
+  "files": [
+    "apps/simulator-godot/scripts/World/DeformableSand.cs",
+    "apps/simulator-godot/scripts/World/SandLifetimeSmoke.cs"
+  ],
+  "token_usage": {
+    "input_tokens": 73641,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 3015552,
+    "output_tokens": 10309,
+    "api_call_count": 39
+  },
+  "started_at": "2026-10-11T18:26:21.827982-04:00",
+  "completed_at": "2026-10-11T18:33:19.26446-04:00"
+}
