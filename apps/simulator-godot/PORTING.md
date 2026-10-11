@@ -18,12 +18,14 @@ A faithful port of the macOS game in `apps/simulator-macos` to Godot 4.7 (.NET/C
 | `scenes/` | Godot scenes. `Main.tscn` is the entry point. |
 | `assets/` | **Gitignored.** Runtime assets copied from the macOS game by `tools/sync-assets.py`. |
 | `reference/` | **Gitignored.** Reference outputs from the macOS game (SimulationChecks output, captures). The small ones CI needs are copied to tracked places: `src/Checks/reference/`, `tools/ci/reference/`. |
-| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export` (release builds) and `export-verify.py` (their layout); `perf/`: like-for-like benchmark runner and probes (see `docs/performance.md`); `ci/`: the scripts and small references of the Windows CI workflow (see "Release builds and Windows"). |
+| `tools/` | `dev.py` (the mise tasks: setup, play, test, checks, export), `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export` (release builds) and `export-verify.py` (their layout); `perf/`: like-for-like benchmark runner and probes (see `docs/performance.md`); `ci/`: the scripts and small references of the Windows CI workflow (see "Release builds and Windows"). |
 | `docs/performance.md` | The measured performance gap to the macOS game (same drawable sizes, GPU per pass, CPU, memory, loading) and the ranked costs. |
 | `export_presets.cfg`, `MarvinGodot.sln` | Export presets (macOS universal, Windows x86_64 with Direct3D 12 and a Vulkan fallback; Godot 4.7.2 .NET export templates) and the solution file Godot's C# export needs. |
 | `README.md` | Building, exporting and running, on macOS and Windows (see "Release builds and Windows" below for what was verified). |
 
 ## Build and run
+
+A new machine: `mise trust`, `mise run setup`, `mise run play` in this folder (README.md, "Setup"; `mise.toml`, `tools/dev.py`). The bash tools below do the same steps one by one:
 
 ```sh
 apps/simulator-godot/tools/sync-assets.py      # once, and after macOS assets change
@@ -51,7 +53,7 @@ apps/simulator-godot/tools/checks --portable-math [MILLIONS] # the portable Darw
 
 The C# assemblies are compiled with optimisation in every configuration (`<Optimize>true</Optimize>` in both projects): the Godot editor binary runs a project's Debug build, and unoptimised C# made the world build and every frame several times slower (see "Performance").
 
-`tools/env.sh` sets `DOTNET_ROOT` (`~/.dotnet`) and `GODOT` (`~/Applications/Godot_mono.app`). In this shell, `cat` and `ls` are aliased to missing tools: use `command cat`, `command ls`, or the Read and Write tools. Use `gtimeout` (GNU coreutils) to bound any Godot run.
+`tools/env.sh` sets `DOTNET_ROOT` and `GODOT` when they are unset: to the .NET 8 SDK and Godot 4.7.2 .NET that `mise.toml` pins once mise installed them (`mise run setup`), otherwise to `~/.dotnet` and `~/Applications/Godot_mono.app`; `tools/dev.py` looks them up the same way. In this shell, `cat` and `ls` are aliased to missing tools: use `command cat`, `command ls`, or the Read and Write tools. Use `gtimeout` (GNU coreutils) to bound any Godot run.
 
 ## Translation rules
 

@@ -8,33 +8,40 @@ Windows as well as macOS. The macOS game is the reference: the port mirrors its 
 SceneKit/AppKit facade and is calibrated against its captures (PORTING.md). It is never modified from here.
 Status and what is left: [docs/plan.md](docs/plan.md).
 
-## Requirements
+## Setup
 
-- [Godot 4.7.2 .NET](https://godotengine.org/download/archive/4.7.2-stable/) (the "mono" editor) and, for release
-  builds, its export templates (`Godot_v4.7.2-stable_mono_export_templates.tpz`, installed with
-  Editor > Manage Export Templates, or unpacked into the templates folder: macOS
-  `~/Library/Application Support/Godot/export_templates/4.7.2.stable.mono/`, Windows
-  `%APPDATA%\Godot\export_templates\4.7.2.stable.mono\`).
-- The .NET 8 SDK.
-- Python 3 (asset sync, checks, export verification).
-- The game's assets: `tools/sync-assets.py` copies them from `apps/simulator-macos/Resources` of the main checkout
-  into `assets/` (gitignored). Marvin's `geometry.bin` and the BB-8 / WALL-E meshes are generated there by
-  `apps/simulator-macos/build-app.sh`, so a Mac has to build the macOS game once (or set `MARVIN_MAC_RESOURCES` to a
-  copy of a Resources folder that has them).
-
-## Build and run (development)
-
-From the repository root, on macOS (`tools/env.sh` expects the editor in `~/Applications/Godot_mono.app` and .NET in
-`~/.dotnet`; set `GODOT` and `DOTNET_ROOT` otherwise):
+On a Mac or a Windows PC with git and [mise](https://mise.jdx.dev/getting-started.html) (on Windows in PowerShell):
 
 ```sh
-apps/simulator-godot/tools/sync-assets.py               # once, and after the macOS assets change
-apps/simulator-godot/tools/build                        # compile the C# (MarvinGodot + MarvinCore)
-apps/simulator-godot/tools/godot --headless --import    # first time: import textures and audio
-apps/simulator-godot/tools/godot                        # play: main menu, Sandbox, Dirt Track
-apps/simulator-godot/tools/godot -- --smoke-test DIR    # a game mode: flags after "--" (PORTING.md, "App and game modes")
-apps/simulator-godot/tools/checks                       # the simulation checks (no Godot)
+git clone --branch codex/mos-aster-racing-city https://github.com/entireio/marvin.git
+cd marvin/apps/simulator-godot
+mise trust
+mise run setup
+mise run play
 ```
+
+`mise run setup` installs the tools `mise.toml` pins into mise's own folders, nothing system-wide (Godot 4.7.2 .NET,
+the .NET 8 SDK, Python 3.12, Git LFS), fetches the Git LFS files the game is made from, generates the robots' meshes
+from their sources (`scripts/prepare-simulator-assets.py`, as the macOS build does: no macOS build needed), copies the
+assets into `assets/` (gitignored), builds the C# and imports the textures and audio. The first run takes a few
+minutes, mostly downloads; after a `git pull` run it again (seconds when nothing changed). `mise run play` builds the C#
+and starts the game.
+
+| Task | |
+|---|---|
+| `mise run play` | The game: main menu, Sandbox, Dirt Track. Flags go to the game, e.g. `mise run play -- --smoke-test /tmp/smoke` (game modes: PORTING.md, "App and game modes"); Godot's own flags go before a second `--`. |
+| `mise run test` | A quick headless smoke test, the town and the four robots (about 20 s on a Mac), against the same run on Godot on macOS; `mise run test -- all` runs every mode the Windows CI runs. |
+| `mise run checks` | The simulation checks (no Godot). |
+| `mise run export` | Release builds (below). |
+| `mise run build`, `mise run godot -- ARGS` | The C# only; Godot on this project with any arguments. |
+
+The tasks are `tools/dev.py`, in Python so that they run the same on macOS and Windows. **Without mise**, install
+Godot 4.7.2 .NET (on a Mac as `~/Applications/Godot_mono.app`, otherwise set `GODOT` to the editor binary, on Windows
+the `_console.exe`), the .NET 8 SDK (`~/.dotnet`, or set `DOTNET_ROOT`), Python 3 and Git LFS, and run the tasks as
+`python tools/dev.py setup`, `play` and so on. The bash scripts `tools/godot`, `tools/build`, `tools/checks` and
+`tools/export` (Git Bash on Windows) find Godot and .NET the same way (`tools/env.sh`: `GODOT` and `DOTNET_ROOT`, then
+mise's, then `~/Applications` and `~/.dotnet`). `MARVIN_MAC_RESOURCES` makes setup copy the assets from another
+`Resources` folder of the macOS game that has the generated meshes, instead of generating them.
 
 The editor runs the game from the project folder; release builds are exported (below). Keys: W A S D or the
 arrows drive, Shift boosts, Space brakes, C changes the camera, P or Esc pauses, ? shows the key guide; ⌘M / ⌘R /
@@ -60,12 +67,17 @@ use Max).
 ## Release builds
 
 ```sh
-apps/simulator-godot/tools/export                 # both: build/macos/Marvin Simulator.app, build/windows/MarvinSimulator.exe
-apps/simulator-godot/tools/export macos           # or one platform
-apps/simulator-godot/tools/export windows --zip   # also build/MarvinSimulator-windows-x86_64.zip, to copy to a PC
+mise run export                       # on a Mac both: build/macos/Marvin Simulator.app, build/windows/MarvinSimulator.exe
+mise run export -- macos              # or one platform (on Windows the default is windows)
+mise run export -- windows --zip      # also build/MarvinSimulator-windows-x86_64.zip, to copy to a PC
 ```
 
-`tools/export` imports, exports with Godot's release template and then runs `tools/export-verify.py` on the result,
+(`tools/export` with the same arguments, without mise.) The first export fetches the files of Godot's export templates
+that the presets need (`macos.zip` and the Windows x86_64 templates, about 200 MB of the 1.2 GB
+`Godot_v4.7.2-stable_mono_export_templates.tpz`) into Godot's templates folder (macOS
+`~/Library/Application Support/Godot/export_templates/4.7.2.stable.mono/`, Windows
+`%APPDATA%\Godot\export_templates\4.7.2.stable.mono\`). The export imports, exports with Godot's release template and
+then runs `tools/export-verify.py` on the result,
 which checks the bundle without running it (so the Windows build is checked on a Mac too): the executables'
 architectures and resources, the self-contained .NET runtime and the game assemblies (built as `ExportRelease`, no
 editor assemblies), the native libraries the assemblies name (only the two macOS ones, both behind an OS check), and
@@ -110,30 +122,12 @@ thread stacks. Results: PORTING.md, "Release builds and Windows".
 
 ### Getting a build
 
-**From a Mac** (simplest): `apps/simulator-godot/tools/export windows --zip`, copy
-`build/MarvinSimulator-windows-x86_64.zip` to the PC and unzip it anywhere. No installation is needed; the .NET
-runtime is inside.
+**On Windows**: the commands in "Setup" (PowerShell, with Git for Windows and mise), then `mise run play`, or
+`mise run export` for the release build in `build/windows`. CI runs exactly these on fresh Windows, macOS and Linux
+runners (`.github/workflows/godot-setup.yml`).
 
-**On Windows**:
-
-1. Install Godot 4.7.2 .NET for Windows (`Godot_v4.7.2-stable_mono_win64.zip`) and its export templates, the .NET 8
-   SDK, Python 3 and Git for Windows (Git Bash runs the `tools/` scripts).
-2. Clone the repository (Git LFS for the crowd mesh) and copy `apps/simulator-godot/assets/` from a Mac that ran
-   `tools/sync-assets.py`, or run it with `MARVIN_MAC_RESOURCES` pointing at a copy of the macOS game's
-   `Resources` folder that includes the generated meshes.
-3. In Git Bash:
-
-   ```sh
-   export GODOT="/c/Godot/Godot_v4.7.2-stable_mono_win64/Godot_v4.7.2-stable_mono_win64_console.exe"
-   cd apps/simulator-godot
-   tools/build && tools/godot --headless --import
-   tools/godot                      # play from the editor runtime
-   tools/export windows             # release build in build/windows
-   ```
-
-   Without Git Bash, the same steps by hand: `dotnet build MarvinGodot.csproj`, then
-   `Godot_v4.7.2-stable_mono_win64_console.exe --path . --headless --import` and
-   `... --path . --headless --export-release "Windows Desktop" build/windows/MarvinSimulator.exe`.
+**From a Mac**: `mise run export -- windows --zip`, copy `build/MarvinSimulator-windows-x86_64.zip` to the PC and unzip
+it anywhere. No installation is needed; the .NET runtime is inside.
 
 ### Running
 
@@ -180,7 +174,8 @@ runtime is inside.
 |---|---|
 | `project.godot`, `MarvinGodot.csproj`, `MarvinGodot.sln` | The Godot project (Forward+, C#; assembly `MarvinGodot`) |
 | `export_presets.cfg` | Release presets: macOS (universal), Windows Desktop (x86_64) |
+| `mise.toml` | The developer setup: the pinned tools and the tasks (`tools/dev.py`) |
 | `src/Core`, `src/Checks` | The simulation core (pure C#) and the port of the macOS simulation checks |
 | `scripts/` | The game, mirroring the Swift sources; `scripts/SceneKit/` is the SceneKit/AppKit facade |
-| `tools/` | `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export`, `export-verify.py`; `perf/` (benchmarks, `docs/performance.md`); `ci/` (the Windows CI's scripts and references) |
+| `tools/` | `dev.py` (the mise tasks), `env.sh`, `godot`, `build`, `checks`, `sync-assets.py`, `export`, `export-verify.py`; `perf/` (benchmarks, `docs/performance.md`); `ci/` (the Windows CI's scripts and references) |
 | `assets/`, `build/`, `reference/` | Gitignored: synced assets, exports, macOS reference captures |

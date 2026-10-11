@@ -1,0 +1,89 @@
+# The Godot port's developer setup (apps/simulator-godot/mise.toml; README.md, "Setup") on fresh GitHub-hosted runners.
+# Only mise is installed (jdx/mise-action without tools or cache); then exactly the documented commands: git clone,
+# cd apps/simulator-godot, mise trust, mise run setup, mise run play (headless here: a game mode that quits by itself),
+# and the quick headless smoke test (mise run test). Then: setup again (idempotent, seconds), the tasks leave the
+# working tree as it was, and a release export of the runner's platform (the export templates fetched by the task).
+name: Godot port setup with mise
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/mos-aster-racing-city]
+    paths:
+      - apps/simulator-godot/mise.toml
+      - apps/simulator-godot/tools/dev.py
+      - apps/simulator-godot/tools/env.sh
+      - apps/simulator-godot/tools/sync-assets.py
+      - apps/simulator-godot/tools/export-verify.py
+      - apps/simulator-godot/tools/ci/headless-modes.py
+      - apps/simulator-godot/**/*.csproj
+      - scripts/prepare-simulator-assets.py
+      - .github/workflows/godot-setup.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: godot-setup-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    name: mise run setup, play, test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            export: windows
+          - os: macos-latest
+            export: macos
+          - os: ubuntu-latest
+            export: ''
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    env:
+      # mise fetches Godot, Python and Git LFS from GitHub releases; the token avoids the shared runners' API limit.
+      MISE_GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: jdx/mise-action@v5
+        with:
+          install: false  # the tasks install the tools, as on a developer's machine
+          cache: false    # every run starts without them
+      - name: git clone (this commit)
+        run: |
+          git clone --branch "${{ github.ref_name }}" "https://github.com/${{ github.repository }}.git" marvin
+          git -C marvin checkout --detach "${{ github.sha }}"
+      - name: mise trust
+        working-directory: marvin/apps/simulator-godot
+        run: mise trust
+      - name: mise run setup
+        working-directory: marvin/apps/simulator-godot
+        run: mise run setup
+      - name: mise run play (headless, --town-statistics)
+        working-directory: marvin/apps/simulator-godot
+        run: mise run play -- --headless --audio-driver Dummy -- --town-statistics "${{ runner.temp }}/play"
+      - name: mise run test
+        working-directory: marvin/apps/simulator-godot
+        run: mise run test
+      - name: mise run setup (again; nothing to do)
+        working-directory: marvin/apps/simulator-godot
+        run: mise run setup
+      - name: The tasks left the working tree as it was
+        working-directory: marvin
+        run: |
+          git status --short
+          git diff --exit-code --stat
+      - name: mise run export -- ${{ matrix.export }}
+        if: ${{ matrix.export != '' }}
+        working-directory: marvin/apps/simulator-godot
+        run: mise run export -- ${{ matrix.export }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: setup-${{ matrix.os }}
+          path: |
+            marvin/apps/simulator-godot/build/test
+            marvin/apps/simulator-godot/build/*.log
+          retention-days: 7
+          if-no-files-found: ignore

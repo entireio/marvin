@@ -26,6 +26,7 @@ Details: `PORTING.md` (conventions, facade, comparison), `docs/performance.md` (
 | Settings (Godot-only) | **Shadow quality**: Fast (hard shadows, the default) or Exact (soft, matching macOS). **Graphics detail**: Max (the default, unchanged), High, Medium, Low. |
 | Release builds | `tools/export` builds a macOS app and a Windows folder. The exported macOS app passes the smoke modes and the full playthrough. |
 | Windows CI | `.github/workflows/godot-windows.yml` builds, tests, exports and renders the port on a GPU-less Windows runner on every push (see "Left to do", item 1). |
+| Developer setup | With git and mise only: `mise trust`, `mise run setup`, `mise run play` (`mise.toml` pins Godot 4.7.2 .NET, .NET 8, Python and Git LFS; `tools/dev.py` fetches the LFS files, generates the assets without a macOS build, builds and imports). `.github/workflows/godot-setup.yml` runs these commands, a headless smoke test and an export on fresh Windows, macOS and Linux runners. |
 | Mac game changes | The port matches the macOS gameplay at `1c8bb11`. The only later macOS commits (`de62266`, `057f52e`) add diagnostics, not gameplay. |
 
 ### Performance at 1920 x 1080 (Apple M2, FPS)
