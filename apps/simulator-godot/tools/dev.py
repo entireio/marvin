@@ -260,9 +260,70 @@ def ready():
 
 def cmd_play(args):
     godot = ready()
+    godot = dev_app(godot) if MACOS else godot
     # Flags are the game's (after "--", OS.GetCmdlineUserArgs); with a "--" of their own, Godot's come before it.
     args = args if not args or "--" in args else ["--", *args]
     return run([godot, "--path", ROOT, *args], check=False).returncode
+
+
+DEV_APP = ROOT / "build" / "dev" / "Marvin Simulator.app"
+DEV_APP_VERSION = "1"  # bump when dev_app changes what it makes
+
+
+def dev_app(godot):
+    """The editor binary in a copy of Godot's app named Marvin Simulator, so that the menu bar and the Dock show the
+    game's name and icon (macOS takes them from the app's Info.plist, which Godot cannot change at run time; exports
+    have their own). The copy is an APFS clone (no extra disk space) with a new Info.plist and icon, signed ad hoc.
+    Remade when Godot or the icon changes; on any failure, play runs Godot's own app."""
+    source = godot.parent.parent.parent
+    if source.suffix != ".app" or source == DEV_APP:
+        return godot
+    icon = ROOT / "assets" / "Icons" / "AppIconLight.png"
+    stamp_file = DEV_APP.parent / "dev-app.stamp"  # outside the signed bundle
+    stamp = "\n".join([DEV_APP_VERSION, str(source), str((source / "Contents" / "Info.plist").stat().st_mtime_ns),
+                       str(icon.stat().st_mtime_ns) if icon.is_file() else "-"])
+    binary = DEV_APP / "Contents" / "MacOS" / godot.name
+    if binary.is_file() and stamp_file.is_file() and stamp_file.read_text() == stamp:
+        return binary
+    say(f"Making {DEV_APP.relative_to(ROOT)} (Godot's app with the game's name and icon)")
+    try:
+        shutil.rmtree(DEV_APP, ignore_errors=True)
+        DEV_APP.parent.mkdir(parents=True, exist_ok=True)
+        quiet = {"stdout": subprocess.DEVNULL, "stderr": subprocess.PIPE, "text": True}
+        if subprocess.run(["cp", "-cR", source, DEV_APP], **quiet).returncode:  # clone; a copy off APFS
+            shutil.copytree(source, DEV_APP, symlinks=True)
+        plist = DEV_APP / "Contents" / "Info.plist"
+        steps = [["plutil", "-replace", "CFBundleName", "-string", "Marvin Simulator", plist],
+                 ["plutil", "-replace", "CFBundleDisplayName", "-string", "Marvin Simulator", plist],
+                 ["plutil", "-replace", "CFBundleIdentifier", "-string", "io.entire.marvin.simulator.godot.dev", plist],
+                 ["plutil", "-remove", "CFBundleDocumentTypes", plist]]
+        if icon.is_file():
+            with tempfile.TemporaryDirectory() as tmp:
+                iconset = Path(tmp) / "Marvin.iconset"
+                iconset.mkdir()
+                for size in (16, 32, 128, 256, 512):
+                    for scale in (1, 2):
+                        name = f"icon_{size}x{size}{'@2x' if scale == 2 else ''}.png"
+                        run(["sips", "-z", size * scale, size * scale, icon, "--out", iconset / name], **quiet)
+                run(["iconutil", "-c", "icns", iconset, "-o", DEV_APP / "Contents" / "Resources" / "Marvin.icns"],
+                    **quiet)
+            # The asset catalog's icon (CFBundleIconName) takes precedence over CFBundleIconFile.
+            steps += [["plutil", "-remove", "CFBundleIconName", plist],
+                      ["plutil", "-replace", "CFBundleIconFile", "-string", "Marvin.icns", plist]]
+        for step in steps:
+            subprocess.run(step, **quiet)  # -remove of a missing key fails harmlessly
+        subprocess.run(["xattr", "-dr", "com.apple.quarantine", DEV_APP], **quiet)
+        # Only the outer bundle changed: re-sign it ad hoc, keeping Godot's entitlements and hardened runtime.
+        signed = subprocess.run(["codesign", "--force", "--sign", "-", "--preserve-metadata=entitlements,flags",
+                                 DEV_APP], **quiet)
+        if signed.returncode:
+            raise OSError(signed.stderr.strip())
+        stamp_file.write_text(stamp)
+        return binary
+    except (OSError, subprocess.SubprocessError, SystemExit) as error:
+        print(f"    warning: {error or 'failed'}; playing in Godot's own app", flush=True)
+        shutil.rmtree(DEV_APP, ignore_errors=True)
+        return godot
 
 
 def cmd_godot(args):

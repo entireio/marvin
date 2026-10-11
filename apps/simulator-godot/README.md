@@ -29,7 +29,7 @@ and starts the game.
 
 | Task | |
 |---|---|
-| `mise run play` | The game: main menu, Sandbox, Dirt Track. Flags go to the game, e.g. `mise run play -- --smoke-test /tmp/smoke` (game modes: PORTING.md, "App and game modes"); Godot's own flags go before a second `--`. |
+| `mise run play` | The game: main menu, Sandbox, Dirt Track. Flags go to the game, e.g. `mise run play -- --smoke-test /tmp/smoke` (game modes: PORTING.md, "App and game modes"); Godot's own flags go before a second `--`. On a Mac it runs Godot from `build/dev/Marvin Simulator.app`, a copy of Godot's app (an APFS clone, signed ad hoc) named after the game, so the menu bar says Marvin Simulator instead of Godot; made on first play and again when Godot changes. |
 | `mise run test` | A quick headless smoke test, the town and the four robots (about 20 s on a Mac), against the same run on Godot on macOS; `mise run test -- all` runs every mode the Windows CI runs. |
 | `mise run checks` | The simulation checks (no Godot). |
 | `mise run export` | Release builds (below). |
