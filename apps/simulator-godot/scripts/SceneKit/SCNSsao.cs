@@ -270,9 +270,10 @@ internal static class SCNSsao
                 RepeatU = RenderingDevice.SamplerRepeatMode.ClampToEdge, RepeatV = RenderingDevice.SamplerRepeatMode.ClampToEdge,
             });
         }
+        FreeRetired(rd, false);
         if (Output.IsValid && viewSize.X <= outputSize.X && viewSize.Y <= outputSize.Y) return;
         var grown = new Vector2I(Math.Max(viewSize.X, Math.Max(outputSize.X, 1920)), Math.Max(viewSize.Y, Math.Max(outputSize.Y, 1200)));
-        var old = Output;
+        if (Output.IsValid) retired.Add((outputTexture, Output, Engine.GetFramesDrawn()));
         Output = rd.TextureCreate(new RDTextureFormat
         {
             Format = RenderingDevice.DataFormat.R16Sfloat, Width = (uint)grown.X, Height = (uint)grown.Y,
@@ -280,10 +281,26 @@ internal static class SCNSsao
         }, new RDTextureView());
         rd.TextureClear(Output, new Color(1, 1, 1, 1), 0, 1, 0, 1);
         outputSize = grown;
-        outputTexture ??= new Texture2Drd();
-        outputTexture.TextureRdRid = Output;
+        // A new Texture2DRD, not the old one pointed at the new texture, and the old one freed a few frames later: this
+        // runs mid-frame (PreOpaque), after Godot built the materials' uniform sets (set 3) with the old texture.
+        // Replacing or freeing it now leaves them invalid for the rest of the frame ("Uniforms were never supplied for set
+        // (3) at the time of drawing"); with the global parameter changed, the materials rebuild them next frame.
+        outputTexture = new Texture2Drd { TextureRdRid = Output };
         RenderingServer.GlobalShaderParameterSet("scn_ssao", outputTexture);
-        if (old.IsValid) rd.FreeRid(old);
+    }
+
+    private static readonly List<(Texture2Drd texture, Rid rd, int frame)> retired = new();
+    /// <summary>Frees the output textures replaced a few frames ago (all at quit), the RenderingServer texture first.</summary>
+    private static void FreeRetired(RenderingDevice rd, bool all)
+    {
+        int now = Engine.GetFramesDrawn();
+        retired.RemoveAll(r =>
+        {
+            if (!all && now < r.frame + 4) return false;
+            if (r.texture != null && IsValid(r.texture)) r.texture.TextureRdRid = new Rid();
+            if (r.rd.IsValid) rd.FreeRid(r.rd);
+            return true;
+        });
     }
 
     /// <summary>Main (render) thread, when Godot quits (SCNSsaoEffect.ReleaseAll): frees the pipelines, shaders, samplers and
@@ -293,6 +310,7 @@ internal static class SCNSsao
         var rd = RenderingServer.GetRenderingDevice();
         if (rd == null) return;
         if (outputTexture != null && IsValid(outputTexture)) outputTexture.TextureRdRid = new Rid();
+        FreeRetired(rd, true);
         foreach (var rid in new[] { CszPipeline, DownPipeline, MipPipeline, SaoPipeline, BlurPipeline, UpPipeline, CszShader, DownShader, MipShader, SaoShader, BlurShader, UpShader, NearestSampler, LinearSampler, Output })
             if (rid.IsValid) rd.FreeRid(rid);
         CszPipeline = DownPipeline = MipPipeline = SaoPipeline = BlurPipeline = UpPipeline = default;
