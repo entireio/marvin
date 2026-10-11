@@ -59,7 +59,7 @@ public partial class AppController
                     if (activeStart is int start)
                     {
                         updateDepartureHUD();
-                        hudHidden = hudHidden && raceHUD.isHidden && hud.isHidden && window.toolbar?.isVisible == false;
+                        hudHidden = hudHidden && raceHUD.isHidden && hud.isHidden && !toolbarControlsVisible;
                         var seconds = (double)(frame - start) / 60; var bin = (int)(seconds / 60);
                         roamingSeconds = seconds;
                         while (visibleWindows.Count <= bin)
@@ -193,7 +193,7 @@ public partial class AppController
                 };
                 File.WriteAllText(Path.Combine(directory, "postrace.json"), JSONSerialization.prettyPrintedSortedKeys(report));
                 print(JSONSerialization.prettyPrintedSortedKeys(report.Where(kv => kv.Key != "routes").ToDictionary(kv => kv.Key, kv => kv.Value)));
-                reset(null); return passed && !racePhysics.escape.active && racePhysics.gate.angle == 0 && !raceHUD.isHidden && window.toolbar?.isVisible == true;
+                reset(null); return passed && !racePhysics.escape.active && racePhysics.gate.angle == 0 && !raceHUD.isHidden && toolbarControlsVisible;
             }
             finally { weatherOverride = null; }
         }

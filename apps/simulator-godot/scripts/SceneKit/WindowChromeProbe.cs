@@ -1,7 +1,8 @@
 // `tools/godot -- --window-chrome DIR [BACKGROUND.png]`: the facade's title bar in the states that
 // tools/scenekit-reference/WindowChrome.swift captures from AppKit (title bar only, unified toolbar, Pause relabelled
-// "Resume"), drawn over the same background and with the inactive window's colours, so the two can be compared
-// pixel for pixel (window-titlebar.png, window-toolbar.png, window-toolbar-resume.png). The traffic lights are the
+// "Resume", empty toolbar), drawn over the same background and with the inactive window's colours, so the two can be
+// compared pixel for pixel (window-titlebar.png, window-toolbar.png, window-toolbar-resume.png,
+// window-toolbar-empty.png). The traffic lights are the
 // system's and are not part of the Godot capture.
 using System.Collections.Generic;
 using System.IO;
@@ -43,6 +44,10 @@ internal sealed class WindowChromeProbe : NSToolbarDelegate
         await capture("window-toolbar.png");
         probe.pauseItem.label = "Resume"; probe.pauseItem.image = NSImage.systemSymbolName("play.fill", null);
         await capture("window-toolbar-resume.png");
+        // The main menu and loading screen: an empty toolbar keeps the unified title bar (AppController.emptyToolbar).
+        window.toolbar = new NSToolbar("EmptyToolbar") { @delegate = probe, displayMode = NSToolbar.DisplayMode.iconAndLabel };
+        window.title = "Marvin · Playground";
+        await capture("window-toolbar-empty.png");
         foreach (var size in new[] { 13.0, 14.0, 15.0 })
             foreach (var weight in new[] { NSFont.Weight.semibold, NSFont.Weight.bold })
             {
@@ -53,7 +58,7 @@ internal sealed class WindowChromeProbe : NSToolbarDelegate
         Foundation.exit(0);
     }
 
-    public string[] toolbarAllowedItemIdentifiers(NSToolbar toolbar) => new[] { "menu", NSToolbarItem.Identifier.flexibleSpace, "camera", "pause", "reset", "help" };
+    public string[] toolbarAllowedItemIdentifiers(NSToolbar toolbar) => toolbar.identifier == "EmptyToolbar" ? new string[0] : new[] { "menu", NSToolbarItem.Identifier.flexibleSpace, "camera", "pause", "reset", "help" };
     public string[] toolbarDefaultItemIdentifiers(NSToolbar toolbar) => toolbarAllowedItemIdentifiers(toolbar);
     public NSToolbarItem toolbar(NSToolbar toolbar, string itemForItemIdentifier, bool willBeInsertedIntoToolbar)
     {

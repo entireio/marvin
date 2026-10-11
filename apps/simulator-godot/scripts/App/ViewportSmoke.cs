@@ -50,7 +50,7 @@ public partial class AppController
             foreach (var (index, size) in new[] { new NSSize(1280, 820), new NSSize(900, 640), new NSSize(1600, 900) }.Select((s, i) => (i, s)))
             {
                 window.setContentSize(size); setRaceControlsHidden(false); settle();
-                var before = view.bounds; var windowBefore = window.frame; var transform = world.camera.transform;
+                var before = view.bounds; var windowBefore = window.frame; var transform = world.camera.transform; var layoutBefore = window.contentLayoutRect;
                 var pixels = landmarks.Select(l => view.projectPoint(l)).ToList();
                 var safe = view.convert(window.contentLayoutRect, from: null);
                 var overlaySafe = abs(raceHUD.frame.maxY - safe.maxY) < 0.5 && abs(raceHUD.frame.minY - safe.minY) < 0.5;
@@ -58,16 +58,18 @@ public partial class AppController
                 setRaceControlsHidden(true); settle(); updateCamera(snap: false);
                 var after = view.bounds; var newPixels = landmarks.Select(l => view.projectPoint(l)).ToList();
                 var drift = pixels.Zip(newPixels).Select(pair => hypot((double)(pair.First.x - pair.Second.x), (double)(pair.First.y - pair.Second.y))).DefaultIfEmpty(100).Max();
-                var hidden = raceHUD.isHidden && hud.isHidden && window.toolbar?.isVisible == false;
+                var hidden = raceHUD.isHidden && hud.isHidden && !toolbarControlsVisible;
                 var stable = before == after && window.frame == windowBefore && world.camera.transform.Equals(transform) && drift < 0.01;
+                // Without the controls the title bar keeps the toolbar's height (an empty toolbar, not a hidden one).
+                var titleBarStable = window.contentLayoutRect == layoutBefore;
                 if (index == 0) { capture("after-hiding-controls"); }
                 setRaceControlsHidden(false); settle();
-                var restored = view.bounds == before && !raceHUD.isHidden && window.toolbar?.isVisible == true;
-                passed = passed && stable && hidden && restored && overlaySafe;
+                var restored = view.bounds == before && !raceHUD.isHidden && toolbarControlsVisible;
+                passed = passed && stable && hidden && restored && overlaySafe && titleBarStable;
                 results.Add(new Dictionary<string, object>
                 {
                     ["width"] = before.width, ["height"] = before.height, ["afterHeight"] = after.height, ["restoredHeight"] = view.bounds.height, ["restoredWidth"] = view.bounds.width,
-                    ["stableViewport"] = stable, ["landmarkDriftPixels"] = drift, ["controlsHidden"] = hidden, ["restored"] = restored, ["overlayBelowToolbar"] = overlaySafe,
+                    ["stableViewport"] = stable, ["landmarkDriftPixels"] = drift, ["controlsHidden"] = hidden, ["restored"] = restored, ["overlayBelowToolbar"] = overlaySafe, ["titleBarStable"] = titleBarStable,
                 });
             }
             // Verify normal resizes still reach the renderer; only chrome changes are isolated.
@@ -77,7 +79,7 @@ public partial class AppController
             var restartBounds = view.bounds; var restartFrame = window.frame;
             reset(null); settle();
             var restartStable = view.bounds == restartBounds && window.frame == restartFrame;
-            passed = passed && restartStable && !raceHUD.isHidden && window.toolbar?.isVisible == true;
+            passed = passed && restartStable && !raceHUD.isHidden && toolbarControlsVisible;
             var report = new Dictionary<string, object> { ["passed"] = passed, ["sizes"] = results, ["normalResizeWorks"] = resizeWorks, ["restartStable"] = restartStable };
             JSONSerialization.data(report, JSONSerialization.WritingOptions.prettyPrinted | JSONSerialization.WritingOptions.sortedKeys).write(directory.appendingPathComponent("viewport.json"));
             print(JSONSerialization.@string(report, JSONSerialization.WritingOptions.sortedKeys)); return passed;

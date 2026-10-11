@@ -46,7 +46,7 @@ extension AppController {
                 if racePhysics.escape.complete && allDepartedStart==nil { allDepartedStart=frame }
                 if let start=activeStart {
                     updateDepartureHUD()
-                    hudHidden = hudHidden && raceHUD.isHidden && hud.isHidden && window.toolbar?.isVisible==false
+                    hudHidden = hudHidden && raceHUD.isHidden && hud.isHidden && !toolbarControlsVisible
                     let seconds=Double(frame-start)/60,bin=Int(seconds/60)
                     roamingSeconds=seconds
                     while visibleWindows.count<=bin {
@@ -152,7 +152,7 @@ extension AppController {
             let report:[String:Any]=["passed":passed,"peopleMoving":peopleMoving,"peakResidentBlockedSeconds":peakResidentBlocked,"houseEntries":people?.entries ?? 0,"residentVisits":people?.walkers.map{$0.visits} ?? [],"residentBlocked":people?.walkers.map{$0.blocked} ?? [],"roamingSeconds":roamingSeconds,"secondsAfterAllDeparted":secondsAfterAllDeparted,"lateDistance":lateDistance,"lateUniqueCells":lateCells.map{$0.count},"uniqueCellsPerMinute":minuteCells.map{$0.map{$0.count}},"movieFrames":movieFrames,"reversals":racePhysics.escape.reversals,"yields":racePhysics.escape.yields,"tours":racePhysics.escape.tours,"distanceTravelled":travelled,"maximumStationarySeconds":maxStationary,"visibleRobotsPerMinute":visibleWindows.map{Array($0).sorted()},"hudHidden":hudHidden,"sustained":sustained,"cameraLocked":cameraLocked,"complete":racePhysics.escape.complete,"earlyGate":early,"frozenResults":timesFrozen,"pause":pauseChecked,"differentDestinations":distinct,"maximumPenetration":maxPenetration,"gateOpenTime":firstOpen ?? -1,"waypoints":racePhysics.escape.waypoint,"positions":states.map{[$0.x,$0.z]},"routes":racePhysics.escape.routes.map{$0.map{[$0.x,$0.y]}}]
             try JSONSerialization.data(withJSONObject:report,options:[.prettyPrinted,.sortedKeys]).write(to:directory.appendingPathComponent("postrace.json"))
             print(report.filter{$0.key != "routes"})
-            reset(nil);return passed && !racePhysics.escape.active && racePhysics.gate.angle==0 && !raceHUD.isHidden && window.toolbar?.isVisible==true
+            reset(nil);return passed && !racePhysics.escape.active && racePhysics.gate.angle==0 && !raceHUD.isHidden && toolbarControlsVisible
         } catch { print(error);return false }
     }
 }

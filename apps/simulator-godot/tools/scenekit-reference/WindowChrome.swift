@@ -2,8 +2,8 @@
 //
 // Builds App.swift's window (1280 x 820 content, titled/closable/miniaturizable/resizable/fullSizeContentView) with
 // the game's toolbar items (.iconAndLabel), puts BACKGROUND.png behind it as the content view, and writes captures of
-// the window with the toolbar hidden (as on the main menu), visible (sandbox and race) and with the Pause item
-// relabelled "Resume", plus the content layout rect of each state.
+// the window with the toolbar hidden, visible (sandbox and race), with the Pause item relabelled "Resume" and with an
+// empty toolbar (main menu, loading, post-race departure), plus the content layout rect of each state.
 //
 // The macOS game links against the macOS 13 SDK (LC_BUILD_VERSION sdk 13.0), which keeps AppKit's pre-macOS 26 window
 // style; link this probe the same way or AppKit draws the newer, taller title bar (32/66 points):
@@ -66,12 +66,18 @@ final class Delegate: NSObject, NSApplicationDelegate, NSToolbarDelegate {
         case "toolbar":
             pauseItem?.label = "Resume"; pauseItem?.image = NSImage(systemSymbolName: "play.fill", accessibilityDescription: nil)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.capture("toolbar-resume") }
+        case "toolbar-resume":
+            // The main menu and loading screen: an empty toolbar keeps the unified title bar (App.swift, emptyToolbar).
+            let empty = NSToolbar(identifier: "EmptyToolbar")
+            empty.delegate = self; empty.displayMode = .iconAndLabel
+            w.toolbar = empty; w.title = "Marvin · Playground"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.capture("toolbar-empty") }
         default: NSApp.terminate(nil)
         }
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
+        toolbar.identifier == "EmptyToolbar" ? [] : [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
     }
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { toolbarAllowedItemIdentifiers(toolbar) }
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier id: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {

@@ -64,7 +64,7 @@ public partial class AppController
         if (isLoadingDirt) return;
         isLoadingDirt = true; loadingHeartbeats = 0; view.clearInput();
         installContentOverlay(loadingView); loadingView.begin(); window.makeFirstResponder(loadingView);
-        if (window.toolbar != null) window.toolbar.isVisible = false; mainMenu.portrait.rendersContinuously = false;
+        toolbarControlsVisible = false; mainMenu.portrait.rendersContinuously = false;
         if (cachedDirtWorld != null)
         {
             DispatchQueue.main.async(() => startDirtTrack()); return;

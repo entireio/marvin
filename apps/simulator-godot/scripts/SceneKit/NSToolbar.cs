@@ -33,10 +33,12 @@ public sealed class NSToolbar
         get => _isVisible;
         set { if (_isVisible == value) return; _isVisible = value; window?.toolbarChanged(); }
     }
+    private bool loaded;
+    /// <summary>Makes the items the first time the toolbar is put in a window (AppKit keeps them when it is swapped out).</summary>
     internal void loadItems()
     {
-        _items.Clear();
-        if (@delegate == null) return;
+        if (loaded || @delegate == null) return;
+        loaded = true;
         foreach (var id in @delegate.toolbarDefaultItemIdentifiers(this))
         {
             var item = id is NSToolbarItem.Identifier.flexibleSpace or NSToolbarItem.Identifier.space ? new NSToolbarItem(id) : @delegate.toolbar(this, id, true);

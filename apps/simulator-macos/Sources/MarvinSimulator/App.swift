@@ -69,6 +69,24 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var cameraMode = 1, orbitYaw = 0.65, orbitPitch = 0.5, cameraDistance = 3.5
     var active = true
     var pauseItem: NSToolbarItem?
+    var controlsToolbar: NSToolbar!
+    /// Shown instead of the controls (main menu, loading screen, post-race departure): the title bar keeps the unified
+    /// toolbar's height and the title stays on the left, as with the controls.
+    lazy var emptyToolbar: NSToolbar = {
+        let toolbar = NSToolbar(identifier: "EmptyToolbar")
+        toolbar.delegate = self; toolbar.displayMode = .iconAndLabel
+        return toolbar
+    }()
+    var toolbarControlsVisible: Bool {
+        get { window.toolbar === controlsToolbar }
+        set {
+            guard newValue != toolbarControlsVisible else { return }
+            // Keep chrome transitions from changing either the window or the renderer's dimensions.
+            let frame=window.frame
+            window.toolbar = newValue ? controlsToolbar : emptyToolbar
+            if window.frame != frame { window.setFrame(frame,display:false) }
+        }
+    }
     var appearanceObservation: NSKeyValueObservation?
     var appliedIconName = ""
     let townMeter = TownFrameMeter()
@@ -118,7 +136,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         window.delegate = self
         let toolbar = NSToolbar(identifier: "SimulatorToolbar")
         toolbar.delegate = self; toolbar.displayMode = .iconAndLabel
-        window.toolbar = toolbar
+        window.toolbar = toolbar; controlsToolbar = toolbar
         view.scene = world.scene; view.pointOfView = world.camera
         view.antialiasingMode = .multisampling4X
         view.preferredFramesPerSecond = 60; view.rendersContinuously = true
@@ -453,7 +471,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         mainMenu.portrait.rendersContinuously = true
         inSandbox = false; dirtIntro = nil; view.clearInput()
         frameRateHUD.isHidden=true
-        hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; window.toolbar?.isVisible = false
+        hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; toolbarControlsVisible = false
         mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
         mainMenu.stage.rootNode.addChildNode(robot.root)
         mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 0)
@@ -471,7 +489,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         view.scene = world.scene; world.scene.rootNode.addChildNode(world.camera)
         view.pointOfView = world.camera; raceHUD.isHidden = true
         inSandbox = true; mainMenu.isHidden = true; hud.isHidden = false
-        window.toolbar?.isVisible = true; hud.helpVisible = mainMenu.showGuide
+        toolbarControlsVisible = true; hud.helpVisible = mainMenu.showGuide
         for character in RacePerformance.Character.allCases { modelRoot(character).removeFromParentNode() }
         world.scene.rootNode.addChildNode(modelRoot(playerCharacter))
         reset(nil); updatePlayerModel(); world.update(simulation)
@@ -498,7 +516,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         hud.isHidden = true; raceHUD.isHidden = true
         view.isHidden = true
         SCNTransaction.begin(); SCNTransaction.disableActions = true
-        raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = !isLoadingDirt
+        raceHUD.helpVisible = mainMenu.showGuide; toolbarControlsVisible = !isLoadingDirt
         dirtWorld.camera = world.camera
         dirtWorld.sky.attach(camera:world.camera)
         // Geometry comparison tools own their temporary reference/proxy pairs.
@@ -548,7 +566,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         raceHUD.race = race; raceHUD.introducing = true; raceHUD.scores = scores
         mainMenu.isHidden = true; raceHUD.isHidden = false; view.isHidden = false
         loadingView.update(1,"Ready")
-        isLoadingDirt=false;loadingView.removeFromSuperview();window.toolbar?.isVisible=true
+        isLoadingDirt=false;loadingView.removeFromSuperview();toolbarControlsVisible=true
         window.makeFirstResponder(view)
         lastTime = ProcessInfo.processInfo.systemUptime
         finishLoadingCheckIfNeeded()
@@ -697,13 +715,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         frameRateHUD.isHidden=hidden
         raceHUD.isHidden=hidden
         hud.isHidden=true
-        if window.toolbar?.isVisible == hidden {
-            // AppKit can grow a smaller window when restoring its toolbar. Keep chrome
-            // transitions from changing either the window or the renderer's dimensions.
-            let frame=window.frame
-            window.toolbar?.isVisible = !hidden
-            if window.frame != frame { window.setFrame(frame,display:false) }
-        }
+        toolbarControlsVisible = !hidden
     }
     /// Overlay layout can follow native chrome; the SceneKit viewport must not.
     func installContentOverlay(_ overlay:NSView) {
@@ -744,7 +756,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         raceAudio?.stop()
     }
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
+        toolbar.identifier == "EmptyToolbar" ? [] : [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
     }
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         toolbarAllowedItemIdentifiers(toolbar)

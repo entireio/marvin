@@ -105,6 +105,23 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
     public int cameraMode = 1; public double orbitYaw = 0.65, orbitPitch = 0.5, cameraDistance = 3.5;
     public bool active = true;
     public NSToolbarItem pauseItem;
+    public NSToolbar controlsToolbar;
+    /// Shown instead of the controls (main menu, loading screen, post-race departure): the title bar keeps the unified
+    /// toolbar's height and the title stays on the left, as with the controls.
+    private NSToolbar _emptyToolbar;
+    public NSToolbar emptyToolbar => _emptyToolbar ??= new NSToolbar("EmptyToolbar") { @delegate = this, displayMode = NSToolbar.DisplayMode.iconAndLabel };
+    public bool toolbarControlsVisible
+    {
+        get => window.toolbar == controlsToolbar;
+        set
+        {
+            if (value == toolbarControlsVisible) return;
+            // Keep chrome transitions from changing either the window or the renderer's dimensions.
+            var frame = window.frame;
+            window.toolbar = value ? controlsToolbar : emptyToolbar;
+            if (window.frame != frame) { window.setFrame(frame, display: false); }
+        }
+    }
     public NSKeyValueObservation appearanceObservation;
     public string appliedIconName = "";
     public readonly TownFrameMeter townMeter = new TownFrameMeter();
@@ -171,7 +188,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         window.@delegate = this;
         var toolbar = new NSToolbar("SimulatorToolbar");
         toolbar.@delegate = this; toolbar.displayMode = NSToolbar.DisplayMode.iconAndLabel;
-        window.toolbar = toolbar;
+        window.toolbar = toolbar; controlsToolbar = toolbar;
         view.scene = world.scene; view.pointOfView = world.camera;
         view.antialiasingMode = SCNAntialiasingMode.multisampling4X;
         view.preferredFramesPerSecond = 60; view.rendersContinuously = true;
@@ -370,7 +387,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         mainMenu.portrait.rendersContinuously = true;
         inSandbox = false; dirtIntro = null; view.clearInput();
         frameRateHUD.isHidden = true;
-        hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; if (window.toolbar != null) { window.toolbar.isVisible = false; }
+        hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; toolbarControlsVisible = false;
         mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh();
         mainMenu.stage.rootNode.addChildNode(robot.root);
         mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 0);
@@ -389,7 +406,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         view.scene = world.scene; world.scene.rootNode.addChildNode(world.camera);
         view.pointOfView = world.camera; raceHUD.isHidden = true;
         inSandbox = true; mainMenu.isHidden = true; hud.isHidden = false;
-        if (window.toolbar != null) { window.toolbar.isVisible = true; } hud.helpVisible = mainMenu.showGuide;
+        toolbarControlsVisible = true; hud.helpVisible = mainMenu.showGuide;
         foreach (var character in RacePerformance.CharacterAllCases) { modelRoot(character).removeFromParentNode(); }
         world.scene.rootNode.addChildNode(modelRoot(playerCharacter));
         reset(null); updatePlayerModel(); world.update(simulation);
@@ -419,7 +436,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         hud.isHidden = true; raceHUD.isHidden = true;
         view.isHidden = true;
         SCNTransaction.begin(); SCNTransaction.disableActions = true;
-        raceHUD.helpVisible = mainMenu.showGuide; if (window.toolbar != null) { window.toolbar.isVisible = !isLoadingDirt; }
+        raceHUD.helpVisible = mainMenu.showGuide; toolbarControlsVisible = !isLoadingDirt;
         dirtWorld.camera = world.camera;
         dirtWorld.sky.attach(camera: world.camera);
         // Geometry comparison tools own their temporary reference/proxy pairs.
@@ -475,7 +492,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         raceHUD.race = race; raceHUD.introducing = true; raceHUD.scores = scores;
         mainMenu.isHidden = true; raceHUD.isHidden = false; view.isHidden = false;
         loadingView.update(1, "Ready");
-        isLoadingDirt = false; loadingView.removeFromSuperview(); if (window.toolbar != null) { window.toolbar.isVisible = true; }
+        isLoadingDirt = false; loadingView.removeFromSuperview(); toolbarControlsVisible = true;
         window.makeFirstResponder(view);
         lastTime = ProcessInfo.processInfo.systemUptime;
         finishLoadingCheckIfNeeded();
@@ -650,14 +667,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         frameRateHUD.isHidden = hidden;
         raceHUD.isHidden = hidden;
         hud.isHidden = true;
-        if (window.toolbar != null && window.toolbar.isVisible == hidden)
-        {
-            // AppKit can grow a smaller window when restoring its toolbar. Keep chrome
-            // transitions from changing either the window or the renderer's dimensions.
-            var frame = window.frame;
-            window.toolbar.isVisible = !hidden;
-            if (window.frame != frame) { window.setFrame(frame, display: false); }
-        }
+        toolbarControlsVisible = !hidden;
     }
     /// Overlay layout can follow native chrome; the SceneKit viewport must not.
     public void installContentOverlay(NSView overlay)
@@ -703,7 +713,7 @@ public partial class AppController : Godot.Node, NSApplicationDelegate, NSWindow
         frameDisplayLink?.invalidate();
         raceAudio?.stop();
     }
-    public string[] toolbarAllowedItemIdentifiers(NSToolbar toolbar) =>
+    public string[] toolbarAllowedItemIdentifiers(NSToolbar toolbar) => toolbar.identifier == "EmptyToolbar" ? new string[0] :
         new[] { "menu", NSToolbarItem.Identifier.flexibleSpace, "camera", "pause", "reset", "help" };
     public string[] toolbarDefaultItemIdentifiers(NSToolbar toolbar) => toolbarAllowedItemIdentifiers(toolbar);
     public NSToolbarItem toolbar(NSToolbar toolbar, string itemForItemIdentifier, bool willBeInsertedIntoToolbar)

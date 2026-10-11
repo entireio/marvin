@@ -8,7 +8,7 @@ extension AppController {
         do {
             try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
             weatherOverride=false;defer { weatherOverride=nil }
-            startDirtTrack();dirtIntro=nil;raceHUD.isHidden=true;window.toolbar?.isVisible=false
+            startDirtTrack();dirtIntro=nil;raceHUD.isHidden=true;toolbarControlsVisible=false
             dirtWorld.sky.apply(BinaryDaylight(fraction:0.48,phase:1.2))
             if ProcessInfo.processInfo.environment["MARVIN_YIELD_RECOVERY_TEST"]=="1",let residents=dirtWorld.town.residents {
                 let result=residents.checkYieldCornerRecovery()

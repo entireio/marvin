@@ -23,7 +23,7 @@ public partial class AppController
             weatherOverride = false;
             try
             {
-                startDirtTrack(); dirtIntro = null; raceHUD.isHidden = true; if (window.toolbar != null) { window.toolbar.isVisible = false; }
+                startDirtTrack(); dirtIntro = null; raceHUD.isHidden = true; toolbarControlsVisible = false;
                 dirtWorld.sky.apply(new BinaryDaylight(fraction: 0.48, phase: 1.2));
                 if (Environment.GetEnvironmentVariable("MARVIN_YIELD_RECOVERY_TEST") == "1" && dirtWorld.town.residents is TownResidents recovering)
                 {

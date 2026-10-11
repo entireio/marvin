@@ -48,7 +48,7 @@ extension AppController {
         guard !isLoadingDirt else { return }
         isLoadingDirt=true;loadingHeartbeats=0;view.clearInput()
         installContentOverlay(loadingView);loadingView.begin();window.makeFirstResponder(loadingView)
-        window.toolbar?.isVisible=false;mainMenu.portrait.rendersContinuously=false
+        toolbarControlsVisible=false;mainMenu.portrait.rendersContinuously=false
         if cachedDirtWorld != nil {
             DispatchQueue.main.async { [weak self] in self?.startDirtTrack() };return
         }

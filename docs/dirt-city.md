@@ -1155,7 +1155,7 @@ reports are in `../marvin-town-planning/quality-daylight`.
 
 ### Continuous post-race town exploration
 
-Once every competitor has completed its extra lap, the HUD and toolbar disappear.
+Once every competitor has completed its extra lap, the HUD and toolbar buttons disappear.
 The existing fixed overhead camera remains locked. Departures use different gate
 lanes and approach timing, and keep the ordinary drive, terrain and collision
 simulation. After leaving, robots follow closed town circuits and switch circuits

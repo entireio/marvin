@@ -310,6 +310,14 @@ Historical claims of “final” in these documents are not user acceptance.
   bar because level preparation takes time. Progress must represent preparation,
   remain responsive, and complete before gameplay is revealed.
 
+### Window title bar
+
+- In both the Swift and the Godot simulator, the title bar keeps the unified
+  toolbar's height on every screen (main menu, loading, Sandbox, Dirt Track,
+  post-race departure), with or without toolbar buttons, and the window title
+  is always left-aligned. Screens without buttons show an empty toolbar rather
+  than hiding the toolbar (2026-10-11).
+
 ## 8. Audio
 
 - Provide cohesive, proximity-aware driving and character sounds for all four

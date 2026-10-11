@@ -319,10 +319,11 @@ public sealed class Playthrough
         app.scoreDirectory = directory;
         bool ok = true;
         await seconds(1.0);
-        ok &= check("main menu shown", !app.mainMenu.isHidden && !app.inSandbox && app.window.firstResponder == app.mainMenu && app.window.toolbar?.isVisible == false,
+        ok &= check("main menu shown", !app.mainMenu.isHidden && !app.inSandbox && app.window.firstResponder == app.mainMenu && !app.toolbarControlsVisible,
             $"title '{app.window.title}', layout {app.window.contentLayoutRect.width}x{app.window.contentLayoutRect.height}, menu {app.mainMenu.frame.width}x{app.mainMenu.frame.height}, " +
             $"window {DisplayServer.WindowGetSize()} pixels, scale {app.window.backingScaleFactor}, root texture {tree.Root.GetTexture().GetSize()}");
         await shot("main-menu");
+        var menuLayout = app.window.contentLayoutRect;
 
         // Keyboard: Down selects Dirt Track, Return starts loading the race.
         await tap(Key.Down);
@@ -334,9 +335,11 @@ public sealed class Playthrough
             await shot("loading");
         var loadingStarted = Time.GetTicksMsec() / 1000.0;
         ok &= await waitFor("race revealed", () => !app.isLoadingDirt && app.inSandbox && app.isDirtTrack && !app.view.isHidden, 120);
-        ok &= check("race loaded", app.isDirtTrack && !app.raceHUD.isHidden && app.window.toolbar?.isVisible == true,
+        ok &= check("race loaded", app.isDirtTrack && !app.raceHUD.isHidden && app.toolbarControlsVisible,
             $"{Math.Round(Time.GetTicksMsec() / 1000.0 - loadingStarted, 1)} s, {app.loadingView.history.Count} progress reports, {app.loadingHeartbeats} responsive ticks, title '{app.window.title}', HUD {app.raceHUD.frame.width}x{app.raceHUD.frame.height}");
         ok &= check("view is first responder", app.window.firstResponder == app.view);
+        ok &= check("title bar as high as on the main menu", app.window.contentLayoutRect == menuLayout,
+            $"layout {menuLayout.width}x{menuLayout.height} on the menu, {app.window.contentLayoutRect.width}x{app.window.contentLayoutRect.height} in the race");
 
         // Intro fly-in, then the countdown.
         if (await waitFor("intro half way", () => app.dirtIntro == null || app.dirtIntro >= app.dirtIntroDuration / 2, 10))
@@ -407,24 +410,24 @@ public sealed class Playthrough
         // Post-race: the robots leave through town while the HUD steps aside.
         await waitFor("post-race departure", () => app.racePhysics.escape.active, 60);
         await seconds(3);
-        ok &= check("post-race departure hides the race controls", !app.racePhysics.escape.active || (app.raceHUD.isHidden && app.window.toolbar?.isVisible == false), $"escape {app.racePhysics.escape.active}");
+        ok &= check("post-race departure hides the race controls", !app.racePhysics.escape.active || (app.raceHUD.isHidden && !app.toolbarControlsVisible), $"escape {app.racePhysics.escape.active}");
         await shot("post-race");
 
         // Command-R: race again (menu key equivalent, Control-R outside macOS).
         await tap(Key.R, command: true);
-        ok &= check($"{KeyEquivalent.command}R restarts the race", !app.race.finished && app.race.countdown > 1.5 && app.race.laps.Length == 0 && !app.raceHUD.isHidden && app.window.toolbar?.isVisible == true,
+        ok &= check($"{KeyEquivalent.command}R restarts the race", !app.race.finished && app.race.countdown > 1.5 && app.race.laps.Length == 0 && !app.raceHUD.isHidden && app.toolbarControlsVisible,
             $"countdown {Math.Round(app.race.countdown, 2)}, laps {app.race.laps.Length}");
         ok &= check($"{KeyEquivalent.command}R is not a driving key", app.simulation.pitch == 0 && !app.view.held.Contains(15));
         await shot("race-again");
 
         // Command-M: main menu.
         await tap(Key.M, command: true);
-        ok &= check($"{KeyEquivalent.command}M shows the main menu", !app.inSandbox && !app.mainMenu.isHidden && app.raceHUD.isHidden && app.window.toolbar?.isVisible == false);
+        ok &= check($"{KeyEquivalent.command}M shows the main menu", !app.inSandbox && !app.mainMenu.isHidden && app.raceHUD.isHidden && !app.toolbarControlsVisible);
         await shot("menu-again");
 
         // Sandbox through the keyboard (selection 0 is Sandbox).
         await tap(Key.Enter);
-        ok &= check("Return starts the sandbox", app.inSandbox && !app.isDirtTrack && !app.hud.isHidden && app.window.toolbar?.isVisible == true,
+        ok &= check("Return starts the sandbox", app.inSandbox && !app.isDirtTrack && !app.hud.isHidden && app.toolbarControlsVisible,
             $"HUD {app.hud.frame.width}x{app.hud.frame.height}");
         await seconds(0.5);
         await shot("sandbox");
