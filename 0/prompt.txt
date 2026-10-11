@@ -1,0 +1,3 @@
+Starting the game with "mise run play" works, but throws a bunch of errors like:
+ERROR: Uniforms were never supplied for set (3) at the time of drawing, which are required by the pipeline.
+   at: draw_list_draw (servers/rendering/rendering_device.cpp:6033)
