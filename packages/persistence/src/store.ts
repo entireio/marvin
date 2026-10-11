@@ -152,7 +152,7 @@ export class Store {
    await tx.query('INSERT INTO device_revocations(device_id,former_owner_id,revoked_epoch,replacement_epoch,revoked_at,acknowledged_at) VALUES (?,?,?,?,?,NULL) ON CONFLICT(device_id) DO UPDATE SET former_owner_id=excluded.former_owner_id,revoked_epoch=excluded.revoked_epoch,replacement_epoch=excluded.replacement_epoch,revoked_at=excluded.revoked_at,acknowledged_at=NULL',[slot.device_id,ownerId,Number(slot.epoch),replacement,Date.now()]);
   }
   await tx.query('INSERT INTO audit_events(id,owner_id,kind,created_at) VALUES (?,?,?,?)',[randomUUID(),ownerId,'robot_unlinked',Date.now()]);
-  return slot?{deviceId:String(slot.device_id),deviceErasureConfirmed:false}:null;
+  return slot?{deviceId:String(slot.device_id),epoch:Number(slot.epoch),deviceErasureConfirmed:false}:null;
  }); }
  async operatorUnlinkDevice(deviceId:string,operatorId:string,reason:string,targetDeployment?:string){
   if(!/^marvin_[a-f0-9]{32}$/.test(deviceId))throw new DomainError('INVALID_DEVICE','Use a registered Marvin device ID.',400);

@@ -37,6 +37,18 @@ static void horizontal(uint8_t *buffer,int x0,int x1,int y){
 static void vertical(uint8_t *buffer,int x,int y0,int y1){
     for(int y=y0;y<=y1;y++)pixel(buffer,x,y,true);
 }
+static void line(uint8_t *buffer,int x0,int y0,int x1,int y1){
+    int dx=x1>x0?x1-x0:x0-x1,sx=x0<x1?1:-1;
+    int dy=y1>y0?y0-y1:y1-y0,sy=y0<y1?1:-1;
+    int error=dx+dy;
+    for(;;){
+        pixel(buffer,x0,y0,true);
+        if(x0==x1&&y0==y1)return;
+        int twice=2*error;
+        if(twice>=dy){error+=dy;x0+=sx;}
+        if(twice<=dx){error+=dx;y0+=sy;}
+    }
+}
 
 void marvin_eye_squeeze(marvin_eye_pose_t *pose,int amount){
     if(amount<0)amount=0;else if(amount>1000)amount=1000;
@@ -105,4 +117,25 @@ void marvin_eye_render_battery(uint8_t buffer[MARVIN_EYE_BYTES],unsigned level_p
         int x0=12-(int)segment*4;
         for(int y=2;y<=7;y++)horizontal(buffer,x0,x0+2,y);
     }
+}
+
+void marvin_eye_render_ble(uint8_t buffer[MARVIN_EYE_BYTES],int connected){
+    /* A compact Bluetooth rune directly below the battery gauge. Its stroke
+     * weight and 15 x 17 px footprint match the other status furniture. */
+    vertical(buffer,8,13,29);
+    line(buffer,8,13,13,18);line(buffer,13,18,3,25);
+    line(buffer,3,17,13,25);line(buffer,13,25,8,29);
+    if(!connected){
+        /* The descending slash extends one pixel beyond the rune at each end
+         * so loss of the controller remains legible at a glance. */
+        line(buffer,1,13,15,29);
+    }
+}
+
+void marvin_eye_render_unlinked(uint8_t buffer[MARVIN_EYE_BYTES]){
+    /* A small two-pixel-weight X anchors the bottom of the status column.
+     * Keeping it separate from the temporary BLE mark makes account state
+     * persistent and controller state transient. */
+    line(buffer,4,52,13,61);line(buffer,5,52,14,61);
+    line(buffer,13,52,4,61);line(buffer,14,52,5,61);
 }

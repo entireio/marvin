@@ -57,3 +57,9 @@ void marvin_eyes_volume(unsigned volume_percent);
 
 /* Enable or suppress every battery overlay, including the critical warning. */
 void marvin_eyes_show_battery(bool show);
+
+/* Show controller connection state below the battery position for five seconds. */
+void marvin_eyes_ble_status(bool connected);
+
+/* Persistently mark the right display while the Pet has no account owner. */
+void marvin_eyes_linked(bool linked);

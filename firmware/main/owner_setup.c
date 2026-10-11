@@ -99,6 +99,12 @@ marvin_redeem_status_t marvin_owner_setup_redeem(const char *ca){
  atomic_store(&linked_view,journal.current.linked);mbedtls_platform_zeroize(&receipt,sizeof(receipt));return result;
 }
 bool marvin_owner_setup_cancel(void){return ready&&marvin_journal_cancel(&journal);}
+bool marvin_owner_setup_revoke(uint32_t epoch){
+ if(!ready||!journal.current.linked||journal.current.epoch!=epoch)return false;
+ bool revoked=marvin_journal_revoke(&journal,journal.current.owner,epoch);
+ if(revoked){atomic_store(&linked_view,false);marvin_owner_setup_disconnected();}
+ return revoked;
+}
 bool marvin_owner_setup_reset_local_development(void){
 #ifdef CONFIG_MARVIN_LOCAL_DEV_MODE
  nvs_handle_t h;if(nvs_open("ownership",NVS_READWRITE,&h)!=ESP_OK)return false;

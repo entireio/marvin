@@ -22,6 +22,7 @@ enum {
     LOGIC_TICK_MS=20,FRAME_PERIOD_US=66667,
     GAZE_X_PIXELS=16,GAZE_Y_PIXELS=3,
     BATTERY_SAMPLE_US=15000000,VOLUME_OVERLAY_US=2400000,
+    BLE_STATUS_OVERLAY_US=5000000,
     LOW_BATTERY_ENTER_PERCENT=15,LOW_BATTERY_EXIT_PERCENT=20,
     SEQUENCE_NONE=0,SEQUENCE_WAKE=1,SEQUENCE_SLEEP=2,
     SEQUENCE_WAKE_INSTANT=3,SEQUENCE_SLEEP_INSTANT=4,
@@ -38,15 +39,18 @@ typedef struct {
 
 static const char *TAG="marvin_eyes";
 static display_t displays[2];
-static atomic_bool pair_available,awake,show_battery=true;
+static atomic_bool pair_available,awake,show_battery=false;
 static atomic_int pending_sequence;
 static atomic_int requested_expression=MARVIN_EYES_NEUTRAL;
-static atomic_int requested_design=MARVIN_EYE_DESIGN_CLASSIC;
+static atomic_int requested_design=MARVIN_EYE_DESIGN_FRIENDLY;
 static atomic_int gaze_x,gaze_y,head_yaw,head_pitch,target_yaw,target_pitch;
 static atomic_uint voice_level;
 static atomic_llong gaze_until_us;
 static atomic_uint overlay_volume;
 static atomic_llong volume_until_us;
+static atomic_bool ble_connected;
+static atomic_llong ble_status_until_us;
+static atomic_bool account_linked;
 
 static int clamp(int value,int low,int high){return value<low?low:value>high?high:value;}
 static int approach(int value,int target,int divisor){
@@ -255,6 +259,8 @@ static void task(void *unused){
             }
             if(now<atomic_load(&volume_until_us))marvin_eye_render_volume(displays[0].pixels,atomic_load(&overlay_volume));
             if(battery_available&&atomic_load(&show_battery))marvin_eye_render_battery(displays[1].pixels,battery_percent,critical_battery);
+            if(now<atomic_load(&ble_status_until_us))marvin_eye_render_ble(displays[1].pixels,atomic_load(&ble_connected));
+            if(!atomic_load(&account_linked))marvin_eye_render_unlinked(displays[1].pixels);
             flush(&displays[0]);flush(&displays[1]);
             do next_frame+=FRAME_PERIOD_US;while(next_frame<=now);
         }
@@ -325,3 +331,8 @@ void marvin_eyes_volume(unsigned volume_percent){
     atomic_store(&volume_until_us,esp_timer_get_time()+VOLUME_OVERLAY_US);
 }
 void marvin_eyes_show_battery(bool show){atomic_store(&show_battery,show);}
+void marvin_eyes_ble_status(bool connected){
+    atomic_store(&ble_connected,connected);
+    atomic_store(&ble_status_until_us,esp_timer_get_time()+BLE_STATUS_OVERLAY_US);
+}
+void marvin_eyes_linked(bool linked){atomic_store(&account_linked,linked);}

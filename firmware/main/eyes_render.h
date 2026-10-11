@@ -34,3 +34,5 @@ void marvin_eye_render(uint8_t buffer[MARVIN_EYE_BYTES], const marvin_eye_pose_t
  * displays. They intentionally draw over an already-rendered eye frame. */
 void marvin_eye_render_volume(uint8_t buffer[MARVIN_EYE_BYTES], unsigned volume);
 void marvin_eye_render_battery(uint8_t buffer[MARVIN_EYE_BYTES], unsigned level_percent, int critical);
+void marvin_eye_render_ble(uint8_t buffer[MARVIN_EYE_BYTES], int connected);
+void marvin_eye_render_unlinked(uint8_t buffer[MARVIN_EYE_BYTES]);

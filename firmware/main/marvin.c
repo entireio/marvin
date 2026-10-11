@@ -66,6 +66,14 @@ static const bool connection_eye_animation=true;
 static const bool connection_eye_animation=false;
 #endif
 
+static void local_account_state(bool linked){
+    marvin_eyes_linked(linked);
+    /* Owner firmware becomes interactive only after an authenticated welcome.
+     * An unlinked Pet remains asleep even though Wi-Fi is intentionally kept. */
+    marvin_body_wake_activation(false);
+    if(!linked)marvin_eyes_connection(false,connection_eye_animation);
+}
+
 static esp_err_t set_station_hostname(esp_netif_t *station) {
     uint8_t mac[6];
     esp_err_t err=esp_wifi_get_mac(WIFI_IF_STA,mac);
@@ -85,8 +93,8 @@ static void state(const char *next, const char *error) {
     xSemaphoreGive(lock);
 }
 static void wifi_event(void *arg, esp_event_base_t base, int32_t id, void *data) {
-    if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) {xEventGroupSetBits(events,IP_READY);marvin_eyes_connection(true,connection_eye_animation);}
-    if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {xEventGroupClearBits(events,IP_READY);marvin_eyes_connection(false,connection_eye_animation);}
+    if (base==IP_EVENT && id==IP_EVENT_STA_GOT_IP) {xEventGroupSetBits(events,IP_READY);if(!owner_mode){marvin_body_wake_activation(true);marvin_eyes_connection(true,connection_eye_animation);}}
+    if (base==WIFI_EVENT && id==WIFI_EVENT_STA_DISCONNECTED) {xEventGroupClearBits(events,IP_READY);marvin_body_wake_activation(false);marvin_eyes_connection(false,connection_eye_animation);}
 }
 static bool connect_config(const wifi_config_t *config) {
     esp_wifi_disconnect();
@@ -140,6 +148,7 @@ static void worker(void *arg) {
             else { state("checking_backend",NULL); if(!probe()) error=probe_failure; }
             if(!error && owner_mode){
                 state("linking",NULL);marvin_redeem_status_t result=marvin_owner_setup_redeem(probe_ca);
+                local_account_state(marvin_owner_setup_linked());
                 if(result!=MARVIN_REDEEM_OK){error=result==MARVIN_REDEEM_REJECTED?"ENROLLMENT_REVOKED":"ENROLLMENT_RETRY";if(result==MARVIN_REDEEM_REJECTED)marvin_owner_setup_cancel();}
             }
             if(!error && !owner_mode && !save(&job.candidate)) error="STORAGE_FAILED";
@@ -181,6 +190,7 @@ static esp_err_t control(uint32_t session,const uint8_t *input,ssize_t length,ui
     cJSON_AddNumberToObject(reply,"version",1);
     if(owner_mode&&!busy()&&marvin_owner_setup_control(session,request,reply)) {
         /* Authenticated owner ticket commands are handled before bench commands. */
+        local_account_state(marvin_owner_setup_linked());
     } else if(!strcmp(op->valuestring,"clock") && !busy()) {
         cJSON *utc=cJSON_GetObjectItemCaseSensitive(request,"utcMs");
         if(!cJSON_IsNumber(utc)||!isfinite(utc->valuedouble)||floor(utc->valuedouble)!=utc->valuedouble||utc->valuedouble<1577836800000.0||utc->valuedouble>4102444800000.0)cJSON_AddStringToObject(reply,"error","INVALID_CLOCK");
@@ -322,6 +332,7 @@ void app_main(void) {
     if(marvin_identity_init()!=ESP_OK)ESP_LOGW("marvin","Device signing identity missing; enrollment disabled");
     if(owner_mode){
         if(marvin_owner_setup_init()!=ESP_OK){ESP_LOGE("marvin","Owner trust or journal unavailable; setup disabled");return;}
+        local_account_state(marvin_owner_setup_linked());
         has_committed=marvin_owner_setup_network(&committed);if(has_committed&&connect_config(&committed))probe();
     }
     assert(xTaskCreate(worker,"network_setup",10240,NULL,5,NULL)==pdPASS);

@@ -39,6 +39,8 @@ int main(int argc,char **argv){assert(argc==3);public_key=file(argv[1]);char *ra
  ok(7,"{\"op\":\"challenge\",\"operation\":\"network\",\"issuedAt\":1789263000000}","challenge");ticket=cJSON_GetObjectItem(cJSON_GetArrayItem(cases,1),"ticket")->valuestring;transfer_ticket(ticket);monotonic+=120000000;assert(!marvin_owner_setup_stage(7,&candidate));
  marvin_journal_record_t linked_disk=disk;monotonic=1000000;ok(7,"{\"op\":\"challenge\",\"operation\":\"recover\",\"issuedAt\":1789263000000}","challenge");ticket=cJSON_GetObjectItem(cJSON_GetArrayItem(cases,3),"ticket")->valuestring;transfer_ticket(ticket);ok(7,"{\"op\":\"clear_returned\"}","cleared");assert(!marvin_owner_setup_linked()&&!disk_exists);
  disk=linked_disk;disk_exists=true;pending=disk;erase_pending=false;assert(marvin_owner_setup_init()==ESP_OK&&marvin_owner_setup_linked());
+ assert(!marvin_owner_setup_revoke(8));fail_storage=true;assert(!marvin_owner_setup_revoke(7)&&marvin_owner_setup_linked());fail_storage=false;assert(marvin_owner_setup_revoke(7)&&!marvin_owner_setup_linked());
+ disk=linked_disk;disk_exists=true;pending=disk;erase_pending=false;assert(marvin_owner_setup_init()==ESP_OK&&marvin_owner_setup_linked());
  monotonic=1000000;ok(7,"{\"op\":\"challenge\",\"operation\":\"reconcile\",\"issuedAt\":1789263000000}","challenge");ticket=cJSON_GetObjectItem(cJSON_GetArrayItem(cases,2),"ticket")->valuestring;transfer_ticket(ticket);
  fail_storage=true;r=command(7,"{\"op\":\"clear_owner\"}");assert(cJSON_GetObjectItem(r,"error")&&marvin_owner_setup_linked());cJSON_Delete(r);fail_storage=false;
  ok(7,"{\"op\":\"clear_owner\"}","cleared");assert(!marvin_owner_setup_linked());
