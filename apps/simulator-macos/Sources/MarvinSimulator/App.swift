@@ -1,12 +1,16 @@
 import AppKit
 import SceneKit
 import SimulationCore
+import PetDeviceCore
 
 final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NSToolbarDelegate {
     var window: NSWindow!
     let view = SimulatorView(), hud = HUDView(), world = World()
     let mainMenu = MainMenuView(frame: .zero)
     var inSandbox = false
+    var connectedPetMode=false
+    var petConnection: PetConnection?
+    var petConnectionWindow: PetConnectionWindow?
     var isDirtTrack = false
     var playerCharacter = RacePerformance.Character.marvin
     var dirtOutro: Double?
@@ -163,7 +167,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             guard let self else { return }
             // Race pause/focus gates freeze all bodies without erasing one
             // competitor's momentum. Released input decelerates after resume.
-            if !self.isDirtTrack { self.simulation.stop() }
+            if !self.isDirtTrack && !self.connectedPetMode { self.simulation.stop() }
         }
         view.onOrbit = { [weak self] dx, dy in
             guard let self, self.inSandbox, self.dirtIntro == nil, !self.raceCameraLocked else { return }
@@ -183,10 +187,31 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         view.delegate=townMeter
         mainMenu.onSandbox = { [weak self] in self?.startSandbox() }
         mainMenu.onDirtTrack = { [weak self] in self?.loadDirtTrack() }
+        mainMenu.onPetConnection = { [weak self] in self?.showPetConnection(nil) }
         makeMenu()
         window.center(); window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true)
         robot.update(simulation); showMainMenu(nil)
+        do {
+            let pet=try PetConnection(testDirectory:petSmokeDirectory);petConnection=pet
+            pet.onConnected={ [weak self] in
+                guard let self else { return }
+                if self.connectedPetMode { self.petConnection?.state.enabled = !self.simulation.paused }
+                else { self.startSandbox(connectedPet:true) }
+            }
+            pet.onStop={ [weak self] in if self?.connectedPetMode==true { self?.simulation.stop() } }
+            pet.onChange={ [weak self] in
+                guard let self else { return };self.petConnectionWindow?.refresh()
+                if self.connectedPetMode { self.hud.petStatus=self.petConnection?.status ?? "Disconnected" }
+            }
+            if let index=CommandLine.arguments.firstIndex(of:"--pet-test-binding"),CommandLine.arguments.contains("--pet-smoke-test"),index+1<CommandLine.arguments.count {
+                pet.useTestBinding(try JSONDecoder().decode(PetBinding.self,from:Data(contentsOf:URL(fileURLWithPath:CommandLine.arguments[index+1]))))
+            } else if let index=CommandLine.arguments.firstIndex(of:"--pet-test-pairing"),petSmokeDirectory != nil,index+1<CommandLine.arguments.count {
+                struct TestPairing: Decodable { let serverUrl: String,code: String }
+                let value=try JSONDecoder().decode(TestPairing.self,from:Data(contentsOf:URL(fileURLWithPath:CommandLine.arguments[index+1])))
+                showPetConnection(nil);pet.pair(server:value.serverUrl,code:value.code)
+            } else if smokeDirectory==nil && petSmokeDirectory==nil { pet.restore() }
+        } catch { NSLog("Simulator connection could not initialize; offline play remains available.") }
         // Retain display-synchronised updates as an explicit diagnostic option:
         // native comparisons have not established a repeatable stutter reduction.
         let timerDrivenSmoke = smokeDirectory != nil && !CommandLine.arguments.contains("--town-benchmark")
@@ -234,6 +259,13 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                         } else { dirtOutro = min(dirtIntroDuration,dirtOutro!+step) }
                     }
                 }
+                else if connectedPetMode,let pet=petConnection {
+                    simulation.advance(pet.state.advance(dt:step,now:ProcessInfo.processInfo.systemUptime),dt:step)
+                    let calibration=pet.calibration
+                    let yaw=(pet.state.yaw+Double(calibration.yawCenter-90))*(calibration.yawReversed ? -1:1)
+                    let pitch=(pet.state.pitch+Double(calibration.pitchCenter-90))*(calibration.pitchReversed ? 1:-1)
+                    simulation.setDeviceHead(yaw:yaw * .pi/180,pitch:pitch * .pi/180)
+                }
                 else { simulation.advance(view.driveInput,dt:step) }
             }
         }
@@ -243,6 +275,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
 
     @objc func tick() {
         let now = ProcessInfo.processInfo.systemUptime
+        if petSmokeDirectory != nil { recordPetSmoke() }
         let wallDelta = max(0, now-lastTime)
         let dt = min(wallDelta, 0.1); lastTime = now
         if isLoadingDirt { loadingHeartbeats += 1; observeLoadingCheckIfNeeded(); return }
@@ -441,7 +474,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         // on another app taking focus. Interactive play still pauses on blur.
         let step = smokeDirectory == nil ? dt : 1.0/60
         let raceDelta = smokeDirectory == nil ? wallDelta : step
-        let advancing = ((active && window.occlusionState.contains(.visible)) || smokeDirectory != nil) && !simulation.paused
+        let advancing = (connectedPetMode || (active && window.occlusionState.contains(.visible)) || smokeDirectory != nil) && !simulation.paused
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
         if isDirtTrack {
             updateRaceWorld(dt: advancing ? step : 0)
@@ -454,7 +487,9 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             updateOpponents()
             raceHUD.race = race; raceHUD.scores = scores; raceHUD.paused = simulation.paused
             raceHUD.needsDisplay = true
-        } else { updatePlayerModel(); world.update(simulation) }
+        } else { updatePlayerModel(); world.update(simulation)
+            if connectedPetMode,let pet=petConnection { robot.applyPetAppearance(design:pet.state.preferences.eyeDesign,expression:pet.state.expression,gazeX:pet.state.gazeX,gazeY:pet.state.gazeY,clock:now) }
+        }
         updateCamera(snap:false,dt:step)
         // Classify residents against this frame's camera, including camera cuts.
         if isDirtTrack {
@@ -469,6 +504,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         if smokeDirectory != nil { smokeTest() }
     }
     @objc func showMainMenu(_ sender: Any?) {
+        robot.restorePetAppearance()
+        if connectedPetMode { connectedPetMode=false;petConnection?.state.enabled=false;petConnection?.disconnect() }
         raceAudio?.resetConversation()
         window.title = "Marvin · Playground"
         mainMenu.portrait.rendersContinuously = true
@@ -480,9 +517,12 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 0)
         window.makeFirstResponder(mainMenu)
     }
-    func startSandbox() {
-        configurePlayer()
-        window.title = "Marvin · Playground"
+    func startSandbox(connectedPet:Bool=false) {
+        robot.restorePetAppearance()
+        if connectedPetMode && !connectedPet { petConnection?.disconnect() }
+        connectedPetMode=connectedPet;petConnection?.state.enabled=connectedPet
+        if connectedPet { playerCharacter = .marvin } else { configurePlayer() }
+        window.title = connectedPet ? "Marvin · Connected Pet":"Marvin · Playground"
         world.camera.camera?.zFar = 80
         world.camera.camera?.wantsHDR=false;world.camera.camera?.bloomIntensity=0
         world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0
@@ -492,7 +532,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         view.scene = world.scene; world.scene.rootNode.addChildNode(world.camera)
         view.pointOfView = world.camera; raceHUD.isHidden = true
         inSandbox = true; mainMenu.isHidden = true; hud.isHidden = false
-        toolbarControlsVisible = true; hud.helpVisible = mainMenu.showGuide
+        toolbarControlsVisible = true; hud.helpVisible = connectedPet ? false:mainMenu.showGuide
+        hud.petStatus=connectedPet ? petConnection?.status:nil
         for character in RacePerformance.Character.allCases { modelRoot(character).removeFromParentNode() }
         world.scene.rootNode.addChildNode(modelRoot(playerCharacter))
         reset(nil); updatePlayerModel(); world.update(simulation)
@@ -674,12 +715,14 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     @objc func togglePause(_ sender: Any?) {
         guard inSandbox else { return }
         simulation.paused.toggle(); view.clearInput()
+        if connectedPetMode { petConnection?.state.enabled = !simulation.paused;petConnection?.state.stop();simulation.stop() }
         if simulation.paused { raceAudio?.stop() }
         pauseItem?.label = simulation.paused ? "Resume" : "Pause"
         pauseItem?.image = NSImage(systemSymbolName: simulation.paused ? "play.fill" : "pause.fill", accessibilityDescription: nil)
         window.makeFirstResponder(view)
     }
     @objc func reset(_ sender: Any?) {
+        if connectedPetMode { petConnection?.state.stop() }
         raceAudio?.resetConversation()
         if isLoadingDirt && sender != nil { return }
         guard inSandbox else { return }
@@ -758,6 +801,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
     func applicationWillTerminate(_ notification: Notification) {
+        petConnection?.disconnect()
         timer?.invalidate()
         if #available(macOS 14.0,*) { (frameDisplayLink as? CADisplayLink)?.invalidate() }
         raceAudio?.stop()
@@ -796,6 +840,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         appMenu.addItem(withTitle: "Quit Marvin Simulator", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu; bar.addItem(appItem)
         let simItem = NSMenuItem(), simMenu = NSMenu(title: "Simulation")
+        let connect=simMenu.addItem(withTitle:"Connect to Marvin…",action:#selector(showPetConnection),keyEquivalent:"k");connect.target=self
         for (title, selector, key) in [("Main Menu", #selector(showMainMenu), "m"), ("Reset playground", #selector(reset), "r"), ("Pause / resume", #selector(togglePause), "p"), ("Change camera", #selector(cycleCamera), "1")] {
             let item = simMenu.addItem(withTitle: title, action: selector, keyEquivalent: key); item.target = self
         }

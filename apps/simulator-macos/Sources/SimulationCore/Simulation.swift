@@ -99,6 +99,12 @@ public struct Simulation: Sendable {
     public mutating func stop() { appliedDriveInput=DriveInput(); leftSpeed = 0; rightSpeed = 0; velocity = .zero; angularVelocity = 0 }
     public mutating func reset() { self = Simulation(dirtTrack: dirtTrack, dirtStartOffset: dirtStartOffset, dirtStartPhase: dirtStartPhase, character: character) }
     public mutating func centerHead() { yaw = 0; pitch = 0 }
+    /// Absolute device-protocol pose; keep the same CAD clearance as keyboard input.
+    public mutating func setDeviceHead(yaw: Double, pitch: Double) {
+        let y = max(-80 * .pi/180, min(80 * .pi/180, yaw))
+        let p = max(-30 * .pi/180, min(30 * .pi/180, pitch))
+        if HeadClearance.isClear(yaw:y,pitch:p) { self.yaw=y; self.pitch=p }
+    }
 
     mutating func enableRobotDynamics() {
         guard !robotDynamics else { return }

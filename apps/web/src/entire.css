@@ -321,3 +321,12 @@ p { line-height: 1.5; }
  .remote-speech textarea{min-height:40px;height:40px}
  .remote-speech-composer{padding:6px;gap:6px;align-items:center}
 }
+
+.simulator-pairing-dialog .dialog-body{display:grid;gap:20px;color:var(--marvin-text)}
+.simulator-pairing-fields{display:grid;gap:16px}
+.simulator-pairing-fields .field{margin:0;gap:6px;font-size:13px;line-height:20px}
+.simulator-pairing-fields .field input{min-width:0;min-height:40px;padding:10px 12px;font:12px/20px var(--marvin-font-code);color:var(--marvin-text)}
+.simulator-pairing-fields [role="status"]{font-size:12px;line-height:18px;color:var(--marvin-muted)}
+.simulator-pairing-dialog .fine-print{font-size:12px;line-height:18px}
+.simulator-pairing-dialog .error-message{margin:0}
+@media(max-width:767px){.simulator-pairing-dialog .dialog-body{padding:20px}}

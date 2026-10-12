@@ -53,6 +53,12 @@ export const migrations = [
  `CREATE TABLE entire_connectors (id TEXT PRIMARY KEY, owner_id TEXT NOT NULL UNIQUE REFERENCES owners(id), credential_hash TEXT NOT NULL UNIQUE, name TEXT NOT NULL, created_at BIGINT NOT NULL, last_seen_at BIGINT, revoked_at BIGINT)`,
  `CREATE INDEX entire_connector_owner ON entire_connectors(owner_id,revoked_at)`
  ]}
+ ,{version:11,statements:[
+ `ALTER TABLE body_slots ADD COLUMN kind TEXT NOT NULL DEFAULT 'physical' CHECK(kind IN ('physical','simulator','preview'))`,
+ `UPDATE body_slots SET kind='preview' WHERE simulated=1`,
+ `CREATE TABLE simulator_pairings (hash TEXT PRIMARY KEY, owner_id TEXT NOT NULL UNIQUE REFERENCES owners(id), expires_at BIGINT NOT NULL)`,
+ `CREATE INDEX simulator_pairing_expiry ON simulator_pairings(expires_at)`
+ ]}
 ];
 export async function migrate(db: Database, target=migrations.at(-1)!.version) {
  await db.transaction(async tx => {

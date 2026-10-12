@@ -41,7 +41,8 @@ final class MainMenuView: NSView {
     private var buttons: [MenuButton] = []
     var onSandbox: (() -> Void)?
     var onDirtTrack: (() -> Void)?
-    private var optionCount: Int { settings ? 6 : 4 }
+    var onPetConnection: (() -> Void)?
+    private var optionCount: Int { settings ? 6 : 5 }
     var settings = false
     var selection = 0
     var idleAnimation: Bool {
@@ -127,12 +128,12 @@ final class MainMenuView: NSView {
         for (i, button) in buttons.enumerated() {
             button.frame = NSRect(x: split, y: top - (198) - CGFloat(i)*(settings ? 54 : 72), width: width, height: settings ? 46 : 58)
         }
-        hint.frame = NSRect(x: split + 3, y: max(4,top - (settings ? 504 : 458)), width: width, height: 24)
+        hint.frame = NSRect(x: split + 3, y: max(4,top - (settings ? 504 : 540)), width: width, height: 24)
     }
     func refresh() {
         title.stringValue = settings ? "Settings" : "Marvin"
         subtitle.stringValue = settings ? "Race assists still need your input." : "Beep, boop... just some fun."
-        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Robot collisions: \(raceRobotCollisions ? "On" : "Off")", "Steering assist: \(steeringAssist ? "On" : "Off")", "Braking assist: \(brakingAssist ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Quit"]
+        let names = settings ? ["Idle animation: \(idleAnimation ? "On" : "Off")", "Keyboard guide: \(showGuide ? "On" : "Off")", "Robot collisions: \(raceRobotCollisions ? "On" : "Off")", "Steering assist: \(steeringAssist ? "On" : "Off")", "Braking assist: \(brakingAssist ? "On" : "Off")", "Back"] : ["Sandbox", "Dirt Track", "Settings", "Connect to Marvin", "Quit"]
         for (i, button) in buttons.enumerated() {
             button.isHidden = i >= names.count
             guard i < names.count else { continue }
@@ -163,6 +164,7 @@ final class MainMenuView: NSView {
             case 0: onSandbox?()
             case 1: onDirtTrack?()
             case 2: settings = true; selection = 0
+            case 3: onPetConnection?()
             default: NSApp.terminate(nil)
             }
         }

@@ -3,8 +3,8 @@
 Agent contributors: read the [simulator implementation and validation rules](../../docs/simulator-agent-rules.md) before changing the simulator.
 
 A native AppKit + SceneKit/Metal playground using Marvin's actual CAD assembly.
-No browser, web server, npm dependencies, network connection, or physical robot
-is needed. Requires macOS 13 or later. The build uses Python 3 and Apple's Swift
+Offline play needs no browser, web server, npm dependencies, network connection,
+or physical robot. An optional connected mode pairs with the Marvin web app. Requires macOS 13 or later. The build uses Python 3 and Apple's Swift
 command-line tools; the resulting `.app` runs independently of those tools.
 
 ## Build and launch
@@ -38,10 +38,65 @@ This only affects the build process; it does not change `xcode-select` or accept
 any license agreements. Model-export summaries and codesign's “replacing
 existing signature” message are normal successful-build output.
 
+## Use as a connected Desktop Pet
+
+1. Start the Marvin server and web app, then sign in. A hosted HTTPS server also
+   works. In the web app choose **No Desktop Pet? Use simulator**, or **Use
+   simulator** in Settings → Desktop Pet, and create a one-time pairing code.
+2. In the native app choose **Connect to Marvin** on the main menu, or
+   **Simulation → Connect to Marvin…** (Command-K). Paste the displayed server
+   address and code, then choose **Pair simulator**. The code expires in five
+   minutes and can be used once.
+3. The app opens Marvin in Sandbox. The web app shows **Simulator Online**.
+   Open its existing remote to drive the rendered tracks and move the head.
+   Eye design, battery-icon preference, and head calibration use the same web
+   settings and device messages as the physical Pet.
+4. To replace the simulator or switch accounts, unlink it in the web app first.
+   **Disconnect** in the native connection panel stops the connection while
+   retaining its credentials; **Reconnect** resumes it. Returning to the main
+   menu disconnects and returns to ordinary offline play.
+
+Pairing uses the account's single Pet slot and never replaces an existing physical
+Pet. Credentials live in macOS Keychain and expire after 30 days; unlink and pair
+again after expiration. Preference and command-receipt files live under
+`~/Library/Application Support/MarvinSimulator/Pet`. Transport uses the existing
+`/api/device/socket` gateway with protocol 1.13, HTTPS/WSS and normal system trust;
+HTTP/WS is accepted only on loopback for development. No local relay is needed.
+Operators can set `SIMULATOR_PAIRING_ENABLED=false` to disable software enrollment.
+
+Connected mode keeps rendering and processing remote input while the browser has
+focus. Stick release, input older than 250 ms, lost connection, pause, and reset
+stop motion; reconnect starts without replaying drive input. Offline Sandbox and
+Dirt Track retain their existing focus and pause behavior. Simulator movement is
+an approximation with CAD head-clearance checks, not calibrated hardware physics.
+
+This first milestone advertises remote, head, tracks, motion, eyes and gaze.
+Microphone capture, speaker playback, wake/button events and hardware sensors are
+not implemented or advertised. Existing web conversations remain available, but
+Pet voice is the next milestone. Unknown battery measurements remain unavailable.
+
+To validate the command engine and the real web/native integration:
+
+```sh
+DEVELOPER_DIR=/Library/Developer/CommandLineTools \
+  swift run --package-path apps/simulator-macos --build-system native PetDeviceChecks
+
+MARVIN_NATIVE_PET_APP="$PWD/apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator" \
+E2E_DATABASE_PATH=./work/e2e-simulator-pet.sqlite \
+  node node_modules/@playwright/test/cli.js test tests/e2e/simulator-pet.spec.ts --headed
+```
+
+Use a disposable database for browser tests and a Node release that supports
+`node:sqlite`. The optional native test requires a macOS display session and writes
+screenshots and state under `work/native-pet-*`. It uses private test pairing and binding files,
+does not modify your normal Keychain connection, and unlinks its test Pet afterward.
+Without `MARVIN_NATIVE_PET_APP`, the browser test checks the same gateway and
+settings using the TypeScript reference device and skips the native test.
+
 ## Main menu
 
 The app opens with a live 3D Marvin portrait. Use the cursor keys and Return,
-or hover and click, to select Sandbox, Dirt Track, Settings, or Quit. Drag left or
+or hover and click, to select Sandbox, Dirt Track, Settings, Connect to Marvin, or Quit. Drag left or
 right on the portrait to rotate Marvin; he stays at the angle you release.
 Hidden main-menu shortcuts: **B** shows BB-8, **R** shows R2-D2, **W** shows
 WALL-E, and **M** restores Marvin. Each portrait supports dragging and idle
@@ -293,7 +348,8 @@ The sandbox is a **flat-ground kinematic simulation**; Dirt Track adds terrain f
   The neck is shell-colored; the five-button row uses one red and four pale
   buttons, with a separate pale round button. Materials are curated for the simulator. The source electronics layout is not verified against today's robot.
 - No calibrated traction, deformable tracks, motor electrical model,
-  sensor emulation, firmware connection, or robot commands.
+  sensor emulation, or direct firmware connection. Connected mode handles server
+  device commands through the simulated scene.
 
 ## Verification
 

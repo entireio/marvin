@@ -30,6 +30,8 @@ final class Robot {
     var wheels: [(node: SCNNode, left: Bool)] = []
     var tracks: [TrackBelt] = []
     var eyes: [SCNNode] = []
+    private var originalPetEyes: [SCNGeometry] = []
+    private var petEyeShapes: [String:[SCNGeometry]] = [:]
     var partCount = 0, triangleCount = 0
     private(set) var modelScale = 1.0
     private(set) var neutralHeight = 0.0
@@ -176,6 +178,27 @@ final class Robot {
         modelScale = R2D2.sceneHeight * (0.60 / R2D2.heightMeters) / neutralHeight
         dirtCoating.install(on:root,height:neutralHeight,wheelOffset:0.262225)
         root.scale = SCNVector3(modelScale, modelScale, modelScale)
+    }
+    func restorePetAppearance() {
+        guard originalPetEyes.count==eyes.count else { return }
+        for (i,eye) in eyes.enumerated() { eye.geometry=originalPetEyes[i];eye.position.x=i==0 ? -0.145:0.145;eye.position.y=0.008;eye.scale=SCNVector3(1,1,1) }
+    }
+    func applyPetAppearance(design:String,expression:String,gazeX:Double,gazeY:Double,clock:Double) {
+        if originalPetEyes.isEmpty { originalPetEyes=eyes.compactMap(\.geometry);petEyeShapes["friendly"]=originalPetEyes }
+        if petEyeShapes[design]==nil {
+            petEyeShapes[design]=eyes.map { eye in
+                let path=NSBezierPath(ovalIn:NSRect(x:-0.065,y:-0.037,width:0.13,height:0.074))
+                if design=="classic" { path.windingRule = .evenOdd;path.appendOval(in:NSRect(x:-0.026,y:-0.029,width:0.052,height:0.058)) }
+                let shape=SCNShape(path:path,extrusionDepth:0);shape.materials=eye.geometry?.materials ?? [];return shape
+            }
+        }
+        for (i,eye) in eyes.enumerated() {
+            eye.geometry=petEyeShapes[design]?[i]
+            eye.position.x=(i==0 ? -0.145:0.145)+gazeX*0.018;eye.position.y=0.008+gazeY*0.014
+            let blink=clock.truncatingRemainder(dividingBy:4.3)<0.12
+            let openness=expression=="sleeping" ? 0.12:blink ? 0.12:expression=="concerned" ? 0.65:expression=="speaking" ? 0.86+sin(clock*8)*0.14:1.0
+            eye.scale=SCNVector3(expression=="listening" ? 1.12:1,openness,1)
+        }
     }
     func update(_ state: Simulation) {
         dirtCoating.update(state)

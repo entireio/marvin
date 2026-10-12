@@ -7,7 +7,9 @@ let package = Package(
     products: [.executable(name: "MarvinSimulator", targets: ["MarvinSimulator"])],
     targets: [
         .target(name: "SimulationCore"),
-        .executableTarget(name: "MarvinSimulator", dependencies: ["SimulationCore"]),
+        .target(name: "PetDeviceCore", dependencies: ["SimulationCore"]),
+        .executableTarget(name: "MarvinSimulator", dependencies: ["SimulationCore", "PetDeviceCore"]),
+        .executableTarget(name: "PetDeviceChecks", dependencies: ["PetDeviceCore", "SimulationCore"], path: "Tests/PetDeviceChecks"),
         .executableTarget(name: "SimulationChecks", dependencies: ["SimulationCore"], path: "Tests/SimulationCoreTests"),
     ]
 )

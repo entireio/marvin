@@ -6,6 +6,7 @@ import {AnthropicTextProvider} from '../../../packages/runtime/src/anthropic.js'
 import {exportPage,deleteAccount,purgeExpiredHistory} from '../../../packages/persistence/src/privacy.js';
 import { DeviceVoice } from '../../../packages/device/src/voice.js';
 import { DeviceStore } from '../../../packages/device/src/store.js';
+import { SimulatorPairing } from '../../../packages/device/src/pairing.js';
 import { DeviceGateway } from '../../../packages/device/src/gateway.js';
 import { registerVoice } from './voice.js';
 import {DeepgramVoiceProvider} from '../../../packages/runtime/src/deepgram-voice.js';
@@ -48,6 +49,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  const realEntire=options.entire??(cfg.ENTIRE_CLI_PATH&&cfg.ENTIRE_BINDINGS_FILE?new EntireCli(cfg.ENTIRE_CLI_PATH,cfg.ENTIRE_BINDINGS_FILE):cfg.ENTIRE_COMPANION_URL&&cfg.ENTIRE_COMPANION_TOKEN?new EntireHttp(cfg.ENTIRE_COMPANION_URL,cfg.ENTIRE_COMPANION_TOKEN):cloudEntire);
  const runtime=new Runtime(store,options.provider??(cfg.MODEL_PROVIDER==='anthropic'?new AnthropicTextProvider(cfg.ANTHROPIC_API_KEY!,cfg.ANTHROPIC_MODEL!):cfg.MODEL_PROVIDER==='openai'?new OpenAITextProvider(cfg.OPENAI_API_KEY!,cfg.OPENAI_MODEL!,undefined,cfg.OPENAI_REPOSITORY_MODEL):new FixtureTextProvider()),new FixtureEntire(),realEntire);
  const devices=new DeviceGateway(new DeviceStore(store));
+ const simulatorPairing=new SimulatorPairing(store);
  const enrollment=cfg.ENROLLMENT_KEYS_FILE?(()=>{const keys=z.object({privateKey:z.string(),receiptKey:z.string().regex(/^[a-f0-9]{64}$/)}).strict().parse(JSON.parse(readFileSync(cfg.ENROLLMENT_KEYS_FILE,'utf8')));return new EnrollmentService(store,keys.privateKey,Buffer.from(keys.receiptKey,'hex'),cfg.DEVICE_PUBLIC_ORIGIN!);})():undefined;
  const localDevCard=cfg.LOCAL_DEV_SETUP_CARDS_FILE?(()=>{
   const card=z.object({deviceId:z.string().regex(/^marvin_[a-f0-9]{32}$/),username:z.string().min(1).max(64),password:z.string().min(8).max(128),security:z.literal(2).optional(),patch:z.literal(1).optional()}).strict(),loaded=z.union([card,z.array(card).length(1)]).parse(JSON.parse(readFileSync(cfg.LOCAL_DEV_SETUP_CARDS_FILE,'utf8')));
@@ -83,7 +85,7 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   if(req.url.startsWith('/api/'))reply.header('Cache-Control','no-store');
   if(cfg.NODE_ENV==='production')reply.header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'").header('Strict-Transport-Security','max-age=31536000');
   if(!req.url.startsWith('/api/'))return;
-  if(req.url==='/api/device/enrollment/redeem'){if(req.headers.origin||req.headers.cookie)throw new DomainError('DEVICE_ONLY','Setup completion must come directly from your Desktop Pet.',403);return;}
+  if(['/api/device/enrollment/redeem','/api/device/simulator/pair'].includes(req.url)){if(req.headers.origin||req.headers.cookie)throw new DomainError('DEVICE_ONLY','Setup completion must come directly from your Desktop Pet.',403);return;}
   if(req.method==='GET'&&/^\/api\/device\/firmware(?:\/|$)/.test(req.url.split('?')[0]!)){if(req.headers.origin||req.headers.cookie)throw new DomainError('DEVICE_ONLY','Firmware downloads require direct device authorization.',403);return;}
   const mutating=!['GET','HEAD','OPTIONS'].includes(req.method);
   if(mutating&&req.headers.origin!==cfg.APP_ORIGIN)throw new DomainError('ORIGIN_FORBIDDEN','This request did not originate from the Marvin web app.',403);
@@ -92,12 +94,12 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
   if(mutating&&req.headers['x-csrf-token']!==session.csrf)throw new DomainError('CSRF_INVALID','Refresh the page and try again.',403);
  });
  const session=async(req:{cookies:Record<string,string|undefined>})=>{const s=await store.session(req.cookies.marvin_session);if(!s)throw new DomainError('UNAUTHENTICATED','Please sign in to continue.',401);return s;};
- app.get('/api/health',async()=>({status:'ok',schema:10}));
+ app.get('/api/health',async()=>({status:'ok',schema:11}));
  const firmwareDevice=async(authorization:string|undefined)=>{const token=/^Bearer ([A-Za-z0-9_-]{20,200})$/.exec(authorization??'')?.[1];if(!token)throw new DomainError('DEVICE_UNAUTHENTICATED','Device authorization required.',401);return devices.persistence.authenticate(token);};
  app.get('/api/device/firmware',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization);if(!firmwareRelease?.offeredTo(device.deviceId))return reply.code(204).send();return firmwareRelease.offer();});
  app.get('/api/device/firmware/:sequence/:part',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{const device=await firmwareDevice(req.headers.authorization),params=z.object({sequence:z.string().regex(/^[1-9][0-9]{0,9}$/),part:z.enum(['manifest','image'])}).parse(req.params);if(!firmwareRelease?.offeredTo(device.deviceId)||String(firmwareRelease.sequence)!==params.sequence)throw new DomainError('NOT_FOUND','Firmware release not available.',404);return reply.type('application/octet-stream').send(firmwareRelease.bytes(params.part));});
 
- app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE==='github'?'oidc':cfg.AUTH_MODE,oidcLabel:cfg.AUTH_MODE==='github'?'GitHub':cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',deploymentMode:cfg.DEPLOYMENT_MODE,localDevSetupAvailable:!!localDevCard||localDevPets.length>0,docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',voiceStatus:voiceDiagnostic==='credit_balance_exhausted'?'billing_required':voiceDiagnostic?'unavailable':'ready',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
+ app.get('/api/config',async()=>({authMode:cfg.AUTH_MODE==='github'?'oidc':cfg.AUTH_MODE,oidcLabel:cfg.AUTH_MODE==='github'?'GitHub':cfg.OIDC_LABEL,provider:runtime.provider.name,development:cfg.AUTH_MODE==='development',deploymentMode:cfg.DEPLOYMENT_MODE,localDevSetupAvailable:!!localDevCard||localDevPets.length>0,docsUrl:cfg.PUBLIC_DOCS_URL,voiceAvailable:!!options.voice||cfg.VOICE_PROVIDER!=='disabled',voiceStatus:voiceDiagnostic==='credit_balance_exhausted'?'billing_required':voiceDiagnostic?'unavailable':'ready',simulatorPairingAvailable:cfg.SIMULATOR_PAIRING_ENABLED==='true',hardwareProvisioningAvailable:cfg.HARDWARE_PROVISIONING_ENABLED==='true'&&!!enrollment}));
  app.get('/api/auth/session',async(req,reply)=>{const s=await activeSession(req,reply);return s?{owner:await store.owner(s.ownerId),csrf:s.csrf}:null;});
  app.post('/api/auth/login',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req,reply)=>{
   const body=z.object({password:z.string().max(1024).optional(),returnTo:z.string().max(150).optional()}).strict().parse(req.body);
@@ -126,6 +128,10 @@ export async function createApp(cfg:Config,options:{database?:Database;provider?
  app.get('/api/auth/callback',identityCallback);
  app.get('/auth/callback',identityCallback);
  const requireEnrollment=()=>{if(!enrollment)throw new DomainError('ENROLLMENT_UNAVAILABLE','Device setup is not configured on this server.',503);return enrollment;};
+ const requireSimulator=()=>{if(cfg.SIMULATOR_PAIRING_ENABLED!=='true')throw new DomainError('SIMULATOR_DISABLED','Simulator pairing is disabled on this server.',403);};
+ app.post('/api/robot/simulator/pairing',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async req=>{requireSimulator();z.object({}).strict().parse(req.body);return {...await simulatorPairing.create((await session(req)).ownerId),serverUrl:cfg.APP_ORIGIN};});
+ app.delete('/api/robot/simulator/pairing',async req=>{await simulatorPairing.cancel((await session(req)).ownerId);return {ok:true};});
+ app.post('/api/device/simulator/pair',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async req=>{requireSimulator();const {code}=z.object({code:z.string().regex(/^[A-Za-z0-9_-]{43}$/)}).strict().parse(req.body);return simulatorPairing.redeem(code);});
  app.post('/api/robot/enrollment',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(req)=>requireEnrollment().ticket((await session(req)).ownerId,req.body));
  app.delete('/api/robot/enrollment/:id',async(req)=>{const {id}=z.object({id:Id}).parse(req.params);await requireEnrollment().cancel((await session(req)).ownerId,id);return {ok:true};});
  app.post('/api/robot/reconciliation/ack',async(req)=>{const b=z.object({deviceId:Id}).strict().parse(req.body),s=await session(req);if(!await store.acknowledgeRevocation(s.ownerId,b.deviceId))throw new DomainError('RECOVERY_NOT_AUTHORIZED','No pending ownership cleanup was found for this account.',403);return {ok:true};});

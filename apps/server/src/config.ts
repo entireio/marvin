@@ -10,7 +10,7 @@ export const Env=z.object({
  VOICE_PROVIDER:z.enum(['disabled','openai','deepgram']).default('disabled'),VOICE_EFFECT:z.enum(['natural','subtle-robotic']).default('subtle-robotic'),OPENAI_REALTIME_MODEL:z.string().optional(),OPENAI_TRANSCRIPTION_MODEL:z.string().default('gpt-4o-mini-transcribe'),OPENAI_VOICE:z.enum(['marin','cedar','alloy','ash','ballad','coral','echo','sage','shimmer','verse']).default('cedar'),
  HARDWARE_PROVISIONING_ENABLED:z.enum(['true','false']).default('false'),LOCAL_DEV_SETUP_CARDS_FILE:z.string().optional(),LOCAL_DEV_DEVICE_PUBLIC_KEY_FILE:z.string().optional(),LOCAL_DEV_PETS_FILE:z.string().optional(),
  FIRMWARE_ROLLOUT_FILE:z.string().optional(),
- ENROLLMENT_KEYS_FILE:z.string().optional(),DEVICE_PUBLIC_ORIGIN:z.url().optional(),
+ ENROLLMENT_KEYS_FILE:z.string().optional(),DEVICE_PUBLIC_ORIGIN:z.url().optional(),SIMULATOR_PAIRING_ENABLED:z.enum(['true','false']).default('true'),
  ENTIRE_CLI_PATH:z.string().optional(),ENTIRE_BINDINGS_FILE:z.string().optional(),ENTIRE_COMPANION_URL:z.preprocess(value=>value===''?undefined:value,z.url().optional()),ENTIRE_COMPANION_TOKEN:z.preprocess(value=>value===''?undefined:value,z.string().min(32).max(256).optional()),
  ENTIRE_HOSTED_CLI_PATH:z.preprocess(value=>value===''?undefined:value,z.string().optional()),ENTIRE_HOSTED_SECRET_DIR:z.preprocess(value=>value===''?undefined:value,z.string().optional()),ENTIRE_HOSTED_SECRET_KEY:z.preprocess(value=>value===''?undefined:value,z.string().optional()),ENTIRE_CONNECTOR_ENABLED:z.enum(['true','false']).default('true'),
  OIDC_ISSUER:z.url().optional(),OIDC_CLIENT_ID:z.string().optional(),OIDC_CLIENT_SECRET:z.string().optional(),OIDC_LABEL:z.string().default('Identity provider'),OIDC_REDIRECT_URI:z.url().optional(),

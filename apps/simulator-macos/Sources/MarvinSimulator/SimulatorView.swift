@@ -40,6 +40,7 @@ final class SimulatorView: SCNView {
 }
 
 final class HUDView: NSView {
+    var petStatus: String?
     var state = Simulation()
     var cameraName = "FOLLOW"
     var fps = 60
@@ -60,9 +61,9 @@ final class HUDView: NSView {
         let w = bounds.width, h = bounds.height
         card(NSRect(x: 22, y: 22, width: 280, height: 96))
         text("M A R V I N   /   S I M U L A T O R", 40, 38, size: 10, mono: true)
-        text("A little room to explore.", 40, 58, size: 21, weight: .semibold)
+        text(petStatus==nil ? "A little room to explore.":"Connected Pet", 40, 58, size: 21, weight: .semibold)
         let status = state.paused ? "PAUSED" : state.contacting ? "OBSTACLE · turn or reverse" : "READY TO ROAM"
-        text(status, 40, 91, size: 10, ink: state.contacting ? 0xa56932 : 0x337e69, mono: true)
+        text(state.paused ? "PAUSED":petStatus ?? status, 40, 91, size: 10, ink: state.contacting ? 0xa56932 : 0x337e69, mono: true)
         let px = w-252
         card(NSRect(x: px, y: 22, width: 230, height: 342))
         text("EXPLORATION COURSE", px+18, 39, size: 10, mono: true)

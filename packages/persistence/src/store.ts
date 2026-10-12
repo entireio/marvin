@@ -134,7 +134,7 @@ export class Store {
    if(old) { if(old.owner_id===ownerId&&old.device_id===deviceId) return old; throw new DomainError('CLAIM_CONFLICT','This enrollment belongs to another device.',409); }
    await tx.query('INSERT INTO device_epochs(device_id,epoch) VALUES (?,1) ON CONFLICT(device_id) DO NOTHING',[deviceId]);
    const epoch=(await tx.query<Row>('SELECT epoch FROM device_epochs WHERE device_id=?',[deviceId]))[0].epoch;
-   await tx.query('INSERT INTO body_slots(owner_id,device_id,enrollment_id,state,expires_at,epoch,simulated) VALUES (?,?,?,?,?,?,?)',[ownerId,deviceId,enrollmentId,'reserved',Date.now()+300000,epoch,simulated?1:0]);
+   await tx.query('INSERT INTO body_slots(owner_id,device_id,enrollment_id,state,expires_at,epoch,simulated,kind) VALUES (?,?,?,?,?,?,?,?)',[ownerId,deviceId,enrollmentId,'reserved',Date.now()+300000,epoch,simulated?1:0,simulated?'preview':'physical']);
    return (await tx.query<Row>('SELECT * FROM body_slots WHERE owner_id=?',[ownerId]))[0];
   }); } catch(e) { if(e instanceof DomainError) throw e; if(/unique|constraint/i.test(String(e))) throw new DomainError('CLAIM_CONFLICT','Only one Desktop Pet can be linked to your account, and a Desktop Pet can have only one owner.',409); throw e; }
  }
