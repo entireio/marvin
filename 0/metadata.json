@@ -1,0 +1,97 @@
+{
+  "cli_version": "0.11.4",
+  "checkpoint_id": "01M4RAZV8Z3SC6M4TGVJ0VWZYT",
+  "session_id": "01a13070-352a-7bd3-87a4-44f37972fd85",
+  "strategy": "manual-commit",
+  "created_at": "2026-10-12T15:16:45.182576Z",
+  "branch": "codex/swift-simulator-pet",
+  "checkpoints_count": 2,
+  "files_touched": [
+    "apps/server/src/app.ts",
+    "apps/server/src/config.ts",
+    "apps/simulator-macos/Package.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PetApp.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PetConnection.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/PetConnectionWindow.swift",
+    "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift",
+    "apps/simulator-macos/Sources/PetDeviceCore/PetDeviceState.swift",
+    "apps/simulator-macos/Sources/SimulationCore/Simulation.swift",
+    "apps/web/src/SimulatorPairing.tsx",
+    "packages/device/src/pairing.ts",
+    "packages/persistence/src/migrations.ts",
+    "packages/persistence/src/store.ts",
+    "tests/e2e/simulator-pet.spec.ts",
+    "tests/unit/simulator-pairing.test.ts"
+  ],
+  "agent": "Codex",
+  "model": "gpt-6.1-sol",
+  "turn_id": "dc5c1520a035",
+  "compact_transcript_start": 0,
+  "token_usage": {
+    "input_tokens": 384665,
+    "cache_creation_tokens": 0,
+    "cache_read_tokens": 12726400,
+    "output_tokens": 64651,
+    "api_call_count": 116
+  },
+  "session_metrics": {
+    "turn_count": 2
+  },
+  "initial_attribution": {
+    "calculated_at": "2026-10-12T15:16:44.907022Z",
+    "agent_lines": 23,
+    "agent_removed": 0,
+    "human_added": 65,
+    "human_modified": 28,
+    "human_removed": 0,
+    "total_committed": 116,
+    "total_lines_changed": 143,
+    "agent_percentage": 16.083916083916083,
+    "metric_version": 2
+  },
+  "prompt_attributions": [
+    {
+      "checkpoint_number": 1,
+      "user_lines_added": 768,
+      "user_lines_removed": 28,
+      "agent_lines_added": 0,
+      "agent_lines_removed": 0,
+      "user_added_per_file": {
+        "apps/server/src/app.ts": 9,
+        "apps/server/src/config.ts": 1,
+        "apps/simulator-macos/Package.swift": 3,
+        "apps/simulator-macos/Sources/MarvinSimulator/App.swift": 44,
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 5,
+        "apps/simulator-macos/Sources/MarvinSimulator/PetApp.swift": 30,
+        "apps/simulator-macos/Sources/MarvinSimulator/PetConnection.swift": 216,
+        "apps/simulator-macos/Sources/MarvinSimulator/PetConnectionWindow.swift": 32,
+        "apps/simulator-macos/Sources/MarvinSimulator/Robot.swift": 23,
+        "apps/simulator-macos/Sources/MarvinSimulator/SimulatorView.swift": 3,
+        "apps/simulator-macos/Sources/PetDeviceCore/PetDeviceState.swift": 132,
+        "apps/simulator-macos/Sources/SimulationCore/Simulation.swift": 6,
+        "apps/simulator-macos/Tests/PetDeviceChecks/main.swift": 59,
+        "apps/web/src/App.tsx": 11,
+        "apps/web/src/SimulatorPairing.tsx": 21,
+        "packages/device/src/pairing.ts": 38,
+        "packages/persistence/src/migrations.ts": 6,
+        "packages/persistence/src/privacy.ts": 1,
+        "packages/persistence/src/store.ts": 1,
+        "playwright.config.ts": 2,
+        "tests/e2e/simulator-pet.spec.ts": 66,
+        "tests/unit/simulator-pairing.test.ts": 59
+      },
+      "user_removed_per_file": {
+        "apps/server/src/app.ts": 3,
+        "apps/server/src/config.ts": 1,
+        "apps/simulator-macos/Package.swift": 1,
+        "apps/simulator-macos/Sources/MarvinSimulator/App.swift": 7,
+        "apps/simulator-macos/Sources/MarvinSimulator/MainMenu.swift": 3,
+        "apps/simulator-macos/Sources/MarvinSimulator/SimulatorView.swift": 2,
+        "apps/web/src/App.tsx": 8,
+        "packages/persistence/src/privacy.ts": 1,
+        "packages/persistence/src/store.ts": 1,
+        "playwright.config.ts": 1
+      }
+    }
+  ]
+}

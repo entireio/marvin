@@ -1,0 +1,13 @@
+Review the codebase and understand how the web app can be paired with the desktop pet
+
+---
+
+If no desktop pet is available, I want to use the simulator app to simulate the same interface as the real pet. Ideally, with little to no changes to the web app. Make a plan for that.
+
+---
+
+Yes, Swift first. Create a new branch and start the work according to your plan.
+
+---
+
+[Image #1] What's this? You forget our design system?
