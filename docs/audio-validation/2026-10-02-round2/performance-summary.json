@@ -1,0 +1,53 @@
+{
+  "hardware": "MacBook Air M2, 24 GB",
+  "resolution": [
+    1920,
+    1080
+  ],
+  "measurement": "SceneKit didRenderScene wall-clock intervals, not GPU execution or display presentation",
+  "warmupSeconds": 3,
+  "runs": {
+    "clear": {
+      "meanFPS": 60.00000561969646,
+      "p95MS": 17.204541712999344,
+      "p99MS": 17.51533313654363,
+      "maxFrameMS": 20.392708480358124,
+      "over25MS": 0,
+      "over50MS": 0,
+      "measuredFrames": 7020,
+      "durationSeconds": 120.0163978333585,
+      "distanceMetres": 260.13713844321404,
+      "cpuUpdateP95MS": 2.7923332527279854,
+      "cameraUpdateP95MS": 0.06158323958516121,
+      "thermalState": 1
+    },
+    "lower-sun": {
+      "meanFPS": 59.9659104057073,
+      "p95MS": 17.1790833119303,
+      "p99MS": 17.539124935865402,
+      "maxFrameMS": 34.54133332706988,
+      "over25MS": 4,
+      "over50MS": 0,
+      "measuredFrames": 7015,
+      "durationSeconds": 120.00000237487257,
+      "distanceMetres": 266.61429074261235,
+      "cpuUpdateP95MS": 2.7376667130738497,
+      "cameraUpdateP95MS": 0.06820820271968842,
+      "thermalState": 1
+    },
+    "storm": {
+      "meanFPS": 59.999886453247186,
+      "p95MS": 17.15629152022302,
+      "p99MS": 17.404541838914156,
+      "maxFrameMS": 19.469041842967272,
+      "over25MS": 0,
+      "over50MS": 0,
+      "measuredFrames": 7020,
+      "durationSeconds": 120.0000667499844,
+      "distanceMetres": 292.1488240481626,
+      "cpuUpdateP95MS": 2.3819166235625744,
+      "cameraUpdateP95MS": 0.06895838305354118,
+      "thermalState": 1
+    }
+  }
+}

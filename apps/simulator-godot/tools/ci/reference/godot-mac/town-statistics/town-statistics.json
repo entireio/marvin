@@ -1,0 +1,170 @@
+{
+  "cameraObstructionPassed": true,
+  "cityCoveragePassed": true,
+  "explorationDetailPassed": true,
+  "layoutClearancePassed": true,
+  "resetPassed": true,
+  "streetNetworkPassed": true,
+  "town": {
+    "accessibleCompounds": 492,
+    "animatedPeople": 282,
+    "buildings": 497,
+    "cells": 92,
+    "crowdCells": 77,
+    "crowdFarTriangles": 100409,
+    "crowdNearTriangles": 1834674,
+    "doorConnections": 24,
+    "explorationCells": 173,
+    "explorationTriangles": 51376,
+    "farTriangles": 242142,
+    "householdYards": 130,
+    "inaccessibleCompounds": 0,
+    "infieldHouses": 0,
+    "nearTriangles": 437850,
+    "people": 282,
+    "repairTents": 2,
+    "signTextFits": 1,
+    "signs": 27,
+    "streetRoutes": 13,
+    "walkingPeople": 34
+  },
+  "comparison": {
+    "town.accessibleCompounds": {
+      "mac": 492,
+      "godot": 492,
+      "match": true
+    },
+    "town.animatedPeople": {
+      "mac": 282,
+      "godot": 282,
+      "match": true
+    },
+    "town.buildings": {
+      "mac": 497,
+      "godot": 497,
+      "match": true
+    },
+    "town.cells": {
+      "mac": 92,
+      "godot": 92,
+      "match": true
+    },
+    "town.crowdCells": {
+      "mac": 77,
+      "godot": 77,
+      "match": true
+    },
+    "town.crowdFarTriangles": {
+      "mac": 100409,
+      "godot": 100409,
+      "match": true
+    },
+    "town.crowdNearTriangles": {
+      "mac": 1834674,
+      "godot": 1834674,
+      "match": true
+    },
+    "town.doorConnections": {
+      "mac": 24,
+      "godot": 24,
+      "match": true
+    },
+    "town.explorationCells": {
+      "mac": 173,
+      "godot": 173,
+      "match": true
+    },
+    "town.explorationTriangles": {
+      "mac": 51376,
+      "godot": 51376,
+      "match": true
+    },
+    "town.farTriangles": {
+      "mac": 242142,
+      "godot": 242142,
+      "match": true
+    },
+    "town.householdYards": {
+      "mac": 130,
+      "godot": 130,
+      "match": true
+    },
+    "town.inaccessibleCompounds": {
+      "mac": 0,
+      "godot": 0,
+      "match": true
+    },
+    "town.infieldHouses": {
+      "mac": 0,
+      "godot": 0,
+      "match": true
+    },
+    "town.nearTriangles": {
+      "mac": 437850,
+      "godot": 437850,
+      "match": true
+    },
+    "town.people": {
+      "mac": 282,
+      "godot": 282,
+      "match": true
+    },
+    "town.repairTents": {
+      "mac": 2,
+      "godot": 2,
+      "match": true
+    },
+    "town.signTextFits": {
+      "mac": 1,
+      "godot": 1,
+      "match": true
+    },
+    "town.signs": {
+      "mac": 27,
+      "godot": 27,
+      "match": true
+    },
+    "town.streetRoutes": {
+      "mac": 13,
+      "godot": 13,
+      "match": true
+    },
+    "town.walkingPeople": {
+      "mac": 34,
+      "godot": 34,
+      "match": true
+    },
+    "cameraObstructionPassed": {
+      "mac": true,
+      "godot": true,
+      "match": true
+    },
+    "cityCoveragePassed": {
+      "mac": true,
+      "godot": true,
+      "match": true
+    },
+    "explorationDetailPassed": {
+      "mac": true,
+      "godot": true,
+      "match": true
+    },
+    "layoutClearancePassed": {
+      "mac": true,
+      "godot": true,
+      "match": true
+    },
+    "resetPassed": {
+      "mac": true,
+      "godot": true,
+      "match": true
+    },
+    "streetNetworkPassed": {
+      "mac": true,
+      "godot": true,
+      "match": true
+    }
+  },
+  "identical": true,
+  "reference": "/Users/m1/marvin/apps/simulator-godot/tools/ci/reference/macos/town/town-smoke.json"
+}

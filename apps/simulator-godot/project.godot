@@ -1,0 +1,118 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+config/name="Marvin Simulator"
+run/main_scene="res://scenes/Main.tscn"
+config/features=PackedStringArray("4.7", "C#", "Forward Plus")
+
+[display]
+window/size/viewport_width=1280
+window/size/viewport_height=820
+
+[dotnet]
+project/assembly_name="MarvinGodot"
+
+[rendering]
+renderer/rendering_method="forward_plus"
+rendering_device/driver.windows="d3d12"
+rendering_device/fallback_to_vulkan=true
+rendering_device/fallback_to_d3d12=true
+textures/vram_compression/import_etc2_astc=true
+
+[shader_globals]
+
+scn_fog_color={
+"type": "vec4",
+"value": Vector4(1, 1, 1, 1)
+}
+
+scn_fog_range={
+"type": "vec4",
+"value": Vector4(0, 0, 1, 0)
+}
+
+scn_ambient={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_ibl={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh0={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh1={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh2={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh3={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh4={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh5={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh6={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh7={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_sh8={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_deferred={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+
+scn_radiance={
+"type": "sampler2D",
+"value": ""
+}
+
+scn_ssao={
+"type": "sampler2D",
+"value": ""
+}
+
+scn_shadow_box0={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+
+scn_shadow_box1={
+"type": "mat4",
+"value": Projection(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+
+scn_shadow_slope={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}

@@ -49,6 +49,7 @@ extension AppController {
     }
 
     func updateRaceWorld(dt: Double) {
+        dirtWorld.sky.updateShadowCenter(raceCameraLocked ? .zero:SIMD3(simulation.x,simulation.groundY,simulation.z))
         // Effects stay in model order so tires/tracks and emitter counts match
         // their geometry, independent of who occupies the player slot.
         let states = [simulation] + opponents.map { $0.simulation }

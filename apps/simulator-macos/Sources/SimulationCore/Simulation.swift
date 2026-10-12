@@ -1,4 +1,5 @@
 import Foundation
+import simd
 
 public struct Obstacle: Sendable {
     public let x: Double, z: Double, width: Double, depth: Double, height: Double
@@ -12,6 +13,8 @@ public struct DriveInput: Sendable {
     public var boost = false, brake = false
     // Set only by the Dirt Track assist; preserves steering while braking.
     var assistedBraking = false
+    var assistedBrakePressure = 0.0
+    public var isBraking:Bool { brake || assistedBrakePressure>0 }
     public init() {}
 }
 
@@ -33,6 +36,14 @@ public struct Simulation: Sendable {
         Obstacle(0.0, 3.3, 1.6, 0.65, 0.35),
     ]
     public private(set) var dirtTrack = false
+    public var storm=Sandstorm()
+    public var sand:SandDeformation?
+    public var windShelter=1.0
+    var aerodynamicProfile:RobotCollisions.Profile?
+    public func terrainHeight(x:Double,z:Double)->Double { storm.height(x:x,z:z)+(sand?.offset(x:x,z:z) ?? 0) }
+    public var supportHeight:Double {
+        storm.height(x:x,z:z)+(sand?.supportOffset(x:x,z:z,heading:heading,profile:aerodynamicProfile ?? RobotCollisions.profiles[character.rawValue]) ?? 0)
+    }
     public let character: RacePerformance.Character
     public private(set) var groundY = 0.0, bodyPitch = 0.0, bodyRoll = 0.0
     public private(set) var airborne = false
@@ -52,12 +63,24 @@ public struct Simulation: Sendable {
     public private(set) var yaw = 0.0, pitch = 0.0, distance = 0.0, elapsed = 0.0
     public private(set) var checkpoint = 0
     public private(set) var contacting = false
+    public private(set) var impactSerial=0,impactSpeed=0.0
+    private var impactTime = -1.0
     public var paused = false
+    /// The actual post-assist/autopilot command, shared with motion-driven audio.
+    public private(set) var appliedDriveInput = DriveInput()
     /// Rubber/loose dirt contact tolerance for visual ground effects. The center
     /// height can flutter a few millimeters above terrain over shallow ripples;
     /// do not tear the trail each time the rigid-body airborne flag toggles.
     public var hasDirtContact: Bool {
-        !airborne || (dirtTrack && groundY-DirtCourse.height(x:x,z:z) <= 0.006)
+        !airborne || (dirtTrack && groundY-supportHeight <= 0.006)
+    }
+    /// Local support plane followed by heading; Euler XYZ would apply bank in
+    /// world axes and tilt a diagonal chassis away from the slope it sampled.
+    public var duneOrientation:simd_quatd {
+        let up=simd_normalize(SIMD3(-tan(bodyRoll),1,tan(bodyPitch)))
+        let forward=simd_normalize(SIMD3(0,-tan(bodyPitch),1))
+        let right=simd_normalize(simd_cross(up,forward))
+        return simd_quatd(angle:heading,axis:SIMD3(0,1,0))*simd_quatd(simd_double3x3(columns:(right,up,forward)))
     }
     public var speed: Double { (leftSpeed + rightSpeed) / 2 }
     /// Chassis motion can differ from drivetrain speed during braking/sliding
@@ -73,7 +96,7 @@ public struct Simulation: Sendable {
         checkpoints = CourseLayout.generate(seed: seed)
     }
 
-    public mutating func stop() { leftSpeed = 0; rightSpeed = 0; velocity = .zero; angularVelocity = 0 }
+    public mutating func stop() { appliedDriveInput=DriveInput(); leftSpeed = 0; rightSpeed = 0; velocity = .zero; angularVelocity = 0 }
     public mutating func reset() { self = Simulation(dirtTrack: dirtTrack, dirtStartOffset: dirtStartOffset, dirtStartPhase: dirtStartPhase, character: character) }
     public mutating func centerHead() { yaw = 0; pitch = 0 }
 
@@ -87,10 +110,15 @@ public struct Simulation: Sendable {
         RobotCollisions.Body(position:SIMD3(x,groundY,z),velocity:velocity,heading:heading,angularVelocity:angularVelocity,profile:profile)
     }
     mutating func applyCollisionBody(_ body: RobotCollisions.Body) {
+        let change=simd_length(velocity-body.velocity)
+        if body.contacted && change>0.65 {
+            impactSpeed=elapsed-impactTime<0.1 ? max(impactSpeed,change):change
+            impactTime=elapsed;impactSerial &+= 1
+        }
         x = body.position.x; z = body.position.z; groundY = body.position.y
         heading = atan2(sin(body.heading),cos(body.heading))
         velocity = body.velocity; angularVelocity = body.angularVelocity; verticalSpeed = velocity.y
-        let ground = DirtCourse.height(x:x,z:z)
+        let ground = supportHeight
         airborne = groundY > ground+0.001
         previousGround = ground
         contacting = contacting || body.contacted
@@ -127,6 +155,7 @@ public struct Simulation: Sendable {
 
     public mutating func advance(_ input: DriveInput, dt: Double) {
         guard !paused, dt.isFinite, dt > 0 else { return }
+        appliedDriveInput = input
         // Clamp delayed frames and subdivide to prevent tunneling through walls.
         let duration = min(dt, 0.1)
         let steps = Int(ceil(duration / (1.0/120)))
@@ -139,9 +168,13 @@ public struct Simulation: Sendable {
         elapsed += dt
         let throttle = max(-1, min(1, input.throttle))
         let turn = max(-1, min(1, input.turn))
-        let grip = dirtTrack ? DirtCourse.traction(x:x,z:z) : 1
+        let depth=storm.depth(x:x,z:z)
+        let grip = dirtTrack ? DirtCourse.traction(x:x,z:z)*max(0.55,1-depth*2.5) : 1
         let acceleration = dirtTrack ? 11.4 : 3.8
-        let limit = dirtTrack ? (input.boost ? 12.0 : 6.0)*grip : (input.boost ? 2.2 : 1.15)
+        // The circuit shoulder penalty must not become a town-wide speed cap.
+        // Loose sand still limits grip; accumulated drifts retain physical drag.
+        let courseSpeed = dirtTrack && DirtCourse.projection(x:x,z:z).distance<=DirtCourse.fenceOffset ? DirtCourse.traction(x:x,z:z):1
+        let limit = dirtTrack ? (input.boost ? 12.0 : 6.0)*courseSpeed : (input.boost ? 2.2 : 1.15)
         // Dirt steering is an angular-rate request, independent of drive speed.
         // Ramp keyboard input so a short tap makes a small correction.
         steering += max(-3*dt,min(3*dt,turn-steering))
@@ -152,11 +185,12 @@ public struct Simulation: Sendable {
         func approach(_ value: Double, _ target: Double) -> Double {
             value + max(-acceleration*dt, min(acceleration*dt, target-value))
         }
-        if input.brake, dirtTrack, input.assistedBraking {
+        let brakePressure=input.brake ? 1:max(0,min(1,input.assistedBrakePressure))
+        if brakePressure>0, dirtTrack, input.assistedBraking {
             // Keep steering available while braking. Never accelerate toward a
             // corner-speed target: pressure only removes forward momentum.
             let longitudinal = robotDynamics ? velocity.x*sin(heading)+velocity.z*cos(heading) : speed
-            let brakingSpeed = max(0,min(speed,longitudinal)-16*dt)
+            let brakingSpeed = max(0,min(speed,longitudinal)-16*brakePressure*dt)
             leftSpeed = brakingSpeed+differential
             rightSpeed = brakingSpeed-differential
         } else if input.brake { leftSpeed = 0; rightSpeed = 0 }
@@ -186,20 +220,36 @@ public struct Simulation: Sendable {
                 let side = SIMD3<Double>(cos(heading),0,-sin(heading))
                 let longitudinal = velocity.x*forward.x+velocity.z*forward.z
                 let lateral = velocity.x*side.x+velocity.z*side.z
-                let driveLimit = input.brake ? 16.0 : acceleration
+                let driveLimit = brakePressure>0 ? 16.0 : acceleration
                 let drive: Double
-                if input.brake, input.assistedBraking {
-                    drive = -min(max(0,longitudinal)/dt,16)
+                if brakePressure>0, input.assistedBraking {
+                    drive = -min(max(0,longitudinal)/dt,16*brakePressure)
                 } else { drive = max(-driveLimit,min(driveLimit,(speed-longitudinal)*20)) }
                 let slip = max(-12.0,min(12.0,-lateral*14))
-                var force = forward*drive+side*slip
-                let magnitude = hypot(force.x,force.z), tractionLimit = 16*grip
+                let tractionLimit = 16*grip
+                let lateralForce=brakePressure>0 && input.assistedBraking ? max(-tractionLimit,min(tractionLimit,slip)):slip
+                let brakingBudget=sqrt(max(0,tractionLimit*tractionLimit-lateralForce*lateralForce))
+                let longitudinalForce=brakePressure>0 && input.assistedBraking ? max(-brakingBudget,min(brakingBudget,drive)):drive
+                var force = forward*longitudinalForce+side*lateralForce
+                let magnitude = hypot(force.x,force.z)
                 if magnitude > tractionLimit { force *= tractionLimit/magnitude }
+                if dirtTrack && max(abs(x),abs(z))>DesertTerrain.townEdge {
+                    let grade=DesertTerrain.gradient(x:x,z:z)
+                    let downhill = -9.8/(1+grade.x*grade.x+grade.y*grade.y)
+                    force += SIMD3(grade.x*downhill,0,grade.y*downhill)
+                }
+                if storm.enabled {
+                    let e=0.08
+                    let grade=SIMD2((storm.depth(x:x+e,z:z)-storm.depth(x:x-e,z:z))/(2*e),(storm.depth(x:x,z:z+e)-storm.depth(x:x,z:z-e))/(2*e))
+                    force += SIMD3(-grade.x*9.8,0,-grade.y*9.8)
+                    force -= SIMD3(velocity.x,0,velocity.z)*(depth*10)
+                }
                 velocity += force*dt
                 // Finite steering torque lets off-center impacts rotate a robot
                 // before the drivetrain progressively regains heading control.
                 angularVelocity += max(-7*dt,min(7*dt,omega-angularVelocity))
             }
+            velocity += storm.acceleration(velocity:velocity,x:x,z:z,profile:aerodynamicProfile ?? RobotCollisions.profiles[character.rawValue],shelter:windShelter)*dt
             omega = angularVelocity
             dx = velocity.x*dt; dz = velocity.z*dt
         }
@@ -221,19 +271,30 @@ public struct Simulation: Sendable {
         rollingTravel += SIMD2(sin(rollingHeading),cos(rollingHeading))*speed*dt
         heading = atan2(sin(heading + omega*dt), cos(heading + omega*dt))
         if dirtTrack {
-            let ground = DirtCourse.height(x:x,z:z)
+            let ground = supportHeight
             let slopeVelocity = (ground-previousGround)/dt
             if !airborne && verticalSpeed > slopeVelocity+0.55 && abs(speed) > 1 { airborne = true }
             if airborne {
                 verticalSpeed -= 9.8*dt; groundY += verticalSpeed*dt
-                if groundY <= ground { groundY = ground; airborne = false; verticalSpeed = slopeVelocity }
+                if groundY <= ground {
+                    groundY = ground; airborne = false
+                    if robotDynamics {
+                        // Landing on a rising bank must redirect the incoming
+                        // momentum, not add an upward kick at unchanged speed.
+                        velocity=RobotCollisions.landingVelocity(SIMD3(velocity.x,verticalSpeed,velocity.z),normal:storm.surfaceNormal(x:x,z:z))
+                        verticalSpeed=velocity.y
+                    } else { verticalSpeed = slopeVelocity }
+                }
             } else { groundY = ground; verticalSpeed = slopeVelocity }
             previousGround = ground
             if robotDynamics { velocity.y = verticalSpeed }
-            let fx = sin(heading)*0.24, fz = cos(heading)*0.24
-            let lx = cos(heading)*0.26, lz = -sin(heading)*0.26
-            let pitchTarget = -atan2(DirtCourse.height(x:x+fx,z:z+fz)-DirtCourse.height(x:x-fx,z:z-fz),0.48)
-            let rollTarget = atan2(DirtCourse.height(x:x+lx,z:z+lz)-DirtCourse.height(x:x-lx,z:z-lz),0.52)
+            let dune=max(abs(x),abs(z))>DesertTerrain.townEdge
+            let profile=aerodynamicProfile ?? RobotCollisions.profiles[character.rawValue]
+            let halfLength=dune ? profile.halfDepth:0.24,halfWidth=dune ? profile.halfWidth:0.26
+            let fx = sin(heading)*halfLength, fz = cos(heading)*halfLength
+            let lx = cos(heading)*halfWidth, lz = -sin(heading)*halfWidth
+            let pitchTarget = -atan2(terrainHeight(x:x+fx,z:z+fz)-terrainHeight(x:x-fx,z:z-fz),halfLength*2)
+            let rollTarget = atan2(terrainHeight(x:x+lx,z:z+lz)-terrainHeight(x:x-lx,z:z-lz),halfWidth*2)
             let blend = min(1,dt*15)
             bodyPitch += (pitchTarget-bodyPitch)*blend; bodyRoll += (rollTarget-bodyRoll)*blend
         }

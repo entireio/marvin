@@ -1,0 +1,6 @@
+#!/bin/bash
+# Run Godot on this project with the .NET environment. Extra args go to Godot;
+# game arguments come after "--", e.g. tools/godot -- --capture race-midday captures/
+set -e
+source "$(dirname "$0")/env.sh"
+exec "$GODOT" --path "$MARVIN_GODOT_ROOT" "$@"

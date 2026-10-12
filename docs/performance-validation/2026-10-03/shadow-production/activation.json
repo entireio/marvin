@@ -1,0 +1,170 @@
+{
+  "default": {
+    "activeExplorationCells": 16,
+    "audioActive": true,
+    "benchmarkArguments": [
+      "apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator",
+      "--town-benchmark",
+      "/Users/thomi/Projects/marvin-town-planning/sustained-fix/shadow-production-default",
+      "--city-roam"
+    ],
+    "benchmarkRunID": "62403263-3113-432C-B9CF-EF1CEF418610",
+    "cpuUpdateP95MS": 3.1738332472741604,
+    "daylightFraction": 0.5,
+    "drawableHeight": 1080,
+    "drawableWidth": 1920,
+    "durationSeconds": 15.010800833348185,
+    "endWallTime": 1791030523.124897,
+    "expressionsPlayed": 1,
+    "gpuDevice": "Apple M2",
+    "laps": 0,
+    "meanFPS": 60.00149170385689,
+    "metalRenderer": true,
+    "metric": "SceneKit didRenderScene wall-clock intervals; not GPU or display presentation timing",
+    "over25MS": 0,
+    "over50MS": 0,
+    "p50MS": 16.658375039696693,
+    "p95MS": 17.16399984434247,
+    "p99MS": 19.66774999164045,
+    "postRaceRoaming": false,
+    "quality": {
+      "explorationDetail": true,
+      "msaaSamples": 2,
+      "shadowMapWidths": [
+        2048,
+        4096
+      ]
+    },
+    "residentUpdates": {
+      "coarseUpdates": 1050,
+      "navigationUpdates": 3059,
+      "poseUpdates": 127
+    },
+    "samples": 720,
+    "sandstorm": false,
+    "shadowBatch": {
+      "activeProxies": 42,
+      "enabled": 1,
+      "inputElements": 661,
+      "inputVertices": 1761272,
+      "nodes": 92,
+      "outputElements": 338,
+      "outputVertices": 417484,
+      "triangles": 679992
+    },
+    "simulationSeconds": 15.004166666666135,
+    "startUptime": 1841619.1136812083,
+    "sunElevationsDegrees": [
+      64.44424457978516,
+      64.44424457978516
+    ],
+    "thermalState": 0,
+    "town": {
+      "accessibleCompounds": 492,
+      "animatedPeople": 282,
+      "buildings": 497,
+      "cells": 92,
+      "crowdCells": 77,
+      "crowdFarTriangles": 100409,
+      "crowdNearTriangles": 1834674,
+      "doorConnections": 24,
+      "explorationCells": 173,
+      "explorationTriangles": 51376,
+      "farTriangles": 242142,
+      "householdYards": 130,
+      "inaccessibleCompounds": 0,
+      "infieldHouses": 0,
+      "nearTriangles": 437850,
+      "people": 282,
+      "repairTents": 2,
+      "signs": 27,
+      "signTextFits": 1,
+      "streetRoutes": 13,
+      "walkingPeople": 34
+    },
+    "townEnabled": true,
+    "updateDriver": "timer",
+    "visiblePeople": 276
+  },
+  "reference": {
+    "activeExplorationCells": 16,
+    "audioActive": true,
+    "benchmarkArguments": [
+      "apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator",
+      "--town-benchmark",
+      "/Users/thomi/Projects/marvin-town-planning/sustained-fix/shadow-production-reference",
+      "--city-roam",
+      "--benchmark-shadow-batch-reference"
+    ],
+    "benchmarkRunID": "FAF96569-3EA2-466F-AC9D-615A6D6C8275",
+    "cpuUpdateP95MS": 3.0849999748170376,
+    "daylightFraction": 0.5,
+    "drawableHeight": 1080,
+    "drawableWidth": 1920,
+    "durationSeconds": 15.00066962488927,
+    "endWallTime": 1791030572.4652429,
+    "expressionsPlayed": 1,
+    "gpuDevice": "Apple M2",
+    "laps": 0,
+    "meanFPS": 59.99654498348161,
+    "metalRenderer": true,
+    "metric": "SceneKit didRenderScene wall-clock intervals; not GPU or display presentation timing",
+    "over25MS": 0,
+    "over50MS": 0,
+    "p50MS": 16.669291770085692,
+    "p95MS": 17.1232083812356,
+    "p99MS": 17.471708357334137,
+    "postRaceRoaming": false,
+    "quality": {
+      "explorationDetail": true,
+      "msaaSamples": 2,
+      "shadowMapWidths": [
+        2048,
+        4096
+      ]
+    },
+    "residentUpdates": {
+      "coarseUpdates": 1042,
+      "navigationUpdates": 3064,
+      "poseUpdates": 128
+    },
+    "samples": 719,
+    "sandstorm": false,
+    "shadowBatch": {},
+    "simulationSeconds": 14.995833333332802,
+    "startUptime": 1841668.4636512918,
+    "sunElevationsDegrees": [
+      64.44424457978516,
+      64.44424457978516
+    ],
+    "thermalState": 0,
+    "town": {
+      "accessibleCompounds": 492,
+      "animatedPeople": 282,
+      "buildings": 497,
+      "cells": 92,
+      "crowdCells": 77,
+      "crowdFarTriangles": 100409,
+      "crowdNearTriangles": 1834674,
+      "doorConnections": 24,
+      "explorationCells": 173,
+      "explorationTriangles": 51376,
+      "farTriangles": 242142,
+      "householdYards": 130,
+      "inaccessibleCompounds": 0,
+      "infieldHouses": 0,
+      "nearTriangles": 437850,
+      "people": 282,
+      "repairTents": 2,
+      "signs": 27,
+      "signTextFits": 1,
+      "streetRoutes": 13,
+      "walkingPeople": 34
+    },
+    "townEnabled": true,
+    "updateDriver": "timer",
+    "visiblePeople": 276
+  },
+  "binarySHA256": "62a4287a0d8009c86f096189f2c1b5979fbbfa2d96eb5bcf29142100ead9bb3e",
+  "scope": "15-second activation and quality-configuration checks only; not timing acceptance."
+}

@@ -1,0 +1,83 @@
+{
+  "actingPassed" : true,
+  "bb8MotionPassed" : true,
+  "bodyDirtAmounts" : [
+    1,
+    1,
+    1,
+    1
+  ],
+  "boostSteeringPassed" : true,
+  "brakePassed" : true,
+  "cameraPassed" : true,
+  "coatingPassed" : true,
+  "coursePassed" : true,
+  "darkIconPassed" : true,
+  "dirtEffectsPassed" : true,
+  "dirtPassed" : true,
+  "dirtResetPassed" : true,
+  "distance" : 1.2235104166666637,
+  "focusPassed" : true,
+  "fullRaceTrailsPassed" : true,
+  "groovesPassed" : true,
+  "groundContactPassed" : true,
+  "heading" : -0.53805803571428523,
+  "headPassed" : true,
+  "height" : 64,
+  "introPassed" : true,
+  "labelsPassed" : true,
+  "lightIconPassed" : true,
+  "marvinToR2D2HeightRatio" : 0.5555555673827447,
+  "menuPassed" : false,
+  "modelScalePassed" : true,
+  "modeReturnPassed" : true,
+  "neckPassed" : true,
+  "newModelsPassed" : true,
+  "opponentPassed" : true,
+  "parts" : 23,
+  "passed" : false,
+  "pausePassed" : true,
+  "r2d2WheelsPassed" : true,
+  "raceContactCount" : 436,
+  "raceFinishPassed" : true,
+  "racerDirtParticles" : [
+    216,
+    345,
+    92,
+    334
+  ],
+  "racerTrailMarks" : [
+    530,
+    948,
+    263,
+    514
+  ],
+  "renderer" : "Godot \/ SceneKit facade",
+  "resetPassed" : true,
+  "robotContactsPassed" : true,
+  "sandboxContactPassed" : true,
+  "scoresPassed" : true,
+  "tracksPassed" : true,
+  "trackWalls" : {
+    "Inner irregular brick track wall" : {
+      "covered" : 756,
+      "floating" : 0,
+      "samples" : 769,
+      "short" : 0,
+      "worstFloat" : 0,
+      "worstShortfall" : 0
+    },
+    "Outer irregular brick track wall" : {
+      "covered" : 756,
+      "floating" : 0,
+      "samples" : 769,
+      "short" : 0,
+      "worstFloat" : 0,
+      "worstShortfall" : 0
+    }
+  },
+  "triangles" : 695172,
+  "wallEMotionPassed" : true,
+  "wallPassed" : true,
+  "width" : 64
+}

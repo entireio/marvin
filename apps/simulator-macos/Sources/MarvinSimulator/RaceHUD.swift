@@ -9,7 +9,12 @@ final class RaceHUD: NSView {
     var position: Int { 1 + opponents.filter { $0.playerPosition(race) == 2 }.count }
     var race = DirtRace(), scores: [DirtScore] = []
     var x = 0.0, z = -10.0, heading = 0.0
+    var mapRegion=RaceMapRegion.course
+    var townMapImage:NSImage?,planetMapImage:NSImage?
+    var stormSelected = false
+    var stormWarningVisible: Bool { stormSelected && race.countdown > 0 && !paused && !escaping && !race.finished }
     var introducing = false
+    var escaping = false, escapeComplete = false
     var paused = false, helpVisible = true
     var saveError: String?
     override var isFlipped: Bool { true }
@@ -20,14 +25,22 @@ final class RaceHUD: NSView {
     private func textAttributes(_ size:CGFloat, _ bold:Bool = false) -> [NSAttributedString.Key:Any] {
         [.font:NSFont.monospacedSystemFont(ofSize:size,weight:bold ? .bold : .regular),.foregroundColor:color(0xf7eddb)]
     }
-    private func text(_ string: String, _ x:CGFloat,_ y:CGFloat,_ size:CGFloat = 16,_ bold:Bool = false) {
+    func text(_ string: String, _ x:CGFloat,_ y:CGFloat,_ size:CGFloat = 16,_ bold:Bool = false) {
         (string as NSString).draw(at:NSPoint(x:x,y:y),withAttributes:textAttributes(size,bold))
     }
     private func panel(_ x:CGFloat,_ y:CGFloat,_ w:CGFloat,_ h:CGFloat) {
         color(0x263029,alpha:0.9).setFill(); NSBezierPath(roundedRect:NSRect(x:x,y:y,width:w,height:h),xRadius:12,yRadius:12).fill()
     }
     override func draw(_ rect:NSRect) {
+        if escaping && !paused { drawTownDeparture(); return }
         if race.finished && !paused { drawResults(); return }
+        if stormWarningVisible && introducing {
+            let w=min(CGFloat(420),bounds.width-44),h:CGFloat=88
+            let x=(bounds.width-w)/2,y=(bounds.height-h)/2
+            panel(x,y,w,h)
+            label("A storm is coming...",in:NSRect(x:x+20,y:y+28,width:w-40,height:34),size:26,weight:.semibold,tint:0xffd78d,alignment:.center)
+            return
+        }
         let races = [race]+opponents.map { $0.race }
         let inset:CGFloat = 18, rowsY:CGFloat = 242, rowSpacing:CGFloat = 22
         let rowHeight = ceil(("Marvin" as NSString).size(withAttributes:textAttributes(13)).height)
@@ -67,9 +80,82 @@ final class RaceHUD: NSView {
             text("\(i+1).  \(Self.time(score.total))",x+18,78+CGFloat(i)*28,16)
         }
         text("Fastest 3-lap totals",x+18,238,12)
-        panel(x,286,270,212)
-        text("COURSE",x+18,300,12,true)
-        let map = NSRect(x:x+18,y:330,width:234,height:150)
+        let mapHeight:CGFloat = mapRegion == .course ? 150:212
+        panel(x,286,270,mapHeight+62)
+        text(mapRegion.rawValue,x+18,300,12,true)
+        drawNavigationMap(in:NSRect(x:x+18,y:330,width:234,height:mapHeight))
+        if helpVisible {
+            let lines = ["DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", "CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R"]
+            let font = NSFont.monospacedSystemFont(ofSize:12,weight:.regular)
+            let width = min(bounds.width-44,lines.map { ($0 as NSString).size(withAttributes:[.font:font]).width }.max()!+36)
+            panel(22,bounds.height-84,width,62)
+            text("DRIVE W A S D / arrows   BOOST Shift   BRAKE Space",40,bounds.height-71,12)
+            text("CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R",40,bounds.height-46,12)
+        }
+        if paused { drawModal(paused:true) }
+        else if !introducing && race.countdown > 0 { drawModal(paused:false) }
+        if saveError != nil { text("High scores unavailable",x+18,214,12) }
+    }
+
+    private func label(_ string:String, in rect:NSRect, size:CGFloat, weight:NSFont.Weight = .regular,
+                       tint:UInt32 = 0xf7eddb, alignment:NSTextAlignment = .left) {
+        let style = NSMutableParagraphStyle(); style.alignment = alignment
+        (string as NSString).draw(in:rect,withAttributes:[.font:NSFont.systemFont(ofSize:size,weight:weight),
+            .foregroundColor:color(tint),.paragraphStyle:style])
+    }
+    private func rule(_ rect:NSRect) { color(0xf7eddb,alpha:0.15).setFill(); rect.fill() }
+    private func drawModal(paused:Bool) {
+        color(0x101a15,alpha:0.42).setFill(); bounds.fill()
+        let w:CGFloat = 380, h:CGFloat = paused ? 250 : 290
+        let x = (bounds.width-w)/2, y = (bounds.height-h)/2
+        panel(x,y,w,h)
+        label(paused ? "TAKE A BREATHER" : "DIRT TRACK · 3 LAPS",in:NSRect(x:x+24,y:y+26,width:w-48,height:22),size:12,weight:.semibold,tint:0xffd78d,alignment:.center)
+        label(paused ? "Paused" : "\(Int(ceil(race.countdown)))",in:NSRect(x:x+24,y:y+58,width:w-48,height:100),size:paused ? 44 : 80,weight:.bold,alignment:.center)
+        label(paused ? "The race is waiting for you." : (stormWarningVisible ? "A storm is coming...":"Get ready to race"),in:NSRect(x:x+24,y:y+h-106,width:w-48,height:25),size:17,alignment:.center)
+        rule(NSRect(x:x+28,y:y+h-68,width:w-56,height:1))
+        label(paused ? "P / Esc  Resume    ·    ⌘R  Restart" : "WASD / ↑↓←→  Drive    ·    Shift  Boost",in:NSRect(x:x+16,y:y+h-46,width:w-32,height:24),size:13,weight:.medium,tint:0xffd78d,alignment:.center)
+    }
+    private func drawTownDeparture() {
+        let races=[race]+opponents.map{$0.race},names=[playerName]+racerNames
+        let w=min(CGFloat(310),bounds.width-44)
+        panel(22,22,w,178)
+        label(escapeComplete ? "WELCOME TO MOS ASTER":"OFF TO TOWN",in:NSRect(x:40,y:37,width:w-36,height:23),size:16,weight:.bold,tint:0xffd78d)
+        for (rank,index) in DirtStandings.order(races).enumerated() {
+            let y=CGFloat(70+rank*23)
+            label("\(rank+1).  \(names[index])",in:NSRect(x:40,y:y,width:w-125,height:20),size:13,weight:.medium)
+            label(Self.time(races[index].elapsed),in:NSRect(x:w-60,y:y,width:70,height:20),size:12,weight:.medium)
+        }
+        label(escapeComplete ? "Drive to explore · ⌘R to race again":"Autopilot · Separate routes through town",in:NSRect(x:40,y:169,width:w-36,height:20),size:11,tint:0xb8c2b6)
+    }
+    private func drawResults() {
+        let races = [race]+opponents.map { $0.race }
+        let names = [playerName]+racerNames, colors = [playerColor]+racerColors
+        let order = DirtStandings.order(races)
+        let complete = races.allSatisfy { $0.finished }
+        let w = min(CGFloat(560),bounds.width-44), h:CGFloat = 344
+        let x = bounds.width-w-22, y = bounds.height-h-22
+        panel(x,y,w,h)
+        label(complete ? "FINAL CLASSIFICATION" : "LIVE CLASSIFICATION",in:NSRect(x:x+24,y:y+22,width:w-48,height:20),size:11,weight:.bold,tint:0xffd78d)
+        label("Race finished",in:NSRect(x:x+24,y:y+44,width:w-48,height:42),size:30,weight:.bold)
+        let totalX = x+w-216, lapX = x+w-108
+        label("ROBOT",in:NSRect(x:x+58,y:y+106,width:190,height:20),size:10,weight:.bold,tint:0xb8c2b6)
+        label("TOTAL",in:NSRect(x:totalX,y:y+106,width:96,height:20),size:10,weight:.bold,tint:0xb8c2b6)
+        label("BEST LAP",in:NSRect(x:lapX,y:y+106,width:96,height:20),size:10,weight:.bold,tint:0xb8c2b6)
+        for (rank,index) in order.enumerated() {
+            let rowY = y+134+CGFloat(rank)*36, result = races[index]
+            rule(NSRect(x:x+24,y:rowY-8,width:w-48,height:1))
+            label("\(rank+1)",in:NSRect(x:x+24,y:rowY,width:28,height:24),size:16,weight:.bold,tint:colors[index])
+            label(names[index],in:NSRect(x:x+58,y:rowY,width:w-282,height:24),size:16,weight:index == 0 ? .bold : .medium,tint:colors[index])
+            text(result.finished ? Self.time(result.elapsed) : "LAP \(result.laps.count+1)/3",totalX,rowY,14)
+            text(result.laps.min().map(Self.time) ?? "—",lapX,rowY,14)
+        }
+        label(saveError ?? (complete ? "Autopilot · Enjoy the cooldown lap" : "Autopilot · Waiting for the remaining finishers"),in:NSRect(x:x+24,y:y+282,width:w-48,height:22),size:12,tint:0xb8c2b6)
+        label("⌘R  Race again    ·    Main Menu to leave",in:NSRect(x:x+24,y:y+309,width:w-48,height:22),size:12,weight:.medium,tint:0xffd78d)
+    }
+}
+
+extension RaceHUD {
+    func drawCourseMap(in map:NSRect) {
         func point(_ px:Double,_ pz:Double) -> NSPoint {
             NSPoint(x:map.maxX-CGFloat((px+21)/42)*map.width,y:map.maxY-CGFloat((pz+20)/42)*map.height)
         }
@@ -120,60 +206,5 @@ final class RaceHUD: NSView {
         let direction = NSBezierPath(); direction.move(to:at)
         direction.line(to:NSPoint(x:at.x-sin(heading)*10,y:at.y-cos(heading)*10))
         color(playerColor).setStroke(); direction.lineWidth = 2; direction.stroke()
-        if helpVisible {
-            let lines = ["DRIVE W A S D / arrows   BOOST Shift   BRAKE Space", "CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R"]
-            let font = NSFont.monospacedSystemFont(ofSize:12,weight:.regular)
-            let width = min(bounds.width-44,lines.map { ($0 as NSString).size(withAttributes:[.font:font]).width }.max()!+36)
-            panel(22,bounds.height-84,width,62)
-            text("DRIVE W A S D / arrows   BOOST Shift   BRAKE Space",40,bounds.height-71,12)
-            text("CAMERA C / drag / scroll   PAUSE P / Esc   RESTART ⌘R",40,bounds.height-46,12)
-        }
-        if paused { drawModal(paused:true) }
-        else if !introducing && race.countdown > 0 { drawModal(paused:false) }
-        if saveError != nil { text("High scores unavailable",x+18,214,12) }
-    }
-
-    private func label(_ string:String, in rect:NSRect, size:CGFloat, weight:NSFont.Weight = .regular,
-                       tint:UInt32 = 0xf7eddb, alignment:NSTextAlignment = .left) {
-        let style = NSMutableParagraphStyle(); style.alignment = alignment
-        (string as NSString).draw(in:rect,withAttributes:[.font:NSFont.systemFont(ofSize:size,weight:weight),
-            .foregroundColor:color(tint),.paragraphStyle:style])
-    }
-    private func rule(_ rect:NSRect) { color(0xf7eddb,alpha:0.15).setFill(); rect.fill() }
-    private func drawModal(paused:Bool) {
-        color(0x101a15,alpha:0.42).setFill(); bounds.fill()
-        let w:CGFloat = 380, h:CGFloat = paused ? 250 : 290
-        let x = (bounds.width-w)/2, y = (bounds.height-h)/2
-        panel(x,y,w,h)
-        label(paused ? "TAKE A BREATHER" : "DIRT TRACK · 3 LAPS",in:NSRect(x:x+24,y:y+26,width:w-48,height:22),size:12,weight:.semibold,tint:0xffd78d,alignment:.center)
-        label(paused ? "Paused" : "\(Int(ceil(race.countdown)))",in:NSRect(x:x+24,y:y+58,width:w-48,height:100),size:paused ? 44 : 80,weight:.bold,alignment:.center)
-        label(paused ? "The race is waiting for you." : "Get ready to race",in:NSRect(x:x+24,y:y+h-106,width:w-48,height:25),size:17,alignment:.center)
-        rule(NSRect(x:x+28,y:y+h-68,width:w-56,height:1))
-        label(paused ? "P / Esc  Resume    ·    ⌘R  Restart" : "WASD / ↑↓←→  Drive    ·    Shift  Boost",in:NSRect(x:x+16,y:y+h-46,width:w-32,height:24),size:13,weight:.medium,tint:0xffd78d,alignment:.center)
-    }
-    private func drawResults() {
-        let races = [race]+opponents.map { $0.race }
-        let names = [playerName]+racerNames, colors = [playerColor]+racerColors
-        let order = DirtStandings.order(races)
-        let complete = races.allSatisfy { $0.finished }
-        let w = min(CGFloat(560),bounds.width-44), h:CGFloat = 344
-        let x = bounds.width-w-22, y = bounds.height-h-22
-        panel(x,y,w,h)
-        label(complete ? "FINAL CLASSIFICATION" : "LIVE CLASSIFICATION",in:NSRect(x:x+24,y:y+22,width:w-48,height:20),size:11,weight:.bold,tint:0xffd78d)
-        label("Race finished",in:NSRect(x:x+24,y:y+44,width:w-48,height:42),size:30,weight:.bold)
-        let totalX = x+w-216, lapX = x+w-108
-        label("ROBOT",in:NSRect(x:x+58,y:y+106,width:190,height:20),size:10,weight:.bold,tint:0xb8c2b6)
-        label("TOTAL",in:NSRect(x:totalX,y:y+106,width:96,height:20),size:10,weight:.bold,tint:0xb8c2b6)
-        label("BEST LAP",in:NSRect(x:lapX,y:y+106,width:96,height:20),size:10,weight:.bold,tint:0xb8c2b6)
-        for (rank,index) in order.enumerated() {
-            let rowY = y+134+CGFloat(rank)*36, result = races[index]
-            rule(NSRect(x:x+24,y:rowY-8,width:w-48,height:1))
-            label("\(rank+1)",in:NSRect(x:x+24,y:rowY,width:28,height:24),size:16,weight:.bold,tint:colors[index])
-            label(names[index],in:NSRect(x:x+58,y:rowY,width:w-282,height:24),size:16,weight:index == 0 ? .bold : .medium,tint:colors[index])
-            text(result.finished ? Self.time(result.elapsed) : "LAP \(result.laps.count+1)/3",totalX,rowY,14)
-            text(result.laps.min().map(Self.time) ?? "—",lapX,rowY,14)
-        }
-        label(saveError ?? (complete ? "Autopilot · Enjoy the cooldown lap" : "Autopilot · Waiting for the remaining finishers"),in:NSRect(x:x+24,y:y+282,width:w-48,height:22),size:12,tint:0xb8c2b6)
-        label("⌘R  Race again    ·    Main Menu to leave",in:NSRect(x:x+24,y:y+309,width:w-48,height:22),size:12,weight:.medium,tint:0xffd78d)
     }
 }

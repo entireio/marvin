@@ -30,7 +30,7 @@ public struct RacePerformance: Sendable {
     private func angle(_ value: Double) -> Double { atan2(sin(value),cos(value)) }
     private func clamp(_ value: Double, _ limit: Double) -> Double { max(-limit,min(limit,value)) }
 
-    public mutating func update(index: Int, actors: [Actor]) {
+    public mutating func update(index: Int, actors: [Actor], followingCourse:Bool = true) {
         guard actors.indices.contains(index) else { return }
         let me = actors[index]
         if me.elapsed < lastTime || me.elapsed == 0 { self = Self(character); return }
@@ -39,9 +39,11 @@ public struct RacePerformance: Sendable {
         lastTime = me.elapsed
         let moving = min(1,abs(me.speed)/0.8)
         // Look beyond the driver's immediate steering target into the bend.
-        let phase = DirtCourse.phase(x:me.x,z:me.z)
+        let projection = DirtCourse.projection(x:me.x,z:me.z)
+        let phase = projection.phase
+        let onCourse = followingCourse && projection.distance<DirtCourse.width
         let ahead = 0.10+min(12,abs(me.speed))*0.012
-        curveYaw = me.speed > 0 ? clamp(angle(DirtCourse.heading(phase+ahead)-me.heading),0.8)*moving : 0
+        curveYaw = onCourse && me.speed > 0 ? clamp(angle(DirtCourse.heading(phase+ahead)-me.heading),0.8)*moving : 0
         let maxYaw = [0.95,1.65,1.25,1.15][character.rawValue]
         var yaw = curveYaw, glance = 0.0
         var candidates: [(index:Int,distance:Double)] = [], newNearby = Set<Int>()

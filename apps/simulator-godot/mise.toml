@@ -1,0 +1,58 @@
+# Developer setup of the Godot port with mise (https://mise.jdx.dev), on a Mac or a Windows PC with git and mise:
+#
+#   mise trust          # once: allow this file
+#   mise run setup      # tools, Git LFS files, the game's assets, C# build, Godot import (again after a pull: seconds)
+#   mise run play       # the game
+#
+# mise installs the tools below into its own folders (nothing system-wide) the first time a task runs. The tasks are
+# tools/dev.py, which is Python so that they run the same on macOS and Windows (README.md, "Setup").
+min_version = "2026.9.15"
+
+[tool_alias]
+godot-mono = "github:godotengine/godot-builds"
+
+[tools]
+dotnet = "8"      # the .NET 8 SDK (MarvinGodot.csproj targets net8.0)
+python = "3.12"   # tools/ and the asset exporters (standard library only)
+git-lfs = "3"     # the textures, the meshes' sources and Marvin's CAD master are Git LFS files
+
+# Godot 4.7.2 .NET (the "mono" editor) from Godot's release builds; tools/dev.py and tools/env.sh find it with
+# `mise where godot-mono`.
+[tools.godot-mono]
+version = "4.7.2-stable"
+platforms.macos-arm64 = { asset_pattern = "Godot_v{{ version }}_mono_macos.universal.zip", bin_path = "Godot_mono.app/Contents/MacOS" }
+platforms.macos-x64 = { asset_pattern = "Godot_v{{ version }}_mono_macos.universal.zip", bin_path = "Godot_mono.app/Contents/MacOS" }
+platforms.windows-x64 = { asset_pattern = "Godot_v{{ version }}_mono_win64.zip", bin_path = "Godot_v{{ version }}_mono_win64" }
+platforms.linux-x64 = { asset_pattern = "Godot_v{{ version }}_mono_linux_x86_64.zip", bin_path = "Godot_v{{ version }}_mono_linux_x86_64" }
+
+[env]
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+DOTNET_NOLOGO = "1"
+
+[tasks.setup]
+description = "Get everything ready: Git LFS files, the game's assets (generated here, no macOS build), C# build, Godot import"
+run = "python tools/dev.py setup"
+
+[tasks.play]
+description = "Build the C# and run the game; flags go to the game, e.g. mise run play -- --smoke-test /tmp/smoke"
+run = "python tools/dev.py play"
+
+[tasks.test]
+description = "Quick headless smoke: the town and the four robots, compared with Godot on macOS (tools/ci/headless-modes.py)"
+run = "python tools/dev.py test"
+
+[tasks.checks]
+description = "The simulation checks (C# SimulationChecks, no Godot)"
+run = "python tools/dev.py checks"
+
+[tasks.export]
+description = "Release builds in build/ (macos, windows; --zip, --debug); downloads the export templates when missing"
+run = "python tools/dev.py export"
+
+[tasks.build]
+description = "Build the C# (MarvinGodot and MarvinCore)"
+run = "python tools/dev.py build"
+
+[tasks.godot]
+description = "Godot on this project with any arguments, e.g. mise run godot -- --headless --import"
+run = "python tools/dev.py godot"

@@ -1,0 +1,1294 @@
+{
+  "passed": true,
+  "stereoDecodedMB": 182.011504,
+  "assets": {
+    "bb8-acknowledge-0.wav": {
+      "passed": true,
+      "peak": 0.540191650390625,
+      "rmsDBFS": -17.077698872372885,
+      "seconds": 0.794375,
+      "seam": 0.0,
+      "adjacentP99": 0.0701647949218751
+    },
+    "bb8-acknowledge-1.wav": {
+      "passed": true,
+      "peak": 0.4024658203125,
+      "rmsDBFS": -17.078091617845793,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.102142333984375
+    },
+    "bb8-acknowledge-2.wav": {
+      "passed": true,
+      "peak": 0.356231689453125,
+      "rmsDBFS": -17.07769877883092,
+      "seconds": 1.0195833333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.14903503417968822
+    },
+    "bb8-acknowledge-3.wav": {
+      "passed": true,
+      "peak": 0.489837646484375,
+      "rmsDBFS": -17.077712148389942,
+      "seconds": 0.48872916666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.13590850830078138
+    },
+    "bb8-acknowledge-4.wav": {
+      "passed": true,
+      "peak": 0.543609619140625,
+      "rmsDBFS": -17.0779909279689,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.08719329833984357
+    },
+    "bb8-acknowledge-5.wav": {
+      "passed": true,
+      "peak": 0.4151611328125,
+      "rmsDBFS": -17.223278786184597,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.115942687988281
+    },
+    "bb8-boost-off.wav": {
+      "passed": true,
+      "peak": 0.2552490234375,
+      "rmsDBFS": -26.234239681721334,
+      "seconds": 0.48,
+      "seam": 0.0,
+      "adjacentP99": 0.026275634765625
+    },
+    "bb8-boost-on.wav": {
+      "passed": true,
+      "peak": 0.28704833984375,
+      "rmsDBFS": -24.134076215032497,
+      "seconds": 0.32,
+      "seam": 0.0,
+      "adjacentP99": 0.05423767089843751
+    },
+    "bb8-boost.wav": {
+      "passed": true,
+      "peak": 0.44940185546875,
+      "rmsDBFS": -12.765707968194821,
+      "seconds": 5.75,
+      "seam": 0.02142333984375,
+      "adjacentP99": 0.11627197265625
+    },
+    "bb8-effort-0.wav": {
+      "passed": true,
+      "peak": 0.387237548828125,
+      "rmsDBFS": -17.077709021871065,
+      "seconds": 0.7956041666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.11798492431640617
+    },
+    "bb8-effort-1.wav": {
+      "passed": true,
+      "peak": 0.525115966796875,
+      "rmsDBFS": -17.086910706857775,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1096820068359372
+    },
+    "bb8-effort-2.wav": {
+      "passed": true,
+      "peak": 0.387298583984375,
+      "rmsDBFS": -17.43302782411584,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.0971990966796874
+    },
+    "bb8-effort-3.wav": {
+      "passed": true,
+      "peak": 0.35198974609375,
+      "rmsDBFS": -17.07852949067608,
+      "seconds": 0.3670625,
+      "seam": 0.0,
+      "adjacentP99": 0.14708435058593738
+    },
+    "bb8-effort-4.wav": {
+      "passed": true,
+      "peak": 0.426055908203125,
+      "rmsDBFS": -17.077943845009806,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1338824462890622
+    },
+    "bb8-effort-5.wav": {
+      "passed": true,
+      "peak": 0.525390625,
+      "rmsDBFS": -17.077866995026156,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.11941772460937461
+    },
+    "bb8-ground.wav": {
+      "passed": true,
+      "peak": 0.39544677734375,
+      "rmsDBFS": -14.894815430829595,
+      "seconds": 5.75,
+      "seam": 0.000396728515625,
+      "adjacentP99": 0.03662109375
+    },
+    "bb8-high.wav": {
+      "passed": true,
+      "peak": 0.469970703125,
+      "rmsDBFS": -13.151811229321188,
+      "seconds": 5.75,
+      "seam": 0.015869140625,
+      "adjacentP99": 0.061614990234375
+    },
+    "bb8-overtake-0.wav": {
+      "passed": true,
+      "peak": 0.342529296875,
+      "rmsDBFS": -17.07770146722504,
+      "seconds": 0.9392916666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.12201416015624988
+    },
+    "bb8-overtake-1.wav": {
+      "passed": true,
+      "peak": 0.39794921875,
+      "rmsDBFS": -17.07770885192624,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.12805450439453114
+    },
+    "bb8-overtake-2.wav": {
+      "passed": true,
+      "peak": 0.506256103515625,
+      "rmsDBFS": -17.07770303165229,
+      "seconds": 1.069375,
+      "seam": 0.0,
+      "adjacentP99": 0.109619140625
+    },
+    "bb8-overtake-3.wav": {
+      "passed": true,
+      "peak": 0.424591064453125,
+      "rmsDBFS": -17.077704731159297,
+      "seconds": 0.5707291666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.10040283203125
+    },
+    "bb8-overtake-4.wav": {
+      "passed": true,
+      "peak": 0.371826171875,
+      "rmsDBFS": -17.07770682289076,
+      "seconds": 1.0396875,
+      "seam": 0.0,
+      "adjacentP99": 0.15948120117187514
+    },
+    "bb8-overtake-5.wav": {
+      "passed": true,
+      "peak": 0.415802001953125,
+      "rmsDBFS": -17.093640778907005,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.15100280761718743
+    },
+    "bb8-passed-0.wav": {
+      "passed": true,
+      "peak": 0.4031982421875,
+      "rmsDBFS": -17.07781425089083,
+      "seconds": 0.6612291666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.10621704101562512
+    },
+    "bb8-passed-1.wav": {
+      "passed": true,
+      "peak": 0.41375732421875,
+      "rmsDBFS": -17.330481854265592,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.13491912841796871
+    },
+    "bb8-passed-2.wav": {
+      "passed": true,
+      "peak": 0.40509033203125,
+      "rmsDBFS": -17.077808859315308,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.121490478515625
+    },
+    "bb8-passed-3.wav": {
+      "passed": true,
+      "peak": 0.56640625,
+      "rmsDBFS": -17.077702496786884,
+      "seconds": 0.5663333333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.060416259765625036
+    },
+    "bb8-passed-4.wav": {
+      "passed": true,
+      "peak": 0.413116455078125,
+      "rmsDBFS": -17.077828455417144,
+      "seconds": 1.040875,
+      "seam": 0.0,
+      "adjacentP99": 0.09642333984375018
+    },
+    "bb8-passed-5.wav": {
+      "passed": true,
+      "peak": 0.365447998046875,
+      "rmsDBFS": -17.077969867473335,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.14169403076171871
+    },
+    "bb8-sand.wav": {
+      "passed": true,
+      "peak": 0.336181640625,
+      "rmsDBFS": -15.917867254478733,
+      "seconds": 5.75,
+      "seam": 0.02850341796875,
+      "adjacentP99": 0.09136962890625
+    },
+    "bb8-startle-0.wav": {
+      "passed": true,
+      "peak": 0.415618896484375,
+      "rmsDBFS": -17.077750905126933,
+      "seconds": 0.4969791666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.14222625732421879
+    },
+    "bb8-startle-1.wav": {
+      "passed": true,
+      "peak": 0.432952880859375,
+      "rmsDBFS": -17.079673274065374,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.17481079101562402
+    },
+    "bb8-startle-2.wav": {
+      "passed": true,
+      "peak": 0.578216552734375,
+      "rmsDBFS": -17.077704880776462,
+      "seconds": 0.36802083333333335,
+      "seam": 0.0,
+      "adjacentP99": 0.10802642822265585
+    },
+    "bb8-startle-3.wav": {
+      "passed": true,
+      "peak": 0.391632080078125,
+      "rmsDBFS": -17.241296363328587,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.075042724609375
+    },
+    "bb8-startle-4.wav": {
+      "passed": true,
+      "peak": 0.374969482421875,
+      "rmsDBFS": -17.077772245397327,
+      "seconds": 0.5145833333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.10717895507812503
+    },
+    "bb8-startle-5.wav": {
+      "passed": true,
+      "peak": 0.379852294921875,
+      "rmsDBFS": -17.07787679526851,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1113604736328122
+    },
+    "bb8.wav": {
+      "passed": true,
+      "peak": 0.47119140625,
+      "rmsDBFS": -13.15181176083983,
+      "seconds": 5.75,
+      "seam": 0.01458740234375,
+      "adjacentP99": 0.0438232421875
+    },
+    "cantina.wav": {
+      "passed": true,
+      "peak": 0.33447265625,
+      "rmsDBFS": -15.391286781686828,
+      "seconds": 31.75,
+      "seam": 0.00152587890625,
+      "adjacentP99": 0.055633544921875
+    },
+    "countdown.wav": {
+      "passed": true,
+      "peak": 0.372711181640625,
+      "rmsDBFS": -14.69483684330912,
+      "seconds": 0.14,
+      "seam": 0.0,
+      "adjacentP99": 0.03639648437499998
+    },
+    "crowd.wav": {
+      "passed": true,
+      "peak": 0.649993896484375,
+      "rmsDBFS": -19.00307993115543,
+      "seconds": 25.0,
+      "seam": 0.00146484375,
+      "adjacentP99": 0.051544189453125
+    },
+    "desert-wind.wav": {
+      "passed": true,
+      "peak": 0.302734375,
+      "rmsDBFS": -17.077704848603364,
+      "seconds": 28.75,
+      "seam": 0.007110595703125,
+      "adjacentP99": 0.0509033203125
+    },
+    "finish-crowd.wav": {
+      "passed": true,
+      "peak": 0.649993896484375,
+      "rmsDBFS": -15.621919687907987,
+      "seconds": 10.3,
+      "seam": 0.009307861328125,
+      "adjacentP99": 0.06927551269531307
+    },
+    "finish.wav": {
+      "passed": true,
+      "peak": 0.521240234375,
+      "rmsDBFS": -14.35534888613331,
+      "seconds": 0.55,
+      "seam": 0.0,
+      "adjacentP99": 0.07818603515625
+    },
+    "go.wav": {
+      "passed": true,
+      "peak": 0.4520263671875,
+      "rmsDBFS": -14.424484304111829,
+      "seconds": 0.32,
+      "seam": 0.0,
+      "adjacentP99": 0.07489013671875
+    },
+    "impact.wav": {
+      "passed": true,
+      "peak": 0.4610595703125,
+      "rmsDBFS": -13.55588210328689,
+      "seconds": 0.3333333333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.05505493164062503
+    },
+    "market.wav": {
+      "passed": true,
+      "peak": 0.40850830078125,
+      "rmsDBFS": -14.425193446781957,
+      "seconds": 26.75,
+      "seam": 0.008758544921875,
+      "adjacentP99": 0.06048583984375
+    },
+    "marvin-acknowledge-0.wav": {
+      "passed": true,
+      "peak": 0.50592041015625,
+      "rmsDBFS": -17.077706537104437,
+      "seconds": 0.7195,
+      "seam": 0.0,
+      "adjacentP99": 0.08333312988281238
+    },
+    "marvin-acknowledge-1.wav": {
+      "passed": true,
+      "peak": 0.36767578125,
+      "rmsDBFS": -17.077710456611936,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.08191101074218743
+    },
+    "marvin-acknowledge-2.wav": {
+      "passed": true,
+      "peak": 0.36871337890625,
+      "rmsDBFS": -17.077702619896485,
+      "seconds": 1.0044375,
+      "seam": 0.0,
+      "adjacentP99": 0.116363525390625
+    },
+    "marvin-acknowledge-3.wav": {
+      "passed": true,
+      "peak": 0.4945068359375,
+      "rmsDBFS": -17.077706183974733,
+      "seconds": 0.40989583333333335,
+      "seam": 0.0,
+      "adjacentP99": 0.12110443115234382
+    },
+    "marvin-acknowledge-4.wav": {
+      "passed": true,
+      "peak": 0.515899658203125,
+      "rmsDBFS": -17.077702632990576,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.08969573974609357
+    },
+    "marvin-acknowledge-5.wav": {
+      "passed": true,
+      "peak": 0.421142578125,
+      "rmsDBFS": -17.38936905769031,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.0772705078125
+    },
+    "marvin-boost-off.wav": {
+      "passed": true,
+      "peak": 0.27349853515625,
+      "rmsDBFS": -26.61838033475094,
+      "seconds": 0.48,
+      "seam": 0.0,
+      "adjacentP99": 0.02825927734375
+    },
+    "marvin-boost-on.wav": {
+      "passed": true,
+      "peak": 0.3043212890625,
+      "rmsDBFS": -24.5069630429778,
+      "seconds": 0.32,
+      "seam": 0.0,
+      "adjacentP99": 0.05741149902343751
+    },
+    "marvin-boost.wav": {
+      "passed": true,
+      "peak": 0.45001220703125,
+      "rmsDBFS": -12.765706743983651,
+      "seconds": 5.75,
+      "seam": 0.045196533203125,
+      "adjacentP99": 0.12286376953125
+    },
+    "marvin-effort-0.wav": {
+      "passed": true,
+      "peak": 0.402435302734375,
+      "rmsDBFS": -17.077703555643502,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1274133300781246
+    },
+    "marvin-effort-1.wav": {
+      "passed": true,
+      "peak": 0.43853759765625,
+      "rmsDBFS": -17.429826305124983,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.094757080078125
+    },
+    "marvin-effort-2.wav": {
+      "passed": true,
+      "peak": 0.39532470703125,
+      "rmsDBFS": -17.181415550292947,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.08935546875
+    },
+    "marvin-effort-3.wav": {
+      "passed": true,
+      "peak": 0.324920654296875,
+      "rmsDBFS": -17.07775131054949,
+      "seconds": 0.5716041666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.1299026489257813
+    },
+    "marvin-effort-4.wav": {
+      "passed": true,
+      "peak": 0.385894775390625,
+      "rmsDBFS": -17.077729100742168,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.10565429687499961
+    },
+    "marvin-effort-5.wav": {
+      "passed": true,
+      "peak": 0.5662841796875,
+      "rmsDBFS": -17.333592857614438,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1002508544921874
+    },
+    "marvin-ground.wav": {
+      "passed": true,
+      "peak": 0.578460693359375,
+      "rmsDBFS": -14.89481504685077,
+      "seconds": 5.75,
+      "seam": 0.00311279296875,
+      "adjacentP99": 0.168609619140625
+    },
+    "marvin-high.wav": {
+      "passed": true,
+      "peak": 0.468414306640625,
+      "rmsDBFS": -13.15181124762487,
+      "seconds": 5.75,
+      "seam": 0.05352783203125,
+      "adjacentP99": 0.10162353515625
+    },
+    "marvin-overtake-0.wav": {
+      "passed": true,
+      "peak": 0.37628173828125,
+      "rmsDBFS": -17.077702120801113,
+      "seconds": 0.8100833333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.11987854003906251
+    },
+    "marvin-overtake-1.wav": {
+      "passed": true,
+      "peak": 0.405120849609375,
+      "rmsDBFS": -17.206068944100373,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.13324157714843743
+    },
+    "marvin-overtake-2.wav": {
+      "passed": true,
+      "peak": 0.541595458984375,
+      "rmsDBFS": -17.07783990050293,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.08239837646484371
+    },
+    "marvin-overtake-3.wav": {
+      "passed": true,
+      "peak": 0.50628662109375,
+      "rmsDBFS": -17.077715821755685,
+      "seconds": 0.35410416666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.06662902832031237
+    },
+    "marvin-overtake-4.wav": {
+      "passed": true,
+      "peak": 0.370269775390625,
+      "rmsDBFS": -17.077698573473906,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.11520477294921871
+    },
+    "marvin-overtake-5.wav": {
+      "passed": true,
+      "peak": 0.435577392578125,
+      "rmsDBFS": -17.077700790293168,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.14322265624999986
+    },
+    "marvin-passed-0.wav": {
+      "passed": true,
+      "peak": 0.424346923828125,
+      "rmsDBFS": -17.07777982723888,
+      "seconds": 0.9224583333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.08917968749999994
+    },
+    "marvin-passed-1.wav": {
+      "passed": true,
+      "peak": 0.39190673828125,
+      "rmsDBFS": -17.315073144386506,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.132818908691406
+    },
+    "marvin-passed-2.wav": {
+      "passed": true,
+      "peak": 0.422882080078125,
+      "rmsDBFS": -17.077707109935467,
+      "seconds": 0.9561875,
+      "seam": 0.0,
+      "adjacentP99": 0.15024108886718768
+    },
+    "marvin-passed-3.wav": {
+      "passed": true,
+      "peak": 0.566436767578125,
+      "rmsDBFS": -17.077701637863456,
+      "seconds": 0.42764583333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.08331298828125
+    },
+    "marvin-passed-4.wav": {
+      "passed": true,
+      "peak": 0.41656494140625,
+      "rmsDBFS": -17.077829788597423,
+      "seconds": 0.9491666666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.0994873046875
+    },
+    "marvin-passed-5.wav": {
+      "passed": true,
+      "peak": 0.40179443359375,
+      "rmsDBFS": -17.0903973447218,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.13928405761718743
+    },
+    "marvin-sand.wav": {
+      "passed": true,
+      "peak": 0.336273193359375,
+      "rmsDBFS": -15.917863899583025,
+      "seconds": 5.75,
+      "seam": 0.023681640625,
+      "adjacentP99": 0.0919189453125
+    },
+    "marvin-startle-0.wav": {
+      "passed": true,
+      "peak": 0.37548828125,
+      "rmsDBFS": -17.07784692062768,
+      "seconds": 0.5642708333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.0936688232421874
+    },
+    "marvin-startle-1.wav": {
+      "passed": true,
+      "peak": 0.420013427734375,
+      "rmsDBFS": -17.07835272721445,
+      "seconds": 0.7860625,
+      "seam": 0.0,
+      "adjacentP99": 0.1280538940429683
+    },
+    "marvin-startle-2.wav": {
+      "passed": true,
+      "peak": 0.585235595703125,
+      "rmsDBFS": -17.077702736812313,
+      "seconds": 0.4731875,
+      "seam": 0.0,
+      "adjacentP99": 0.0865988159179687
+    },
+    "marvin-startle-3.wav": {
+      "passed": true,
+      "peak": 0.400054931640625,
+      "rmsDBFS": -17.10642028956028,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.0735791015624998
+    },
+    "marvin-startle-4.wav": {
+      "passed": true,
+      "peak": 0.38336181640625,
+      "rmsDBFS": -17.078104192527608,
+      "seconds": 0.39816666666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.15731506347656254
+    },
+    "marvin-startle-5.wav": {
+      "passed": true,
+      "peak": 0.370391845703125,
+      "rmsDBFS": -17.10599094899749,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.08786376953124941
+    },
+    "marvin.wav": {
+      "passed": true,
+      "peak": 0.47216796875,
+      "rmsDBFS": -13.151810503083192,
+      "seconds": 5.75,
+      "seam": 0.0338134765625,
+      "adjacentP99": 0.0689697265625
+    },
+    "r2d2-acknowledge-0.wav": {
+      "passed": true,
+      "peak": 0.486297607421875,
+      "rmsDBFS": -17.07770221032675,
+      "seconds": 0.9044166666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.1978149414062509
+    },
+    "r2d2-acknowledge-1.wav": {
+      "passed": true,
+      "peak": 0.391632080078125,
+      "rmsDBFS": -17.077705513607924,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.17108612060546857
+    },
+    "r2d2-acknowledge-2.wav": {
+      "passed": true,
+      "peak": 0.33685302734375,
+      "rmsDBFS": -17.0777028187454,
+      "seconds": 1.1114791666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.11839385986328144
+    },
+    "r2d2-acknowledge-3.wav": {
+      "passed": true,
+      "peak": 0.524017333984375,
+      "rmsDBFS": -17.077701234826744,
+      "seconds": 0.4921875,
+      "seam": 0.0,
+      "adjacentP99": 0.21733703613281263
+    },
+    "r2d2-acknowledge-4.wav": {
+      "passed": true,
+      "peak": 0.488006591796875,
+      "rmsDBFS": -17.077708357045072,
+      "seconds": 1.1259375,
+      "seam": 0.0,
+      "adjacentP99": 0.17220184326171872
+    },
+    "r2d2-acknowledge-5.wav": {
+      "passed": true,
+      "peak": 0.387908935546875,
+      "rmsDBFS": -17.07770431756307,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.15228363037109371
+    },
+    "r2d2-boost-off.wav": {
+      "passed": true,
+      "peak": 0.26177978515625,
+      "rmsDBFS": -26.291903646928596,
+      "seconds": 0.48,
+      "seam": 0.0,
+      "adjacentP99": 0.03136047363281247
+    },
+    "r2d2-boost-on.wav": {
+      "passed": true,
+      "peak": 0.28125,
+      "rmsDBFS": -24.259109994418818,
+      "seconds": 0.32,
+      "seam": 0.0,
+      "adjacentP99": 0.0623779296875
+    },
+    "r2d2-boost.wav": {
+      "passed": true,
+      "peak": 0.448272705078125,
+      "rmsDBFS": -12.765708490009931,
+      "seconds": 5.75,
+      "seam": 0.032562255859375,
+      "adjacentP99": 0.129791259765625
+    },
+    "r2d2-effort-0.wav": {
+      "passed": true,
+      "peak": 0.382293701171875,
+      "rmsDBFS": -17.07770519364395,
+      "seconds": 0.6343541666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.17636840820312472
+    },
+    "r2d2-effort-1.wav": {
+      "passed": true,
+      "peak": 0.44903564453125,
+      "rmsDBFS": -17.07771815217617,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1444409179687498
+    },
+    "r2d2-effort-2.wav": {
+      "passed": true,
+      "peak": 0.4080810546875,
+      "rmsDBFS": -17.087824438457552,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1270465087890622
+    },
+    "r2d2-effort-3.wav": {
+      "passed": true,
+      "peak": 0.298370361328125,
+      "rmsDBFS": -17.07797068283131,
+      "seconds": 0.4985625,
+      "seam": 0.0,
+      "adjacentP99": 0.09245941162109372
+    },
+    "r2d2-effort-4.wav": {
+      "passed": true,
+      "peak": 0.346954345703125,
+      "rmsDBFS": -17.07770029211951,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.101806640625
+    },
+    "r2d2-effort-5.wav": {
+      "passed": true,
+      "peak": 0.50006103515625,
+      "rmsDBFS": -17.083903853652213,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1517980957031244
+    },
+    "r2d2-ground.wav": {
+      "passed": true,
+      "peak": 0.4007568359375,
+      "rmsDBFS": -14.89481496875211,
+      "seconds": 5.75,
+      "seam": 0.000244140625,
+      "adjacentP99": 0.05389404296875
+    },
+    "r2d2-high.wav": {
+      "passed": true,
+      "peak": 0.471527099609375,
+      "rmsDBFS": -13.15181130118875,
+      "seconds": 5.75,
+      "seam": 0.01904296875,
+      "adjacentP99": 0.12872314453125
+    },
+    "r2d2-overtake-0.wav": {
+      "passed": true,
+      "peak": 0.302703857421875,
+      "rmsDBFS": -17.07770668853058,
+      "seconds": 0.9571458333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.12327850341796864
+    },
+    "r2d2-overtake-1.wav": {
+      "passed": true,
+      "peak": 0.35626220703125,
+      "rmsDBFS": -17.077708061970025,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.13498107910156243
+    },
+    "r2d2-overtake-2.wav": {
+      "passed": true,
+      "peak": 0.497283935546875,
+      "rmsDBFS": -17.077705814815086,
+      "seconds": 0.9023958333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.23396118164062596
+    },
+    "r2d2-overtake-3.wav": {
+      "passed": true,
+      "peak": 0.46722412109375,
+      "rmsDBFS": -17.077697182962208,
+      "seconds": 0.4027291666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.21051330566406223
+    },
+    "r2d2-overtake-4.wav": {
+      "passed": true,
+      "peak": 0.327178955078125,
+      "rmsDBFS": -17.07770634716846,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.15905853271484371
+    },
+    "r2d2-overtake-5.wav": {
+      "passed": true,
+      "peak": 0.37823486328125,
+      "rmsDBFS": -17.170193643753993,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.17795532226562472
+    },
+    "r2d2-passed-0.wav": {
+      "passed": true,
+      "peak": 0.373748779296875,
+      "rmsDBFS": -17.078047542280522,
+      "seconds": 0.8110416666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.13767822265625007
+    },
+    "r2d2-passed-1.wav": {
+      "passed": true,
+      "peak": 0.358856201171875,
+      "rmsDBFS": -17.07787248162409,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.11517425537109371
+    },
+    "r2d2-passed-2.wav": {
+      "passed": true,
+      "peak": 0.37109375,
+      "rmsDBFS": -17.077735720498033,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.13928314208984371
+    },
+    "r2d2-passed-3.wav": {
+      "passed": true,
+      "peak": 0.453277587890625,
+      "rmsDBFS": -17.077704026632144,
+      "seconds": 0.38739583333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.1762603759765624
+    },
+    "r2d2-passed-4.wav": {
+      "passed": true,
+      "peak": 0.341522216796875,
+      "rmsDBFS": -17.0837709046855,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.12582489013671871
+    },
+    "r2d2-passed-5.wav": {
+      "passed": true,
+      "peak": 0.349761962890625,
+      "rmsDBFS": -17.19021346927359,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.10391326904296871
+    },
+    "r2d2-sand.wav": {
+      "passed": true,
+      "peak": 0.336090087890625,
+      "rmsDBFS": -15.917867250483951,
+      "seconds": 5.75,
+      "seam": 0.046112060546875,
+      "adjacentP99": 0.09149169921875
+    },
+    "r2d2-startle-0.wav": {
+      "passed": true,
+      "peak": 0.394744873046875,
+      "rmsDBFS": -17.077845135890527,
+      "seconds": 0.4855833333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.1751312255859373
+    },
+    "r2d2-startle-1.wav": {
+      "passed": true,
+      "peak": 0.40899658203125,
+      "rmsDBFS": -17.078464060445253,
+      "seconds": 0.842625,
+      "seam": 0.0,
+      "adjacentP99": 0.11217285156249979
+    },
+    "r2d2-startle-2.wav": {
+      "passed": true,
+      "peak": 0.489837646484375,
+      "rmsDBFS": -17.077703951596664,
+      "seconds": 0.3595833333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.09917358398437415
+    },
+    "r2d2-startle-3.wav": {
+      "passed": true,
+      "peak": 0.37542724609375,
+      "rmsDBFS": -17.077700471057696,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.09598205566406182
+    },
+    "r2d2-startle-4.wav": {
+      "passed": true,
+      "peak": 0.385986328125,
+      "rmsDBFS": -17.07798533359783,
+      "seconds": 0.46477083333333336,
+      "seam": 0.0,
+      "adjacentP99": 0.1105239868164063
+    },
+    "r2d2-startle-5.wav": {
+      "passed": true,
+      "peak": 0.35089111328125,
+      "rmsDBFS": -17.077843817479557,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.10009765625
+    },
+    "r2d2.wav": {
+      "passed": true,
+      "peak": 0.467926025390625,
+      "rmsDBFS": -13.151812392870134,
+      "seconds": 5.75,
+      "seam": 0.011962890625,
+      "adjacentP99": 0.09344482421875
+    },
+    "sparse-crowd.wav": {
+      "passed": true,
+      "peak": 0.649993896484375,
+      "rmsDBFS": -27.677726132794085,
+      "seconds": 22.9,
+      "seam": 0.0,
+      "adjacentP99": 0.029144287109375
+    },
+    "storm-grit.wav": {
+      "passed": true,
+      "peak": 0.286285400390625,
+      "rmsDBFS": -18.416640634487425,
+      "seconds": 36.75,
+      "seam": 0.032806396484375,
+      "adjacentP99": 0.21356262207031307
+    },
+    "storm-gust.wav": {
+      "passed": true,
+      "peak": 0.517913818359375,
+      "rmsDBFS": -12.396040622031412,
+      "seconds": 36.75,
+      "seam": 0.005126953125,
+      "adjacentP99": 0.044097900390625
+    },
+    "wallE-acknowledge-0.wav": {
+      "passed": true,
+      "peak": 0.552459716796875,
+      "rmsDBFS": -17.077705732162084,
+      "seconds": 0.9478125,
+      "seam": 0.0,
+      "adjacentP99": 0.076416015625
+    },
+    "wallE-acknowledge-1.wav": {
+      "passed": true,
+      "peak": 0.409149169921875,
+      "rmsDBFS": -17.077713646592294,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.07135009765625
+    },
+    "wallE-acknowledge-2.wav": {
+      "passed": true,
+      "peak": 0.366455078125,
+      "rmsDBFS": -17.077701030244427,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.11212432861328114
+    },
+    "wallE-acknowledge-3.wav": {
+      "passed": true,
+      "peak": 0.493377685546875,
+      "rmsDBFS": -17.077707740662863,
+      "seconds": 0.5070416666666666,
+      "seam": 0.0,
+      "adjacentP99": 0.09137573242187447
+    },
+    "wallE-acknowledge-4.wav": {
+      "passed": true,
+      "peak": 0.526947021484375,
+      "rmsDBFS": -17.077702748004963,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.072845458984375
+    },
+    "wallE-acknowledge-5.wav": {
+      "passed": true,
+      "peak": 0.3875732421875,
+      "rmsDBFS": -17.101795424754137,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.066741943359375
+    },
+    "wallE-boost-off.wav": {
+      "passed": true,
+      "peak": 0.24908447265625,
+      "rmsDBFS": -26.034505097043944,
+      "seconds": 0.48,
+      "seam": 0.0,
+      "adjacentP99": 0.027587890625
+    },
+    "wallE-boost-on.wav": {
+      "passed": true,
+      "peak": 0.292938232421875,
+      "rmsDBFS": -23.98187775170834,
+      "seconds": 0.32,
+      "seam": 0.0,
+      "adjacentP99": 0.055419921875
+    },
+    "wallE-boost.wav": {
+      "passed": true,
+      "peak": 0.448089599609375,
+      "rmsDBFS": -12.765708858333355,
+      "seconds": 5.75,
+      "seam": 0.01153564453125,
+      "adjacentP99": 0.113037109375
+    },
+    "wallE-effort-0.wav": {
+      "passed": true,
+      "peak": 0.361541748046875,
+      "rmsDBFS": -17.07772479785833,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.07657165527343701
+    },
+    "wallE-effort-1.wav": {
+      "passed": true,
+      "peak": 0.525543212890625,
+      "rmsDBFS": -17.077704856426557,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.0677197265624998
+    },
+    "wallE-effort-2.wav": {
+      "passed": true,
+      "peak": 0.42547607421875,
+      "rmsDBFS": -17.07802146253207,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.0841986083984374
+    },
+    "wallE-effort-3.wav": {
+      "passed": true,
+      "peak": 0.39288330078125,
+      "rmsDBFS": -17.07784058074713,
+      "seconds": 0.36825,
+      "seam": 0.0,
+      "adjacentP99": 0.15836608886718706
+    },
+    "wallE-effort-4.wav": {
+      "passed": true,
+      "peak": 0.42755126953125,
+      "rmsDBFS": -17.09799939308005,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.1476757812499998
+    },
+    "wallE-effort-5.wav": {
+      "passed": true,
+      "peak": 0.4722900390625,
+      "rmsDBFS": -17.077715815272708,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.08233886718749961
+    },
+    "wallE-ground.wav": {
+      "passed": true,
+      "peak": 0.5283203125,
+      "rmsDBFS": -14.894815223086828,
+      "seconds": 5.75,
+      "seam": 0.008697509765625,
+      "adjacentP99": 0.41510009765625
+    },
+    "wallE-high.wav": {
+      "passed": true,
+      "peak": 0.470306396484375,
+      "rmsDBFS": -13.151811058685883,
+      "seconds": 5.75,
+      "seam": 0.01019287109375,
+      "adjacentP99": 0.080535888671875
+    },
+    "wallE-overtake-0.wav": {
+      "passed": true,
+      "peak": 0.347015380859375,
+      "rmsDBFS": -17.077708058269213,
+      "seconds": 1.0444583333333333,
+      "seam": 0.0,
+      "adjacentP99": 0.10249877929687501
+    },
+    "wallE-overtake-1.wav": {
+      "passed": true,
+      "peak": 0.434326171875,
+      "rmsDBFS": -17.077731253366913,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.12103820800781229
+    },
+    "wallE-overtake-2.wav": {
+      "passed": true,
+      "peak": 0.5086669921875,
+      "rmsDBFS": -17.270084954497875,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.053406677246093714
+    },
+    "wallE-overtake-3.wav": {
+      "passed": true,
+      "peak": 0.375732421875,
+      "rmsDBFS": -17.077702252783485,
+      "seconds": 0.5885625,
+      "seam": 0.0,
+      "adjacentP99": 0.0856784057617187
+    },
+    "wallE-overtake-4.wav": {
+      "passed": true,
+      "peak": 0.347442626953125,
+      "rmsDBFS": -17.134196189642385,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.09890838623046871
+    },
+    "wallE-overtake-5.wav": {
+      "passed": true,
+      "peak": 0.3865966796875,
+      "rmsDBFS": -17.077701699203036,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.10012908935546871
+    },
+    "wallE-passed-0.wav": {
+      "passed": true,
+      "peak": 0.42144775390625,
+      "rmsDBFS": -17.078454119472223,
+      "seconds": 0.7585416666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.09173583984375
+    },
+    "wallE-passed-1.wav": {
+      "passed": true,
+      "peak": 0.363250732421875,
+      "rmsDBFS": -17.30899925630968,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.11178955078124986
+    },
+    "wallE-passed-2.wav": {
+      "passed": true,
+      "peak": 0.4183349609375,
+      "rmsDBFS": -17.07770309647657,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.10147277832031243
+    },
+    "wallE-passed-3.wav": {
+      "passed": true,
+      "peak": 0.5272216796875,
+      "rmsDBFS": -17.077708109371248,
+      "seconds": 0.5487291666666667,
+      "seam": 0.0,
+      "adjacentP99": 0.04856140136718756
+    },
+    "wallE-passed-4.wav": {
+      "passed": true,
+      "peak": 0.396636962890625,
+      "rmsDBFS": -17.35289968450363,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.07626434326171871
+    },
+    "wallE-passed-5.wav": {
+      "passed": true,
+      "peak": 0.415283203125,
+      "rmsDBFS": -17.08009573742318,
+      "seconds": 1.1499791666666668,
+      "seam": 0.0,
+      "adjacentP99": 0.10504241943359371
+    },
+    "wallE-sand.wav": {
+      "passed": true,
+      "peak": 0.336334228515625,
+      "rmsDBFS": -15.917864957152412,
+      "seconds": 5.75,
+      "seam": 0.009490966796875,
+      "adjacentP99": 0.09191955566406307
+    },
+    "wallE-startle-0.wav": {
+      "passed": true,
+      "peak": 0.3944091796875,
+      "rmsDBFS": -17.07788590316774,
+      "seconds": 0.66175,
+      "seam": 0.0,
+      "adjacentP99": 0.07246032714843753
+    },
+    "wallE-startle-1.wav": {
+      "passed": true,
+      "peak": 0.373199462890625,
+      "rmsDBFS": -17.08012380022305,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.078948974609375
+    },
+    "wallE-startle-2.wav": {
+      "passed": true,
+      "peak": 0.59454345703125,
+      "rmsDBFS": -17.07770324441698,
+      "seconds": 0.6862708333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.07316040039062521
+    },
+    "wallE-startle-3.wav": {
+      "passed": true,
+      "peak": 0.45684814453125,
+      "rmsDBFS": -17.120096120112823,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.06091796874999922
+    },
+    "wallE-startle-4.wav": {
+      "passed": true,
+      "peak": 0.394195556640625,
+      "rmsDBFS": -17.077870053731466,
+      "seconds": 0.6748958333333334,
+      "seam": 0.0,
+      "adjacentP99": 0.07105133056640622
+    },
+    "wallE-startle-5.wav": {
+      "passed": true,
+      "peak": 0.376220703125,
+      "rmsDBFS": -17.079947242553324,
+      "seconds": 0.85,
+      "seam": 0.0,
+      "adjacentP99": 0.0738836669921874
+    },
+    "wallE.wav": {
+      "passed": true,
+      "peak": 0.4927978515625,
+      "rmsDBFS": -13.15181157620695,
+      "seconds": 5.75,
+      "seam": 0.00238037109375,
+      "adjacentP99": 0.081451416015625
+    },
+    "workshop.wav": {
+      "passed": true,
+      "peak": 0.375762939453125,
+      "rmsDBFS": -15.91786522254104,
+      "seconds": 30.75,
+      "seam": 0.000335693359375,
+      "adjacentP99": 0.24301208496093807
+    }
+  }
+}

@@ -1,5 +1,7 @@
 # Marvin Simulator for macOS
 
+Agent contributors: read the [simulator implementation and validation rules](../../docs/simulator-agent-rules.md) before changing the simulator.
+
 A native AppKit + SceneKit/Metal playground using Marvin's actual CAD assembly.
 No browser, web server, npm dependencies, network connection, or physical robot
 is needed. Requires macOS 13 or later. The build uses Python 3 and Apple's Swift
@@ -56,7 +58,7 @@ entering Sandbox starts a fresh course.
 ## Dirt Track
 
 Wheels, tracks, and BB-8's shell keep spinning under drive during jumps and
-against fences or sandbox obstacles. Barriers stop the chassis, not its running
+against track walls or sandbox obstacles. Barriers stop the chassis, not its running
 gear. Braking stops drivetrain spin; pausing freezes it and restarting resets it.
 
 **Steering assist** and **Braking assist** are on by default and can be switched
@@ -89,10 +91,12 @@ jumps, a raised hill/step-up, and whoops. The route uses a closed spline and a
 single continuous height surface. The compacted lane is now 50% wider (3.9 scene units) with the same centerline
 and 136.256-unit plan-view lap length. Taller tabletop/rhythm jumps, larger
 rollers and whoops, a 1.3-unit hill, and three additional broad climbs add
-vertical variation. Course shoulders descend into the terrain outside the fence.
-The red/white rail follows the ground with 0.31-unit center clearance; every
-post extends 0.08 units below the ground and 0.40 above it. Inside offset loops
-are trimmed at tight bends so the wider surface and fence do not cross themselves.
+vertical variation. Course shoulders descend into the terrain outside the walls.
+Both track boundaries are level-coursed brick walls rising from a common
+foundation below the ground to at least 0.40 units above it, measured at each
+brick's ends and midpoint; the outer wall steps up to meet the city gate. Inside
+offset loops are trimmed at tight bends so the wider surface and walls do not
+cross themselves.
 
 Select **Dirt Track**, watch the bird’s-eye fly-in, then wait for the three-second countdown, and complete **three
 laps** in the marked direction. The HUD shows current-lap time, best lap, total,
@@ -104,7 +108,7 @@ Race times freeze individually at the finish. Pause freezes both the procession
 and camera flight, and restart restores player control.
 The timer uses monotonic elapsed time, excluding countdown, pauses, and time while the app is inactive; slow frames do not improve scores. Lap
 crossings interpolate within a frame; signed course progress prevents reverse
-finish crossings from awarding laps. Loose shoulders reduce grip; the fence and other robots block Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
+finish crossings from awarding laps. Loose shoulders reduce grip; the track walls and other robots block Marvin, with sliding contact so he can steer or reverse away. The scene is prepared before revealing a 3.2-second overview-to-chase camera flight. Countdown and driving wait until the flight completes. The default chase camera looks directly along the driving direction. Steering ramps in over a third of a second and caps moving turns at approximately 66 degrees/second independently of drive/boost speed. Dirt Track speeds are 6 units/s normally and 12 with boost (three times the original mode).
 Command-R starts a fresh race. The Main Menu toolbar button returns to the menu.
 
 Race against autonomous **R2-D2, BB-8 and WALL-E**. All four racers are randomly
@@ -335,7 +339,10 @@ from the repository root (requires `rsvg-convert` and macOS `iconutil`).
 
 Dirt checks cover a complete three-lap driven race with jumps, boundaries, reverse
 finish crossings, split timing, score sorting and disk round trips. Native smoke
-checks mode switching, rendering, debris emission, score recording, and reset;
+checks mode switching, rendering, debris emission, score recording, and reset.
+`trackWalls` in `smoke.json` reports, per brick wall, how many boundary samples
+are covered, floating above the ground, or short of the target height; gate and
+service openings may leave at most 10% uncovered;
 `dirt-overview.png` and `dirt-driving.png` capture the new scene.
 
 Opponent checks run complete three-lap AI races at 30, 60 and 120 fps, checking
@@ -363,3 +370,84 @@ coincident centers, fence pileups, finite braking, and exact fixed-input results
 at 10/30/60/120 fps. Coupled three-lap races exercise all four bodies at
 30/60/120 fps. Native smoke runs a crowded contact scenario through the real race
 controller and captures `robot-contact.png`, including separation and pause checks.
+
+## Spaceport city
+
+Dirt Track sits inside **Mos Aster**, a dense procedural spaceport inspired by
+Mos Eisley and Mos Espa film stills. The city extends beyond both overview cameras:
+1,327 building modules form joined adobe compounds, terraces, courtyard workshops
+and domed halls. Branching streets connect the market, hangar and circular docking
+courts; there is no rectangular perimeter road or isolated mesa ring. Worn city
+paving covers the scenery ground while the original dirt course stays intact.
+
+The finish-line grandstand is built into a populated market arcade. There are
+298 spectators/residents, four market stalls, parked speeders and rooftop utility
+hardware. Two open infield repair tents contain mechanics, robot lifts, benches,
+tools and spare parts. Houses are excluded from the entire circuit interior.
+Fifteen nearby people have bounded idle animation (hard cap 16). The old sliding
+plaza walkers are replaced by stationary, posed residents.
+Race geometry, lap rules, robot contacts and driving assists are unchanged.
+
+Static architecture uses 130 spatial batches and near/far geometry tiers. Rounded
+adobe edges, smoother domes, layered arched door frames, scanned 2K plaster,
+cloth and metal surfaces, sagging canopies, and HDR sky lighting improve close-up
+appearance. The 298 people use clothed human meshes with modeled faces, hands,
+boots and hoods, batched into small cells with three independent detail levels.
+The city keeps its previous layout and the muted clay course color.
+
+Race branding, grandstand gates/sectors, repair tents, market stalls, workshops,
+and street wayfinding share a mounted enamel-sign system. Text is fitted in both
+dimensions and centered within a measured content area; signs have directional
+orientation, frames and mounting hardware. They are rasterized once, not laid out
+or billboarded during the race.
+
+Normal builds use bundled assets, with no downloads or extra asset tools. Run
+`git lfs pull` after cloning. For offline human-mesh editing, see
+[the crowd exporter](../../scripts/city/README.md). Credits and CC0 source links
+are in [City/ATTRIBUTION.md](Resources/City/ATTRIBUTION.md).
+The chase/orbit camera shortens against scenery bounds. Crowd motion respects
+pause/focus gates. See [film comparison and validation](../../docs/dirt-city.md).
+
+Dirt Track uses 2× MSAA, a 2048² sun shadow map and restrained screen-space ambient
+occlusion (disabled on return to Sandbox). Dirt debris uses two batched meshes;
+robot coating uploads remain quantized and spread across frames to avoid redundant
+Metal buffer updates, without changing logical dirt accumulation.
+
+Capture the native scene and validate track clearance, infield exclusion, city
+coverage, branching street connectivity, geometry budgets, camera obstruction,
+crowd pause and reset behavior:
+
+```sh
+'apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator' \
+  --town-smoke-test /tmp/marvin-town
+```
+
+Run a real-time driving/overview benchmark (default 45 seconds, first three
+seconds excluded from timing):
+
+```sh
+MARVIN_BENCHMARK_SECONDS=180 \
+  'apps/simulator-macos/.build/Marvin Simulator.app/Contents/MacOS/MarvinSimulator' \
+  --town-benchmark /tmp/marvin-town-benchmark
+```
+
+Add `--without-town` for an A/B run with the same course and scenery camera
+bounds, but hidden town and no crowd updates. Both runs use a fixed starting grid,
+autonomous player input, and a 960×540-point view (1920×1080 drawable pixels on a
+2× display). The report records actual drawable dimensions, CPU update p95,
+thermal state, and SceneKit render-callback intervals. Render callback timing is
+not GPU execution time or display presentation timing. Run benchmarks individually
+without builds or other profiling workloads. Smoke tests use fixed simulation
+steps and are not frame-rate benchmarks.
+
+V1 uses stylized procedural art and simple crowd poses. General pedestrian
+navigation, explorable interiors, and dynamic traffic are not implemented.
+
+### Experimental RealityKit comparison
+
+The normal game still uses SceneKit. An opt-in `--renderer-study OUTPUT` mode
+compares a fixed grandstand block with the same geometry and simulation; add
+`--realitykit` for the alternate backend (macOS 15+ and an installed Apple SDK).
+This is a migration study, not a complete playable port. See
+[renderer study](../../docs/renderer-study.md) for measurements, screenshots,
+known parity gaps, capture commands, and migration gates.

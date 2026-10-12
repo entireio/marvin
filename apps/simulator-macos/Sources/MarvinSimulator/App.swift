@@ -13,8 +13,20 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var outroPosition = SCNVector3Zero, outroTarget = SCNVector3Zero
     var dirtIntro: Double?
     let dirtIntroDuration = 3.2
-    lazy var dirtWorld = DirtWorld()
+    var cachedDirtWorld:DirtWorld?
+    var dirtWorld:DirtWorld {
+        get { if let value=cachedDirtWorld { return value };let value=DirtWorld();cachedDirtWorld=value;return value }
+        set { cachedDirtWorld=newValue }
+    }
+    var isLoadingDirt=false
+    var loadingHeartbeats=0
+    var loadingVisibilitySamples=0, loadingPreparationSamples=0
+    var loadingStayedVisible=true, loadingViewportBounds=NSRect.zero
+    var loadingControlsStayedHidden=true
+    let loadingView=LevelLoadingView()
     let raceHUD = RaceHUD()
+    let frameRateHUD = FrameRateHUD()
+    let benchmarkGPUCapture = BenchmarkGPUCapture()
     var race = DirtRace()
     var racePhysics = DirtRacePhysics()
     var opponent = DirtOpponent()
@@ -28,13 +40,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         raceHUD.opponents = opponents
         let states = [simulation]+opponents.map { $0.simulation }
         let actors = states.map { RacePerformance.Actor($0) }
-        for i in performances.indices { performances[i].update(index:i,actors:actors) }
+        for i in performances.indices { performances[i].update(index:i,actors:actors,followingCourse:racePhysics.escape.waypoint[i]<0) }
         for i in lineup.indices { updateModel(lineup[i], state: states[i], expression: performances[i].pose) }
     }
     func advanceRacePhysics(_ input: DriveInput, dt: Double, raceDT: Double) {
         var rivals = opponents
+        racePhysics.sand=dirtWorld.duneSand.field
         racePhysics.advance(input,player:&simulation,race:&race,opponents:&rivals,dt:dt,raceDT:raceDT,
-            robotCollisionsEnabled:mainMenu.raceRobotCollisions, assists:mainMenu.raceAssists)
+            robotCollisionsEnabled:mainMenu.raceRobotCollisions, assists:mainMenu.raceAssists,city:dirtWorld.town.collisionWorld)
+        dirtWorld.updateGate(racePhysics.gate)
         opponent = rivals[0]; bb8Opponent = rivals[1]; wallEOpponent = rivals[2]
     }
     var scores: [DirtScore] = []
@@ -50,19 +64,58 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
     var robot: Robot!
     var simulation = Simulation()
     var timer: Timer?, lastTime = ProcessInfo.processInfo.systemUptime
+    var raceCameraLocked:Bool { isDirtTrack && race.finished }
+    var overviewMotion=OverviewMotion()
+    var freeCameraEye:SCNVector3?
+    var cameraBoomFraction=1.0
+    var cameraAim=SCNVector3Zero
     var cameraMode = 1, orbitYaw = 0.65, orbitPitch = 0.5, cameraDistance = 3.5
     var active = true
     var pauseItem: NSToolbarItem?
+    var controlsToolbar: NSToolbar!
+    /// Shown instead of the controls (main menu, loading screen, post-race departure): the title bar keeps the unified
+    /// toolbar's height and the title stays on the left, as with the controls.
+    lazy var emptyToolbar: NSToolbar = {
+        let toolbar = NSToolbar(identifier: "EmptyToolbar")
+        toolbar.delegate = self; toolbar.displayMode = .iconAndLabel
+        return toolbar
+    }()
+    var toolbarControlsVisible: Bool {
+        get { window.toolbar === controlsToolbar }
+        set {
+            guard newValue != toolbarControlsVisible else { return }
+            // Keep chrome transitions from changing either the window or the renderer's dimensions.
+            let frame=window.frame
+            window.toolbar = newValue ? controlsToolbar : emptyToolbar
+            if window.frame != frame { window.setFrame(frame,display:false) }
+        }
+    }
     var appearanceObservation: NSKeyValueObservation?
     var appliedIconName = ""
+    let townMeter = TownFrameMeter()
+    var rendererStudy: AnyObject?
+    var townBenchmarkStart: Double?
+    var townBenchmarkRunID=UUID().uuidString
+    var townBenchmarkDirectory: URL?
+    var townBenchmarkCPU: [Double] = []
+    var townBenchmarkTimeline:[[Double]]=[]
+    var townBenchmarkHUDSamples:[[String:Any]]=[]
+    var townBenchmarkResourceSamples:[[String:Any]]=[]
+    var frameDisplayLink:AnyObject?
+    var townBenchmarkRoute:[SIMD2<Double>]=[]
+    var townBenchmarkWaypoint=0
+    var raceAudio:RaceAudio?
+    var raceSoundMuted=UserDefaults.standard.bool(forKey:"raceSoundMuted")
+    var weatherOverride:Bool? // deterministic native test hook; never a user setting
     var smokeFrames = 0
     let smokeDirectory: String? = {
         let args = CommandLine.arguments
-        guard let i = args.firstIndex(where: { ["--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test"].contains($0) }), i+1 < args.count else { return nil }
+        guard let i = args.firstIndex(where: { ["--mesh-reuse-test", "--shadow-culling-test", "--ground-performance-test", "--passage-smoke-test", "--navigation-smoke-test", "--dune-contact-test", "--entrance-smoke-test", "--viewport-smoke-test", "--audio-smoke-test", "--weather-reset-test", "--storm-race-test", "--people-smoke-test", "--visual-regression-test", "--dust-visibility-test", "--sandstorm-smoke-test", "--binary-sky-smoke-test", "--debris-smoke-test", "--loading-smoke-test", "--postrace-smoke-test", "--trail-material-smoke-test", "--town-departure-movie", "--smoke-test", "--menu-smoke-test", "--character-smoke-test", "--bb8-motion-smoke-test", "--town-smoke-test", "--city-escape-smoke-test", "--town-benchmark", "--renderer-study"].contains($0) }), i+1 < args.count else { return nil }
         return args[i+1]
     }()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if smokeDirectory != nil { weatherOverride=false }
         appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { [weak self] app, _ in
             self?.updateApplicationIcon(for: app.effectiveAppearance)
         }
@@ -79,25 +132,26 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         }
         world.scene.rootNode.addChildNode(robot.root)
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 820),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView], backing: .buffered, defer: false)
         window.title = "Marvin · Playground"
         window.minSize = NSSize(width: 900, height: 640)
         window.backgroundColor = .windowBackgroundColor
         window.delegate = self
         let toolbar = NSToolbar(identifier: "SimulatorToolbar")
         toolbar.delegate = self; toolbar.displayMode = .iconAndLabel
-        window.toolbar = toolbar
+        window.toolbar = toolbar; controlsToolbar = toolbar
         view.scene = world.scene; view.pointOfView = world.camera
         view.antialiasingMode = .multisampling4X
         view.preferredFramesPerSecond = 60; view.rendersContinuously = true
+        // Keep the renderer independent of toolbar visibility; only overlays use the safe content area.
         view.autoresizingMask = [.width, .height]
         window.contentView = view
-        hud.frame = view.bounds; hud.autoresizingMask = [.width, .height]; view.addSubview(hud)
-        raceHUD.frame = view.bounds; raceHUD.autoresizingMask = [.width, .height]
-        raceHUD.isHidden = true; view.addSubview(raceHUD)
+        installContentOverlay(hud)
+        raceHUD.isHidden = true; installContentOverlay(raceHUD)
         view.onCommand = { [weak self] code in
             guard let self else { return }
             switch code {
+            case 5: if self.isDirtTrack && self.inSandbox { self.racePhysics.gate.wantsOpen.toggle() }
             case 8: self.cycleCamera(nil)
             case 35, 53: self.togglePause(nil)
             case 4: self.simulation.centerHead()
@@ -112,25 +166,43 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             if !self.isDirtTrack { self.simulation.stop() }
         }
         view.onOrbit = { [weak self] dx, dy in
-            guard let self, self.inSandbox, self.dirtIntro == nil else { return }
+            guard let self, self.inSandbox, self.dirtIntro == nil, !self.raceCameraLocked else { return }
             self.cameraMode = 1
             self.orbitYaw += Double(dx)*0.008
             self.orbitPitch = max(0.15, min(1.35, self.orbitPitch+Double(dy)*0.008))
         }
         view.onZoom = { [weak self] delta in
-            guard let self, self.inSandbox, self.dirtIntro == nil else { return }
+            guard let self, self.inSandbox, self.dirtIntro == nil, !self.raceCameraLocked else { return }
             self.cameraDistance = max(1.6, min(9, self.cameraDistance+Double(delta)*0.035))
         }
-        mainMenu.frame = view.bounds; mainMenu.autoresizingMask = [.width, .height]
-        view.addSubview(mainMenu)
+        installContentOverlay(mainMenu)
+        frameRateHUD.isHidden=true;installContentOverlay(frameRateHUD)
+        // Keep the delegate's optional callback capabilities stable while
+        // SceneKit renders on its background queue.
+        townMeter.fpsHUD=frameRateHUD
+        view.delegate=townMeter
         mainMenu.onSandbox = { [weak self] in self?.startSandbox() }
-        mainMenu.onDirtTrack = { [weak self] in self?.startDirtTrack() }
+        mainMenu.onDirtTrack = { [weak self] in self?.loadDirtTrack() }
         makeMenu()
         window.center(); window.makeKeyAndOrderFront(nil)
         window.makeFirstResponder(view); NSApp.activate(ignoringOtherApps: true)
         robot.update(simulation); showMainMenu(nil)
-        timer = Timer(timeInterval: 1.0/60, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
-        RunLoop.main.add(timer!, forMode: .common)
+        // Retain display-synchronised updates as an explicit diagnostic option:
+        // native comparisons have not established a repeatable stutter reduction.
+        let timerDrivenSmoke = smokeDirectory != nil && !CommandLine.arguments.contains("--town-benchmark")
+        let displayLinked = ["--display-link-updates","--benchmark-display-link","--display-link-lifecycle-check"].contains { CommandLine.arguments.contains($0) }
+        if #available(macOS 14.0, *), !timerDrivenSmoke, displayLinked,
+           !CommandLine.arguments.contains("--benchmark-timer") {
+            let link=view.displayLink(target:self,selector:#selector(displayTick(_:)))
+            link.preferredFrameRateRange=CAFrameRateRange(minimum:60,maximum:60,preferred:60)
+            link.add(to:.main,forMode:.common);frameDisplayLink=link
+        } else {
+            timer = Timer(timeInterval: 1.0/60, target: self, selector: #selector(tick), userInfo: nil, repeats: true)
+            RunLoop.main.add(timer!, forMode: .common)
+        }
+        if let i=CommandLine.arguments.firstIndex(of:"--display-link-lifecycle-check"),i+1<CommandLine.arguments.count {
+            checkDisplayLinkLifecycle(at:URL(fileURLWithPath:CommandLine.arguments[i+1]))
+        }
     }
 
     func updateApplicationIcon(for appearance: NSAppearance) {
@@ -167,15 +239,105 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         }
     }
 
+    @objc func displayTick(_ sender:AnyObject) { tick() }
+
     @objc func tick() {
         let now = ProcessInfo.processInfo.systemUptime
         let wallDelta = max(0, now-lastTime)
         let dt = min(wallDelta, 0.1); lastTime = now
+        if isLoadingDirt { loadingHeartbeats += 1; observeLoadingCheckIfNeeded(); return }
+        if townBenchmarkStart != nil { tickTownBenchmark(now:now,dt:dt); return }
         if !inSandbox {
             mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: dt)
             if let directory = smokeDirectory {
                 menuSmokeFrames += 1
                 guard menuSmokeFrames == 20 else { return }
+                if CommandLine.arguments.contains("--loading-smoke-test") { loadDirtTrack();return }
+                if CommandLine.arguments.contains("--audio-smoke-test") {
+                    timer?.invalidate();let passed=checkRaceAudio(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--weather-reset-test") {
+                    timer?.invalidate();let passed=checkWeatherReset(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--sandstorm-smoke-test") {
+                    timer?.invalidate();let passed=checkSandstorm(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--binary-sky-smoke-test") {
+                    timer?.invalidate();let passed=checkBinaryRaces(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--visual-regression-test") {
+                    timer?.invalidate();let passed=checkVisualRegressions(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--dust-visibility-test") {
+                    timer?.invalidate();let passed=checkDustVisibility(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--debris-smoke-test") {
+                    timer?.invalidate();let passed=dirtWorld.checkDebris();exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--mesh-reuse-test") || CommandLine.arguments.contains("--ground-performance-test") || CommandLine.arguments.contains("--shadow-culling-test") {
+                    timer?.invalidate();let passed=checkGroundPerformance(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--trail-material-smoke-test") {
+                    timer?.invalidate();let passed=checkTrailMaterial(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--storm-race-test") {
+                    timer?.invalidate();let passed=checkStormRace(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--navigation-smoke-test") {
+                    timer?.invalidate();let passed=checkNavigation(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--dune-contact-test") {
+                    timer?.invalidate();let passed=checkDuneContacts(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--entrance-smoke-test") {
+                    timer?.invalidate();let passed=checkTownEntrances(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--people-smoke-test") {
+                    timer?.invalidate();let passed=checkTownPeople(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--viewport-smoke-test") {
+                    timer?.invalidate();let passed=checkDepartureViewport(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--postrace-smoke-test") {
+                    timer?.invalidate();let passed=checkPostRaceEscape(at:URL(fileURLWithPath:directory));exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--renderer-study") {
+                    timer?.invalidate()
+                    if #available(macOS 15.0, *) {
+                        Task { @MainActor in
+                            do {
+                                let study=RendererStudy(app:self,directory:URL(fileURLWithPath:directory),reality:CommandLine.arguments.contains("--realitykit"))
+                                rendererStudy=study;try await study.startStudy()
+                            } catch { print("Renderer study failed: \(error)");exit(1) }
+                        }
+                    } else { print("Renderer study requires macOS 15 or newer");exit(1) }
+                    return
+                }
+                if CommandLine.arguments.contains("--town-benchmark") {
+                    startTownBenchmark(at:URL(fileURLWithPath:directory)); return
+                }
+                if CommandLine.arguments.contains("--town-departure-movie") {
+                    timer?.invalidate()
+                    let passed=captureTownDeparture(at:URL(fileURLWithPath:directory))
+                    exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--passage-smoke-test") {
+                    timer?.invalidate()
+                    let passed=checkPassages(at:URL(fileURLWithPath:directory))
+                    print("Passages: \(passed ? "PASS":"FAIL")");exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--city-escape-smoke-test") {
+                    timer?.invalidate()
+                    let passed=checkCityEscape(at:URL(fileURLWithPath:directory))
+                    print("City escape: \(passed ? "PASS" : "FAIL") · \(directory)")
+                    exit(passed ? 0:1)
+                }
+                if CommandLine.arguments.contains("--town-smoke-test") {
+                    timer?.invalidate()
+                    let passed=checkTown(at:URL(fileURLWithPath:directory))
+                    print("Town smoke: \(passed ? "PASS" : "FAIL") · \(directory)")
+                    exit(passed ? 0:1)
+                }
                 if CommandLine.arguments.contains("--bb8-motion-smoke-test") {
                     timer?.invalidate()
                     let passed = checkBB8RenderedMotion(at: URL(fileURLWithPath:directory))
@@ -279,26 +441,40 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         // on another app taking focus. Interactive play still pauses on blur.
         let step = smokeDirectory == nil ? dt : 1.0/60
         let raceDelta = smokeDirectory == nil ? wallDelta : step
-        let advancing = (active || smokeDirectory != nil) && !simulation.paused
+        let advancing = ((active && window.occlusionState.contains(.visible)) || smokeDirectory != nil) && !simulation.paused
         advanceRaceFrame(step: step, raceDelta: raceDelta, advancing: advancing)
         if isDirtTrack {
             updateRaceWorld(dt: advancing ? step : 0)
+
             recordRaceScore()
             raceHUD.x = simulation.x; raceHUD.z = simulation.z; raceHUD.heading = simulation.heading
             raceHUD.introducing = dirtIntro != nil
+            updateDepartureHUD()
+            raceHUD.escaping = racePhysics.escape.active;raceHUD.escapeComplete = racePhysics.escape.complete
             updateOpponents()
             raceHUD.race = race; raceHUD.scores = scores; raceHUD.paused = simulation.paused
             raceHUD.needsDisplay = true
         } else { updatePlayerModel(); world.update(simulation) }
-        updateCamera(snap: false)
+        updateCamera(snap:false,dt:step)
+        // Classify residents against this frame's camera, including camera cuts.
+        if isDirtTrack {
+            dirtWorld.town.update(dt: advancing ? step : 0, camera:world.camera.position, player:SIMD2(simulation.x,simulation.z),robots:([simulation]+opponents.map{$0.simulation}).enumerated().map { i,s in
+                RobotCollisions.Body(position:SIMD3(s.x,s.groundY,s.z),heading:s.heading,profile:RobotCollisions.profiles[lineup[i].rawValue])
+            },visible:{ self.view.isNode($0,insideFrustumOf:self.world.camera) },shadowCamera:world.camera,viewportAspect:Double(view.bounds.width/view.bounds.height))
+        }
         hud.state = simulation; hud.cameraName = ["FOLLOW", "ORBIT", "OVERVIEW"][cameraMode]
+        updateRaceAudio(dt:step,advancing:advancing)
         hud.needsDisplay = true
+        frameRateHUD.isHidden = !inSandbox || (isDirtTrack && racePhysics.escape.active)
         if smokeDirectory != nil { smokeTest() }
     }
     @objc func showMainMenu(_ sender: Any?) {
+        raceAudio?.resetConversation()
         window.title = "Marvin · Playground"
+        mainMenu.portrait.rendersContinuously = true
         inSandbox = false; dirtIntro = nil; view.clearInput()
-        hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; window.toolbar?.isVisible = false
+        frameRateHUD.isHidden=true
+        hud.isHidden = true; raceHUD.isHidden = true; mainMenu.isHidden = false; toolbarControlsVisible = false
         mainMenu.settings = false; mainMenu.selection = 0; mainMenu.refresh()
         mainMenu.stage.rootNode.addChildNode(robot.root)
         mainMenu.animate(robot, r2d2: r2d2, bb8: bb8, wallE: wallE, dt: 0)
@@ -308,11 +484,15 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         configurePlayer()
         window.title = "Marvin · Playground"
         world.camera.camera?.zFar = 80
+        world.camera.camera?.wantsHDR=false;world.camera.camera?.bloomIntensity=0
+        world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0
         isDirtTrack = false; dirtIntro = nil; simulation = Simulation(character: playerCharacter)
+        mainMenu.portrait.rendersContinuously = false
+        view.antialiasingMode = .multisampling4X
         view.scene = world.scene; world.scene.rootNode.addChildNode(world.camera)
         view.pointOfView = world.camera; raceHUD.isHidden = true
         inSandbox = true; mainMenu.isHidden = true; hud.isHidden = false
-        window.toolbar?.isVisible = true; hud.helpVisible = mainMenu.showGuide
+        toolbarControlsVisible = true; hud.helpVisible = mainMenu.showGuide
         for character in RacePerformance.Character.allCases { modelRoot(character).removeFromParentNode() }
         world.scene.rootNode.addChildNode(modelRoot(playerCharacter))
         reset(nil); updatePlayerModel(); world.update(simulation)
@@ -326,18 +506,43 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         catch { raceHUD.saveError = "Could not save score" }
     }
     func startDirtTrack() {
+        if raceAudio==nil && (smokeDirectory==nil || CommandLine.arguments.contains("--town-benchmark")) {
+            do { raceAudio=try RaceAudio(resources:Bundle.main.resourceURL!) }
+            catch { NSLog("Race audio assets unavailable: %@",String(describing:error)) }
+        }
         configurePlayer()
         window.title = "Marvin · Dirt Track"; world.camera.camera?.zFar = 250
+        world.camera.camera?.screenSpaceAmbientOcclusionIntensity = 0.70
+        world.camera.camera?.screenSpaceAmbientOcclusionRadius = 1.6
+        world.camera.camera?.screenSpaceAmbientOcclusionBias = 0.025
         isDirtTrack = true; inSandbox = true; simulation = Simulation(dirtTrack: true, dirtStartOffset:DirtCourse.playerGrid.offset, dirtStartPhase:DirtCourse.playerGrid.phase)
         hud.isHidden = true; raceHUD.isHidden = true
-        view.isHidden = true
+        // The opaque loading overlay is a child of this view: keep its parent visible
+        // while preparing asynchronously, and let the overlay cover the unfinished scene.
+        view.isHidden = !isLoadingDirt
         SCNTransaction.begin(); SCNTransaction.disableActions = true
-        raceHUD.helpVisible = mainMenu.showGuide; window.toolbar?.isVisible = true
+        raceHUD.helpVisible = mainMenu.showGuide; toolbarControlsVisible = !isLoadingDirt
+        dirtWorld.camera = world.camera
+        dirtWorld.sky.attach(camera:world.camera)
+        // Geometry comparison tools own their temporary reference/proxy pairs.
+        // Normal gameplay uses the exact-position shadow mesh by default.
+        let shadowArguments=CommandLine.arguments
+        let independentGeometryComparison=["--ground-performance-test","--shadow-culling-test","--mesh-reuse-test"].contains(where:shadowArguments.contains)
+        let useShadowBatch = !shadowArguments.contains("--benchmark-shadow-batch-reference")
+            && (!independentGeometryComparison || shadowArguments.contains("--benchmark-shadow-batch-live"))
+        if useShadowBatch {
+            do { try dirtWorld.town.prepareShadowBatch(camera:world.camera.camera!) }
+            catch { NSLog("Shadow batch unavailable; retaining original shadow geometry: %@",String(describing:error)) }
+        }
+        mainMenu.portrait.rendersContinuously = false
+        view.antialiasingMode = .multisampling2X
         view.scene = dirtWorld.scene; dirtWorld.scene.rootNode.addChildNode(world.camera)
         dirtWorld.scene.rootNode.addChildNode(robot.root)
         dirtWorld.scene.rootNode.addChildNode(r2d2.root)
         dirtWorld.scene.rootNode.addChildNode(bb8.root); dirtWorld.scene.rootNode.addChildNode(wallE.root)
         dirtWorld.additionalContacts = [bb8.contacts,wallE.contacts]
+        raceHUD.mapRegion = .course;cameraAim = SCNVector3Zero
+        raceHUD.configureNavigationMap(town:dirtWorld.town)
         view.pointOfView = world.camera
         scoreLoadFailed = false; raceHUD.saveError = nil
         do { scores = try DirtScores.load(scoreURL) }
@@ -347,14 +552,40 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         SCNTransaction.commit()
         // Compile materials/upload geometry and draw the first correct overview
         // before revealing the scene, avoiding a frame from the previous camera.
-        _ = view.prepare(dirtWorld.scene, shouldAbortBlock:nil)
+        if isLoadingDirt {
+            loadingView.update(0.93,"Getting ready to race")
+            observeLoadingCheckIfNeeded(preparing:true)
+            view.prepare([dirtWorld.scene]) { [weak self] success in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.observeLoadingCheckIfNeeded(preparing:true)
+                    if success { self.revealDirtTrack() }
+                    else { self.failDirtLoading() }
+                }
+            }
+        } else {
+            _ = view.prepare(dirtWorld.scene, shouldAbortBlock:nil)
+            revealDirtTrack()
+        }
+    }
+    func revealDirtTrack() {
         _ = view.snapshot()
         raceHUD.race = race; raceHUD.introducing = true; raceHUD.scores = scores
         mainMenu.isHidden = true; raceHUD.isHidden = false; view.isHidden = false
+        loadingView.update(1,"Ready")
+        isLoadingDirt=false;loadingView.removeFromSuperview();toolbarControlsVisible=true
         window.makeFirstResponder(view)
         lastTime = ProcessInfo.processInfo.systemUptime
+        finishLoadingCheckIfNeeded()
     }
-    func updateCamera(snap: Bool) {
+    func updateCamera(snap: Bool,dt:Double=1.0/60) {
+        if isDirtTrack { raceHUD.mapRegion=RaceMapRegion.at(SIMD2(simulation.x,simulation.z),previous:raceHUD.mapRegion) }
+        if raceCameraLocked {
+            cameraMode=2
+            world.camera.position=SCNVector3(0,38,-33)
+            world.camera.look(at:SCNVector3Zero,up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+            return
+        }
         if let outro = dirtOutro, isDirtTrack {
             let t = min(1,outro/dirtIntroDuration)
             let blend = CGFloat(t*t*t*(t*(t*6-15)+10))
@@ -366,11 +597,16 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             return
         }
         let lookAhead = isDirtTrack && cameraMode == 0 ? 1.5 : 0.0
-        let target = SCNVector3(simulation.x+sin(simulation.heading)*lookAhead,
+        var target = SCNVector3(simulation.x+sin(simulation.heading)*lookAhead,
             simulation.groundY+0.35,simulation.z+cos(simulation.heading)*lookAhead)
+        if isDirtTrack && max(abs(simulation.x),abs(simulation.z))>DesertTerrain.townEdge {
+            target.y=max(target.y,CGFloat(DirtCourse.height(x:Double(target.x),z:Double(target.z))+0.35))
+        }
         let desired: SCNVector3
         if cameraMode == 2 {
-            desired = isDirtTrack ? SCNVector3(0, 38, -33) : SCNVector3(0, 11.7, -10)
+            if isDirtTrack && raceHUD.mapRegion != .course {
+                desired=SCNVector3(target.x,target.y+38,target.z-33)
+            } else { desired = isDirtTrack ? SCNVector3(0,38,-33):SCNVector3(0,11.7,-10) }
         } else {
             let angle = cameraMode == 0 ? simulation.heading + .pi + (isDirtTrack ? 0 : 0.45) : orbitYaw
             let elevation = cameraMode == 0 ? (isDirtTrack ? 0.30 : 0.48) : orbitPitch
@@ -388,24 +624,69 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
             return
         }
-        let current = world.camera.position
-        let mix: CGFloat = snap ? 1 : 0.12
-        world.camera.position = SCNVector3(current.x+(desired.x-current.x)*mix,
-            current.y+(desired.y-current.y)*mix, current.z+(desired.z-current.z)*mix)
-        world.camera.look(at: cameraMode == 2 ? SCNVector3(0, 0, 0) : target,
-            up: SCNVector3(0, 1, 0), localFront: SCNVector3(0, 0, -1))
+        let aim=cameraMode == 2 && (!isDirtTrack || raceHUD.mapRegion == .course) ? SCNVector3Zero:target
+        if cameraMode == 2 {
+            let eye=SIMD3(Double(desired.x),Double(desired.y),Double(desired.z)),focus=SIMD3(Double(aim.x),Double(aim.y),Double(aim.z))
+            if snap { overviewMotion.reset(eye:eye,aim:focus) }
+            else { overviewMotion.advance(eye:eye,aim:focus,dt:dt) }
+            let p=overviewMotion.eye,q=overviewMotion.aim
+            world.camera.position=SCNVector3(p.x,p.y,p.z);cameraAim=SCNVector3(q.x,q.y,q.z)
+        } else {
+            let current=freeCameraEye ?? desired,mix:CGFloat=snap ? 1:CGFloat(1-exp(-7.67*max(0,dt)))
+            let eye=SCNVector3(current.x+(desired.x-current.x)*mix,current.y+(desired.y-current.y)*mix,current.z+(desired.z-current.z)*mix)
+            freeCameraEye=eye
+            world.camera.position=eye
+            cameraAim=target
+        }
+        if isDirtTrack {
+            if cameraMode != 2 || world.camera.position.y<cameraAim.y+12 {
+                // Collision starts at the robot, never the look-ahead point which
+                // can already be through a wall during a narrow turn.
+                let pivot=dirtWorld.town.cameraPivot(position:SIMD3(simulation.x,simulation.groundY,simulation.z),chassisHeight:RobotCollisions.profiles[lineup[0].rawValue].height)
+                let eye=dirtWorld.town.terrainCamera(from:pivot,to:world.camera.position),clear=dirtWorld.town.clearCamera(from:pivot,to:eye)
+                func distance(_ p:SCNVector3)->Double { sqrt(pow(Double(p.x-pivot.x),2)+pow(Double(p.y-pivot.y),2)+pow(Double(p.z-pivot.z),2)) }
+                let allowed=min(1,min(distance(clear),dirtWorld.town.cameraRoom(at:pivot,range:distance(eye)))/max(0.001,distance(eye)))
+                if snap || allowed<cameraBoomFraction { cameraBoomFraction=allowed }
+                else { cameraBoomFraction += (allowed-cameraBoomFraction)*(1-exp(-3.5*max(0,dt))) }
+                let f=CGFloat(cameraBoomFraction)
+                world.camera.position=SCNVector3(pivot.x+(eye.x-pivot.x)*f,pivot.y+(eye.y-pivot.y)*f,pivot.z+(eye.z-pivot.z)*f)
+                // In a tight alley keep the route visible over the chassis rather
+                // than pointing the compressed camera down into its head.
+                let close=CGFloat(1-min(1,distance(world.camera.position)/1.5))
+                let raised=min(pivot.y-0.12,CGFloat(simulation.groundY+RobotCollisions.profiles[lineup[0].rawValue].height+0.45))
+                if cameraMode == 0 {
+                    cameraAim=SCNVector3(target.x,target.y+(raised-target.y)*close,target.z)
+                } else {
+                    let dx=pivot.x-eye.x,dz=pivot.z-eye.z,length=max(0.001,sqrt(dx*dx+dz*dz))
+                    cameraAim=SCNVector3(target.x+dx/length*close,target.y+(raised-target.y)*close,target.z+dz/length*close)
+                }
+            }
+            if cameraMode == 2 { world.camera.position.y=max(world.camera.position.y,CGFloat(DirtCourse.height(x:Double(world.camera.position.x),z:Double(world.camera.position.z))+0.18)) }
+        }
+        world.camera.look(at:cameraAim,up:SCNVector3(0,1,0),localFront:SCNVector3(0,0,-1))
+        if cameraMode == 2 { freeCameraEye=nil;cameraBoomFraction=1 }
+        if cameraMode != 2 {
+            let p=world.camera.position,q=cameraAim
+            overviewMotion.reset(eye:SIMD3(Double(p.x),Double(p.y),Double(p.z)),aim:SIMD3(Double(q.x),Double(q.y),Double(q.z)))
+        }
     }
+
     @objc func togglePause(_ sender: Any?) {
         guard inSandbox else { return }
         simulation.paused.toggle(); view.clearInput()
+        if simulation.paused { raceAudio?.stop() }
         pauseItem?.label = simulation.paused ? "Resume" : "Pause"
         pauseItem?.image = NSImage(systemSymbolName: simulation.paused ? "play.fill" : "pause.fill", accessibilityDescription: nil)
         window.makeFirstResponder(view)
     }
     @objc func reset(_ sender: Any?) {
+        raceAudio?.resetConversation()
+        if isLoadingDirt && sender != nil { return }
         guard inSandbox else { return }
         cameraMode = 1; orbitYaw = 0.65; orbitPitch = 0.5; cameraDistance = 3.5
         dirtIntro = nil; dirtOutro = nil
+        raceHUD.escaping=false;raceHUD.escapeComplete=false
+        if isDirtTrack && !isLoadingDirt { setRaceControlsHidden(false) }
         simulation.reset(); updatePlayerModel()
         if isDirtTrack {
             var random = SystemRandomNumberGenerator()
@@ -416,30 +697,73 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
             wallEOpponent = DirtOpponent(slot:slots[3],laneOffset:-0.65)
             performances = lineup.map { RacePerformance($0) }
             updateOpponents()
-            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup); scoreSaved = false
-            dirtWorld.reset(); cameraMode = 0; cameraDistance = 4.5
+            race = DirtRace(startPhase:slots[0].phase); racePhysics = DirtRacePhysics(characters:lineup,townRoutes:dirtWorld.escapeRoutes); dirtWorld.updateGate(racePhysics.gate); scoreSaved = false
+            dirtWorld.reset(); dirtWorld.sky.apply(.random())
+            racePhysics.storm=Sandstorm(enabled:weatherOverride ?? Sandstorm.drawForRace())
+            raceHUD.stormSelected=racePhysics.storm.enabled
+            window.title=racePhysics.storm.enabled ? "Marvin · Dirt Track · Sandstorm":"Marvin · Dirt Track"
+            dirtWorld.configureStorm(racePhysics.storm)
+            cameraMode = 0; cameraDistance = 4.5;raceHUD.mapRegion = .course;cameraAim=SCNVector3Zero
         }
         view.clearInput(); pauseItem?.label = "Pause"
         pauseItem?.image = NSImage(systemSymbolName: "pause.fill", accessibilityDescription: nil)
         updateCamera(snap: true); window.makeFirstResponder(view)
     }
     @objc func cycleCamera(_ sender: Any?) {
-        guard inSandbox, dirtIntro == nil else { return }
-        cameraMode = (cameraMode+1)%3; updateCamera(snap: true)
+        guard inSandbox, dirtIntro == nil, !raceCameraLocked else { return }
+        cameraMode = (cameraMode+1)%3; updateCamera(snap:cameraMode != 2)
         window.makeFirstResponder(view)
+    }
+    func updateDepartureHUD() {
+        guard isDirtTrack else { return }
+        setRaceControlsHidden(racePhysics.escape.active)
+    }
+    func setRaceControlsHidden(_ hidden:Bool) {
+        frameRateHUD.isHidden=hidden
+        raceHUD.isHidden=hidden
+        hud.isHidden=true
+        toolbarControlsVisible = !hidden
+    }
+    /// Overlay layout can follow native chrome; the SceneKit viewport must not.
+    func installContentOverlay(_ overlay:NSView) {
+        guard let guide=window.contentLayoutGuide else { return }
+        overlay.translatesAutoresizingMaskIntoConstraints=false
+        view.addSubview(overlay)
+        NSLayoutConstraint.activate([NSLayoutConstraint.Attribute.leading,.trailing,.top,.bottom].map { edge in
+            NSLayoutConstraint(item:overlay,attribute:edge,relatedBy:.equal,toItem:guide,attribute:edge,multiplier:1,constant:0)
+        })
     }
     @objc func toggleHelp(_ sender: Any?) { if isDirtTrack { raceHUD.helpVisible.toggle() } else { hud.helpVisible.toggle() } }
     func applicationWillResignActive(_ notification: Notification) {
-        active = false; view.clearInput()
+        active = false; view.clearInput();raceAudio?.stop()
     }
     func applicationDidBecomeActive(_ notification: Notification) {
         active = true; lastTime = ProcessInfo.processInfo.systemUptime
     }
     func windowDidResignKey(_ notification: Notification) { view.clearInput() }
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        frameRateHUD.resetSamples()
+        // NSView display links suspend while hidden. Never count that suspended
+        // interval as race time when the window becomes visible again.
+        lastTime=ProcessInfo.processInfo.systemUptime
+        if !window.occlusionState.contains(.visible) { view.clearInput();raceAudio?.stop() }
+    }
+    func windowDidMiniaturize(_ notification: Notification) {
+        frameRateHUD.resetSamples()
+        lastTime=ProcessInfo.processInfo.systemUptime;view.clearInput();raceAudio?.stop()
+    }
+    func windowDidDeminiaturize(_ notification: Notification) {
+        frameRateHUD.resetSamples()
+        lastTime=ProcessInfo.processInfo.systemUptime
+    }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
-    func applicationWillTerminate(_ notification: Notification) { timer?.invalidate() }
+    func applicationWillTerminate(_ notification: Notification) {
+        timer?.invalidate()
+        if #available(macOS 14.0,*) { (frameDisplayLink as? CADisplayLink)?.invalidate() }
+        raceAudio?.stop()
+    }
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
+        toolbar.identifier == "EmptyToolbar" ? [] : [.init("menu"), .flexibleSpace, .init("camera"), .init("pause"), .init("reset"), .init("help")]
     }
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         toolbarAllowedItemIdentifiers(toolbar)
@@ -460,6 +784,11 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         item.target = self; item.action = config.2
         return item
     }
+    @objc func toggleRaceSound(_ sender:NSMenuItem) {
+        raceSoundMuted.toggle();UserDefaults.standard.set(raceSoundMuted,forKey:"raceSoundMuted")
+        sender.state=raceSoundMuted ? .on:.off
+        if raceSoundMuted { raceAudio?.stop() }
+    }
     func makeMenu() {
         let bar = NSMenu(), appItem = NSMenuItem(), appMenu = NSMenu()
         appMenu.addItem(withTitle: "About Marvin Simulator", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
@@ -470,6 +799,8 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
         for (title, selector, key) in [("Main Menu", #selector(showMainMenu), "m"), ("Reset playground", #selector(reset), "r"), ("Pause / resume", #selector(togglePause), "p"), ("Change camera", #selector(cycleCamera), "1")] {
             let item = simMenu.addItem(withTitle: title, action: selector, keyEquivalent: key); item.target = self
         }
+        let sound=simMenu.addItem(withTitle:"Mute race sound",action:#selector(toggleRaceSound(_:)),keyEquivalent:"")
+        sound.target=self;sound.state=raceSoundMuted ? .on:.off
         simItem.submenu = simMenu; bar.addItem(simItem); NSApp.mainMenu = bar
     }
     func smokeTest() {
@@ -715,34 +1046,46 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                     }
                 }
                 raceHUD.frame = hudFrame
-                var fencePosts = 0, fenceRails = 0
-                var fencePassed = true
+                // Both brick boundaries must exist, start below the ground and
+                // reach their target height wherever bricks are laid; only the
+                // gate and service openings may leave short uncovered stretches.
+                var trackWalls = 0
+                var wallPassed = true
+                var wallReport: [String: Any] = [:]
                 dirtWorld.scene.rootNode.enumerateChildNodes { node, _ in
-                    if node.name == "Dirt fence post", let box = node.geometry as? SCNBox {
-                        fencePosts += 1
-                        let ground = DirtCourse.height(x:Double(node.position.x),z:Double(node.position.z))
-                        let bottom = Double(node.position.y)-Double(box.height)/2
-                        let top = Double(node.position.y)+Double(box.height)/2
-                        fencePassed = fencePassed && abs(bottom-(ground-DirtCourse.postEmbed)) < 1e-5
-                            && abs(top-(ground+DirtCourse.postHeight)) < 1e-5
-                    }
-                    if node.name == "Dirt fence rail", let source = node.geometry?.sources(for:.vertex).first {
-                        fenceRails += 1
-                        for i in 0..<source.vectorCount {
-                            let values: [Double] = (0..<3).map { component in
-                                source.data.withUnsafeBytes { bytes in
-                                    let offset = source.dataOffset+i*source.dataStride+component*source.bytesPerComponent
-                                    return source.bytesPerComponent == 4 ? Double(bytes.loadUnaligned(fromByteOffset:offset,as:Float.self))
-                                        : bytes.loadUnaligned(fromByteOffset:offset,as:Double.self)
-                                }
+                    guard let name = node.name, name.hasSuffix("irregular brick track wall"),
+                          let source = node.geometry?.sources(for:.vertex).first else { return }
+                    trackWalls += 1
+                    var cells: [SIMD2<Int>: [SIMD3<Double>]] = [:]
+                    for i in 0..<source.vectorCount {
+                        let values: [Double] = (0..<3).map { component in
+                            source.data.withUnsafeBytes { bytes in
+                                let offset = source.dataOffset+i*source.dataStride+component*source.bytesPerComponent
+                                return source.bytesPerComponent == 4 ? Double(bytes.loadUnaligned(fromByteOffset:offset,as:Float.self))
+                                    : bytes.loadUnaligned(fromByteOffset:offset,as:Double.self)
                             }
-                            let ground = DirtCourse.height(x:values[0],z:values[2])
-                            let clearance = DirtCourse.railClearance+(i%2 == 0 ? -0.0225 : 0.0225)
-                            fencePassed = fencePassed && abs(values[1]-ground-clearance) < 0.002
                         }
+                        cells[SIMD2(Int(floor(values[0]/0.5)),Int(floor(values[2]/0.5))),default:[]].append(SIMD3(values[0],values[1],values[2]))
                     }
+                    let side = name.hasPrefix("Inner") ? -1.0 : 1.0
+                    let samples = DirtCourse.surfacePoints(offset:side*(DirtCourse.fenceOffset+DirtCourse.boundaryWallThickness/2))
+                    var covered = 0, floating = 0, short = 0, worstShortfall = 0.0, worstFloat = 0.0
+                    for p in samples {
+                        let cell = SIMD2(Int(floor(p.x/0.5)),Int(floor(p.y/0.5)))
+                        let nearby = (-1...1).flatMap { dx in (-1...1).flatMap { dz in cells[cell &+ SIMD2(dx,dz)] ?? [] } }
+                            .filter { simd_length(SIMD2($0.x,$0.z)-p) < 0.3 }
+                        guard let top = nearby.map(\.y).max(), let bottom = nearby.map(\.y).min() else { continue }
+                        covered += 1
+                        let ground = DirtCourse.height(x:p.x,z:p.y)
+                        let target = side > 0 ? CityExit.wallTop(p) : ground+DirtCourse.postHeight
+                        if bottom > ground { floating += 1; worstFloat = max(worstFloat,bottom-ground) }
+                        if top < target-0.03 { short += 1; worstShortfall = max(worstShortfall,target-top) }
+                    }
+                    wallPassed = wallPassed && floating == 0 && short == 0 && covered*10 >= samples.count*9
+                    wallReport[name] = ["samples":samples.count,"covered":covered,"floating":floating,"worstFloat":worstFloat,
+                                        "short":short,"worstShortfall":worstShortfall]
                 }
-                fencePassed = fencePassed && fencePosts > 300 && fenceRails == 2
+                wallPassed = wallPassed && trackWalls == 2
                 let raceContactCount = racePhysics.contactCount
                 let trailCounts = dirtWorld.trailCounts, racerEmissions = dirtWorld.racerEmittedCount
                 dirtWorld.update(simulation,opponent:opponent.simulation,dt:0,modelScale:robot.modelScale,additional:[bb8Opponent.simulation,wallEOpponent.simulation])
@@ -754,7 +1097,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let dirtEffectsPassed = airborneTrailsPassed && effectsPaused && trailCounts.allSatisfy { $0 > 40 }
                     && racerEmissions.allSatisfy { $0 > 20 } && trailCounts == dirtWorld.trailCounts
                     && racerEmissions == dirtWorld.racerEmittedCount
-                let dirtPassed = dirtEffectsPassed && fencePassed && opponentPassed && dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
+                let dirtPassed = dirtEffectsPassed && wallPassed && opponentPassed && dirtStartPassed && dirtWorld.emittedCount > 20 && race.elapsed > 3.9
                     && DirtCourse.projection(x:simulation.x,z:simulation.z).distance < DirtCourse.fenceOffset
                 for (mode,name) in [(2,"dirt-overview.png"),(0,"dirt-driving.png")] {
                     cameraMode = mode; updateCamera(snap:true)
@@ -817,7 +1160,7 @@ final class AppController: NSObject, NSApplicationDelegate, NSWindowDelegate, NS
                 let passed = sandboxContactPassed && fullRaceTrailsPassed && raceFinishPassed && robotContactsPassed && actingPassed && newModelsPassed && coatingPassed && boostInputPassed && modelScalePassed && introPassed && introMidPassed && scoresPassed && dirtPassed && dirtResetPassed && modeReturnPassed && menuSmokePassed && robot.partCount == 23 && robot.triangleCount > 600_000
                     && traveled > 0.3 && abs(heading) > 0.3
                     && labelsPassed && groovesPassed && coursePassed && neckPassed && tracksPassed && groundContactPassed && pausePassed && brakePassed && focusPassed && headPassed && resetPassed && cameraPassed && lightIconPassed && darkIconPassed
-                let report: [String: Any] = ["passed": passed, "sandboxContactPassed":sandboxContactPassed, "fullRaceTrailsPassed":fullRaceTrailsPassed, "raceFinishPassed":raceFinishPassed, "robotContactsPassed":robotContactsPassed, "raceContactCount":raceContactCount, "actingPassed":actingPassed, "bb8MotionPassed":bb8MotionPassed, "wallEMotionPassed":wallEMotionPassed, "newModelsPassed":newModelsPassed, "coatingPassed": coatingPassed, "bodyDirtAmounts": dirtAmounts, "dirtEffectsPassed": dirtEffectsPassed, "racerTrailMarks": trailCounts, "racerDirtParticles": racerEmissions, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "fencePassed": fencePassed, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
+                let report: [String: Any] = ["passed": passed, "sandboxContactPassed":sandboxContactPassed, "fullRaceTrailsPassed":fullRaceTrailsPassed, "raceFinishPassed":raceFinishPassed, "robotContactsPassed":robotContactsPassed, "raceContactCount":raceContactCount, "actingPassed":actingPassed, "bb8MotionPassed":bb8MotionPassed, "wallEMotionPassed":wallEMotionPassed, "newModelsPassed":newModelsPassed, "coatingPassed": coatingPassed, "bodyDirtAmounts": dirtAmounts, "dirtEffectsPassed": dirtEffectsPassed, "racerTrailMarks": trailCounts, "racerDirtParticles": racerEmissions, "boostSteeringPassed": boostInputPassed, "modelScalePassed": modelScalePassed, "marvinToR2D2HeightRatio": modelHeightRatio, "opponentPassed": opponentPassed, "wallPassed": wallPassed, "trackWalls": wallReport, "r2d2WheelsPassed": wheelsPassed, "introPassed": introPassed && introMidPassed, "scoresPassed": scoresPassed, "dirtPassed": dirtPassed, "dirtResetPassed": dirtResetPassed, "modeReturnPassed": modeReturnPassed, "menuPassed": menuSmokePassed, "parts": robot.partCount,
                     "triangles": robot.triangleCount, "distance": traveled,
                     "heading": heading, "pausePassed": pausePassed, "brakePassed": brakePassed,
                     "focusPassed": focusPassed, "headPassed": headPassed, "resetPassed": resetPassed,

@@ -539,11 +539,22 @@ struct SimulationTests {
 @main struct CheckRunner {
     static func main() {
         let checks = SimulationTests()
+        checks.testTownSpeedAndGaze()
+        checks.testStormLanding()
+        checks.testSandstorm()
+        checks.testCooldownLap()
+        checks.testDesertTerrain()
+        checks.testSandDeformation()
+        checks.testNavigationMap()
+        if CommandLine.arguments.contains("--dunes-only") { return }
+        checks.testCityEscape()
+        if CommandLine.arguments.contains("--escape-only") { return }
         checks.testPoweredRolling()
         checks.testBrakingAuthority()
         checks.testDrivingAssists()
         checks.testAssistedCornering()
         if CommandLine.arguments.contains("--assists-only") { return }
+        checks.testExactCourseProjection()
         checks.testSandboxFootprint()
         checks.testPlayableFootprints()
         checks.testOptionalRobotCollisions()
@@ -556,6 +567,8 @@ struct SimulationTests {
         checks.testRacePerformance()
         checks.testBoostSteeringDuringAcceleration()
         checks.testWiderTerrainAndFence()
+        checks.testServiceAccess()
+        checks.testInfieldObstacles()
         checks.testDirtOpponent()
         checks.testDirtRaceAndScores()
         checks.testForwardReverseAndBrake()
@@ -568,6 +581,6 @@ struct SimulationTests {
         checks.testNeckConcentricDuringPan()
         checks.testRandomCourseClearancesAndReset()
         checks.testCourseApproachRoutes()
-        print("PASS: 28 simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
+        print("PASS: simulation checks (playable characters, drive/brake, steering, collision/course, pause/head/reset, time integration)")
     }
 }

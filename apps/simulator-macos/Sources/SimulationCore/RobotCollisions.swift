@@ -49,6 +49,12 @@ public enum RobotCollisions {
         public let normal, point: SIMD3<Double>
         public let penetration: Double
     }
+    /// Inelastic terrain impact: remove velocity into the surface, retaining
+    /// tangential motion without creating kinetic energy or a rebound impulse.
+    public static func landingVelocity(_ velocity:SIMD3<Double>,normal:SIMD3<Double>)->SIMD3<Double> {
+        let n=simd_normalize(normal)
+        return velocity-n*min(0,simd_dot(velocity,n))
+    }
     public static func contact(_ a: Body, _ b: Body) -> Contact? {
         let low = max(a.position.y,b.position.y)
         let high = min(a.position.y+a.profile.height,b.position.y+b.profile.height)
@@ -87,13 +93,41 @@ public enum RobotCollisions {
         let p = n*along+tangent*t
         return Contact(normal:SIMD3(n.x,0,n.y),point:SIMD3(p.x,(low+high)/2,p.y),penetration:depth)
     }
+    /// Convex, elevated canopy envelope. SAT uses actual footprint edges, so
+    /// the missing triangular corner remains traversable at every height.
+    public static func canopyContact(_ body:Body, footprint:[SIMD2<Double>], low:Double, high:Double)->Contact? {
+        guard body.position.y<high,body.position.y+body.profile.height>low else { return nil }
+        var axes:[SIMD2<Double>]=body.profile.round ? []:[body.lateral,body.forward]
+        for i in footprint.indices {
+            let d=footprint[(i+1)%footprint.count]-footprint[i]
+            axes.append(simd_normalize(SIMD2(-d.y,d.x)))
+            if body.profile.round {
+                let v=footprint[i]-body.center
+                if simd_length_squared(v)>1e-10 { axes.append(simd_normalize(v)) }
+            }
+        }
+        var depth=Double.infinity,normal=SIMD3<Double>.zero
+        for axis in axes {
+            let values=footprint.map { simd_dot($0,axis) },c=simd_dot(body.center,axis),extent=body.extent(axis)
+            let left=c+extent-values.min()!,right=values.max()!-c+extent
+            guard left>0,right>0 else { return nil }
+            if min(left,right)<depth {
+                depth=min(left,right);let n=axis*(left<right ? 1.0:-1.0)
+                normal=SIMD3(n.x,0,n.y)
+            }
+        }
+        let below=body.position.y+body.profile.height-low,above=high-body.position.y
+        if min(below,above)<depth { depth=min(below,above);normal=SIMD3(0,below<above ? 1:-1,0) }
+        return Contact(normal:normal,point:body.position,penetration:depth)
+    }
+
     private static func effectiveMass(_ body: Body, at: SIMD3<Double>, axis: SIMD3<Double>) -> Double {
         let r = at-body.position, lever = r.z*axis.x-r.x*axis.z
         return 1/body.profile.mass+lever*lever/body.profile.inertia
     }
     /// Low restitution for robot shells/rubber, with Coulomb contact friction.
     /// Positional correction is separate from velocity so overlap adds no energy.
-    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false, betweenRobots: Bool = true) -> Int {
+    @discardableResult public static func resolve(_ bodies: inout [Body], terrain: Bool = false, betweenRobots: Bool = true, gate:CityGate? = nil, city:CityCollisionWorld? = nil, previousPositions:[SIMD3<Double>]? = nil, storm:Sandstorm = Sandstorm(),sand:SandDeformation? = nil) -> Int {
         var pairs = Set<Int>()
         for iteration in 0..<24 {
             var worstOverlap = 0.0
@@ -124,24 +158,51 @@ public enum RobotCollisions {
                 bodies[i].position -= c.normal*correction*inverseA
                 bodies[j].position += c.normal*correction*inverseB
             } }
-            if terrain { for i in bodies.indices { constrainToCourse(&bodies[i]) } }
+            if terrain { for i in bodies.indices {
+                constrainToCourse(&bodies[i],escape:gate != nil,previous:previousPositions?[i],storm:storm,sand:sand)
+                for obstacle in InfieldLayout.obstacles+(gate.map{[$0.body]+CityExit.posts} ?? [])+(city?.nearby(bodies[i]) ?? []) {
+                    let delta=bodies[i].center-obstacle.center
+                    let radius=hypot(bodies[i].profile.halfWidth,bodies[i].profile.halfDepth)+hypot(obstacle.profile.halfWidth,obstacle.profile.halfDepth)
+                    guard simd_length_squared(delta)<radius*radius,
+                          let c=contact(bodies[i],obstacle) else { continue }
+                    worstOverlap=max(worstOverlap,c.penetration)
+                    bodies[i].contacted=true
+                    // Immovable props: remove inward velocity, retaining slide and
+                    // reverse control; positional correction cannot inject energy.
+                    bodies[i].position -= c.normal*(c.penetration+0.00001)
+                    let inward=simd_dot(bodies[i].velocity,c.normal)
+                    if inward>0 { bodies[i].velocity -= c.normal*inward }
+                }
+                for canopy in InfieldLayout.canopies {
+                    guard let c=canopyContact(bodies[i],footprint:canopy.points,low:canopy.low,high:canopy.high) else { continue }
+                    worstOverlap=max(worstOverlap,c.penetration);bodies[i].contacted=true
+                    bodies[i].position -= c.normal*(c.penetration+0.00001)
+                    let inward=simd_dot(bodies[i].velocity,c.normal)
+                    if inward>0 { bodies[i].velocity -= c.normal*inward }
+                }
+            } }
             if worstOverlap < 0.00025 { break }
         }
         return pairs.count
     }
-    private static func constrainToCourse(_ body: inout Body) {
+    private static func constrainToCourse(_ body: inout Body,escape:Bool,previous:SIMD3<Double>?,storm:Sandstorm,sand:SandDeformation?) {
         let projection = DirtCourse.projection(x:body.position.x,z:body.position.z)
         let heading = DirtCourse.heading(projection.phase)
         let outward = SIMD2(cos(heading),-sin(heading))*(projection.offset < 0 ? -1.0 : 1.0)
-        let limit = DirtCourse.fenceOffset-body.extent(outward)-0.025
-        if projection.distance > limit {
+        let prior=previous.map{DirtCourse.projection(x:$0.x,z:$0.z)} ?? projection
+        let insideField = projection.offset<0 ? projection.distance>DirtCourse.fenceOffset : escape && prior.offset>0 && prior.distance>DirtCourse.fenceOffset
+        let support = body.extent(outward)+0.025
+        let limit = DirtCourse.fenceOffset+(insideField ? DirtCourse.boundaryWallThickness+support : -support)
+        let serviceAccess = projection.offset < 0 && DirtCourse.serviceAccess(x:body.position.x,z:body.position.z,clearance:body.extent(SIMD2(1,0)))
+        let exitAccess=escape && projection.offset>0 && CityExit.opening(body.center,clearance:body.extent(CityExit.tangent))
+        if (insideField ? projection.distance < limit : projection.distance > limit) && !serviceAccess && !exitAccess {
             let point = DirtCourse.point(projection.phase,offset:projection.offset < 0 ? -limit : limit)
             body.position.x = point.x; body.position.z = point.z
-            let normal = SIMD3(outward.x,0,outward.y), speed = simd_dot(body.velocity,normal)
+            let normal = SIMD3(outward.x,0,outward.y)*(insideField ? -1.0:1.0), speed = simd_dot(body.velocity,normal)
             if speed > 0 { body.velocity -= normal*speed }
             body.contacted = true
         }
-        let floor = DirtCourse.height(x:body.position.x,z:body.position.z)
+        let floor = storm.height(x:body.position.x,z:body.position.z)+(sand?.supportOffset(x:body.position.x,z:body.position.z,heading:body.heading,profile:body.profile) ?? 0)
         if body.position.y < floor {
             body.position.y = floor
             if body.velocity.y < 0 { body.velocity.y = 0 }

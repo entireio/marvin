@@ -1,0 +1,76 @@
+{
+  "checks" : {
+    "crossedRamp" : true,
+    "finiteGroundedMotion" : true,
+    "fullyOpen" : true,
+    "hiddenGCloses" : true,
+    "hiddenGOpens" : true,
+    "noSolidPenetration" : true,
+    "pausedGateStationary" : true,
+    "repeatIgnored" : true,
+    "resetClosesGate" : true,
+    "returnedToTrack" : true,
+    "rivalsRemainInRace" : true,
+    "roamedTown" : true,
+    "townImpactAndReverseAllChassis" : true
+  },
+  "cityCollisionSolids" : 4976,
+  "distanceMetres" : 103.81405355340505,
+  "maximumSolidPenetrationMetres" : 0,
+  "passed" : true,
+  "routes" : [
+    [
+      [
+        26.825514508588665,
+        -10.565102935188698
+      ],
+      [
+        28.825514508588665,
+        -10.065102935188698
+      ]
+    ],
+    [
+      [
+        28.686299941231784,
+        -10.193311308583885
+      ],
+      [
+        31.825514508588665,
+        -3.0651029351886976
+      ],
+      [
+        32.325514508588668,
+        0.43489706481130241
+      ],
+      [
+        32.825514508588668,
+        2.9348970648113024
+      ]
+    ],
+    [
+      [
+        32.652537524958845,
+        2.8086202649858123
+      ],
+      [
+        34.825514508588668,
+        13.934897064811302
+      ]
+    ],
+    [
+      [
+        34.791275798121255,
+        13.735070396389151
+      ],
+      [
+        34.825514508588668,
+        24.934897064811302
+      ],
+      [
+        35.825514508588668,
+        27.934897064811302
+      ]
+    ]
+  ],
+  "simulatedSeconds" : 64.86666666666666
+}

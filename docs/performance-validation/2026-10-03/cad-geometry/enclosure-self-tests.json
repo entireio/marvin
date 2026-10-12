@@ -1,0 +1,23 @@
+{
+  "selfTest": "passed",
+  "rejectedShellFixtures": [
+    "open",
+    "nonconvex",
+    "inward",
+    "duplicate",
+    "inconsistent winding"
+  ],
+  "pointFixtures": [
+    "inside",
+    "exact margin",
+    "insufficient margin",
+    "boundary",
+    "outside"
+  ],
+  "otherFixtures": [
+    "mixed coordinate scales",
+    "oblique shell and unequal non-unit scales",
+    "outside triangle vertex",
+    "two components"
+  ]
+}

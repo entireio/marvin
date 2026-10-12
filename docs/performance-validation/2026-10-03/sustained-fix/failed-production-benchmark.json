@@ -1,0 +1,77 @@
+{
+  "activeExplorationCells" : 15,
+  "audioActive" : true,
+  "benchmarkArguments" : [
+    "\/Users\/thomi\/Projects\/entireio-marvin\/apps\/simulator-macos\/.build\/Marvin Simulator.app\/Contents\/MacOS\/MarvinSimulator",
+    "--town-benchmark",
+    "\/Users\/thomi\/Projects\/marvin-town-planning\/sustained-fix\/production-clear-cached",
+    "--city-roam"
+  ],
+  "benchmarkRunID" : "514FE996-3FF1-4BC3-A37A-6AB04CBD7AEF",
+  "cpuUpdateP95MS" : 2.9071250464767218,
+  "daylightFraction" : 0.5,
+  "drawableHeight" : 1080,
+  "drawableWidth" : 1920,
+  "durationSeconds" : 603.01720204157755,
+  "endWallTime" : 1790991164.9987311,
+  "expressionsPlayed" : 1,
+  "gpuDevice" : "Apple M2",
+  "laps" : 0,
+  "meanFPS" : 53.023650507593217,
+  "metalRenderer" : true,
+  "metric" : "SceneKit didRenderScene wall-clock intervals; not GPU or display presentation timing",
+  "over25MS" : 4186,
+  "over50MS" : 0,
+  "p50MS" : 16.685375012457371,
+  "p95MS" : 34.11250002682209,
+  "p99MS" : 34.670749912038445,
+  "postRaceRoaming" : false,
+  "quality" : {
+    "explorationDetail" : true,
+    "msaaSamples" : 2,
+    "shadowMapWidths" : [
+      2048,
+      4096
+    ]
+  },
+  "residentUpdates" : {
+    "coarseUpdates" : 42895,
+    "navigationUpdates" : 110633,
+    "poseUpdates" : 15810
+  },
+  "samples" : 31815,
+  "sandstorm" : false,
+  "simulationSeconds" : 602.99583333410851,
+  "startUptime" : 1801673.1470599168,
+  "sunElevationsDegrees" : [
+    64.444244579785163,
+    64.444244579785163
+  ],
+  "thermalState" : 1,
+  "town" : {
+    "accessibleCompounds" : 492,
+    "animatedPeople" : 282,
+    "buildings" : 497,
+    "cells" : 92,
+    "crowdCells" : 77,
+    "crowdFarTriangles" : 100409,
+    "crowdNearTriangles" : 1834674,
+    "doorConnections" : 24,
+    "explorationCells" : 173,
+    "explorationTriangles" : 51376,
+    "farTriangles" : 242142,
+    "householdYards" : 130,
+    "inaccessibleCompounds" : 0,
+    "infieldHouses" : 0,
+    "nearTriangles" : 437850,
+    "people" : 282,
+    "repairTents" : 2,
+    "signs" : 27,
+    "signTextFits" : 1,
+    "streetRoutes" : 13,
+    "walkingPeople" : 34
+  },
+  "townEnabled" : true,
+  "updateDriver" : "timer",
+  "visiblePeople" : 274
+}

@@ -118,7 +118,10 @@ final class ImportedRacer {
             headMount.eulerAngles = SCNVector3(0,state.heading,0)
             head.eulerAngles = SCNVector3Zero
         } else {
-            root.eulerAngles = SCNVector3(state.bodyPitch,state.heading,state.bodyRoll)
+            if max(abs(state.x),abs(state.z))>DesertTerrain.townEdge {
+                let q=state.duneOrientation.vector
+                root.simdOrientation=simd_quatf(vector:SIMD4(Float(q.x),Float(q.y),Float(q.z),Float(q.w)))
+            } else { root.eulerAngles = SCNVector3(state.bodyPitch,state.heading,state.bodyRoll) }
             for link in links {
                 let travel = link.side > 0 ? state.leftTravel : state.rightTravel
                 var phase = (travel/beltLength).truncatingRemainder(dividingBy:1)

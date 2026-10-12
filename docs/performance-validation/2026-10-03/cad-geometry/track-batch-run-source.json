@@ -1,0 +1,5 @@
+{
+  "binarySHA256": "4cca287256997875c44eeb60445fb0c6305466d79d8db7128340adb572cec126",
+  "baseCommit": "de62266113b5d89c17084cea9376d900859cb152",
+  "note": "Base commit plus uncommitted diagnostic and preexisting opt-in work; see repository diff."
+}

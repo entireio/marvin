@@ -1,0 +1,5 @@
+{
+  "head": "de62266113b5d89c17084cea9376d900859cb152",
+  "binarySHA256": "f9be16026a85dd54509dff2efdf8c2494788063f64d98aab338f812ec3f1e7a7",
+  "scope": "cad-enclosure-probe-15 only; release build includes uncommitted opt-in diagnostic code and preexisting prototypes. Frozen GPU command-buffer envelope, not sustained/display timing."
+}

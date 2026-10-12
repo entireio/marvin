@@ -1,0 +1,6 @@
+#!/bin/bash
+# Run the C# port of SimulationChecks (no Godot needed). Args are passed through.
+set -e
+source "$(dirname "$0")/env.sh"
+cd "$MARVIN_GODOT_ROOT"
+dotnet run --project src/Checks/MarvinChecks.csproj -c Release -nologo -- "$@"

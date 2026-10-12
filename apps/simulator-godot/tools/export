@@ -1,0 +1,25 @@
+#!/bin/bash
+# Export release builds of the Godot port and check their layout (tools/dev.py export, the same as mise run export).
+#
+#   tools/export                  # on a Mac both presets: build/macos/Marvin Simulator.app, build/windows/MarvinSimulator.exe
+#   tools/export macos            # one preset (macos | windows)
+#   tools/export windows --zip    # also pack build/MarvinSimulator-windows-x86_64.zip to copy to a Windows PC
+#   tools/export macos --debug    # debug engine template (same C#, ExportDebug configuration)
+#
+# Needs: the assets (mise run setup, or tools/sync-assets.py), the Godot 4.7.2 .NET editor and the .NET 8 SDK
+# (tools/env.sh). The matching .NET export templates are fetched into Godot's templates folder when missing (only the
+# files the presets need). The C# is published by Godot itself (ExportRelease / ExportDebug; MarvinGodot.csproj
+# optimises every configuration). After exporting, tools/export-verify.py checks the bundle: executables, .NET runtime
+# and assemblies, and that the pack holds every raw asset the game reads with FileAccess.
+set -e
+source "$(dirname "$0")/env.sh"
+
+# The first Python 3 that runs (on Windows "python3" can be the Microsoft Store's placeholder, which does not).
+python=""
+for candidate in python3 python; do
+    if command -v "$candidate" > /dev/null && "$candidate" -c 'import sys; sys.exit(sys.version_info < (3,))' 2> /dev/null; then
+        python="$candidate"; break
+    fi
+done
+if [ -z "$python" ]; then echo "tools/export: Python 3 not found" >&2; exit 1; fi
+exec "$python" "$MARVIN_GODOT_ROOT/tools/dev.py" export "$@"

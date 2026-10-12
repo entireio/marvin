@@ -1,0 +1,12 @@
+{
+  "clearOfScenery" : true,
+  "completeGroups" : true,
+  "conversationGroups" : 57,
+  "roles" : {
+    "conversation" : 118,
+    "market customer" : 10,
+    "market vendor" : 10,
+    "waiting at door" : 7
+  },
+  "shelterTogether" : true
+}

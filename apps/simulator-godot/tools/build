@@ -1,0 +1,6 @@
+#!/bin/bash
+# Build the Godot C# assembly (includes MarvinCore).
+set -e
+source "$(dirname "$0")/env.sh"
+cd "$MARVIN_GODOT_ROOT"
+dotnet build MarvinGodot.csproj -nologo -v q "$@"

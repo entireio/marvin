@@ -15,11 +15,16 @@ public enum DirtCourse {
     public static let width = 1.3 * 1.5
     public static let bermWidth = 0.35
     public static let fenceOffset = width + 0.5
+    public static let boundaryWallThickness = 0.15
     public static let shoulderEdge = fenceOffset + 0.1
     public static let terrainEdge = shoulderEdge + 0.45
-    public static let railClearance = 0.31
+    // Shared by the visible wall opening, chassis constraints and the baked service-route dirt.
+    public static let serviceEntryX = -7.5
+    public static let serviceEntryHalfWidth = 1.25
+    public static func serviceAccess(x:Double,z:Double,clearance:Double=0) -> Bool {
+        abs(x-serviceEntryX) < max(0,serviceEntryHalfWidth-clearance) && z > -15.4 && z < -5.3
+    }
     public static let postHeight = 0.40
-    public static let postEmbed = 0.08
     private static let controls: [SIMD2<Double>] = [
         .init(0,-10),.init(8,-10),.init(12,-6),.init(10,0),
         .init(5,0),.init(4,-4),.init(-1,-4),.init(-2,3),
@@ -79,19 +84,64 @@ public enum DirtCourse {
         return atan2(b.x-a.x,b.y-a.y)
     }
     private static let samples = (0...sampleCount).map { center(Double($0)*2 * .pi/Double(sampleCount)) }
+    private struct ProjectionNode {
+        let low: SIMD2<Double>, high: SIMD2<Double>
+        let start: Int, end: Int, left: Int, right: Int
+        func distanceSquared(_ p: SIMD2<Double>) -> Double {
+            let x=max(0,max(low.x-p.x,p.x-high.x))
+            let z=max(0,max(low.y-p.y,p.y-high.y))
+            return x*x+z*z
+        }
+    }
+    // Adjacent spline segments are spatially coherent. A balanced bounds tree
+    // rejects whole arcs while retaining the exact original segment projection.
+    private static let projectionNodes: [ProjectionNode] = {
+        var nodes:[ProjectionNode]=[]
+        func build(_ start:Int,_ end:Int)->Int {
+            var lo=SIMD2<Double>(repeating:.infinity),hi=SIMD2<Double>(repeating:-.infinity)
+            for i in start...end {
+                lo.x=min(lo.x,samples[i].x);lo.y=min(lo.y,samples[i].y)
+                hi.x=max(hi.x,samples[i].x);hi.y=max(hi.y,samples[i].y)
+            }
+            let index=nodes.count
+            nodes.append(ProjectionNode(low:lo,high:hi,start:start,end:end,left:-1,right:-1))
+            if end-start>12 {
+                let middle=(start+end)/2,left=build(start,middle),right=build(middle,end)
+                nodes[index]=ProjectionNode(low:lo,high:hi,start:start,end:end,left:left,right:right)
+            }
+            return index
+        }
+        _=build(0,sampleCount)
+        return nodes
+    }()
     public static func projection(x: Double, z: Double) -> (phase: Double, offset: Double, distance: Double) {
         let p = SIMD2<Double>(x,z)
-        var best = Double.infinity, bestPhase = 0.0, offset = 0.0
-        for i in 0..<sampleCount {
-            let a = samples[i], d = samples[i+1]-a, v = p-a
-            let lengthSquared = d.x*d.x+d.y*d.y
-            let t = max(0,min(1,(v.x*d.x+v.y*d.y)/lengthSquared))
-            let e = p-(a+d*t), distance = e.x*e.x+e.y*e.y
-            if distance < best {
-                best = distance; bestPhase = (Double(i)+t)*2 * .pi/Double(sampleCount)
-                offset = (e.x*d.y-e.y*d.x)/sqrt(lengthSquared)
+        var best = Double.infinity, bestPhase = 0.0, offset = 0.0, bestIndex=sampleCount
+        func search(_ index:Int) {
+            let node=projectionNodes[index]
+            // Allow rounding slack in the lower bound, including distant queries.
+            if node.distanceSquared(p)>best+max(1e-12,best.ulp*8) { return }
+            if node.left>=0 {
+                let leftDistance=projectionNodes[node.left].distanceSquared(p)
+                let rightDistance=projectionNodes[node.right].distanceSquared(p)
+                if leftDistance<=rightDistance { search(node.left);search(node.right) }
+                else { search(node.right);search(node.left) }
+                return
+            }
+            for i in node.start..<node.end {
+                let a = samples[i], d = samples[i+1]-a, v = p-a
+                let lengthSquared = d.x*d.x+d.y*d.y
+                let t = max(0,min(1,(v.x*d.x+v.y*d.y)/lengthSquared))
+                let e = p-(a+d*t), distance = e.x*e.x+e.y*e.y
+                // The original ascending scan resolves ties to the first segment.
+                if distance < best || (distance == best && bestIndex<sampleCount && i<bestIndex) {
+                    best = distance; bestIndex=i
+                    bestPhase = (Double(i)+t)*2 * .pi/Double(sampleCount)
+                    offset = (e.x*d.y-e.y*d.x)/sqrt(lengthSquared)
+                }
             }
         }
+        search(0)
         return (bestPhase,offset,sqrt(best))
     }
     public static func phase(x: Double, z: Double) -> Double { projection(x:x,z:z).phase }
@@ -119,19 +169,62 @@ public enum DirtCourse {
         return table+rollers+rhythm+hill+whoops+terrain+bank
     }
     public static func surfaceHeight(_ phase: Double, offset: Double) -> Double {
-        let distance = abs(offset)
+        let base=courseHeight(phase,offset:offset)
+        if offset>0 {
+            let p=point(phase,offset:offset)
+            if let ramp=CityExit.rampHeight(SIMD2(p.x,p.z)) {
+                let t=max(0,min(1,(offset-width)/0.25)),blend=t*t*(3-2*t)
+                return max(base,ramp)*(1-blend)+ramp*blend
+            }
+        }
+        return base
+    }
+    static func courseHeight(_ phase:Double,offset:Double)->Double {
+        let distance=abs(offset)
         let base = elevation(phase,offset:max(-width,min(width,offset)))
         if distance <= width { return base }
         if distance <= width+bermWidth {
             let crest = offset > 0 ? 0.10 : 0.055
             return base + sin((distance-width)/bermWidth * .pi)*crest
         }
-        // Keep a shelf beneath the fence; descend to the surrounding field
-        // outside it, so the rail follows the same elevation as the lane edge.
-        if distance <= shoulderEdge { return base }
-        let t = max(0,min(1,(distance-shoulderEdge)/(terrainEdge-shoulderEdge)))
-        let blend = t*t*(3-2*t)
-        return base*(1-blend) - 0.025*blend
+        let location=point(phase,offset:offset)
+        if offset<0, let service=serviceHeight(x:location.x,z:location.z) { return service }
+        return distance<=fenceOffset+boundaryWallThickness ? base : -0.025
+    }
+    private static let serviceSections = (688...752).map { i in
+        let phase=Double(i)/Double(sampleCount)*2 * .pi
+        let edge=point(phase,offset:-fenceOffset),wall=point(phase,offset:-fenceOffset-boundaryWallThickness)
+        return (phase:phase,x:edge.x,z:edge.z,wallX:wall.x,wallZ:wall.z)
+    }
+    /// The entrance cross-sections form a continuous field across the yard;
+    /// global nearest-course selection would cut a cliff through the shoulder.
+    private static func serviceHeight(x:Double,z:Double)->Double? {
+        guard abs(x-serviceEntryX)<3.6 && z > -15.4 && z < -5.3 else { return nil }
+        // X is monotone along this entrance edge. Extend each cross-section
+        // toward +Z instead of selecting a different nearest curve branch.
+        let first=serviceSections[0]
+        var phase=first.phase,edge=(x:first.x,z:first.z),wall=(x:first.wallX,z:first.wallZ)
+        for i in 0..<serviceSections.count-1 {
+            let a=serviceSections[i],b=serviceSections[i+1]
+            guard x>=a.x else { break }
+            let t=max(0,min(1,(x-a.x)/max(0.0001,b.x-a.x)))
+            phase=a.phase+(b.phase-a.phase)*t
+            edge=(x,a.z+(b.z-a.z)*t)
+            let wt=max(0,min(1,(x-a.wallX)/max(0.0001,b.wallX-a.wallX)))
+            wall=(x,a.wallZ+(b.wallZ-a.wallZ)*wt)
+            if x<=b.x { break }
+        }
+        let distance=z-edge.z
+        guard distance>0 else { return nil }
+        let run=3.6+0.35*(0.5+0.5*sin(x*1.3))
+        let spread=3.0+0.30*sin(z*0.9)+0.20*cos(z*1.7)
+        guard distance<run && abs(x-serviceEntryX)<spread else { return nil }
+        let t=max(0,min(1,distance/run))
+        let side=max(0,min(1,(abs(x-serviceEntryX)-serviceEntryHalfWidth)/(spread-serviceEntryHalfWidth)))
+        let along=1-t*t*(3-2*t),across=1-side*side*(3-2*side)
+        let base=elevation(phase,offset:-width)
+        let ordinary=z<=wall.z ? base : -0.025
+        return ordinary+((base+0.025)*along-0.025-ordinary)*across
     }
     /// Project only against the fence. The robot can slide along it and reverse
     /// away; the compacted lane edge is a traction change, not a collision wall.
@@ -139,8 +232,10 @@ public enum DirtCourse {
         let p = projection(x:x,z:z), tangent = self.heading(p.phase)
         let relative = heading-tangent
         let support = 0.35*abs(cos(relative)) + 0.33*abs(sin(relative))
-        let limit = fenceOffset-support-0.025
-        guard p.distance > limit else { return (x,z,false) }
+        if p.offset < 0 && serviceAccess(x:x,z:z,clearance:support) { return (x,z,false) }
+        let insideField = p.offset < 0 && p.distance > fenceOffset
+        let limit = fenceOffset+(insideField ? boundaryWallThickness+support+0.025 : -support-0.025)
+        guard insideField ? p.distance < limit : p.distance > limit else { return (x,z,false) }
         let corrected = point(p.phase,offset:p.offset < 0 ? -limit : limit)
         return (corrected.x,corrected.z,true)
     }
@@ -150,6 +245,8 @@ public enum DirtCourse {
         return 1-loose*0.72
     }
     public static func height(x:Double,z:Double) -> Double {
+        if max(abs(x),abs(z))>DesertTerrain.townEdge-2 { return DesertTerrain.height(x:x,z:z) }
+        if let service=serviceHeight(x:x,z:z) { return service }
         let p = projection(x:x,z:z)
         return surfaceHeight(p.phase,offset:p.offset)
     }
@@ -162,15 +259,21 @@ public struct DirtRace: Sendable {
     public private(set) var progress = 0.0
     private var previousPhase = 0.0, lapStart = 0.0
     public var finished: Bool { laps.count == 3 }
+    public private(set) var cooldownProgress = 0.0
+    public var completedCooldownLap:Bool { cooldownProgress >= 2 * .pi-1e-8 }
     public var currentLap: Double { elapsed - lapStart }
     public var wrongWay = false
     public init(startPhase: Double = 0) { previousPhase = startPhase; progress = startPhase }
     public mutating func countDown(dt: Double) { countdown = max(0, countdown - max(0, dt)) }
     public mutating func advance(x: Double, z: Double, dt: Double) {
-        guard countdown == 0, !finished, dt > 0, dt.isFinite else { return }
+        guard countdown == 0, dt > 0, dt.isFinite else { return }
         let phase = DirtCourse.phase(x: x, z: z)
         let delta = atan2(sin(phase - previousPhase), cos(phase - previousPhase))
         previousPhase = phase
+        if finished {
+            if DirtCourse.projection(x:x,z:z).distance<DirtCourse.fenceOffset && abs(delta)<0.3 { cooldownProgress += delta }
+            return
+        }
         let oldTime = elapsed; elapsed += dt
         wrongWay = delta < -0.0001
         // Reject teleports/off-course samples. Signed progress means reversing

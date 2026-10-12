@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>Marvin.Core</RootNamespace>
+    <AssemblyName>MarvinCore</AssemblyName>
+    <!-- Optimised in every configuration (the game's Debug build too, see MarvinGodot.csproj). -->
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+</Project>
